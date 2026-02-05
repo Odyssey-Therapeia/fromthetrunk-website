@@ -24,8 +24,12 @@ export default function CollectionPage() {
 
       <div className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft">
         <div className="grid gap-4 md:grid-cols-4">
-          <Input placeholder="Search by designer or motif" />
-          <Select>
+          <Input
+            placeholder="Search by designer or motif"
+            disabled
+            aria-disabled="true"
+          />
+          <Select disabled>
             <SelectTrigger>
               <SelectValue placeholder="Era" />
             </SelectTrigger>
@@ -36,7 +40,7 @@ export default function CollectionPage() {
               <SelectItem value="2010s">2010s</SelectItem>
             </SelectContent>
           </Select>
-          <Select>
+          <Select disabled>
             <SelectTrigger>
               <SelectValue placeholder="Fabric" />
             </SelectTrigger>
@@ -47,7 +51,7 @@ export default function CollectionPage() {
               <SelectItem value="velvet">Velvet</SelectItem>
             </SelectContent>
           </Select>
-          <Select>
+          <Select disabled>
             <SelectTrigger>
               <SelectValue placeholder="Occasion" />
             </SelectTrigger>
@@ -61,8 +65,7 @@ export default function CollectionPage() {
         </div>
         <Separator className="my-6" />
         <p className="text-sm text-muted-foreground">
-          Showing {sarees.length} curated pieces. Filtering will be enabled in
-          the next release.
+          Showing {sarees.length} curated pieces. Filters are coming soon.
         </p>
       </div>
 

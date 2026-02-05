@@ -84,15 +84,18 @@ export function FeaturedCollection() {
       </ScrollReveal>
 
       <BentoGrid className="mt-10 auto-rows-[18rem] grid-cols-1 gap-5 md:grid-cols-3 md:auto-rows-[20rem] lg:auto-rows-[22rem]">
-        {bentoCards.map((card, index) => (
-          <ScrollReveal
-            key={`${card.name}-${index}`}
-            delay={index * 0.08}
-            className={card.layoutClassName}
-          >
-            <BentoCard {...card} />
-          </ScrollReveal>
-        ))}
+        {bentoCards.map((card, index) => {
+          const { layoutClassName, ...cardProps } = card;
+          return (
+            <ScrollReveal
+              key={`${card.name}-${index}`}
+              delay={index * 0.08}
+              className={layoutClassName}
+            >
+              <BentoCard {...cardProps} />
+            </ScrollReveal>
+          );
+        })}
       </BentoGrid>
     </section>
   );

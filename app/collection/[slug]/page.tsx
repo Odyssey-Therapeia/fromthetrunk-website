@@ -11,21 +11,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { sarees, getSareeBySlug } from "@/lib/data/sarees";
 import { formatCurrency } from "@/lib/formatters";
 
 interface SareePageProps {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }
 
 export function generateStaticParams() {
   return sarees.map((saree) => ({ slug: saree.slug }));
 }
 
-export default async function SareePage({ params }: SareePageProps) {
-  const { slug } = await params;
+export default function SareePage({ params }: SareePageProps) {
+  const { slug } = params;
   const saree = getSareeBySlug(slug);
 
   if (!saree) {
@@ -83,18 +82,14 @@ export default async function SareePage({ params }: SareePageProps) {
           <Separator />
 
           <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
-              Select length
-            </p>
-            <Select defaultValue="standard">
-              <SelectTrigger>
-                <SelectValue placeholder="Select size" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Standard (5.5m)</SelectItem>
-                <SelectItem value="petite">Petite (5.2m)</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
+                Length
+              </p>
+              <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3 text-sm text-foreground">
+                {saree.details.length}
+              </div>
+            </div>
             <AddToCartButton saree={saree} />
             <p className="text-xs text-muted-foreground">
               Demo checkout only — payment will be simulated.

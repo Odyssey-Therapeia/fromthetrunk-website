@@ -24,7 +24,7 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
         />
       </div>
       <div className="flex gap-3">
-        {images.map((image) => (
+        {images.map((image, index) => (
           <button
             key={image}
             type="button"
@@ -33,6 +33,9 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
               "relative h-20 w-16 overflow-hidden rounded-2xl border border-transparent transition",
               activeImage === image && "border-trunk-gold"
             )}
+            aria-label={`View image ${index + 1} of ${images.length}`}
+            aria-pressed={activeImage === image}
+            title={`View image ${index + 1} of ${images.length}`}
           >
             <Image src={image} alt={alt} fill className="object-cover" />
           </button>

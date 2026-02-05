@@ -1,9 +1,15 @@
+"use client";
+
+import { useState } from "react";
+
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export function Newsletter() {
+  const [submitted, setSubmitted] = useState(false);
+
   return (
     <section className="mx-auto w-full max-w-6xl px-6">
       <ScrollReveal>
@@ -20,16 +26,31 @@ export function Newsletter() {
               fortnight.
             </p>
           </div>
-          <form className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              className="min-w-[260px] bg-white"
-            />
-            <Button type="submit" className="rounded-full px-6">
-              Join the list
-            </Button>
-          </form>
+          <div className="flex w-full flex-col gap-2 md:w-auto">
+            <form
+              className="flex w-full flex-col gap-3 md:flex-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSubmitted(true);
+              }}
+            >
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                className="min-w-[260px] bg-white"
+                disabled={submitted}
+                aria-disabled={submitted}
+              />
+              <Button type="submit" className="rounded-full px-6" disabled={submitted}>
+                {submitted ? "You're on the list" : "Join the list"}
+              </Button>
+            </form>
+            {submitted && (
+              <p className="text-xs text-muted-foreground">
+                Thanks! We&apos;ll email you the next curated drop.
+              </p>
+            )}
+          </div>
         </Card>
       </ScrollReveal>
     </section>

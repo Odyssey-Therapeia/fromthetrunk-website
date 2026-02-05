@@ -33,6 +33,8 @@ export function CartItem({ item }: CartItemProps) {
             size="icon"
             className="text-muted-foreground"
             onClick={() => removeItem(item.id)}
+            aria-label={`Remove ${item.name}`}
+            title={`Remove ${item.name}`}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -42,6 +44,8 @@ export function CartItem({ item }: CartItemProps) {
             variant="outline"
             size="icon"
             onClick={() => updateQuantity(item.id, item.quantity - 1)}
+            aria-label={`Decrease quantity for ${item.name}`}
+            title={`Decrease quantity for ${item.name}`}
           >
             <Minus className="h-4 w-4" />
           </Button>
@@ -52,6 +56,8 @@ export function CartItem({ item }: CartItemProps) {
             variant="outline"
             size="icon"
             onClick={() => updateQuantity(item.id, item.quantity + 1)}
+            aria-label={`Increase quantity for ${item.name}`}
+            title={`Increase quantity for ${item.name}`}
           >
             <Plus className="h-4 w-4" />
           </Button>
