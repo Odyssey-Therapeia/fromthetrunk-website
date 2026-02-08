@@ -57,6 +57,15 @@ export default buildConfig({
       baseDir: dirname,
       importMapFile: path.resolve(dirname, "payload", "importMap.ts"),
     },
+    components: {
+      beforeDashboard: [
+        "/components/admin/DashboardOverview#DashboardOverview",
+      ],
+      graphics: {
+        Logo: "/components/admin/AdminLogo#AdminLogo",
+        Icon: "/components/admin/AdminIcon#AdminIcon",
+      },
+    },
   },
   routes: {
     api: "/api/payload",

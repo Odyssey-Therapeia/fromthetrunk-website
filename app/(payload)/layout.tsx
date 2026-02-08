@@ -7,6 +7,7 @@ import { importMap } from "@/payload/importMap";
 import { payloadAdminServerFunction } from "./payload-admin-server-function";
 
 import "@payloadcms/next/css";
+import "../../styles/admin-custom.css";
 
 export { metadata };
 
