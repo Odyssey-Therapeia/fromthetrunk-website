@@ -187,7 +187,7 @@ export function SearchBar() {
                 );
               })}
               <Link
-                href={`/collection?q=${encodeURIComponent(query)}`}
+                href={`/search?q=${encodeURIComponent(query)}`}
                 onClick={handleSelect}
                 className="block rounded-xl p-2 text-center text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
               >
