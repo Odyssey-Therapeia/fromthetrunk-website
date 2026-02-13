@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getServerAuthSession } from "@/lib/auth/get-session";
 import { errorResponse } from "@/lib/http/error-response";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { getPayloadClient } from "@/lib/payload/server";
 
 const RESERVATION_MINUTES = 30;
@@ -12,6 +13,12 @@ const reserveSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitResponse(request, "cart:reserve", {
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (rateLimited) return rateLimited;
+
   try {
     const session = await getServerAuthSession();
     if (!session?.user?.id) {

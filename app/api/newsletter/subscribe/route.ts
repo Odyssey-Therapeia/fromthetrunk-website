@@ -5,6 +5,7 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email/send";
 import { newsletterConfirmationEmail } from "@/lib/email/templates";
 import { errorResponse } from "@/lib/http/error-response";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { getPayloadClient } from "@/lib/payload/server";
 
 const subscribeSchema = z.object({
@@ -12,6 +13,13 @@ const subscribeSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // Rate limit: 3 subscribe attempts per minute per IP
+  const rateLimited = rateLimitResponse(request, "newsletter:sub", {
+    limit: 3,
+    windowSeconds: 60,
+  });
+  if (rateLimited) return rateLimited;
+
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {

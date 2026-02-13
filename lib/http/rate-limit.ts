@@ -74,3 +74,36 @@ export function getRateLimitKey(
   const ip = forwarded?.split(",")[0]?.trim() || "unknown";
   return `${prefix}:${ip}`;
 }
+
+/**
+ * Convenience: check rate limit and return a 429 Response if exceeded.
+ * Returns null if the request is within limits.
+ */
+export function rateLimitResponse(
+  request: Request,
+  prefix: string,
+  options: RateLimitOptions
+): Response | null {
+  const key = getRateLimitKey(request, prefix);
+  const result = checkRateLimit(key, options);
+
+  if (!result.success) {
+    return new Response(
+      JSON.stringify({
+        code: "RATE_LIMITED",
+        message: "Too many requests. Please try again later.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(
+            Math.ceil((result.resetAt - Date.now()) / 1000)
+          ),
+        },
+      }
+    );
+  }
+
+  return null;
+}

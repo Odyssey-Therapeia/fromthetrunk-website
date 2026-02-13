@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getServerAuthSession } from "@/lib/auth/get-session";
 import { errorResponse } from "@/lib/http/error-response";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { calculateOrderTotals, getRazorpayInstance } from "@/lib/payments/razorpay";
 import { getPayloadClient } from "@/lib/payload/server";
@@ -17,6 +18,13 @@ import { createOrderSchema } from "@/lib/validation/order";
  * 5. Return the Razorpay order ID + key to the client for checkout modal.
  */
 export async function POST(request: Request) {
+  // Rate limit: 5 payment attempts per minute per IP
+  const rateLimited = rateLimitResponse(request, "payment:create", {
+    limit: 5,
+    windowSeconds: 60,
+  });
+  if (rateLimited) return rateLimited;
+
   try {
     const session = await getServerAuthSession();
     if (!session?.user?.id) {
