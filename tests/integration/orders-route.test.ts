@@ -1,39 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-vi.mock("@/lib/auth/get-session", () => ({
-  getServerAuthSession: vi.fn(),
-}));
+import { GET, POST } from "@/app/api/orders/route";
 
-vi.mock("@/lib/payload/server", () => ({
-  getPayloadClient: vi.fn(),
-}));
-
-import { getServerAuthSession } from "@/lib/auth/get-session";
-import { POST } from "@/app/api/orders/route";
-
-const shippingAddress = {
-  city: "Mumbai",
-  country: "India",
-  email: "buyer@example.com",
-  line1: "12 Heritage Lane",
-  name: "A Buyer",
-  phone: "+91 99999 00000",
-  postalCode: "400001",
-  state: "MH",
-};
-
-describe("/api/orders POST (deprecated)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe("/api/orders (deprecated)", () => {
+  it("GET returns 301 directing to /api/account/orders", async () => {
+    const response = await GET();
+    const body = await response.json();
+    expect(response.status).toBe(301);
+    expect(body.code).toBe("ENDPOINT_MOVED");
   });
 
-  it("returns 410 Gone — endpoint has moved to /api/payments/create-order", async () => {
+  it("POST returns 410 directing to /api/payments/create-order", async () => {
     const response = await POST();
     const body = await response.json();
-
     expect(response.status).toBe(410);
-    expect(body).toMatchObject({
-      code: "ENDPOINT_MOVED",
-    });
+    expect(body.code).toBe("ENDPOINT_MOVED");
   });
 });
