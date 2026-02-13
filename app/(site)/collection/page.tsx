@@ -42,8 +42,8 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
     getGlobals("collectionPage", { includeDrafts }),
     getCollections({ includeDrafts }),
     activeCollectionSlug
-      ? getProductsByCollection(activeCollectionSlug, ITEMS_PER_PAGE, { includeDrafts })
-      : getProducts(ITEMS_PER_PAGE, { includeDrafts }),
+      ? getProductsByCollection(activeCollectionSlug, ITEMS_PER_PAGE, { includeDrafts, page: currentPage })
+      : getProducts(ITEMS_PER_PAGE, { includeDrafts, page: currentPage }),
   ]);
 
   const cms = collectionPage as CollectionPageGlobal | null;
