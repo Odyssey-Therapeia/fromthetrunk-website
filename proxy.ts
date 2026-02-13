@@ -3,9 +3,12 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 /**
- * Middleware handles:
+ * Proxy handles:
  * 1. Route protection — redirect unauthenticated users from protected paths
  * 2. Security — additional runtime security checks
+ *
+ * Renamed from middleware.ts to proxy.ts for Next.js 16 convention.
+ * See: https://nextjs.org/docs/messages/middleware-to-proxy
  */
 
 const protectedPaths = [
@@ -19,7 +22,7 @@ const protectedPaths = [
 const isProtected = (pathname: string) =>
   protectedPaths.some((prefix) => pathname.startsWith(prefix));
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
