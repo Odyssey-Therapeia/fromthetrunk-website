@@ -12,6 +12,7 @@ const protectedPaths = [
   "/account/profile",
   "/account/addresses",
   "/account/orders",
+  "/account/wishlist",
   "/checkout",
 ];
 
@@ -48,6 +49,7 @@ export const config = {
     "/account/profile/:path*",
     "/account/addresses/:path*",
     "/account/orders/:path*",
+    "/account/wishlist/:path*",
     "/checkout/:path*",
   ],
 };
