@@ -5,18 +5,19 @@ import { verifyBearerSecret } from "@/lib/http/verify-secret";
 import { getPayloadClient } from "@/lib/payload/server";
 
 /**
- * POST /api/cron/release-reservations
+ * GET/POST /api/cron/release-reservations
  *
  * Releases expired product reservations.  Products that have
  * stockStatus = "reserved" and reservedUntil < now are set back
  * to "available".
  *
- * Designed to be called by an external cron scheduler (Vercel Cron,
- * Upstash QStash, GitHub Actions, etc.) every 5–10 minutes.
+ * Called by:
+ * - Vercel Cron (sends GET with CRON_SECRET in authorization header)
+ * - External schedulers like Upstash QStash or GitHub Actions (POST)
  *
  * Protected by a shared secret in the Authorization header.
  */
-export async function POST(request: NextRequest) {
+async function handleCron(request: NextRequest) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret) {
@@ -75,4 +76,14 @@ export async function POST(request: NextRequest) {
       "CRON_FAILED"
     );
   }
+}
+
+// Vercel Cron sends GET requests
+export async function GET(request: NextRequest) {
+  return handleCron(request);
+}
+
+// External schedulers may use POST
+export async function POST(request: NextRequest) {
+  return handleCron(request);
 }
