@@ -29,6 +29,7 @@ export function SiteHeader() {
   const { data: session } = useSession();
   const router = useRouter();
   const [mobileSearch, setMobileSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -84,7 +85,7 @@ export function SiteHeader() {
 
           <CartDrawer />
 
-          <Sheet>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
@@ -104,6 +105,7 @@ export function SiteHeader() {
                     if (mobileSearch.trim().length >= 2) {
                       router.push(`/search?q=${encodeURIComponent(mobileSearch.trim())}`);
                       setMobileSearch("");
+                      setMobileMenuOpen(false);
                     }
                   }}
                   className="relative"
@@ -122,6 +124,7 @@ export function SiteHeader() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className="text-lg font-medium text-foreground"
                   >
                     {link.label}
@@ -129,12 +132,15 @@ export function SiteHeader() {
                 ))}
                 <Link
                   href={session ? "/account/profile" : "/account/sign-in"}
+                  onClick={() => setMobileMenuOpen(false)}
                   className="text-lg font-medium text-foreground"
                 >
                   {session ? "Account" : "Sign In"}
                 </Link>
                 <Button asChild className="rounded-full px-6">
-                  <Link href="/collection">View Collection</Link>
+                  <Link href="/collection" onClick={() => setMobileMenuOpen(false)}>
+                    View Collection
+                  </Link>
                 </Button>
               </div>
             </SheetContent>
