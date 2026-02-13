@@ -8,7 +8,7 @@ import { Newsletter } from "@/components/sections/newsletter";
 import { getFeaturedProducts, getGlobals, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export default async function Home() {
   const { isEnabled: includeDrafts } = await draftMode();

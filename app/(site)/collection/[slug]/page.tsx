@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // ISR: revalidate every minute (stock status may change)
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductGallery } from "@/components/product/product-gallery";
