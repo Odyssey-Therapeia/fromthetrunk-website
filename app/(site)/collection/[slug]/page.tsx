@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 
-export const revalidate = 60; // ISR: revalidate every minute (stock status may change)
+export const dynamic = "force-dynamic";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductGallery } from "@/components/product/product-gallery";
@@ -33,12 +33,13 @@ export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { slug } = params;
-  const product = await getProductBySlug(slug);
+  const rawProduct = await getProductBySlug(slug);
 
-  if (!product) {
+  if (!rawProduct) {
     return { title: "Product Not Found" };
   }
 
+  const product = rawProduct as unknown as Product;
   const image = resolveMediaURL(product.images?.[0]);
 
   return {
@@ -60,16 +61,17 @@ export async function generateMetadata({
 export default async function SareePage({ params }: ProductPageProps) {
   const { isEnabled: includeDrafts } = await draftMode();
   const { slug } = params;
-  const product = await getProductBySlug(slug, { includeDrafts });
+  const rawProduct = await getProductBySlug(slug, { includeDrafts });
 
-  if (!product) {
+  if (!rawProduct) {
     notFound();
   }
 
+  const product = rawProduct as unknown as Product;
   const allProducts = await getProducts(12, { includeDrafts });
-  const related = allProducts.docs.filter((item) => item.slug !== product.slug).slice(0, 3);
+  const related = (allProducts.docs as unknown as Product[]).filter((item) => item.slug !== product.slug).slice(0, 3);
   const images = (product.images ?? [])
-    .map((image) => resolveMediaURL(image))
+    .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
 
   const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";

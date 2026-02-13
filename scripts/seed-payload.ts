@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Client } from "pg";
 
-import { sarees } from "../lib/data/sarees.ts";
+import { sarees } from "../lib/data/sarees";
 
 const OCCASION_MAP = new Map<string, string>([
   ["bridal", "bridal"],

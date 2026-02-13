@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CartPageClient } from "@/components/cart/cart-page-client";
 import { getFeaturedProducts, getProducts } from "@/lib/data/products";
+import type { Product } from "@/types/payload-types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function CartPage() {
   const featured = await getFeaturedProducts(3);
-  const featuredPicks = featured.docs.length ? featured.docs : (await getProducts(3)).docs;
+  const docs = featured.docs.length ? featured.docs : (await getProducts(3)).docs;
 
-  return <CartPageClient featuredPicks={featuredPicks} />;
+  return <CartPageClient featuredPicks={docs as unknown as Product[]} />;
 }

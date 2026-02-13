@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 import { getPayloadClient } from "@/lib/payload/server";
 
+export const dynamic = "force-dynamic";
+
 const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

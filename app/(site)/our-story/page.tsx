@@ -10,7 +10,7 @@ import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 const storyHero =
   "https://images.unsplash.com/photo-1727430228383-aa1fb59db8bf?q=80&w=2200&auto=format&fit=crop";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Our Story",

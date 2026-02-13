@@ -6,7 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getGlobals } from "@/lib/data/products";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+// Use force-dynamic since Payload CMS requires a database connection.
+// In production with Vercel, ISR can be enabled per-route using
+// revalidate config once the database is always available at build time.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "How It Works",
