@@ -31,7 +31,7 @@ const emptyForm = {
   isDefault: false,
 };
 
-const toAddressForm = (address: any) => ({
+const toAddressForm = (address: Address) => ({
   label: address.label ?? "",
   name: address.name ?? "",
   line1: address.line1 ?? "",
