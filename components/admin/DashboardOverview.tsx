@@ -67,10 +67,14 @@ export const DashboardOverview = async () => {
     ]);
 
   // Build a real product-count-per-collection map
+  type DocRecord = Record<string, unknown>;
   const productCountByCollection = new Map<string, number>();
   for (const product of allProductsForCounts.docs) {
-    const colRef = (product as any).collection;
-    const colId = typeof colRef === "object" && colRef !== null ? colRef.id : colRef;
+    const colRef = (product as DocRecord).collection;
+    const colId =
+      typeof colRef === "object" && colRef !== null
+        ? (colRef as DocRecord).id as string
+        : (colRef as string);
     if (colId) {
       productCountByCollection.set(colId, (productCountByCollection.get(colId) ?? 0) + 1);
     }
@@ -79,15 +83,15 @@ export const DashboardOverview = async () => {
   /* Derive stats */
   const totalOrders = ordersResult.totalDocs;
   const pendingOrders = ordersResult.docs.filter(
-    (o: any) => o.status === "pending"
+    (o) => (o as DocRecord).status === "pending"
   ).length;
   const totalRevenue = ordersResult.docs.reduce(
-    (sum: number, o: any) => sum + (o.subtotal ?? 0),
+    (sum: number, o) => sum + (((o as DocRecord).subtotal as number) ?? 0),
     0
   );
   const totalProducts = productsResult.totalDocs;
   const publishedProducts = productsResult.docs.filter(
-    (p: any) => p.status === "published"
+    (p) => (p as DocRecord).status === "published"
   ).length;
   const totalCollections = collectionsResult.totalDocs;
   const totalMedia = mediaResult.totalDocs;
@@ -365,7 +369,11 @@ export const DashboardOverview = async () => {
             </p>
           ) : (
             <div>
-              {recentOrders.map((order: any, i: number) => (
+              {recentOrders.map((order, i: number) => {
+                const o = order as DocRecord;
+                const shippingAddr = o.shippingAddress as DocRecord | undefined;
+                const orderItems = o.items as unknown[] | undefined;
+                return (
                 <div
                   key={order.id}
                   style={{
@@ -384,7 +392,7 @@ export const DashboardOverview = async () => {
                         color: "#2e2017",
                       }}
                     >
-                      {order.shippingAddress?.name ?? "Customer"}
+                      {(shippingAddr?.name as string) ?? "Customer"}
                     </div>
                     <div
                       style={{
@@ -393,14 +401,14 @@ export const DashboardOverview = async () => {
                         marginTop: "0.15rem",
                       }}
                     >
-                      {shortDate(order.placedAt ?? order.createdAt)} &middot;{" "}
-                      {order.items?.length ?? 0} item
-                      {(order.items?.length ?? 0) !== 1 ? "s" : ""}
+                      {shortDate((o.placedAt ?? o.createdAt) as string | undefined)} &middot;{" "}
+                      {orderItems?.length ?? 0} item
+                      {(orderItems?.length ?? 0) !== 1 ? "s" : ""}
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <span style={badge(order.status ?? "pending")}>
-                      {order.status ?? "pending"}
+                    <span style={badge((o.status as string) ?? "pending")}>
+                      {(o.status as string) ?? "pending"}
                     </span>
                     <span
                       style={{
@@ -411,11 +419,12 @@ export const DashboardOverview = async () => {
                         textAlign: "right",
                       }}
                     >
-                      {currency(order.subtotal ?? 0)}
+                      {currency((o.subtotal as number) ?? 0)}
                     </span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -432,14 +441,15 @@ export const DashboardOverview = async () => {
             </p>
           ) : (
             <div>
-              {collectionsResult.docs.map((col: any, i: number) => {
-                const productCount = productCountByCollection.get(col.id) ?? 0;
+              {collectionsResult.docs.map((col, i: number) => {
+                const c = col as DocRecord;
+                const productCount = productCountByCollection.get(col.id as string) ?? 0;
                 const pct = totalProducts > 0
                   ? Math.min((productCount / totalProducts) * 100, 100)
                   : 0;
                 return (
                   <div
-                    key={col.id}
+                    key={col.id as string}
                     style={{
                       ...collectionRow,
                       borderBottom:
@@ -456,7 +466,7 @@ export const DashboardOverview = async () => {
                           color: "#2e2017",
                         }}
                       >
-                        {col.name}
+                        {c.name as string}
                       </div>
                       <div
                         style={{
@@ -465,7 +475,7 @@ export const DashboardOverview = async () => {
                           marginTop: "0.1rem",
                         }}
                       >
-                        {productCount} product{productCount !== 1 ? "s" : ""} · {col.featured ? "Featured" : "Standard"}
+                        {productCount} product{productCount !== 1 ? "s" : ""} · {c.featured ? "Featured" : "Standard"}
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

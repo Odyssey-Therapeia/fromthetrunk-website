@@ -11,12 +11,12 @@ import { getPayloadClient } from "@/lib/payload/server";
 
 const generatePassword = () => randomBytes(32).toString("hex");
 
-const mapUser = (user: any): AdapterUser => ({
-  id: user.id,
-  email: user.email,
-  emailVerified: user.emailVerified ? new Date(user.emailVerified) : null,
-  name: user.name ?? null,
-  image: user.image ?? null,
+const mapUser = (user: Record<string, unknown>): AdapterUser => ({
+  id: user.id as string,
+  email: user.email as string,
+  emailVerified: user.emailVerified ? new Date(user.emailVerified as string) : null,
+  name: (user.name as string) ?? null,
+  image: (user.image as string) ?? null,
 });
 
 export const PayloadAdapter = (): Adapter => {
@@ -233,13 +233,13 @@ export const PayloadAdapter = (): Adapter => {
       const userId = typeof session.user === "object" ? session.user.id : session.user;
       if (!userId) return null;
 
-      let user: any = null;
+      let user: Record<string, unknown> | null = null;
       try {
         user = await payload.findByID({
           collection: "users",
           id: userId,
           overrideAccess: true,
-        });
+        }) as Record<string, unknown>;
       } catch {
         return null;
       }
