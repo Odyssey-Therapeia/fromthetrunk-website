@@ -49,6 +49,14 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  other: {
+    "theme-color": "#6b1d1d",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
