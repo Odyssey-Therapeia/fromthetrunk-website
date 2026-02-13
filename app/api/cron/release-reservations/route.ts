@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { errorResponse } from "@/lib/http/error-response";
+import { verifyBearerSecret } from "@/lib/http/verify-secret";
 import { getPayloadClient } from "@/lib/payload/server";
 
 /**
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!verifyBearerSecret(authHeader, cronSecret)) {
       return errorResponse(401, "Invalid cron secret.", "UNAUTHORIZED");
     }
 

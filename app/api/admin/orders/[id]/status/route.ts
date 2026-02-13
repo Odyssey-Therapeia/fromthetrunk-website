@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email/send";
 import { orderShippedEmail } from "@/lib/email/templates";
 import { errorResponse } from "@/lib/http/error-response";
+import { verifyBearerSecret } from "@/lib/http/verify-secret";
 import { getPayloadClient } from "@/lib/payload/server";
 import type { Order } from "@/types/payload-types";
 
@@ -28,11 +29,14 @@ export async function PATCH(
     const { id } = await Promise.resolve(params);
     const payload = await getPayloadClient();
 
-    // Admin auth check — verify caller is an admin via Payload API key or session
+    // Admin auth check — timing-safe secret verification
     const adminSecret = process.env.ADMIN_API_SECRET;
-    const authHeader = request.headers.get("authorization");
+    if (!adminSecret) {
+      return errorResponse(500, "Admin secret not configured.", "CONFIG_ERROR");
+    }
 
-    if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
+    const authHeader = request.headers.get("authorization");
+    if (!verifyBearerSecret(authHeader, adminSecret)) {
       return errorResponse(401, "Unauthorized. Admin access required.", "UNAUTHORIZED");
     }
 
