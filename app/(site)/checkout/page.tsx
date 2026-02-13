@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
+
 import { CheckoutPageClient } from "@/components/checkout/checkout-page-client";
 import { getFeaturedProducts, getProducts } from "@/lib/data/products";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage() {
   const featured = await getFeaturedProducts(3);
