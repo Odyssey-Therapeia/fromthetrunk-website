@@ -64,9 +64,10 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
-            <div
+            <Link
               key={order.id}
-              className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft"
+              href={`/account/orders/${order.id}`}
+              className="block rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
@@ -94,7 +95,7 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

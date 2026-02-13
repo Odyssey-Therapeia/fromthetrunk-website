@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, User } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { Button } from "@/components/ui/button";
@@ -15,10 +18,11 @@ const navLinks = [
   { href: "/collection", label: "Collection" },
   { href: "/our-story", label: "Our Story" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/account/profile", label: "Account" },
 ];
 
 export function SiteHeader() {
+  const { data: session } = useSession();
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
@@ -49,8 +53,27 @@ export function SiteHeader() {
           </Button>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Account button */}
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="relative rounded-full"
+          >
+            <Link
+              href={session ? "/account/profile" : "/account/sign-in"}
+              aria-label={session ? "Your account" : "Sign in"}
+            >
+              <User className="h-5 w-5" />
+              {session && (
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-trunk-gold" />
+              )}
+            </Link>
+          </Button>
+
           <CartDrawer />
+
           <Sheet>
             <SheetTrigger asChild>
               <Button
@@ -73,6 +96,12 @@ export function SiteHeader() {
                     {link.label}
                   </Link>
                 ))}
+                <Link
+                  href={session ? "/account/profile" : "/account/sign-in"}
+                  className="text-lg font-medium text-foreground"
+                >
+                  {session ? "Account" : "Sign In"}
+                </Link>
                 <Button asChild className="rounded-full px-6">
                   <Link href="/collection">View Collection</Link>
                 </Button>
