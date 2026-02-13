@@ -97,9 +97,16 @@ export default async function SareePage({ params }: ProductPageProps) {
               </div>
             </div>
             <AddToCartButton product={product} />
-            <p className="text-xs text-muted-foreground">
-              Demo checkout only — payment will be simulated.
-            </p>
+            {product.stockStatus === "available" && (
+              <p className="text-xs text-muted-foreground">
+                This is a one-of-a-kind piece. It will be reserved for you once added to your bag.
+              </p>
+            )}
+            {product.stockStatus === "sold" && (
+              <p className="text-xs text-muted-foreground">
+                This piece has found a new home. Browse the collection for similar treasures.
+              </p>
+            )}
           </div>
 
           <Accordion type="single" collapsible className="w-full">

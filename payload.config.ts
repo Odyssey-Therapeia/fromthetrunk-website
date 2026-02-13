@@ -413,6 +413,37 @@ export default buildConfig({
           ],
         },
         {
+          name: "stockStatus",
+          type: "select",
+          defaultValue: "available",
+          admin: {
+            position: "sidebar",
+            description: "Pre-loved items are one-of-a-kind. Track availability here.",
+          },
+          options: [
+            { label: "Available", value: "available" },
+            { label: "Reserved", value: "reserved" },
+            { label: "Sold", value: "sold" },
+          ],
+        },
+        {
+          name: "reservedUntil",
+          type: "date",
+          admin: {
+            position: "sidebar",
+            description: "Auto-set when a customer adds this item to their cart.",
+            readOnly: true,
+          },
+        },
+        {
+          name: "soldAt",
+          type: "date",
+          admin: {
+            position: "sidebar",
+            readOnly: true,
+          },
+        },
+        {
           name: "story",
           type: "group",
           fields: [
