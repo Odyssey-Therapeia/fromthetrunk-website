@@ -78,7 +78,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/60 py-4 text-center text-xs text-muted-foreground">
-        © 2026 From the Trunk. All rights reserved.
+        © {new Date().getFullYear()} From the Trunk. All rights reserved.
       </div>
     </footer>
   );
