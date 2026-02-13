@@ -36,6 +36,11 @@ export async function POST(request: Request) {
     }
 
     const payload = await getPayloadClient();
+
+    // Note: The read-then-write pattern below has a theoretical TOCTOU race
+    // condition if two users try to reserve the same item simultaneously.
+    // For this low-concurrency luxury marketplace, this is acceptable.
+    // For higher volume, use a database transaction or optimistic locking.
     const product = await payload.findByID({
       collection: "products",
       id: parsed.data.productId,
