@@ -6,6 +6,7 @@ import { Menu, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { SearchBar } from "@/components/layout/search-bar";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -53,7 +54,9 @@ export function SiteHeader() {
           </Button>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <SearchBar />
+
           {/* Account button */}
           <Button
             asChild
