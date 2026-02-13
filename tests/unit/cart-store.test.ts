@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 
 /**
  * Cart store tests.
@@ -6,6 +6,10 @@ import { describe, expect, it, beforeEach } from "vitest";
  * We test the store logic in isolation by re-creating the store functions
  * without the persist middleware (localStorage is unavailable in vitest node).
  */
+
+// Mock the global fetch for releaseReservation calls
+const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+vi.stubGlobal("fetch", fetchMock);
 
 interface CartItem {
   id: string;
@@ -15,23 +19,41 @@ interface CartItem {
   quantity: number;
 }
 
+async function releaseReservation(productId: string): Promise<void> {
+  try {
+    await fetch("/api/cart/release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId }),
+    });
+  } catch {
+    // ignored
+  }
+}
+
 function createCartStore() {
   let items: CartItem[] = [];
 
   return {
     getItems: () => items,
     addItem: (item: Omit<CartItem, "quantity">) => {
-      // One-of-a-kind: no duplicates
       if (items.some((i) => i.id === item.id)) return;
       items = [...items, { ...item, quantity: 1 }];
     },
     removeItem: (id: string) => {
+      releaseReservation(id);
       items = items.filter((i) => i.id !== id);
     },
     updateQuantity: (_id: string, _qty: number) => {
       // No-op for unique items
     },
     clearCart: () => {
+      items = [];
+    },
+    clearCartWithRelease: () => {
+      for (const item of items) {
+        releaseReservation(item.id);
+      }
       items = [];
     },
     hasItem: (id: string) => items.some((i) => i.id === id),
@@ -52,6 +74,7 @@ describe("cart store", () => {
 
   beforeEach(() => {
     store = createCartStore();
+    fetchMock.mockClear();
   });
 
   it("adds an item with quantity 1", () => {
@@ -72,19 +95,33 @@ describe("cart store", () => {
     expect(store.getItems()).toHaveLength(2);
   });
 
-  it("removes an item", () => {
+  it("removes an item and releases reservation", async () => {
     store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
     store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
     store.removeItem("p1");
     expect(store.getItems()).toHaveLength(1);
     expect(store.getItems()[0].id).toBe("p2");
+    // Should have called release API
+    expect(fetchMock).toHaveBeenCalledWith("/api/cart/release", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ productId: "p1" }),
+    }));
   });
 
-  it("clears all items", () => {
+  it("clears all items without releasing (for post-payment)", () => {
     store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
     store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
     store.clearCart();
     expect(store.getItems()).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clearCartWithRelease releases all reservations", () => {
+    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
+    store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
+    store.clearCartWithRelease();
+    expect(store.getItems()).toHaveLength(0);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("hasItem returns correct state", () => {
