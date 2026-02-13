@@ -5,7 +5,7 @@ import { errorResponse } from "@/lib/http/error-response";
 import { getPayloadClient } from "@/lib/payload/server";
 import { addressUpdateSchema } from "@/lib/validation/account";
 
-const normalizeAddressIds = (addresses: any[] | undefined) =>
+const normalizeAddressIds = (addresses: Array<string | { id: string }> | undefined) =>
   (addresses ?? []).map((address) => (typeof address === "string" ? address : address.id));
 const unauthorized = () => errorResponse(401, "Unauthorized", "UNAUTHORIZED");
 const forbidden = () => errorResponse(403, "Forbidden", "FORBIDDEN");
@@ -26,19 +26,22 @@ export async function PATCH(
 
     const { id } = await resolveParams(params);
     const payload = await getPayloadClient();
-    let address: any;
+    let address: Record<string, unknown>;
 
     try {
       address = await payload.findByID({
         collection: "addresses",
         id,
         overrideAccess: true,
-      });
+      }) as Record<string, unknown>;
     } catch {
       return errorResponse(404, "Address not found.", "ADDRESS_NOT_FOUND");
     }
 
-    const addressUser = typeof address.user === "object" ? address.user.id : address.user;
+    const addressUserRef = address.user;
+    const addressUser = typeof addressUserRef === "object" && addressUserRef !== null
+      ? (addressUserRef as Record<string, unknown>).id
+      : addressUserRef;
     if (addressUser !== session.user.id) {
       return forbidden();
     }
@@ -150,19 +153,22 @@ export async function DELETE(
 
     const { id } = await resolveParams(params);
     const payload = await getPayloadClient();
-    let address: any;
+    let address: Record<string, unknown>;
 
     try {
       address = await payload.findByID({
         collection: "addresses",
         id,
         overrideAccess: true,
-      });
+      }) as Record<string, unknown>;
     } catch {
       return errorResponse(404, "Address not found.", "ADDRESS_NOT_FOUND");
     }
 
-    const addressUser = typeof address.user === "object" ? address.user.id : address.user;
+    const delUserRef = address.user;
+    const addressUser = typeof delUserRef === "object" && delUserRef !== null
+      ? (delUserRef as Record<string, unknown>).id
+      : delUserRef;
     if (addressUser !== session.user.id) {
       return forbidden();
     }
