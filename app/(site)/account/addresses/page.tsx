@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Address } from "@/types/payload-types";
 
 const fetchAddresses = async () => {
   const response = await fetch("/api/account/addresses");
@@ -127,7 +128,7 @@ export default function AddressesPage() {
     );
   }
 
-  const addresses = data?.addresses ?? [];
+  const addresses = (data?.addresses ?? []) as Address[];
 
   return (
     <div className="space-y-6">
@@ -148,7 +149,7 @@ export default function AddressesPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {addresses.map((address: any) => (
+          {addresses.map((address) => (
             <div
               key={address.id}
               className="rounded-2xl border border-border/60 bg-card/70 p-5 shadow-soft"

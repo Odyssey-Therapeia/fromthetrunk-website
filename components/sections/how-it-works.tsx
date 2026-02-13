@@ -4,6 +4,7 @@ import { Package, ShieldCheck, Sparkles } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { BentoGrid } from "@/components/ui/bento-grid";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import type { Product } from "@/types/payload-types";
 
 const steps = [
   {
@@ -27,7 +28,7 @@ const steps = [
 ];
 
 interface HowItWorksProps {
-  products: any[];
+  products: Product[];
 }
 
 export function HowItWorks({ products }: HowItWorksProps) {

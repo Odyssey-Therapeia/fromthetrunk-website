@@ -7,9 +7,10 @@ import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import type { Product } from "@/types/payload-types";
 
 interface ProductCardProps {
-  product: any;
+  product: Product;
   className?: string;
 }
 

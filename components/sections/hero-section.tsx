@@ -12,20 +12,22 @@ import { Button } from "@/components/ui/button";
 const fallbackHeroImage =
   "https://images.unsplash.com/photo-1641699862936-be9f49b1c38d?q=80&w=2400&auto=format&fit=crop";
 
+interface HeroContent {
+  heroEyebrow?: string | null;
+  heroTitle?: string | null;
+  heroSubtitle?: string | null;
+  heroImage?: string;
+  primaryCtaLabel?: string | null;
+  primaryCtaHref?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaHref?: string | null;
+  heroCardEyebrow?: string | null;
+  heroCardTitle?: string | null;
+  heroCardBody?: string | null;
+}
+
 interface HeroSectionProps {
-  content?: {
-    heroEyebrow?: string;
-    heroTitle?: string;
-    heroSubtitle?: string;
-    heroImage?: string;
-    primaryCtaLabel?: string;
-    primaryCtaHref?: string;
-    secondaryCtaLabel?: string;
-    secondaryCtaHref?: string;
-    heroCardEyebrow?: string;
-    heroCardTitle?: string;
-    heroCardBody?: string;
-  };
+  content?: HeroContent;
 }
 
 export function HeroSection({ content }: HeroSectionProps) {

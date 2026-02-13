@@ -13,9 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import type { Product } from "@/types/payload-types";
 
 interface CheckoutPageClientProps {
-  featuredPicks: any[];
+  featuredPicks: Product[];
 }
 
 export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {

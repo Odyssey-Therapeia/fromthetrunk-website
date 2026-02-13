@@ -9,6 +9,7 @@ import {
   getProducts,
   getProductsByCollection,
 } from "@/lib/data/products";
+import type { Collection as CollectionDoc, CollectionPageGlobal, Product } from "@/types/payload-types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,10 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
       : getProducts(200, { includeDrafts }),
   ]);
 
-  const items = productsResult?.docs ?? [];
-  const collections = collectionsResult?.docs ?? [];
+  const items = (productsResult?.docs ?? []) as Product[];
+  const collections = (collectionsResult?.docs ?? []) as CollectionDoc[];
   const activeCollection = collections.find(
-    (collection: any) => collection.slug === activeCollectionSlug
+    (collection) => collection.slug === activeCollectionSlug
   );
 
   return (
@@ -83,7 +84,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
             >
               All
             </Link>
-            {collections.map((collection: any) => (
+            {collections.map((collection) => (
               <Link
                 key={collection.id}
                 href={`/collection?collection=${encodeURIComponent(collection.slug)}`}
@@ -109,7 +110,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((product: any, index: number) => (
+          {items.map((product, index) => (
             <ScrollReveal key={product.id} delay={index * 0.05}>
               <ProductCard product={product} />
             </ScrollReveal>

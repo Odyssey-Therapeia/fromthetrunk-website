@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { useCartStore } from "@/lib/store/cart-store";
+import type { Product } from "@/types/payload-types";
 
 interface AddToCartButtonProps {
-  product: any;
+  product: Product;
 }
 
 export function AddToCartButton({ product }: AddToCartButtonProps) {

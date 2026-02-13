@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import { getProductBySlug, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import type { Product } from "@/types/payload-types";
 
 interface ProductPageProps {
   params: { slug: string };
@@ -35,7 +36,7 @@ export default async function SareePage({ params }: ProductPageProps) {
   const allProducts = await getProducts(12, { includeDrafts });
   const related = allProducts.docs.filter((item) => item.slug !== product.slug).slice(0, 3);
   const images = (product.images ?? [])
-    .map((image: any) => resolveMediaURL(image))
+    .map((image) => resolveMediaURL(image))
     .filter(Boolean) as string[];
 
   return (
