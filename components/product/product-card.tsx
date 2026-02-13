@@ -7,6 +7,7 @@ import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { WishlistButton } from "@/components/product/wishlist-button";
 import type { Product, StockStatus } from "@/types/payload-types";
 
 interface ProductCardProps {
@@ -66,6 +67,17 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <Badge className="absolute left-4 top-4 bg-white/85 text-trunk-brown shadow-soft">
               Pre-loved
             </Badge>
+          )}
+
+          {/* Wishlist button */}
+          {!isSold && (
+            <div className="absolute right-3 top-3 z-10">
+              <WishlistButton
+                productId={product.id}
+                productName={product.name}
+                className="h-8 w-8 bg-white/80 shadow-sm backdrop-blur hover:bg-white"
+              />
+            </div>
           )}
         </div>
         <div className="space-y-2 p-4">

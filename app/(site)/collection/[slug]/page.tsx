@@ -8,6 +8,7 @@ import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { WishlistButton } from "@/components/product/wishlist-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -112,6 +113,10 @@ export default async function SareePage({ params }: ProductPageProps) {
                   {formatCurrency(product.originalPrice)}
                 </span>
               )}
+              <WishlistButton
+                productId={product.id}
+                productName={product.name}
+              />
             </div>
           </div>
 

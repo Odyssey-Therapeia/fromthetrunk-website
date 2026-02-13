@@ -122,6 +122,15 @@ export default buildConfig({
           relationTo: "addresses",
           hasMany: true,
         },
+        {
+          name: "wishlist",
+          type: "relationship",
+          relationTo: "products",
+          hasMany: true,
+          admin: {
+            description: "Products the user has saved to their wishlist.",
+          },
+        },
       ],
     },
     {

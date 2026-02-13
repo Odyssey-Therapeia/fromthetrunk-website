@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, MapPin, Package, User } from "lucide-react";
+import { Heart, LogOut, MapPin, Package, User } from "lucide-react";
 import { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/account/profile", label: "Profile", icon: User },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/orders", label: "Orders", icon: Package },
+  { href: "/account/wishlist", label: "Wishlist", icon: Heart },
 ];
 
 export function AccountShell({ children }: { children: ReactNode }) {
