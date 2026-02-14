@@ -17,16 +17,22 @@ export function CartDrawer() {
 
   return (
     <Sheet>
+      {/* Live region for screen readers */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {hasHydrated && totalItems > 0
+          ? `${totalItems} item${totalItems !== 1 ? "s" : ""} in your bag, subtotal ${formatCurrency(subtotal)}`
+          : "Your bag is empty"}
+      </div>
       <SheetTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
           className="relative rounded-full"
-          aria-label="View cart"
+          aria-label={`View cart${hasHydrated && totalItems > 0 ? `, ${totalItems} items` : ""}`}
         >
           <ShoppingBag className="h-5 w-5" />
           {hasHydrated && totalItems > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground" aria-hidden="true">
               {totalItems}
             </span>
           )}

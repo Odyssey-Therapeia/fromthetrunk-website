@@ -3,6 +3,7 @@ import type { Where } from "payload";
 
 type QueryOptions = {
   includeDrafts?: boolean;
+  page?: number;
 };
 
 const getPublishedWhereClause = (includeDrafts?: boolean): undefined | Where =>
@@ -38,6 +39,7 @@ export const getProducts = async (limit = 200, options: QueryOptions = {}) => {
     collection: "products",
     depth: 2,
     limit,
+    page: options.page ?? 1,
     where,
     sort: "-createdAt",
     draft: Boolean(options.includeDrafts),
@@ -74,6 +76,7 @@ export const getProductsByCollection = async (
     collection: "products",
     depth: 2,
     limit,
+    page: options.page ?? 1,
     where: { and: filters },
     sort: "-createdAt",
     draft: Boolean(options.includeDrafts),

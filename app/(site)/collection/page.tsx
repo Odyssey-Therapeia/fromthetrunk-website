@@ -1,21 +1,32 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { draftMode } from "next/headers";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductCard } from "@/components/product/product-card";
+import { Button } from "@/components/ui/button";
 import {
   getCollections,
   getGlobals,
   getProducts,
   getProductsByCollection,
 } from "@/lib/data/products";
+import type { Collection as CollectionDoc, CollectionPageGlobal, Product } from "@/types/payload-types";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "Collection",
+  description:
+    "Discover curated, authenticated pre-loved luxury sarees from private wardrobes, couture archives, and collector trunks.",
+};
+
+const ITEMS_PER_PAGE = 12;
+
 type CollectionPageProps = {
   searchParams:
-    | Promise<{ collection?: string | string[] }>
-    | { collection?: string | string[] };
+    | Promise<{ collection?: string | string[]; page?: string }>
+    | { collection?: string | string[]; page?: string };
 };
 
 export default async function CollectionPage({ searchParams }: CollectionPageProps) {
@@ -25,32 +36,45 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
   const activeCollectionSlug = Array.isArray(collectionQuery)
     ? collectionQuery[0]
     : collectionQuery;
+  const currentPage = Math.max(1, parseInt(resolvedSearchParams?.page ?? "1", 10));
 
   const [collectionPage, collectionsResult, productsResult] = await Promise.all([
     getGlobals("collectionPage", { includeDrafts }),
     getCollections({ includeDrafts }),
     activeCollectionSlug
-      ? getProductsByCollection(activeCollectionSlug, 200, { includeDrafts })
-      : getProducts(200, { includeDrafts }),
+      ? getProductsByCollection(activeCollectionSlug, ITEMS_PER_PAGE, { includeDrafts, page: currentPage })
+      : getProducts(ITEMS_PER_PAGE, { includeDrafts, page: currentPage }),
   ]);
 
-  const items = productsResult?.docs ?? [];
-  const collections = collectionsResult?.docs ?? [];
+  const cms = collectionPage as CollectionPageGlobal | null;
+  const items = (productsResult?.docs ?? []) as Product[];
+  const collections = (collectionsResult?.docs ?? []) as CollectionDoc[];
   const activeCollection = collections.find(
-    (collection: any) => collection.slug === activeCollectionSlug
+    (collection) => collection.slug === activeCollectionSlug
   );
+
+  const totalDocs = (productsResult as { totalDocs?: number })?.totalDocs ?? items.length;
+  const totalPages = Math.ceil(totalDocs / ITEMS_PER_PAGE);
+
+  const buildPageUrl = (page: number) => {
+    const params = new URLSearchParams();
+    if (activeCollectionSlug) params.set("collection", activeCollectionSlug);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return `/collection${qs ? `?${qs}` : ""}`;
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-16">
       <ScrollReveal className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
-          {collectionPage?.eyebrow ?? "The Collection"}
+          {cms?.eyebrow ?? "The Collection"}
         </p>
         <h1 className="font-serif text-4xl text-foreground md:text-5xl">
-          {collectionPage?.title ?? "Curated pre-loved sarees"}
+          {cms?.title ?? "Curated pre-loved sarees"}
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          {collectionPage?.description ??
+          {cms?.description ??
             "Discover heirlooms from private wardrobes, couture archives, and collector trunks. Each piece is authenticated and accompanied by its story."}
         </p>
       </ScrollReveal>
@@ -63,14 +87,14 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
             </p>
             <h2 className="font-serif text-2xl text-foreground">
               {activeCollection?.name ??
-                collectionPage?.filtersTitle ??
-                "Refined browsing, coming soon"}
+                cms?.filtersTitle ??
+                "Browse by collection"}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {activeCollection?.description ??
-                collectionPage?.filtersBody ??
-                "We are preparing thoughtful ways to explore the collection by era, fabric, and provenance. Until then, every piece is here for you to discover."}
-            </p>
+            {activeCollection?.description && (
+              <p className="text-sm text-muted-foreground">
+                {activeCollection.description}
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
@@ -83,7 +107,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
             >
               All
             </Link>
-            {collections.map((collection: any) => (
+            {collections.map((collection) => (
               <Link
                 key={collection.id}
                 href={`/collection?collection=${encodeURIComponent(collection.slug)}`}
@@ -98,7 +122,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Showing {items.length} curated piece{items.length === 1 ? "" : "s"}.
+            Showing {items.length} of {totalDocs} curated piece{totalDocs === 1 ? "" : "s"}.
           </p>
         </div>
       </div>
@@ -108,13 +132,47 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
           The collection is being prepared. Check back soon for new arrivals.
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((product: any, index: number) => (
-            <ScrollReveal key={product.id} delay={index * 0.05}>
-              <ProductCard product={product} />
-            </ScrollReveal>
-          ))}
-        </div>
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {items.map((product, index) => (
+              <ScrollReveal key={product.id} delay={index * 0.05}>
+                <ProductCard product={product} />
+              </ScrollReveal>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <nav className="flex items-center justify-center gap-2" aria-label="Pagination">
+              {currentPage > 1 && (
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link href={buildPageUrl(currentPage - 1)}>Previous</Link>
+                </Button>
+              )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  asChild={page !== currentPage}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="h-9 w-9 rounded-full p-0"
+                  disabled={page === currentPage}
+                >
+                  {page === currentPage ? (
+                    <span>{page}</span>
+                  ) : (
+                    <Link href={buildPageUrl(page)}>{page}</Link>
+                  )}
+                </Button>
+              ))}
+              {currentPage < totalPages && (
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link href={buildPageUrl(currentPage + 1)}>Next</Link>
+                </Button>
+              )}
+            </nav>
+          )}
+        </>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import type { HomePageGlobal, Product } from "@/types/payload-types";
 
 const productLayouts = [
   "lg:col-span-2 lg:row-span-2",
@@ -18,14 +19,8 @@ const productLayouts = [
 const productIcons = [Sparkles, Crown, Gem, ShieldCheck];
 
 interface FeaturedCollectionProps {
-  products: any[];
-  content?: {
-    featuredEyebrow?: string;
-    featuredTitle?: string;
-    featuredBody?: string;
-    featuredCtaLabel?: string;
-    featuredCtaHref?: string;
-  };
+  products: Product[];
+  content?: HomePageGlobal | null;
 }
 
 export function FeaturedCollection({ products, content }: FeaturedCollectionProps) {

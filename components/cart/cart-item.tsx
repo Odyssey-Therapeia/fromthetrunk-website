@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
@@ -13,7 +14,6 @@ interface CartItemProps {
 
 export function CartItem({ item }: CartItemProps) {
   const removeItem = useCartStore((state) => state.removeItem);
-  const updateQuantity = useCartStore((state) => state.updateQuantity);
 
   return (
     <div className="flex gap-4 border-b border-border/60 pb-4">
@@ -33,39 +33,22 @@ export function CartItem({ item }: CartItemProps) {
             <p className="text-xs text-muted-foreground">
               {formatCurrency(item.price)}
             </p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-trunk-gold">
+              One of a kind
+            </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="text-muted-foreground"
-            onClick={() => removeItem(item.id)}
+            onClick={() => {
+              removeItem(item.id);
+              toast(`${item.name} removed from your bag`);
+            }}
             aria-label={`Remove ${item.name}`}
             title={`Remove ${item.name}`}
           >
             <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-            aria-label={`Decrease quantity for ${item.name}`}
-            title={`Decrease quantity for ${item.name}`}
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[24px] text-center text-sm">
-            {item.quantity}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-            aria-label={`Increase quantity for ${item.name}`}
-            title={`Increase quantity for ${item.name}`}
-          >
-            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>

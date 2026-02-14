@@ -5,7 +5,7 @@ import { errorResponse } from "@/lib/http/error-response";
 import { getPayloadClient } from "@/lib/payload/server";
 import { addressCreateSchema } from "@/lib/validation/account";
 
-const normalizeAddressIds = (addresses: any[] | undefined) =>
+const normalizeAddressIds = (addresses: Array<string | { id: string }> | undefined) =>
   (addresses ?? []).map((address) => (typeof address === "string" ? address : address.id));
 const unauthorized = () => errorResponse(401, "Unauthorized", "UNAUTHORIZED");
 

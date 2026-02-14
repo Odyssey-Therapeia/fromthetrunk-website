@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -7,6 +8,9 @@ import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { ProductViewTracker } from "@/components/product/product-view-tracker";
+import { RecentlyViewed } from "@/components/product/recently-viewed";
+import { WishlistButton } from "@/components/product/wishlist-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -18,28 +22,83 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import { getProductBySlug, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { productJsonLd, breadcrumbJsonLd } from "@/lib/seo/json-ld";
+import type { Product } from "@/types/payload-types";
 
 interface ProductPageProps {
   params: { slug: string };
 }
 
+export async function generateMetadata({
+  params,
+}: ProductPageProps): Promise<Metadata> {
+  const { slug } = params;
+  const rawProduct = await getProductBySlug(slug);
+
+  if (!rawProduct) {
+    return { title: "Product Not Found" };
+  }
+
+  const product = rawProduct as unknown as Product;
+  const image = resolveMediaURL(product.images?.[0]);
+
+  return {
+    title: product.name,
+    description:
+      product.story?.narrative ??
+      `${product.name} — ${product.details?.fabric ?? "Heirloom"} saree from the trunk. ${formatCurrency(product.price)}.`,
+    openGraph: {
+      title: product.name,
+      description:
+        product.story?.narrative ??
+        `One-of-a-kind ${product.details?.fabric ?? ""} saree. ${formatCurrency(product.price)}.`,
+      type: "website",
+      ...(image ? { images: [{ url: image, alt: product.name }] } : {}),
+    },
+  };
+}
+
 export default async function SareePage({ params }: ProductPageProps) {
   const { isEnabled: includeDrafts } = await draftMode();
   const { slug } = params;
-  const product = await getProductBySlug(slug, { includeDrafts });
+  const rawProduct = await getProductBySlug(slug, { includeDrafts });
 
-  if (!product) {
+  if (!rawProduct) {
     notFound();
   }
 
+  const product = rawProduct as unknown as Product;
   const allProducts = await getProducts(12, { includeDrafts });
-  const related = allProducts.docs.filter((item) => item.slug !== product.slug).slice(0, 3);
+  const related = (allProducts.docs as unknown as Product[]).filter((item) => item.slug !== product.slug).slice(0, 3);
   const images = (product.images ?? [])
-    .map((image: any) => resolveMediaURL(image))
+    .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
+
+  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";
+  const jsonLd = productJsonLd(product as Product);
+  const breadcrumbs = breadcrumbJsonLd([
+    { name: "Home", url: baseUrl },
+    { name: "Collection", url: `${baseUrl}/collection` },
+    { name: product.name, url: `${baseUrl}/collection/${product.slug}` },
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-16 px-6 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
+      />
+      <ProductViewTracker
+        id={product.id}
+        slug={product.slug}
+        name={product.name}
+        price={product.price}
+        image={images[0] ?? ""}
+      />
       <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr]">
         <ScrollReveal>
           <ProductGallery images={images} alt={product.name} />
@@ -65,6 +124,10 @@ export default async function SareePage({ params }: ProductPageProps) {
                   {formatCurrency(product.originalPrice)}
                 </span>
               )}
+              <WishlistButton
+                productId={product.id}
+                productName={product.name}
+              />
             </div>
           </div>
 
@@ -96,9 +159,16 @@ export default async function SareePage({ params }: ProductPageProps) {
               </div>
             </div>
             <AddToCartButton product={product} />
-            <p className="text-xs text-muted-foreground">
-              Demo checkout only — payment will be simulated.
-            </p>
+            {product.stockStatus === "available" && (
+              <p className="text-xs text-muted-foreground">
+                This is a one-of-a-kind piece. It will be reserved for you once added to your bag.
+              </p>
+            )}
+            {product.stockStatus === "sold" && (
+              <p className="text-xs text-muted-foreground">
+                This piece has found a new home. Browse the collection for similar treasures.
+              </p>
+            )}
           </div>
 
           <Accordion type="single" collapsible className="w-full">
@@ -144,6 +214,8 @@ export default async function SareePage({ params }: ProductPageProps) {
           ))}
         </div>
       </section>
+
+      <RecentlyViewed excludeId={product.id} limit={6} />
     </div>
   );
 }

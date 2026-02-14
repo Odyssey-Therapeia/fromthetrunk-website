@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
+import type { Order, OrderItem } from "@/types/payload-types";
 
 const fetchOrders = async () => {
   const response = await fetch("/api/account/orders");
@@ -38,7 +39,7 @@ export default function OrdersPage() {
     );
   }
 
-  const orders = data?.orders ?? [];
+  const orders = (data?.orders ?? []) as Order[];
 
   return (
     <div className="space-y-6">
@@ -62,10 +63,11 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map((order: any) => (
-            <div
+          {orders.map((order) => (
+            <Link
               key={order.id}
-              className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft"
+              href={`/account/orders/${order.id}`}
+              className="block rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
@@ -84,7 +86,7 @@ export default function OrdersPage() {
                 </p>
               </div>
               <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                {order.items?.map((item: any, index: number) => (
+                {order.items?.map((item: OrderItem, index: number) => (
                   <div key={`${order.id}-${index}`} className="flex justify-between">
                     <span>{item.name}</span>
                     <span>
@@ -93,7 +95,7 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

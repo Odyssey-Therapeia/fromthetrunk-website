@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Client } from "pg";
 
-import { sarees } from "../lib/data/sarees.ts";
+import { sarees } from "../lib/data/sarees";
 
 const OCCASION_MAP = new Map<string, string>([
   ["bridal", "bridal"],
@@ -125,12 +125,14 @@ const run = async () => {
                details_width,
                details_condition,
                details_designer,
+               stock_status,
                _status
              )
              values (
                $1, $2, $3, $4, $5, $6, $7,
                $8, $9, $10, $11,
-               $12, $13, $14, $15, $16, $17
+               $12, $13, $14, $15, $16,
+               $17, $18
              )
              returning id`,
             [
@@ -150,6 +152,7 @@ const run = async () => {
               saree.details.width,
               saree.details.condition,
               saree.details.designer ?? null,
+              "available",
               "published",
             ]
           )

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
@@ -5,7 +6,16 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getGlobals } from "@/lib/data/products";
 
+// Use force-dynamic since Payload CMS requires a database connection.
+// In production with Vercel, ISR can be enabled per-route using
+// revalidate config once the database is always available at build time.
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "How It Works",
+  description:
+    "From sourcing to storytelling — learn how every heirloom saree is curated, authenticated, restored, and delivered with care.",
+};
 
 export default async function HowItWorksPage() {
   const { isEnabled: includeDrafts } = await draftMode();

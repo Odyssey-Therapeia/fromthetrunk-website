@@ -9,9 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import type { Product } from "@/types/payload-types";
 
 interface CartPageClientProps {
-  featuredPicks: any[];
+  featuredPicks: Product[];
 }
 
 export function CartPageClient({ featuredPicks }: CartPageClientProps) {

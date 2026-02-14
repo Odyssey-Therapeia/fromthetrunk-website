@@ -122,6 +122,15 @@ export default buildConfig({
           relationTo: "addresses",
           hasMany: true,
         },
+        {
+          name: "wishlist",
+          type: "relationship",
+          relationTo: "products",
+          hasMany: true,
+          admin: {
+            description: "Products the user has saved to their wishlist.",
+          },
+        },
       ],
     },
     {
@@ -413,6 +422,37 @@ export default buildConfig({
           ],
         },
         {
+          name: "stockStatus",
+          type: "select",
+          defaultValue: "available",
+          admin: {
+            position: "sidebar",
+            description: "Pre-loved items are one-of-a-kind. Track availability here.",
+          },
+          options: [
+            { label: "Available", value: "available" },
+            { label: "Reserved", value: "reserved" },
+            { label: "Sold", value: "sold" },
+          ],
+        },
+        {
+          name: "reservedUntil",
+          type: "date",
+          admin: {
+            position: "sidebar",
+            description: "Auto-set when a customer adds this item to their cart.",
+            readOnly: true,
+          },
+        },
+        {
+          name: "soldAt",
+          type: "date",
+          admin: {
+            position: "sidebar",
+            readOnly: true,
+          },
+        },
+        {
           name: "story",
           type: "group",
           fields: [
@@ -616,7 +656,109 @@ export default buildConfig({
           ],
         },
         {
+          name: "shippingCost",
+          type: "number",
+          min: 0,
+          defaultValue: 0,
+        },
+        {
+          name: "shippingMethod",
+          type: "select",
+          options: [
+            { label: "Standard", value: "standard" },
+            { label: "Express", value: "express" },
+          ],
+        },
+        {
+          name: "taxRate",
+          type: "number",
+          min: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: "taxAmount",
+          type: "number",
+          min: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: "total",
+          type: "number",
+          min: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: "paymentGateway",
+          type: "text",
+          admin: { readOnly: true },
+        },
+        {
+          name: "razorpayOrderId",
+          type: "text",
+          admin: { readOnly: true },
+        },
+        {
+          name: "paymentId",
+          type: "text",
+          admin: { readOnly: true },
+        },
+        {
+          name: "paymentStatus",
+          type: "select",
+          defaultValue: "pending",
+          options: [
+            { label: "Pending", value: "pending" },
+            { label: "Paid", value: "paid" },
+            { label: "Failed", value: "failed" },
+            { label: "Refunded", value: "refunded" },
+          ],
+        },
+        {
+          name: "paymentMethod",
+          type: "text",
+          admin: { readOnly: true },
+        },
+        {
           name: "placedAt",
+          type: "date",
+        },
+      ],
+    },
+    {
+      slug: "newsletter_subscribers",
+      admin: {
+        useAsTitle: "email",
+      },
+      access: {
+        read: isAdmin,
+        create: () => true,
+        update: isAdmin,
+        delete: isAdmin,
+      },
+      fields: [
+        {
+          name: "email",
+          type: "email",
+          required: true,
+          unique: true,
+        },
+        {
+          name: "status",
+          type: "select",
+          defaultValue: "pending",
+          options: [
+            { label: "Pending Confirmation", value: "pending" },
+            { label: "Confirmed", value: "confirmed" },
+            { label: "Unsubscribed", value: "unsubscribed" },
+          ],
+        },
+        {
+          name: "confirmToken",
+          type: "text",
+          admin: { hidden: true },
+        },
+        {
+          name: "confirmedAt",
           type: "date",
         },
       ],
