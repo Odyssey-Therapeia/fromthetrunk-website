@@ -168,6 +168,7 @@ lib/
 - [`docs/manual-acceptance-checklist.md`](docs/manual-acceptance-checklist.md) — 52-item QA checklist
 - [`docs/migration-guide.md`](docs/migration-guide.md) — Database schema changes
 - [`docs/payload-setup.md`](docs/payload-setup.md) — CMS setup and seeding
+- [`docs/cxo-demo-runbook.md`](docs/cxo-demo-runbook.md) — Final pre-demo checklist and walkthrough flow
 
 ## Testing
 
