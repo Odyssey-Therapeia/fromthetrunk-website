@@ -77,8 +77,8 @@ providers.push(
         }
 
         return {
-          id: user.id,
-          email: user.email,
+          id: String(user.id),
+          email: String(user.email),
           name: user.name ?? null,
           image: user.image ?? null,
         };
