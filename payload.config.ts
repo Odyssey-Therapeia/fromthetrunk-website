@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig, slugField } from "payload";
+import type { CollectionBeforeValidateHook } from "payload";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -56,14 +57,10 @@ const normalizeSlug = (value: string) =>
     .replace(/[^\w-]+/g, "")
     .toLowerCase();
 
-const ensureSlugBeforeValidate = ({
+const ensureSlugBeforeValidate: CollectionBeforeValidateHook = ({
   data,
   operation,
   originalDoc,
-}: {
-  data: any;
-  operation: "create" | "update";
-  originalDoc?: any;
 }) => {
   if (!data) {
     return data;
@@ -75,8 +72,13 @@ const ensureSlugBeforeValidate = ({
     return data;
   }
 
-  const nextStatus = data._status ?? originalDoc?._status;
-  if (operation === "update" && nextStatus === "published") {
+  const incomingName = toSlug(data.name);
+  if (incomingName) {
+    data.slug = normalizeSlug(incomingName);
+    return data;
+  }
+
+  if (operation === "update") {
     const existingSlug = toSlug(originalDoc?.slug);
     if (existingSlug) {
       data.slug = existingSlug;

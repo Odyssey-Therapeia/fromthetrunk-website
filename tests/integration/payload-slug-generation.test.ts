@@ -121,6 +121,23 @@ describe("Payload slug generation", () => {
     expect(data).toMatchObject({ slug: "legacy-product-slug" });
   });
 
+  it("keeps existing product slug on non-publish partial updates", async () => {
+    const { hook } = await getBeforeValidateHook("products");
+    const data = { stockStatus: "available" };
+
+    await hook({
+      data,
+      operation: "update",
+      originalDoc: {
+        _status: "draft",
+        name: "Legacy Product Name",
+        slug: "legacy-custom-slug",
+      },
+    });
+
+    expect(data).toMatchObject({ slug: "legacy-custom-slug" });
+  });
+
   it("keeps existing collection slug when publishing partial updates", async () => {
     const { hook } = await getBeforeValidateHook("collections");
     const data = { _status: "published" };
