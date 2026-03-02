@@ -114,6 +114,7 @@ See [`.env.example`](.env.example) for development and [`.env.production.example
 | `npm run payload:migrate` | Run database migrations |
 | `npm run payload:migrate:create` | Create new migration |
 | `npm run seed:payload` | Seed sample products |
+| `npm run migrate:payload-to-drizzle` | Migrate legacy Payload data into rebuild Drizzle DB |
 
 ## Project Structure
 
@@ -167,6 +168,7 @@ lib/
 - [`docs/cloud-agent-handoff.md`](docs/cloud-agent-handoff.md) — Cloud agent execution baseline
 - [`docs/manual-acceptance-checklist.md`](docs/manual-acceptance-checklist.md) — 52-item QA checklist
 - [`docs/migration-guide.md`](docs/migration-guide.md) — Database schema changes
+- [`docs/rebuild-data-migration.md`](docs/rebuild-data-migration.md) — Legacy Payload to Drizzle migration workflow
 - [`docs/payload-setup.md`](docs/payload-setup.md) — CMS setup and seeding
 - [`docs/cxo-demo-runbook.md`](docs/cxo-demo-runbook.md) — Final pre-demo checklist and walkthrough flow
 
