@@ -3,7 +3,8 @@
 import gsap from "gsap";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { toPaise, toRupees } from "@/db/money";
@@ -54,14 +55,7 @@ export function ProductStepper({
     [initialValues]
   );
 
-  const form = useForm({
-    defaultValues: mergedInitialValues,
-    onSubmit: async ({ value }) => {
-      await persistProduct(value, false);
-    },
-  });
-
-  const persistProduct = async (values: ProductStepperValues, forceDraft: boolean) => {
+  const persistProduct = useCallback(async (values: ProductStepperValues, forceDraft: boolean) => {
     setIsSaving(true);
     setSaveState("Saving...");
 
@@ -97,6 +91,7 @@ export function ProductStepper({
     try {
       const endpoint = activeProductId ? `/api/v2/products/${activeProductId}` : "/api/v2/products";
       const method = activeProductId ? "PATCH" : "POST";
+      const isCreate = !activeProductId;
 
       const response = await fetch(endpoint, {
         body: JSON.stringify(payload),
@@ -107,7 +102,16 @@ export function ProductStepper({
       });
 
       if (!response.ok) {
-        throw new Error(`Save failed with ${response.status}`);
+        let message = `Save failed with ${response.status}`;
+        try {
+          const data = (await response.json()) as { message?: string };
+          if (typeof data.message === "string" && data.message.length > 0) {
+            message = data.message;
+          }
+        } catch {
+          // no-op
+        }
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -117,12 +121,28 @@ export function ProductStepper({
       }
 
       setSaveState(forceDraft ? "Draft auto-saved" : "Saved");
+      if (forceDraft) {
+        toast.success("Draft auto-saved.", { duration: 1200 });
+      } else if (isCreate) {
+        toast.success("Product created.");
+      } else {
+        toast.success("Changes saved.");
+      }
     } catch (error) {
-      setSaveState(error instanceof Error ? error.message : "Save failed");
+      const message = error instanceof Error ? error.message : "Save failed";
+      setSaveState(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [activeProductId, router]);
+
+  const form = useForm({
+    defaultValues: mergedInitialValues,
+    onSubmit: async ({ value }) => {
+      await persistProduct(value, false);
+    },
+  });
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -132,7 +152,7 @@ export function ProductStepper({
     return () => {
       window.clearInterval(id);
     };
-  }, [form, activeProductId]);
+  }, [form, persistProduct]);
 
   useEffect(() => {
     if (!stepContainerRef.current) return;

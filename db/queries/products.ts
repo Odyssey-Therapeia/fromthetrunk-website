@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, or, SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, like, or, SQL } from "drizzle-orm";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -267,6 +267,20 @@ export const getProductsByCollection = async (
   return hydrateProducts(rows);
 };
 
+async function uniqueSlug(base: string): Promise<string> {
+  const existing = await db
+    .select({ slug: products.slug })
+    .from(products)
+    .where(or(eq(products.slug, base), like(products.slug, `${base}-%`)));
+
+  if (existing.length === 0) return base;
+
+  const taken = new Set(existing.map((r) => r.slug));
+  let suffix = 1;
+  while (taken.has(`${base}-${suffix}`)) suffix++;
+  return `${base}-${suffix}`;
+}
+
 export const createProduct = async (input: CreateProductInput): Promise<ProductWithRelations> => {
   const {
     imageMediaIds = [],
@@ -274,10 +288,13 @@ export const createProduct = async (input: CreateProductInput): Promise<ProductW
     ...productData
   } = input;
 
+  const slug = await uniqueSlug(productData.slug ?? "untitled-product");
+
   const [created] = await db
     .insert(products)
     .values({
       ...productData,
+      slug,
       updatedAt: new Date(),
     })
     .returning({ id: products.id });
@@ -293,6 +310,57 @@ export const createProduct = async (input: CreateProductInput): Promise<ProductW
   }
 
   return product;
+};
+
+export const duplicateProduct = async (productId: string): Promise<null | ProductWithRelations> => {
+  const source = await getProduct(productId);
+  if (!source) return null;
+
+  const duplicateSlug = await uniqueSlug(source.slug);
+  const duplicateName = source.name.trim().length > 0 ? `${source.name} Copy` : "Untitled Product Copy";
+
+  const [created] = await db
+    .insert(products)
+    .values({
+      artisanId: source.artisanId,
+      collectionId: source.collectionId,
+      detailsCondition: source.detailsCondition,
+      detailsDesigner: source.detailsDesigner,
+      detailsFabric: source.detailsFabric,
+      detailsLength: source.detailsLength,
+      detailsWidth: source.detailsWidth,
+      featured: false,
+      metadata: source.metadata,
+      name: duplicateName,
+      originalPricePaise: source.originalPricePaise,
+      pricePaise: source.pricePaise,
+      reservedUntil: null,
+      slug: duplicateSlug,
+      soldAt: null,
+      status: "draft",
+      stockStatus: "available",
+      storyEra: source.storyEra,
+      storyNarrative: source.storyNarrative,
+      storyProvenance: source.storyProvenance,
+      storyTitle: source.storyTitle,
+      updatedAt: new Date(),
+    })
+    .returning({ id: products.id });
+
+  await Promise.all([
+    replaceProductImages(
+      created.id,
+      [...source.images]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((image) => image.media.id)
+    ),
+    replaceProductTags(
+      created.id,
+      source.tags.map((tag) => tag.id)
+    ),
+  ]);
+
+  return getProduct(created.id);
 };
 
 export const updateProduct = async (

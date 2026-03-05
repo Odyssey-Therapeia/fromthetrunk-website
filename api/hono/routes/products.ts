@@ -17,6 +17,7 @@ import { suggestTagIds } from "@/lib/ai/tag-suggestions";
 import {
   createProduct,
   deleteProduct,
+  duplicateProduct,
   getProduct,
   getProductBySlug,
   listProducts,
@@ -50,7 +51,11 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         limit: query.limit ?? 200,
         offset: query.offset ?? 0,
       });
-      return c.json(products, 200);
+      const enriched = products.map((product) => ({
+        ...product,
+        thumbnailUrl: product.images[0]?.media.url ?? null,
+      }));
+      return c.json(enriched, 200);
     }
   );
 
@@ -183,6 +188,45 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       });
       void refreshProductEmbedding(created.id).catch(() => undefined);
       return c.json(created, 201);
+    }
+  );
+
+  app.openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/duplicate",
+      request: {
+        params: idParamSchema,
+      },
+      responses: {
+        201: { description: "Product duplicated" },
+        404: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Product not found",
+        },
+      },
+      tags: ["Products"],
+    }),
+    async (c) => {
+      const adminOrResponse = requireAdmin(c);
+      if (adminOrResponse instanceof Response) return adminOrResponse;
+
+      const params = c.req.valid("param");
+      const duplicated = await duplicateProduct(params.id);
+      if (!duplicated) {
+        return c.json(
+          {
+            code: "PRODUCT_NOT_FOUND",
+            message: "Product not found.",
+          },
+          404
+        );
+      }
+
+      void ensureProductEmbeddingsTable().catch(() => undefined);
+      void refreshProductEmbedding(duplicated.id).catch(() => undefined);
+
+      return c.json(duplicated, 201);
     }
   );
 

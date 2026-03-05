@@ -16,6 +16,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "plus.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "mgkwfyatucnr0yzo.public.blob.vercel-storage.com",
+      },
     ],
   },
   async headers() {

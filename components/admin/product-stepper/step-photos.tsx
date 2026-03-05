@@ -1,11 +1,13 @@
 "use client";
 
 import { put } from "@vercel/blob/client";
-import { useState } from "react";
 import { Loader2, UploadCloud, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 type StepPhotosProps = {
   form: any;
@@ -17,8 +19,15 @@ type UploadConfig = {
 };
 
 type CompletedMedia = {
+  filename: string;
   id: string;
   url: string;
+};
+
+type UploadProgress = {
+  filename: string;
+  id: string;
+  progress: number;
 };
 
 export function StepPhotos({
@@ -27,6 +36,83 @@ export function StepPhotos({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<CompletedMedia[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<UploadProgress[]>([]);
+  const [draggingMediaId, setDraggingMediaId] = useState<null | string>(null);
+
+  const imageMediaIds = useMemo(
+    () => (form.state.values.imageMediaIds ?? []) as string[],
+    [form.state.values.imageMediaIds]
+  );
+
+  useEffect(() => {
+    if (imageMediaIds.length === 0 || uploaded.length > 0) return;
+    let cancelled = false;
+
+    const hydrateExistingMedia = async () => {
+      try {
+        const response = await fetch("/api/v2/media");
+        if (!response.ok) return;
+
+        const mediaRows = (await response.json()) as Array<{
+          filename: string;
+          id: string;
+          url: string;
+        }>;
+        const mediaById = new Map(mediaRows.map((row) => [row.id, row]));
+        const ordered = imageMediaIds
+          .map((id) => mediaById.get(id))
+          .filter((row): row is CompletedMedia => Boolean(row));
+
+        if (!cancelled) {
+          setUploaded(ordered);
+        }
+      } catch {
+        // best effort only
+      }
+    };
+
+    void hydrateExistingMedia();
+    return () => {
+      cancelled = true;
+    };
+  }, [imageMediaIds, uploaded.length]);
+
+  const updateQueueProgress = (id: string, progress: number) => {
+    setUploadQueue((current) =>
+      current.map((item) => (item.id === id ? { ...item, progress } : item))
+    );
+  };
+
+  const syncUploaded = (next: CompletedMedia[]) => {
+    setUploaded(next);
+    form.setFieldValue(
+      "imageMediaIds",
+      next.map((item) => item.id)
+    );
+  };
+
+  const appendUploaded = (media: CompletedMedia) => {
+    setUploaded((current) => {
+      const next = [...current, media];
+      form.setFieldValue(
+        "imageMediaIds",
+        next.map((item) => item.id)
+      );
+      return next;
+    });
+  };
+
+  const readErrorMessage = async (response: Response, fallback: string) => {
+    try {
+      const data = (await response.json()) as { message?: string };
+      if (typeof data.message === "string" && data.message.length > 0) {
+        return data.message;
+      }
+    } catch {
+      // fall through
+    }
+    return fallback;
+  };
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -35,6 +121,16 @@ export function StepPhotos({
 
     try {
       for (const file of Array.from(files)) {
+        const uploadId = `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`;
+        setUploadQueue((current) => [
+          ...current,
+          {
+            filename: file.name,
+            id: uploadId,
+            progress: 5,
+          },
+        ]);
+
         const uploadConfigResponse = await fetch("/api/v2/media/upload", {
           body: JSON.stringify({
             contentType: file.type || "application/octet-stream",
@@ -46,8 +142,9 @@ export function StepPhotos({
           method: "POST",
         });
         if (!uploadConfigResponse.ok) {
-          throw new Error(`Upload URL failed for ${file.name}.`);
+          throw new Error(await readErrorMessage(uploadConfigResponse, `Upload URL failed for ${file.name}.`));
         }
+        updateQueueProgress(uploadId, 30);
 
         const uploadConfig = (await uploadConfigResponse.json()) as UploadConfig;
         const blob = await put(uploadConfig.pathname, file, {
@@ -55,6 +152,7 @@ export function StepPhotos({
           contentType: file.type || "application/octet-stream",
           token: uploadConfig.clientToken,
         });
+        updateQueueProgress(uploadId, 80);
 
         const completeResponse = await fetch("/api/v2/media/complete", {
           body: JSON.stringify({
@@ -70,18 +168,47 @@ export function StepPhotos({
           method: "POST",
         });
         if (!completeResponse.ok) {
-          throw new Error(`Could not persist media ${file.name}.`);
+          throw new Error(
+            await readErrorMessage(completeResponse, `Could not persist media ${file.name}.`)
+          );
         }
+        updateQueueProgress(uploadId, 100);
 
-        const media = (await completeResponse.json()) as CompletedMedia;
-        setUploaded((prev) => [...prev, media]);
-        form.setFieldValue("imageMediaIds", (prev: string[]) => [...prev, media.id]);
+        const mediaResponse = (await completeResponse.json()) as Omit<CompletedMedia, "filename">;
+        appendUploaded({
+          ...mediaResponse,
+          filename: file.name,
+        });
+        toast.success(`${file.name} uploaded.`);
+        setUploadQueue((current) => current.filter((item) => item.id !== uploadId));
       }
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Image upload failed.");
+      const message = error instanceof Error ? error.message : "Image upload failed.";
+      setUploadError(message);
+      toast.error(message);
     } finally {
       setIsUploading(false);
+      setUploadQueue([]);
     }
+  };
+
+  const handleRemoveMedia = (mediaId: string) => {
+    if (!window.confirm("Remove this photo from the product?")) return;
+    const next = uploaded.filter((item) => item.id !== mediaId);
+    syncUploaded(next);
+    toast.success("Photo removed.");
+  };
+
+  const reorderMedia = (targetMediaId: string) => {
+    if (!draggingMediaId || draggingMediaId === targetMediaId) return;
+    const sourceIndex = uploaded.findIndex((item) => item.id === draggingMediaId);
+    const targetIndex = uploaded.findIndex((item) => item.id === targetMediaId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const next = [...uploaded];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    syncUploaded(next);
   };
 
   return (
@@ -111,34 +238,72 @@ export function StepPhotos({
           </div>
         ) : null}
 
+        {uploadQueue.length > 0 ? (
+          <div className="space-y-2">
+            {uploadQueue.map((item) => (
+              <div className="rounded-md border p-2" key={item.id}>
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="max-w-[80%] truncate">{item.filename}</span>
+                  <span>{item.progress}%</span>
+                </div>
+                <Progress value={item.progress} />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {uploadError ? (
           <p className="text-sm text-destructive">{uploadError}</p>
         ) : null}
 
         {uploaded.length > 0 ? (
           <div className="space-y-2">
-            {uploaded.map((media) => (
-              <div
-                className="flex items-center justify-between rounded-md border p-2 text-xs"
-                key={media.id}
-              >
-                <a className="max-w-[80%] truncate text-primary underline-offset-4 hover:underline" href={media.url} rel="noreferrer" target="_blank">
-                  {media.url}
-                </a>
-                <Button
-                  onClick={() =>
-                    form.setFieldValue("imageMediaIds", (prev: string[]) =>
-                      prev.filter((id) => id !== media.id)
-                    )
-                  }
-                  size="icon"
-                  type="button"
-                  variant="ghost"
+            <p className="text-xs text-muted-foreground">
+              Drag photos to reorder. The first photo is used as the product cover.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {uploaded.map((media, index) => (
+                <div
+                  className="group rounded-md border bg-card p-2"
+                  draggable
+                  key={media.id}
+                  onDragEnd={() => setDraggingMediaId(null)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragStart={() => setDraggingMediaId(media.id)}
+                  onDrop={() => reorderMedia(media.id)}
                 >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="relative overflow-hidden rounded-md border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt={media.filename}
+                      className="aspect-[4/5] w-full object-cover"
+                      loading="lazy"
+                      src={media.url}
+                    />
+                    <Button
+                      className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => handleRemoveMedia(media.id)}
+                      size="icon"
+                      type="button"
+                      variant="destructive"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                    <a
+                      className="max-w-[80%] truncate text-primary underline-offset-4 hover:underline"
+                      href={media.url}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {media.filename}
+                    </a>
+                    <span className="text-muted-foreground">#{index + 1}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </CardContent>
