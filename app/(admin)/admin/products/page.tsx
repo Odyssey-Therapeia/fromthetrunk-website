@@ -398,8 +398,8 @@ export default function AdminProductsPage() {
           {isLoading ? (
             Array.from({ length: 6 }).map((_, index) => (
               <TableRow key={`skeleton-${index}`}>
-                {columns.map((column) => (
-                  <TableCell key={`${index}-${column.id ?? String(column.accessorKey)}`}>
+                {columns.map((column, columnIndex) => (
+                  <TableCell key={`${index}-${column.id ?? columnIndex}`}>
                     <Skeleton className="h-4 w-full max-w-[200px]" />
                   </TableCell>
                 ))}
