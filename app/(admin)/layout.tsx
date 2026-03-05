@@ -1,9 +1,18 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
 
+import "../globals.css";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminTopBar } from "@/components/admin/top-bar";
+import { Providers } from "@/components/providers";
 import { getServerAuthSession } from "@/lib/auth/get-session";
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -18,18 +27,24 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex min-h-screen">
-        <AdminSidebar />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <AdminTopBar
-            email={session.user.email ?? null}
-            image={session.user.image ?? null}
-            name={session.user.name ?? null}
-          />
-          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
-        </div>
-      </div>
-    </div>
+    <html lang="en" className={sans.variable}>
+      <body className="bg-background font-sans text-foreground">
+        <Providers>
+          <div className="min-h-screen bg-background">
+            <div className="flex min-h-screen">
+              <AdminSidebar />
+              <div className="flex min-h-screen flex-1 flex-col">
+                <AdminTopBar
+                  email={session.user.email ?? null}
+                  image={session.user.image ?? null}
+                  name={session.user.name ?? null}
+                />
+                <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+              </div>
+            </div>
+          </div>
+        </Providers>
+      </body>
+    </html>
   );
 }

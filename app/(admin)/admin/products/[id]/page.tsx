@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { ProductSimilarPanel } from "@/components/admin/product-similar-panel";
-import { mapProductToStepperValues, ProductStepper } from "@/components/admin/product-stepper/stepper";
+import { ProductStepper } from "@/components/admin/product-stepper/stepper";
+import { mapProductToStepperValues } from "@/components/admin/product-stepper/types";
 import { getProduct } from "@/db/queries/products";
 
 type EditProductPageProps = {

@@ -23,7 +23,7 @@ const toAuthUser = (token: Record<string, unknown>): AuthUser | null => {
 };
 
 export const authMiddleware: MiddlewareHandler<HonoBindings> = async (c, next) => {
-  const req = new NextRequest(c.req.raw);
+  const req = new NextRequest(c.req.raw.clone());
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
