@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 import type { Context, MiddlewareHandler } from "hono";
+import type { NextRequest } from "next/server";
 
 import { errorResponse } from "@/lib/http/error-response";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
@@ -23,9 +23,10 @@ const toAuthUser = (token: Record<string, unknown>): AuthUser | null => {
 };
 
 export const authMiddleware: MiddlewareHandler<HonoBindings> = async (c, next) => {
-  const req = new NextRequest(c.req.raw.clone());
   const token = await getToken({
-    req,
+    // getToken only reads headers/cookies, so we can pass the original Hono request
+    // through directly and avoid cloning/proxy issues in serverless runtimes.
+    req: c.req.raw as unknown as NextRequest,
     secret: process.env.NEXTAUTH_SECRET,
   });
 
