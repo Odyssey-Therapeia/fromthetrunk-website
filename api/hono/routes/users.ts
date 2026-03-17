@@ -171,6 +171,16 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "USER_NOT_FOUND", message: "User not found." }, 404);
       }
 
+      if (!user.passwordHash) {
+        return c.json(
+          {
+            code: "PASSWORD_NOT_SET",
+            message: "This account does not have a password set yet.",
+          },
+          400
+        );
+      }
+
       const currentPasswordMatches = await bcrypt.compare(body.currentPassword, user.passwordHash);
       if (!currentPasswordMatches) {
         return c.json(

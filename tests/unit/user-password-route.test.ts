@@ -93,6 +93,35 @@ describe("PATCH /me/password", () => {
     expect(updateUserMock).not.toHaveBeenCalled();
   });
 
+  it("returns a clear error when the account has no password hash", async () => {
+    getUserByIdMock.mockResolvedValue({
+      id: "user-123",
+      passwordHash: null,
+    });
+
+    const response = await createUsersApp({
+      email: "admin@example.com",
+      id: "user-123",
+      role: "admin",
+    }).request("/me/password", {
+      body: JSON.stringify({
+        currentPassword: "Current123",
+        newPassword: "NewSecure123",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PASSWORD_NOT_SET",
+    });
+    expect(compareMock).not.toHaveBeenCalled();
+    expect(updateUserMock).not.toHaveBeenCalled();
+  });
+
   it("hashes and saves the new password after verifying the current one", async () => {
     getUserByIdMock.mockResolvedValue({
       id: "user-123",
