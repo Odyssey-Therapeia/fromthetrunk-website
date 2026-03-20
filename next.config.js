@@ -1,4 +1,3 @@
-const { withPayload } = require("@payloadcms/next/withPayload");
 const isStandaloneBuild = process.env.BUILD_STANDALONE === "true";
 
 /** @type {import('next').NextConfig} */
@@ -16,6 +15,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "plus.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "mgkwfyatucnr0yzo.public.blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "njufw8f4mlcjsl7g.public.blob.vercel-storage.com",
       },
     ],
   },
@@ -65,4 +72,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withPayload(nextConfig);
+module.exports = nextConfig;

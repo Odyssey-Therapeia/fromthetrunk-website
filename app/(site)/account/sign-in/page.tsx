@@ -9,6 +9,7 @@ import type { ClientSafeProvider } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildClientCallbackUrl } from "@/lib/auth/client-callback-url";
 
 const providerLabels: Record<string, string> = {
   "azure-ad": "Continue with Microsoft",
@@ -27,6 +28,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [isSubmittingCredentials, setIsSubmittingCredentials] = useState(false);
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
+  const resolvedCallbackUrl = buildClientCallbackUrl(callbackUrl, "/account/profile");
 
   useEffect(() => {
     let isActive = true;
@@ -83,7 +85,7 @@ export default function SignInPage() {
               redirect: false,
               email: email.trim(),
               password,
-              callbackUrl: callbackUrl || "/account/profile",
+              callbackUrl: resolvedCallbackUrl,
             });
 
             if (!result || result.error) {
@@ -91,8 +93,7 @@ export default function SignInPage() {
               return;
             }
 
-            const destination = result.url || callbackUrl || "/account/profile";
-            router.push(destination);
+            router.push(resolvedCallbackUrl);
             router.refresh();
           } finally {
             setIsSubmittingCredentials(false);
@@ -159,7 +160,7 @@ export default function SignInPage() {
             onClick={() =>
               signIn(
                 provider.id,
-                callbackUrl ? { callbackUrl } : undefined
+                { callbackUrl: resolvedCallbackUrl }
               )
             }
           >
@@ -171,7 +172,7 @@ export default function SignInPage() {
       <div className="rounded-2xl border border-dashed border-border/70 px-5 py-4 text-sm text-muted-foreground">
         Admin access available via{" "}
         <Link href="/admin" className="font-medium text-foreground underline underline-offset-4">
-          Payload Console
+          Admin Console
         </Link>
         .
       </div>
