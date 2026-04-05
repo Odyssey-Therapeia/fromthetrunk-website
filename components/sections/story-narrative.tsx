@@ -5,11 +5,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lenis from "lenis";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface StoryNarrativeProps {
   images: string[];
+}
+
+function SplitWords({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <span className={className} aria-label={text}>
+      {text.split(" ").map((word, i) => (
+        <span
+          key={i}
+          className="split-word inline-block opacity-0"
+          aria-hidden="true"
+        >
+          {word}&nbsp;
+        </span>
+      ))}
+    </span>
+  );
 }
 
 const beats = [
@@ -18,166 +42,361 @@ const beats = [
       "There\u2019s something quietly powerful about a saree. It carries more than fabric \u2014 it holds memories, milestones, and moments that once meant everything.",
       "In so many homes, these beautiful pieces lie tucked away, preserved but forgotten.",
     ],
+    layout: "image-right" as const,
   },
   {
     paragraphs: [
       "From the Trunk was born from a simple, heartfelt belief: these sarees still have stories left to tell.",
     ],
+    layout: "text-only-dark" as const,
   },
   {
     paragraphs: [
       "By giving your pre-loved sarees a second life, you\u2019re not just clearing space \u2014 you\u2019re passing on heritage, emotion, and craftsmanship.",
       "Each saree becomes a bridge between past and present, finding new meaning in someone else\u2019s journey.",
     ],
+    layout: "image-left" as const,
   },
   {
     paragraphs: [
       "And in doing so, you\u2019re also making a conscious, sustainable choice \u2014 reducing waste while celebrating timeless fashion.",
     ],
+    layout: "full-bleed" as const,
   },
 ];
 
 const climaxLines = [
-  "At From the Trunk, we don\u2019t just collect sarees.",
-  "We honor them.",
-  "We preserve their stories.",
-  "And we help them be loved all over again.",
+  {
+    text: "At From the Trunk, we don\u2019t just collect sarees.",
+    size: "text-xl sm:text-2xl lg:text-3xl",
+    muted: true,
+  },
+  {
+    text: "We honor them.",
+    size: "text-3xl sm:text-5xl lg:text-7xl",
+    muted: false,
+  },
+  {
+    text: "We preserve their stories.",
+    size: "text-3xl sm:text-5xl lg:text-7xl",
+    muted: false,
+  },
+  {
+    text: "And we help them be loved all over again.",
+    size: "text-3xl sm:text-5xl lg:text-8xl",
+    muted: false,
+  },
 ];
 
 export function StoryNarrative({ images }: StoryNarrativeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    prefersReducedMotion.current = window.matchMedia(
+    const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (prefersReducedMotion.current) return;
+    if (prefersReducedMotion) {
+      containerRef.current
+        ?.querySelectorAll(".split-word, .reveal-el")
+        .forEach((el) => {
+          (el as HTMLElement).style.opacity = "1";
+        });
+      return;
+    }
 
     gsap.registerPlugin(ScrollTrigger);
 
-    const mm = gsap.matchMedia();
+    const lenis = new Lenis({ lerp: 0.08, duration: 1.4 });
+    lenis.on("scroll", ScrollTrigger.update);
+    gsap.ticker.add((time) => lenis.raf(time * 1000));
+    gsap.ticker.lagSmoothing(0);
 
+    const mm = gsap.matchMedia();
     const ctx = gsap.context(() => {
       if (!containerRef.current) return;
 
-      gsap.fromTo(
-        ".story-hero-text",
-        { autoAlpha: 0, y: 40 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 1,
-          ease: "power3.out",
-          stagger: 0.2,
-        }
-      );
-
-      gsap.to(".story-hero-image", {
-        yPercent: 20,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".story-hero",
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
-
-      mm.add("(min-width: 1024px)", () => {
-        document.querySelectorAll<HTMLElement>(".story-beat").forEach((section) => {
-          const textEls = section.querySelectorAll(".beat-text");
-          const imageEl = section.querySelector(".beat-image");
-
-          const tl = gsap.timeline({
+      // ──── HERO ────
+      const heroSection = containerRef.current.querySelector(".story-hero");
+      if (heroSection) {
+        mm.add("(min-width: 1024px)", () => {
+          const heroTl = gsap.timeline({
             scrollTrigger: {
-              trigger: section,
-              start: "top 80%",
-              end: "center 40%",
-              scrub: 0.6,
+              trigger: heroSection,
+              start: "top top",
+              end: "+=150%",
+              pin: true,
+              scrub: 0.8,
             },
           });
 
-          tl.fromTo(
-            textEls,
-            { autoAlpha: 0, y: 30 },
-            { autoAlpha: 1, y: 0, stagger: 0.15, ease: "power2.out" }
-          );
-
-          if (imageEl) {
-            gsap.fromTo(
-              imageEl,
-              { yPercent: 8 },
-              {
-                yPercent: -8,
-                ease: "none",
-                scrollTrigger: {
-                  trigger: section,
-                  start: "top bottom",
-                  end: "bottom top",
-                  scrub: true,
-                },
-              }
+          heroTl
+            .fromTo(
+              heroSection.querySelector(".hero-eyebrow"),
+              { autoAlpha: 0, y: 20 },
+              { autoAlpha: 1, y: 0, duration: 0.3 }
+            )
+            .fromTo(
+              heroSection.querySelectorAll(".hero-title .split-word"),
+              { autoAlpha: 0, y: 30 },
+              { autoAlpha: 1, y: 0, stagger: 0.04, duration: 0.3 },
+              0.1
+            )
+            .fromTo(
+              heroSection.querySelector(".hero-subtitle"),
+              { autoAlpha: 0, y: 20 },
+              { autoAlpha: 1, y: 0, duration: 0.3 },
+              0.6
             );
-          }
+
+          gsap.to(heroSection.querySelector(".hero-parallax"), {
+            yPercent: 15,
+            ease: "none",
+            scrollTrigger: {
+              trigger: heroSection,
+              start: "top top",
+              end: "+=150%",
+              scrub: true,
+            },
+          });
         });
-      });
 
-      mm.add("(max-width: 1023px)", () => {
-        document.querySelectorAll<HTMLElement>(".story-beat").forEach((section) => {
-          const textEls = section.querySelectorAll(".beat-text");
-
+        mm.add("(max-width: 1023px)", () => {
           gsap.fromTo(
-            textEls,
+            heroSection.querySelectorAll(
+              ".hero-eyebrow, .hero-title .split-word, .hero-subtitle"
+            ),
             { autoAlpha: 0, y: 20 },
             {
               autoAlpha: 1,
               y: 0,
-              stagger: 0.12,
-              ease: "power2.out",
+              stagger: 0.05,
+              duration: 0.8,
+              ease: "power3.out",
+            }
+          );
+        });
+      }
+
+      // ──── NARRATIVE BEATS ────
+      containerRef.current
+        .querySelectorAll<HTMLElement>(".story-beat")
+        .forEach((section) => {
+          const layout = section.dataset.layout;
+          const imageWrap = section.querySelector(".beat-image-wrap");
+          const words = section.querySelectorAll(".split-word");
+
+          mm.add("(min-width: 1024px)", () => {
+            const beatTl = gsap.timeline({
               scrollTrigger: {
                 trigger: section,
-                start: "top 85%",
+                start: "top top",
+                end: "+=200%",
+                pin: true,
+                scrub: 0.6,
+              },
+            });
+
+            if (layout === "text-only-dark") {
+              beatTl
+                .fromTo(
+                  section,
+                  { backgroundColor: "var(--background)" },
+                  { backgroundColor: "#3D2B1F", duration: 0.4 }
+                )
+                .fromTo(
+                  words,
+                  { autoAlpha: 0, y: 15 },
+                  { autoAlpha: 1, y: 0, stagger: 0.03, duration: 0.6 },
+                  0.2
+                );
+            } else if (layout === "full-bleed") {
+              if (imageWrap) {
+                beatTl.fromTo(
+                  imageWrap,
+                  { scale: 1.0 },
+                  { scale: 1.06, duration: 1, ease: "none" },
+                  0
+                );
+              }
+              beatTl.fromTo(
+                words,
+                { autoAlpha: 0, y: 15 },
+                { autoAlpha: 1, y: 0, stagger: 0.03, duration: 0.5 },
+                0.2
+              );
+            } else {
+              if (imageWrap) {
+                const clipFrom =
+                  layout === "image-left"
+                    ? "inset(0 100% 0 0)"
+                    : "inset(0 0 0 100%)";
+                beatTl.fromTo(
+                  imageWrap,
+                  { clipPath: clipFrom },
+                  {
+                    clipPath: "inset(0 0% 0 0%)",
+                    duration: 0.5,
+                    ease: "power2.inOut",
+                  },
+                  0
+                );
+              }
+              beatTl.fromTo(
+                words,
+                { autoAlpha: 0, y: 15 },
+                { autoAlpha: 1, y: 0, stagger: 0.03, duration: 0.5 },
+                0.3
+              );
+            }
+          });
+
+          mm.add("(max-width: 1023px)", () => {
+            if (imageWrap) {
+              gsap.fromTo(
+                imageWrap,
+                { autoAlpha: 0, y: 30 },
+                {
+                  autoAlpha: 1,
+                  y: 0,
+                  duration: 0.8,
+                  ease: "power2.out",
+                  scrollTrigger: {
+                    trigger: section,
+                    start: "top 85%",
+                    toggleActions: "play none none reverse",
+                  },
+                }
+              );
+            }
+            gsap.fromTo(
+              words,
+              { autoAlpha: 0, y: 15 },
+              {
+                autoAlpha: 1,
+                y: 0,
+                stagger: 0.02,
+                duration: 0.6,
+                ease: "power2.out",
+                scrollTrigger: {
+                  trigger: section,
+                  start: "top 80%",
+                  toggleActions: "play none none reverse",
+                },
+              }
+            );
+          });
+        });
+
+      // ──── CLIMAX ────
+      const climaxSection =
+        containerRef.current.querySelector(".story-climax");
+      if (climaxSection) {
+        const climaxItems =
+          climaxSection.querySelectorAll<HTMLElement>(".climax-item");
+
+        mm.add("(min-width: 1024px)", () => {
+          const climaxTl = gsap.timeline({
+            scrollTrigger: {
+              trigger: climaxSection,
+              start: "top top",
+              end: "+=250%",
+              pin: true,
+              scrub: 0.5,
+            },
+          });
+
+          climaxItems.forEach((item, i) => {
+            const offset = i * 0.2;
+            climaxTl
+              .fromTo(
+                item,
+                { autoAlpha: 0, scale: 0.85, y: 30 },
+                {
+                  autoAlpha: 1,
+                  scale: 1,
+                  y: 0,
+                  duration: 0.2,
+                  ease: "power3.out",
+                },
+                offset
+              )
+              .to(
+                item,
+                {
+                  autoAlpha: i < climaxItems.length - 1 ? 0 : 1,
+                  scale: i < climaxItems.length - 1 ? 1.05 : 1,
+                  duration: 0.15,
+                },
+                offset + 0.15
+              );
+          });
+
+          climaxTl.fromTo(
+            climaxSection.querySelector(".climax-cta"),
+            { autoAlpha: 0, y: 20 },
+            { autoAlpha: 1, y: 0, duration: 0.15 },
+            0.8
+          );
+        });
+
+        mm.add("(max-width: 1023px)", () => {
+          climaxItems.forEach((item, i) => {
+            gsap.fromTo(
+              item,
+              { autoAlpha: 0, y: 20, scale: 0.95 },
+              {
+                autoAlpha: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.7,
+                delay: i * 0.15,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: climaxSection,
+                  start: "top 75%",
+                  toggleActions: "play none none reverse",
+                },
+              }
+            );
+          });
+          gsap.fromTo(
+            climaxSection.querySelector(".climax-cta"),
+            { autoAlpha: 0, y: 20 },
+            {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.6,
+              delay: 0.6,
+              scrollTrigger: {
+                trigger: climaxSection,
+                start: "top 60%",
                 toggleActions: "play none none reverse",
               },
             }
           );
         });
-      });
-
-      const climaxEls = containerRef.current?.querySelectorAll(".climax-line");
-      if (climaxEls) {
-        gsap.fromTo(
-          climaxEls,
-          { autoAlpha: 0, y: 24, scale: 0.96 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            scale: 1,
-            stagger: 0.18,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".story-climax",
-              start: "top 70%",
-              end: "center 50%",
-              scrub: 0.5,
-            },
-          }
-        );
       }
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => {
+      ctx.revert();
+      lenis.destroy();
+    };
   }, []);
 
+  const imageForBeat = (i: number) => {
+    const imageIndex = i >= 2 ? i - 1 : i;
+    return images[imageIndex] ?? images[0];
+  };
+
   return (
-    <div ref={containerRef}>
-      {/* --- Hero --- */}
-      <section className="story-hero relative flex min-h-[85vh] items-end overflow-hidden lg:min-h-screen">
-        <div className="story-hero-image absolute inset-0">
+    <div ref={containerRef} className="overflow-x-hidden">
+      {/* ── Hero ── */}
+      <section className="story-hero relative flex min-h-screen items-end overflow-hidden">
+        <div className="hero-parallax absolute inset-0">
           <Image
             src={images[0]}
             alt="Heirloom saree"
@@ -186,115 +405,144 @@ export function StoryNarrative({ images }: StoryNarrativeProps) {
             sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
         </div>
-        <div className="relative mx-auto w-full max-w-5xl space-y-4 px-4 pb-16 sm:px-6 sm:pb-24 lg:pb-32">
-          <p className="story-hero-text text-xs uppercase tracking-[0.5em] text-amber-100/60">
+        <div className="relative mx-auto w-full max-w-5xl space-y-5 px-4 pb-20 sm:px-6 sm:pb-28 lg:pb-36">
+          <p className="hero-eyebrow reveal-el text-xs uppercase tracking-[0.5em] text-amber-100/50">
             Our Manifesto
           </p>
-          <h1 className="story-hero-text font-serif text-4xl leading-tight text-white sm:text-5xl lg:text-7xl">
-            Why we do
-            <br />
-            what we do
+          <h1 className="hero-title font-serif text-5xl leading-[1.1] text-white sm:text-6xl lg:text-8xl">
+            <SplitWords text="Why we do what we do" />
           </h1>
-          <p className="story-hero-text max-w-lg text-base text-amber-100/70 sm:text-lg">
+          <p className="hero-subtitle reveal-el max-w-lg text-base text-amber-100/60 sm:text-lg lg:text-xl">
             A story of heritage, second chances, and the quiet power of a saree.
           </p>
         </div>
       </section>
 
-      {/* --- Narrative beats --- */}
-      <div className="mx-auto w-full max-w-6xl space-y-0">
-        {beats.map((beat, i) => {
-          const imageOnRight = i % 2 === 0;
-          const isOverlay = i === 3;
-
-          if (isOverlay) {
-            return (
-              <section
-                key={i}
-                className="story-beat relative flex min-h-[70vh] items-center overflow-hidden lg:min-h-[80vh]"
-              >
-                <div className="beat-image absolute inset-0">
-                  <Image
-                    src={images[i] ?? images[0]}
-                    alt=""
-                    fill
-                    sizes="100vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/30" />
-                </div>
-                <div className="relative mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
-                  {beat.paragraphs.map((p, j) => (
-                    <p
-                      key={j}
-                      className="beat-text max-w-xl font-serif text-xl leading-relaxed text-white/90 sm:text-2xl lg:text-3xl"
-                      style={{ marginTop: j > 0 ? "1.5rem" : 0 }}
-                    >
-                      {p}
-                    </p>
-                  ))}
-                </div>
-              </section>
-            );
-          }
-
+      {/* ── Narrative Beats ── */}
+      {beats.map((beat, i) => {
+        if (beat.layout === "text-only-dark") {
           return (
             <section
               key={i}
-              className="story-beat grid min-h-[60vh] items-center gap-8 px-4 py-16 sm:px-6 sm:py-24 lg:min-h-[75vh] lg:grid-cols-2 lg:gap-16 lg:py-0"
+              data-layout="text-only-dark"
+              className="story-beat flex min-h-screen items-center justify-center px-4 sm:px-6"
+              style={{ backgroundColor: "var(--background)" }}
             >
-              <div
-                className={`space-y-6 ${imageOnRight ? "lg:order-1" : "lg:order-2"}`}
-              >
+              <div className="mx-auto max-w-4xl text-center">
                 {beat.paragraphs.map((p, j) => (
                   <p
                     key={j}
-                    className="beat-text font-serif text-xl leading-relaxed text-foreground sm:text-2xl lg:text-3xl"
+                    className="font-serif text-3xl leading-snug text-white sm:text-4xl lg:text-6xl"
+                    style={{ marginTop: j > 0 ? "2rem" : 0 }}
                   >
-                    {p}
+                    <SplitWords text={p} />
                   </p>
                 ))}
               </div>
-              <div
-                className={`relative aspect-[3/4] overflow-hidden rounded-2xl lg:rounded-3xl ${
-                  imageOnRight ? "lg:order-2" : "lg:order-1"
-                }`}
-              >
-                <div className="beat-image absolute inset-0">
-                  <Image
-                    src={images[i] ?? images[0]}
-                    alt=""
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
+            </section>
+          );
+        }
+
+        if (beat.layout === "full-bleed") {
+          return (
+            <section
+              key={i}
+              data-layout="full-bleed"
+              className="story-beat relative flex min-h-screen items-center overflow-hidden"
+            >
+              <div className="beat-image-wrap absolute inset-0">
+                <Image
+                  src={images[3] ?? images[0]}
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+              </div>
+              <div className="relative mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+                {beat.paragraphs.map((p, j) => (
+                  <p
+                    key={j}
+                    className="max-w-2xl font-serif text-2xl leading-relaxed text-white/90 sm:text-3xl lg:text-5xl"
+                    style={{ marginTop: j > 0 ? "1.5rem" : 0 }}
+                  >
+                    <SplitWords text={p} />
+                  </p>
+                ))}
               </div>
             </section>
           );
-        })}
-      </div>
+        }
 
-      {/* --- Climax --- */}
-      <section className="story-climax flex min-h-[70vh] flex-col items-center justify-center px-4 py-20 text-center sm:min-h-[80vh] sm:px-6 lg:min-h-screen">
-        <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6 lg:space-y-8">
+        const isImageRight = beat.layout === "image-right";
+        return (
+          <section
+            key={i}
+            data-layout={beat.layout}
+            className="story-beat grid min-h-screen items-center gap-0 lg:grid-cols-[2fr_3fr]"
+          >
+            <div
+              className={cn(
+                "flex items-center px-6 py-16 sm:px-10 lg:min-h-screen lg:py-0",
+                isImageRight ? "lg:order-1" : "lg:order-2"
+              )}
+            >
+              <div className="mx-auto max-w-lg space-y-6 lg:max-w-none">
+                {beat.paragraphs.map((p, j) => (
+                  <p
+                    key={j}
+                    className="font-serif text-xl leading-relaxed text-foreground sm:text-2xl lg:text-3xl"
+                  >
+                    <SplitWords text={p} />
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div
+              className={cn(
+                "relative min-h-[50vh] overflow-hidden lg:min-h-screen",
+                isImageRight ? "lg:order-2" : "lg:order-1"
+              )}
+            >
+              <div className="beat-image-wrap absolute inset-0">
+                <Image
+                  src={imageForBeat(i)}
+                  alt=""
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          </section>
+        );
+      })}
+
+      {/* ── Climax ── */}
+      <section className="story-climax flex min-h-screen flex-col items-center justify-center px-4 sm:px-6">
+        <div className="relative mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center text-center lg:min-h-[70vh]">
           {climaxLines.map((line, i) => (
             <p
               key={i}
-              className={`climax-line font-serif leading-tight text-foreground ${
-                i === 0
-                  ? "text-xl sm:text-2xl lg:text-3xl text-muted-foreground"
-                  : "text-2xl sm:text-3xl lg:text-5xl"
-              }`}
+              className={cn(
+                "climax-item absolute font-serif leading-tight",
+                line.size,
+                line.muted ? "text-muted-foreground" : "text-foreground",
+                i === 0 && "relative"
+              )}
             >
-              {line}
+              {line.text}
             </p>
           ))}
         </div>
-        <div className="climax-line mt-12 sm:mt-16">
-          <Button asChild className="rounded-full px-10 py-6 text-sm">
+        <div className="climax-cta reveal-el mt-8 sm:mt-12">
+          <Button
+            asChild
+            className="rounded-full px-10 py-6 text-sm shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift"
+          >
             <Link href="/collection">Explore the Collection</Link>
           </Button>
         </div>
