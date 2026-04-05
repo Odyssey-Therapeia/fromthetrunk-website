@@ -24,6 +24,7 @@ import logoMark from "@/logos/image 8 [Vectorized].png";
 const navLinks = [
   { href: "/collection", label: "Collection" },
   { href: "/our-story", label: "Our Story" },
+  { href: "/why", label: "Our Why" },
   { href: "/how-it-works", label: "How It Works" },
 ];
 
