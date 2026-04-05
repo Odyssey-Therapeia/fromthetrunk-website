@@ -25,18 +25,24 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-card">
-        <Image src={activeImage} alt={alt} fill className="object-cover" />
+    <div className="space-y-3 lg:sticky lg:top-28 lg:space-y-4">
+      <div className="relative max-h-[44vh] overflow-hidden rounded-2xl bg-card sm:max-h-[50vh] lg:max-h-none lg:rounded-3xl">
+        <Image
+          src={activeImage}
+          alt={alt}
+          width={800}
+          height={1000}
+          className="h-auto max-h-[44vh] w-full object-cover sm:max-h-[50vh] lg:max-h-none"
+        />
       </div>
-      <div className="flex gap-3">
+      <div className="flex gap-2 overflow-x-auto pb-1 lg:gap-3">
         {galleryImages.map((image, index) => (
           <button
             key={image}
             type="button"
             onClick={() => setActiveImage(image)}
             className={cn(
-              "relative h-20 w-16 overflow-hidden rounded-2xl border border-transparent transition",
+              "relative h-16 w-14 shrink-0 overflow-hidden rounded-xl border border-transparent transition lg:h-20 lg:w-16 lg:rounded-2xl",
               activeImage === image && "border-trunk-gold"
             )}
             aria-label={`View image ${index + 1} of ${galleryImages.length}`}
