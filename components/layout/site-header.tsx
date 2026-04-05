@@ -10,7 +10,6 @@ import { useSession } from "next-auth/react";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { SearchBar } from "@/components/layout/search-bar";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

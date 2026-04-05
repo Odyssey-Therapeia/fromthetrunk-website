@@ -26,6 +26,6 @@
 - Target stack: Neon Postgres, Drizzle, Hono, NextAuth, Next.js 16+, shadcn (v4 / Base UI direction where adopted), GSAP, Tailwind v4, TanStack Query, Zustand; Tailwind is the primary responsive layout layer for storefront UI
 - Neon Postgres: multiple databases exist; the "FTT from Feb 8th" project is the legacy Payload-connected production DB
 - Vercel deployment; preview domains follow ftt-fromthetrunk-git-{branch}-odyssey-therapeia.vercel.app
-- Local dev: npm run dev with .env.local, localhost:3000, admin at /admin; API routes /api/v2/* (Hono custom), /api/payload/* (legacy Payload, being phased out)
+- Local dev: npm run dev with .env.local, localhost:3000, admin at /admin; API routes `/api/v2/*` (Hono custom), `/api/payload/*` (legacy Payload, being phased out)
 - Continual-learning index path: .cursor/hooks/state/continual-learning-index.json
 - VPN can cause DNS resolution failures for github.com and api.vercel.com; turning VPN off resolves connectivity issues

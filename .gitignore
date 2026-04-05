@@ -34,5 +34,8 @@ next-env.d.ts
 .cursor/*
 !.cursor/rules/
 
+# Test artifacts
+test-results/
+
 # lock files (keep package-lock.json for reproducible builds)
 bun.lock

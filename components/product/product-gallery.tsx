@@ -12,7 +12,10 @@ interface ProductGalleryProps {
 
 export function ProductGallery({ images, alt }: ProductGalleryProps) {
   const galleryImages = useMemo(() => images.filter(Boolean), [images]);
-  const [activeImage, setActiveImage] = useState(galleryImages[0] ?? "");
+  const [selectedImage, setSelectedImage] = useState(galleryImages[0] ?? "");
+  const activeImage = galleryImages.includes(selectedImage)
+    ? selectedImage
+    : (galleryImages[0] ?? "");
 
   if (galleryImages.length === 0) {
     return (
@@ -41,7 +44,7 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
           <button
             key={image}
             type="button"
-            onClick={() => setActiveImage(image)}
+            onClick={() => setSelectedImage(image)}
             className={cn(
               "relative h-16 w-14 shrink-0 overflow-hidden rounded-xl border border-transparent transition lg:h-20 lg:w-16 lg:rounded-2xl",
               activeImage === image && "border-trunk-gold"

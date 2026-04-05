@@ -90,7 +90,7 @@ Transition pattern: `shadow-soft` at rest, `shadow-lift` on `hover:` and `focus-
 ## Figma Handoff
 
 All tokens in this file should map 1:1 to Figma variables. To export:
-1. Copy the `:root` block from `globals.css` (lines 6-40)
+1. Copy the `:root` token block from `globals.css` (locate by the `:root {` selector)
 2. Import into Figma as color variables with matching names
 3. Brand palette (`trunk-*`) maps to a separate Figma collection
 4. Typography styles use the same family/weight/size combinations listed above

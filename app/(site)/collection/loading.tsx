@@ -25,7 +25,7 @@ export default function CollectionLoading() {
       </div>
 
       {/* Product grid skeleton */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-6 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-2 sm:space-y-3">
             <div className="aspect-[3/4] sm:aspect-[4/5] animate-pulse rounded-xl sm:rounded-2xl bg-muted" />

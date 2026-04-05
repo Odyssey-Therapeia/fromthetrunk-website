@@ -49,7 +49,7 @@ You are an expert in developer in the current file's language, specializing in h
 
 ## ✨ Code Quality & Style
 
-1. **Python Guidelines:** Use strict typing (avoid `any`). Document complex logic or public APIs.
+1. **Typing Guidelines:** Use strict typing in both TypeScript (`no any`, prefer `unknown`) and Python (type hints, avoid `Any`). Document complex logic or public APIs.
 2. **Readability & Maintainability:** Write clean, well-organized code.
 3. **Small Files & Components:**
     * Keep files under **300 lines**. Refactor proactively.
@@ -103,4 +103,4 @@ You are an expert in developer in the current file's language, specializing in h
 ## 📄 Documentation Maintenance
 
 1. **Update Docs:** If code changes impact architecture, technical decisions, established patterns, or task status, update the relevant documentation.
-2. **Keep Rules Updated:** This `.cursorrules` file should be reviewed and updated periodically to reflect learned best practices and project evolution.
+2. **Keep Rules Updated:** The `.cursor/rules/` files should be reviewed and updated periodically to reflect learned best practices and project evolution.

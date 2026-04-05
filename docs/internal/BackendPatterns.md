@@ -6,7 +6,7 @@ Reference guide for hexagonal (ports-and-adapters) architecture using Hono, Driz
 
 The API layer follows hexagonal architecture. Business logic has zero dependency on HTTP frameworks, databases, or UI. External concerns connect through typed interfaces.
 
-```
+```text
 HTTP Request
   │
   ▼
