@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, like, or, SQL } from "drizzle-orm";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import {
   collections,
   mediaAssets,
@@ -61,29 +61,31 @@ const hydrateProducts = async (rows: ProductRecord[]): Promise<ProductWithRelati
     new Set(rows.map((row) => row.collectionId).filter((value): value is string => Boolean(value)))
   );
 
-  const [collectionRows, imageRows, tagRows] = await Promise.all([
-    collectionIds.length > 0
-      ? db.select().from(collections).where(inArray(collections.id, collectionIds))
-      : Promise.resolve([] as CollectionRecord[]),
-    db
-      .select({
-        productId: productImages.productId,
-        sortOrder: productImages.sortOrder,
-        media: mediaAssets,
-      })
-      .from(productImages)
-      .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
-      .where(inArray(productImages.productId, productIds))
-      .orderBy(asc(productImages.sortOrder)),
-    db
-      .select({
-        productId: productTags.productId,
-        tag: tags,
-      })
-      .from(productTags)
-      .innerJoin(tags, eq(productTags.tagId, tags.id))
-      .where(inArray(productTags.productId, productIds)),
-  ]);
+  const [collectionRows, imageRows, tagRows] = await withRetry(() =>
+    Promise.all([
+      collectionIds.length > 0
+        ? db.select().from(collections).where(inArray(collections.id, collectionIds))
+        : Promise.resolve([] as CollectionRecord[]),
+      db
+        .select({
+          productId: productImages.productId,
+          sortOrder: productImages.sortOrder,
+          media: mediaAssets,
+        })
+        .from(productImages)
+        .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
+        .where(inArray(productImages.productId, productIds))
+        .orderBy(asc(productImages.sortOrder)),
+      db
+        .select({
+          productId: productTags.productId,
+          tag: tags,
+        })
+        .from(productTags)
+        .innerJoin(tags, eq(productTags.tagId, tags.id))
+        .where(inArray(productTags.productId, productIds)),
+    ])
+  );
 
   const collectionById = new Map(collectionRows.map((row) => [row.id, row]));
   const imagesByProductId = new Map<
@@ -149,19 +151,23 @@ export const listProducts = async (options: ListProductsOptions = {}): Promise<P
     ...(includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await db
-    .select()
-    .from(products)
-    .where(whereClause)
-    .orderBy(desc(products.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(desc(products.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateProducts(rows);
 };
 
 export const getProduct = async (productId: string): Promise<null | ProductWithRelations> => {
-  const [row] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  const [row] = await withRetry(() =>
+    db.select().from(products).where(eq(products.id, productId)).limit(1)
+  );
   if (!row) return null;
   const [hydrated] = await hydrateProducts([row]);
   return hydrated ?? null;
@@ -178,7 +184,9 @@ export const getProductBySlug = async (
       eq(products.slug, candidate),
       ...(options.includeDrafts ? [] : [eq(products.status, "published")]),
     ]);
-    const [row] = await db.select().from(products).where(whereClause).limit(1);
+    const [row] = await withRetry(() =>
+      db.select().from(products).where(whereClause).limit(1)
+    );
     if (row) {
       const [hydrated] = await hydrateProducts([row]);
       return hydrated ?? null;
@@ -201,13 +209,15 @@ export const getFeaturedProducts = async (
     ...(includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await db
-    .select()
-    .from(products)
-    .where(whereClause)
-    .orderBy(desc(products.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(desc(products.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateProducts(rows);
 };
@@ -229,12 +239,14 @@ export const searchProducts = async (
     ...(options.includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await db
-    .select()
-    .from(products)
-    .where(whereClause)
-    .orderBy(desc(products.createdAt))
-    .limit(limit);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(desc(products.createdAt))
+      .limit(limit)
+  );
 
   return hydrateProducts(rows);
 };
@@ -249,11 +261,13 @@ export const getProductsByCollection = async (
     offset = 0,
   } = options;
 
-  const [collection] = await db
-    .select({ id: collections.id })
-    .from(collections)
-    .where(eq(collections.slug, collectionSlug))
-    .limit(1);
+  const [collection] = await withRetry(() =>
+    db
+      .select({ id: collections.id })
+      .from(collections)
+      .where(eq(collections.slug, collectionSlug))
+      .limit(1)
+  );
 
   if (!collection) return [];
 
@@ -262,22 +276,26 @@ export const getProductsByCollection = async (
     ...(includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await db
-    .select()
-    .from(products)
-    .where(whereClause)
-    .orderBy(desc(products.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(products)
+      .where(whereClause)
+      .orderBy(desc(products.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateProducts(rows);
 };
 
 async function uniqueSlug(base: string): Promise<string> {
-  const existing = await db
-    .select({ slug: products.slug })
-    .from(products)
-    .where(or(eq(products.slug, base), like(products.slug, `${base}-%`)));
+  const existing = await withRetry(() =>
+    db
+      .select({ slug: products.slug })
+      .from(products)
+      .where(or(eq(products.slug, base), like(products.slug, `${base}-%`)))
+  );
 
   if (existing.length === 0) return base;
 

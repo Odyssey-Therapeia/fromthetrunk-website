@@ -1,6 +1,6 @@
 import { desc, eq, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { newsletterSubscribers } from "@/db/schema";
 
 type NewsletterSubscriberRecord = InferSelectModel<typeof newsletterSubscribers>;
@@ -18,13 +18,15 @@ export const listSubscribers = async (options?: {
 
   const whereClause = status ? eq(newsletterSubscribers.status, status) : undefined;
 
-  return db
-    .select()
-    .from(newsletterSubscribers)
-    .where(whereClause)
-    .orderBy(desc(newsletterSubscribers.createdAt))
-    .limit(limit)
-    .offset(offset);
+  return withRetry(() =>
+    db
+      .select()
+      .from(newsletterSubscribers)
+      .where(whereClause)
+      .orderBy(desc(newsletterSubscribers.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 };
 
 export const subscribe = async (

@@ -1,6 +1,6 @@
 import { desc, eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { mediaAssets } from "@/db/schema";
 
 type MediaRecord = InferSelectModel<typeof mediaAssets>;
@@ -15,15 +15,19 @@ export type UpdateMediaInput = Partial<
 >;
 
 export const listMedia = async (limit = 200, offset = 0): Promise<MediaRecord[]> =>
-  db
-    .select()
-    .from(mediaAssets)
-    .orderBy(desc(mediaAssets.createdAt))
-    .limit(limit)
-    .offset(offset);
+  withRetry(() =>
+    db
+      .select()
+      .from(mediaAssets)
+      .orderBy(desc(mediaAssets.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
 export const getMediaById = async (mediaId: string): Promise<MediaRecord | null> => {
-  const [row] = await db.select().from(mediaAssets).where(eq(mediaAssets.id, mediaId)).limit(1);
+  const [row] = await withRetry(() =>
+    db.select().from(mediaAssets).where(eq(mediaAssets.id, mediaId)).limit(1)
+  );
   return row ?? null;
 };
 

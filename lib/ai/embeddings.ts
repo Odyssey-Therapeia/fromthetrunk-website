@@ -1,5 +1,5 @@
 import { getProduct, type ProductWithRelations } from "@/db/queries/products";
-import { pool } from "@/db";
+import { rawSql } from "@/db";
 
 import { ensureProductEmbeddingsTable } from "./extensions";
 
@@ -46,8 +46,8 @@ const buildEmbeddingInput = (product: ProductWithRelations) => {
 export const createEmbedding = async (
   input: string
 ): Promise<null | { embedding: number[]; model: string }> => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey || apiKey.startsWith("{{") || !apiKey.startsWith("sk-")) return null;
 
   const model = getEmbeddingModel();
   const response = await fetch("https://api.openai.com/v1/embeddings", {
@@ -88,7 +88,7 @@ const upsertEmbedding = async (
   const ready = await ensureProductEmbeddingsTable();
   if (!ready) return false;
 
-  await pool.query(
+  await rawSql(
     `
       insert into product_embeddings (product_id, embedding, model, updated_at)
       values ($1, $2::vector, $3, now())
@@ -108,7 +108,7 @@ const loadEmbedding = async (productId: string): Promise<null | number[]> => {
   const ready = await ensureProductEmbeddingsTable();
   if (!ready) return null;
 
-  const result = await pool.query<{ embedding: string }>(
+  const rows = await rawSql(
     `
       select embedding
       from product_embeddings
@@ -116,9 +116,9 @@ const loadEmbedding = async (productId: string): Promise<null | number[]> => {
       limit 1
     `,
     [productId]
-  );
+  ) as Array<{ embedding: string }>;
 
-  return parseVector(result.rows[0]?.embedding ?? null);
+  return parseVector(rows[0]?.embedding ?? null);
 };
 
 export const refreshProductEmbedding = async (productId: string) => {
@@ -184,7 +184,7 @@ export const findSimilarProductsByProductId = async (
   const ready = await ensureProductEmbeddingsTable();
   if (!ready) return [];
 
-  const result = await pool.query<SimilarityRow>(
+  const rows = await rawSql(
     `
       select pe.product_id, 1 - (pe.embedding <=> $1::vector) as similarity
       from product_embeddings pe
@@ -195,9 +195,9 @@ export const findSimilarProductsByProductId = async (
       limit $3
     `,
     [toVectorLiteral(embedding), productId, limit]
-  );
+  ) as SimilarityRow[];
 
-  return hydrateSimilarityRows(result.rows);
+  return hydrateSimilarityRows(rows);
 };
 
 export const semanticSearchProducts = async (query: string, limit = 12) => {
@@ -207,7 +207,7 @@ export const semanticSearchProducts = async (query: string, limit = 12) => {
   const ready = await ensureProductEmbeddingsTable();
   if (!ready) return [];
 
-  const result = await pool.query<SimilarityRow>(
+  const rows = await rawSql(
     `
       select pe.product_id, 1 - (pe.embedding <=> $1::vector) as similarity
       from product_embeddings pe
@@ -217,7 +217,7 @@ export const semanticSearchProducts = async (query: string, limit = 12) => {
       limit $2
     `,
     [toVectorLiteral(embedded.embedding), limit]
-  );
+  ) as SimilarityRow[];
 
-  return hydrateSimilarityRows(result.rows);
+  return hydrateSimilarityRows(rows);
 };

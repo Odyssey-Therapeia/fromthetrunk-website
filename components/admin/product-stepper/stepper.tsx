@@ -2,6 +2,7 @@
 
 import gsap from "gsap";
 import { useForm } from "@tanstack/react-form";
+import { Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { toPaise, toRupees } from "@/db/money";
 import { slugify } from "@/lib/utils";
 
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+
+import { AiAssistPanel, useProductAssistantRuntime } from "./ai-assist-panel";
 import { LivePreviewCard } from "./live-preview-card";
 import { StepDetails } from "./step-details";
 import { StepPhotos } from "./step-photos";
@@ -44,6 +48,7 @@ export function ProductStepper({
   const [saveState, setSaveState] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [uploaded, setUploaded] = useState<ProductStepperMedia[]>([]);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const stepContainerRef = useRef<HTMLDivElement>(null);
 
   const mergedInitialValues = useMemo<ProductStepperValues>(
@@ -143,6 +148,13 @@ export function ProductStepper({
     },
   });
 
+  const aiRuntime = useProductAssistantRuntime({
+    form: form as unknown as Parameters<typeof useProductAssistantRuntime>[0]["form"],
+    productId: activeProductId,
+    stepIndex,
+    uploaded,
+  });
+
   useEffect(() => {
     const id = window.setInterval(() => {
       void persistProduct(form.state.values, true);
@@ -170,69 +182,90 @@ export function ProductStepper({
   }, [stepIndex]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {steps.map((step, index) => (
-            <Button
-              key={step}
-              onClick={() => setStepIndex(index)}
-              size="sm"
-              type="button"
-              variant={stepIndex === index ? "default" : "outline"}
-            >
-              {index + 1}. {step}
-            </Button>
-          ))}
-        </div>
-
-        <div ref={stepContainerRef}>
-          {stepIndex === 0 ? (
-            <StepPhotos form={form} setUploaded={setUploaded} uploaded={uploaded} />
-          ) : null}
-          {stepIndex === 1 ? <StepDetails form={form} /> : null}
-          {stepIndex === 2 ? <StepStory form={form} /> : null}
-          {stepIndex === 3 ? <StepPricing form={form} /> : null}
-          {stepIndex === 4 ? <StepPreview values={form.state.values} /> : null}
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs text-muted-foreground">
-            {isSaving ? "Saving..." : saveState ?? "Changes auto-save every 30 seconds"}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              disabled={stepIndex === 0}
-              onClick={() => setStepIndex((value) => Math.max(0, value - 1))}
-              type="button"
-              variant="outline"
-            >
-              Back
-            </Button>
-            {stepIndex < steps.length - 1 ? (
+    <AssistantRuntimeProvider runtime={aiRuntime}>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {steps.map((step, index) => (
               <Button
-                onClick={() => setStepIndex((value) => Math.min(steps.length - 1, value + 1))}
+                key={step}
+                onClick={() => setStepIndex(index)}
+                size="sm"
                 type="button"
+                variant={stepIndex === index ? "default" : "outline"}
               >
-                Next
+                {index + 1}. {step}
               </Button>
-            ) : (
-              <Button onClick={() => void form.handleSubmit()} type="button">
-                Save Product
+            ))}
+            <div className="ml-auto">
+              <Button
+                onClick={() => setIsAiPanelOpen(true)}
+                size="sm"
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Assist
               </Button>
-            )}
+            </div>
+          </div>
+
+          <div ref={stepContainerRef}>
+            {stepIndex === 0 ? (
+              <StepPhotos form={form} setUploaded={setUploaded} uploaded={uploaded} />
+            ) : null}
+            {stepIndex === 1 ? <StepDetails form={form} /> : null}
+            {stepIndex === 2 ? <StepStory form={form} /> : null}
+            {stepIndex === 3 ? <StepPricing form={form} /> : null}
+            {stepIndex === 4 ? <StepPreview values={form.state.values} /> : null}
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {isSaving ? "Saving..." : saveState ?? "Changes auto-save every 30 seconds"}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                disabled={stepIndex === 0}
+                onClick={() => setStepIndex((value) => Math.max(0, value - 1))}
+                type="button"
+                variant="outline"
+              >
+                Back
+              </Button>
+              {stepIndex < steps.length - 1 ? (
+                <Button
+                  onClick={() => setStepIndex((value) => Math.min(steps.length - 1, value + 1))}
+                  type="button"
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button onClick={() => void form.handleSubmit()} type="button">
+                  Save Product
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <LivePreviewCard
-        imageUrls={uploaded.map((media) => ({
-          id: media.id,
-          url: media.url,
-        }))}
-        values={form.state.values}
-      />
-    </div>
+        <LivePreviewCard
+          imageUrls={uploaded.map((media) => ({
+            id: media.id,
+            url: media.url,
+          }))}
+          values={form.state.values}
+        />
+
+        <AiAssistPanel
+          form={form}
+          onOpenChange={setIsAiPanelOpen}
+          open={isAiPanelOpen}
+          stepIndex={stepIndex}
+        />
+      </div>
+    </AssistantRuntimeProvider>
   );
 }
 

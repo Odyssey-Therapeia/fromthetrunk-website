@@ -16,14 +16,14 @@ export const metadata: Metadata = {
 
 export default async function WhyPage() {
   const { isEnabled: includeDrafts } = await draftMode();
-  const result = await getProducts(4, { includeDrafts });
+  const result = await getProducts(5, { includeDrafts });
   const products = (result?.docs ?? []) as Product[];
 
   const images = products
     .map((p) => resolveMediaURL(p.images?.[0]))
     .filter(Boolean) as string[];
 
-  while (images.length < 4) {
+  while (images.length < 5) {
     images.push(
       "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=2000&auto=format&fit=crop"
     );

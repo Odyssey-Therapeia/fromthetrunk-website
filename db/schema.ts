@@ -384,6 +384,30 @@ export const authVerificationTokens = pgTable(
   })
 );
 
+export const chatConversations = pgTable(
+  "chat_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    messages: jsonb("messages").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("chat_conversations_user_idx").on(table.userId),
+    productIdx: index("chat_conversations_product_idx").on(table.productId),
+  }),
+);
+
 export const siteConfig = pgTable(
   "site_config",
   {

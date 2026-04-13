@@ -1,6 +1,6 @@
 import { desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { addresses, users } from "@/db/schema";
 
 type AddressRecord = InferSelectModel<typeof addresses>;
@@ -25,7 +25,7 @@ const hydrateUsers = async (rows: UserRecord[]): Promise<UserWithDefaultAddress[
 
   const addressRows =
     addressIds.length > 0
-      ? await db.select().from(addresses).where(inArray(addresses.id, addressIds))
+      ? await withRetry(() => db.select().from(addresses).where(inArray(addresses.id, addressIds)))
       : [];
   const addressById = new Map(addressRows.map((row) => [row.id, row]));
 
@@ -48,30 +48,36 @@ export const listUsers = async (options?: {
 
   const whereClause = role ? eq(users.role, role) : undefined;
 
-  const rows = await db
-    .select()
-    .from(users)
-    .where(whereClause)
-    .orderBy(desc(users.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(users)
+      .where(whereClause)
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateUsers(rows);
 };
 
 export const getUserById = async (id: string): Promise<UserWithDefaultAddress | null> => {
-  const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  const [row] = await withRetry(() =>
+    db.select().from(users).where(eq(users.id, id)).limit(1)
+  );
   if (!row) return null;
   const [hydrated] = await hydrateUsers([row]);
   return hydrated ?? null;
 };
 
 export const getUserByEmail = async (email: string): Promise<UserWithDefaultAddress | null> => {
-  const [row] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email.toLowerCase()))
-    .limit(1);
+  const [row] = await withRetry(() =>
+    db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1)
+  );
 
   if (!row) return null;
   const [hydrated] = await hydrateUsers([row]);

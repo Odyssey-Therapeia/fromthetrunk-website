@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface StoryNarrativeProps {
   images: string[];
+  embedded?: boolean;
 }
 
 function SplitWords({
@@ -88,7 +89,7 @@ const climaxLines = [
   },
 ];
 
-export function StoryNarrative({ images }: StoryNarrativeProps) {
+export function StoryNarrative({ images, embedded = false }: StoryNarrativeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,17 +110,22 @@ export function StoryNarrative({ images }: StoryNarrativeProps) {
 
     gsap.registerPlugin(ScrollTrigger);
 
-    const lenis = new Lenis({ lerp: 0.08, duration: 1.4 });
-    lenis.on("scroll", ScrollTrigger.update);
-    gsap.ticker.add((time) => lenis.raf(time * 1000));
-    gsap.ticker.lagSmoothing(0);
+    let lenis: Lenis | null = null;
+    if (!embedded) {
+      lenis = new Lenis({ lerp: 0.08, duration: 1.4 });
+      lenis.on("scroll", ScrollTrigger.update);
+      gsap.ticker.add((time) => lenis!.raf(time * 1000));
+      gsap.ticker.lagSmoothing(0);
+    }
 
     const mm = gsap.matchMedia();
     const ctx = gsap.context(() => {
       if (!containerRef.current) return;
 
-      // ──── HERO ────
-      const heroSection = containerRef.current.querySelector(".story-hero");
+      // ──── HERO (standalone only) ────
+      const heroSection = !embedded
+        ? containerRef.current.querySelector(".story-hero")
+        : null;
       if (heroSection) {
         mm.add("(min-width: 1024px)", () => {
           const heroTl = gsap.timeline({
@@ -383,42 +389,40 @@ export function StoryNarrative({ images }: StoryNarrativeProps) {
 
     return () => {
       ctx.revert();
-      lenis.destroy();
+      lenis?.destroy();
     };
-  }, []);
+  }, [embedded]);
 
-  const imageForBeat = (i: number) => {
-    const imageIndex = i >= 2 ? i - 1 : i;
-    return images[imageIndex] ?? images[0];
-  };
+  const imageForBeat = (i: number) => images[i + 1] ?? images[0];
 
   return (
     <div ref={containerRef} className="overflow-x-hidden">
-      {/* ── Hero ── */}
-      <section className="story-hero relative flex min-h-screen items-end overflow-hidden">
-        <div className="hero-parallax absolute inset-0">
-          <Image
-            src={images[0]}
-            alt="Heirloom saree"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
-        </div>
-        <div className="relative mx-auto w-full max-w-5xl space-y-5 px-4 pb-20 sm:px-6 sm:pb-28 lg:pb-36">
-          <p className="hero-eyebrow reveal-el text-xs uppercase tracking-[0.5em] text-amber-100/50">
-            Our Manifesto
-          </p>
-          <h1 className="hero-title font-serif text-5xl leading-[1.1] text-white sm:text-6xl lg:text-8xl">
-            <SplitWords text="Why we do what we do" />
-          </h1>
-          <p className="hero-subtitle reveal-el max-w-lg text-base text-amber-100/60 sm:text-lg lg:text-xl">
-            A story of heritage, second chances, and the quiet power of a saree.
-          </p>
-        </div>
-      </section>
+      {!embedded && (
+        <section className="story-hero relative flex min-h-screen items-end overflow-hidden">
+          <div className="hero-parallax absolute inset-0">
+            <Image
+              src={images[0]}
+              alt="Heirloom saree"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
+          </div>
+          <div className="relative mx-auto w-full max-w-5xl space-y-5 px-4 pb-20 sm:px-6 sm:pb-28 lg:pb-36">
+            <p className="hero-eyebrow reveal-el text-xs uppercase tracking-[0.5em] text-amber-100/50">
+              Our Manifesto
+            </p>
+            <h1 className="hero-title font-serif text-5xl leading-[1.1] text-white sm:text-6xl lg:text-8xl">
+              <SplitWords text="Why we do what we do" />
+            </h1>
+            <p className="hero-subtitle reveal-el max-w-lg text-base text-amber-100/60 sm:text-lg lg:text-xl">
+              A story of heritage, second chances, and the quiet power of a saree.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* ── Narrative Beats ── */}
       {beats.map((beat, i) => {
@@ -454,7 +458,7 @@ export function StoryNarrative({ images }: StoryNarrativeProps) {
             >
               <div className="beat-image-wrap absolute inset-0">
                 <Image
-                  src={images[3] ?? images[0]}
+                  src={imageForBeat(3)}
                   alt=""
                   fill
                   sizes="100vw"

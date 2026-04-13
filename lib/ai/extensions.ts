@@ -1,4 +1,4 @@
-import { pool } from "@/db";
+import { rawSql } from "@/db";
 
 const EMBEDDING_DIMENSIONS = 1536;
 
@@ -8,7 +8,7 @@ let embeddingsTableReadyPromise: null | Promise<boolean> = null;
 
 const ensureExtension = async (extensionName: "pgml" | "vector") => {
   try {
-    await pool.query(`create extension if not exists ${extensionName}`);
+    await rawSql(`create extension if not exists ${extensionName}`);
     return true;
   } catch (error) {
     console.warn(`[ai] Unable to enable ${extensionName} extension.`, error);
@@ -37,7 +37,7 @@ export const ensureProductEmbeddingsTable = async () => {
       if (!hasVector) return false;
 
       try {
-        await pool.query(`
+        await rawSql(`
           create table if not exists product_embeddings (
             product_id uuid primary key references products(id) on delete cascade,
             embedding vector(${EMBEDDING_DIMENSIONS}) not null,
@@ -47,7 +47,7 @@ export const ensureProductEmbeddingsTable = async () => {
           )
         `);
 
-        await pool.query(`
+        await rawSql(`
           create index if not exists product_embeddings_embedding_idx
           on product_embeddings using ivfflat (embedding vector_cosine_ops)
           with (lists = 100)

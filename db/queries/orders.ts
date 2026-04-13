@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { orderEvents, orderItems, orders } from "@/db/schema";
 
 type OrderEventRecord = InferSelectModel<typeof orderEvents>;
@@ -25,17 +25,19 @@ const hydrateOrders = async (rows: OrderRecord[]): Promise<OrderWithRelations[]>
   if (rows.length === 0) return [];
 
   const orderIds = rows.map((row) => row.id);
-  const [itemsRows, eventRows] = await Promise.all([
-    db
-      .select()
-      .from(orderItems)
-      .where(inArray(orderItems.orderId, orderIds)),
-    db
-      .select()
-      .from(orderEvents)
-      .where(inArray(orderEvents.orderId, orderIds))
-      .orderBy(desc(orderEvents.createdAt)),
-  ]);
+  const [itemsRows, eventRows] = await withRetry(() =>
+    Promise.all([
+      db
+        .select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds)),
+      db
+        .select()
+        .from(orderEvents)
+        .where(inArray(orderEvents.orderId, orderIds))
+        .orderBy(desc(orderEvents.createdAt)),
+    ])
+  );
 
   const itemsByOrderId = new Map<string, OrderItemRecord[]>();
   const eventsByOrderId = new Map<string, OrderEventRecord[]>();
@@ -78,19 +80,23 @@ export const listOrders = async (options?: {
 
   const whereClause = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
 
-  const rows = await db
-    .select()
-    .from(orders)
-    .where(whereClause)
-    .orderBy(desc(orders.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(orders)
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateOrders(rows);
 };
 
 export const getOrder = async (orderId: string): Promise<OrderWithRelations | null> => {
-  const [row] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const [row] = await withRetry(() =>
+    db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+  );
   if (!row) return null;
   const [hydrated] = await hydrateOrders([row]);
   return hydrated ?? null;

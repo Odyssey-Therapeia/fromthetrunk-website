@@ -1,6 +1,6 @@
 import { desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, withRetry } from "@/db";
 import { collections, mediaAssets } from "@/db/schema";
 
 type CollectionRecord = InferSelectModel<typeof collections>;
@@ -30,7 +30,7 @@ const hydrateCollections = async (
 
   const mediaRows =
     mediaIds.length > 0
-      ? await db.select().from(mediaAssets).where(inArray(mediaAssets.id, mediaIds))
+      ? await withRetry(() => db.select().from(mediaAssets).where(inArray(mediaAssets.id, mediaIds)))
       : [];
   const mediaById = new Map(mediaRows.map((row) => [row.id, row]));
 
@@ -41,12 +41,14 @@ const hydrateCollections = async (
 };
 
 export const listCollections = async (limit = 100, offset = 0): Promise<CollectionWithHeroMedia[]> => {
-  const rows = await db
-    .select()
-    .from(collections)
-    .orderBy(desc(collections.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(collections)
+      .orderBy(desc(collections.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
 
   return hydrateCollections(rows);
 };
@@ -54,7 +56,9 @@ export const listCollections = async (limit = 100, offset = 0): Promise<Collecti
 export const getCollectionBySlug = async (
   slug: string
 ): Promise<CollectionWithHeroMedia | null> => {
-  const [row] = await db.select().from(collections).where(eq(collections.slug, slug)).limit(1);
+  const [row] = await withRetry(() =>
+    db.select().from(collections).where(eq(collections.slug, slug)).limit(1)
+  );
   if (!row) return null;
   const [hydrated] = await hydrateCollections([row]);
   return hydrated ?? null;
