@@ -50,7 +50,8 @@ export const createEmbedding = async (
   if (!apiKey || apiKey.startsWith("{{") || !apiKey.startsWith("sk-")) return null;
 
   const model = getEmbeddingModel();
-  const timeoutMs = parseInt(process.env.EMBEDDING_TIMEOUT_MS ?? "15000", 10);
+  const parsed = parseInt(process.env.EMBEDDING_TIMEOUT_MS ?? "15000", 10);
+  const timeoutMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 15000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 

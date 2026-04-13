@@ -71,13 +71,18 @@ export const recommendProducts = async (productId: string, limit = 6) => {
   const source = await getProduct(productId);
   if (!source) return [];
 
-  const semanticMatches = await findSimilarProductsByProductId(productId, limit);
-  const semanticRecommendations: Recommendation[] = semanticMatches.map((match) => ({
-    product: match.product,
-    reason: "semantic similarity",
-    score: Number(match.similarity),
-    source: "semantic",
-  }));
+  let semanticRecommendations: Recommendation[] = [];
+  try {
+    const semanticMatches = await findSimilarProductsByProductId(productId, limit);
+    semanticRecommendations = semanticMatches.map((match) => ({
+      product: match.product,
+      reason: "semantic similarity",
+      score: Number(match.similarity),
+      source: "semantic",
+    }));
+  } catch (err) {
+    console.warn("[recommendations] Semantic search failed, falling back to heuristics:", err);
+  }
 
   const remainder = Math.max(limit - semanticRecommendations.length, 0);
   let heuristicRecommendations: Recommendation[] = [];

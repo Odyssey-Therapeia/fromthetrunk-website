@@ -496,7 +496,7 @@ export function StoryNarrative({ images, embedded = false }: StoryNarrativeProps
             >
               <div className="beat-image-wrap absolute inset-0">
                 <Image
-                  src={imageForBeat(3)}
+                  src={imageForBeat(i)}
                   alt=""
                   fill
                   sizes="100vw"

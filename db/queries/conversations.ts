@@ -82,6 +82,7 @@ export const upsertConversation = async (
             productId: sql`coalesce(excluded.product_id, ${chatConversations.productId})`,
             updatedAt: new Date(),
           },
+          setWhere: eq(chatConversations.userId, userId),
         })
         .returning()
     ),
