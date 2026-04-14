@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, ilike, inArray, like, or, SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, like, or, SQL } from "drizzle-orm";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
+import { getFirstRow, requireFirstRow } from "@/db/results";
 import {
   collections,
   mediaAssets,
@@ -140,7 +141,7 @@ const replaceProductTags = async (productId: string, tagIds: number[]) => {
   await db.insert(productTags).values(tagIds.map((tagId) => ({ productId, tagId })));
 };
 
-export const listProducts = async (options: ListProductsOptions = {}): Promise<ProductWithRelations[]> => {
+export const listProducts = async (options: ListProductsOptions = {}): Promise<{ rows: ProductWithRelations[]; totalCount: number }> => {
   const {
     includeDrafts = false,
     limit = 200,
@@ -151,17 +152,25 @@ export const listProducts = async (options: ListProductsOptions = {}): Promise<P
     ...(includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await withRetry(() =>
-    db
-      .select()
-      .from(products)
-      .where(whereClause)
-      .orderBy(desc(products.createdAt))
-      .limit(limit)
-      .offset(offset)
-  );
+  const [rows, [countResult]] = await Promise.all([
+    withRetry(() =>
+      db
+        .select()
+        .from(products)
+        .where(whereClause)
+        .orderBy(desc(products.createdAt))
+        .limit(limit)
+        .offset(offset)
+    ),
+    withRetry(() =>
+      db
+        .select({ total: count() })
+        .from(products)
+        .where(whereClause)
+    ),
+  ]);
 
-  return hydrateProducts(rows);
+  return { rows: await hydrateProducts(rows), totalCount: countResult?.total ?? 0 };
 };
 
 export const getProduct = async (productId: string): Promise<null | ProductWithRelations> => {
@@ -254,7 +263,7 @@ export const searchProducts = async (
 export const getProductsByCollection = async (
   collectionSlug: string,
   options: ListProductsOptions = {}
-): Promise<ProductWithRelations[]> => {
+): Promise<{ rows: ProductWithRelations[]; totalCount: number }> => {
   const {
     includeDrafts = false,
     limit = 200,
@@ -269,24 +278,32 @@ export const getProductsByCollection = async (
       .limit(1)
   );
 
-  if (!collection) return [];
+  if (!collection) return { rows: [], totalCount: 0 };
 
   const whereClause = buildWhere([
     eq(products.collectionId, collection.id),
     ...(includeDrafts ? [] : [eq(products.status, "published")]),
   ]);
 
-  const rows = await withRetry(() =>
-    db
-      .select()
-      .from(products)
-      .where(whereClause)
-      .orderBy(desc(products.createdAt))
-      .limit(limit)
-      .offset(offset)
-  );
+  const [rows, [countResult]] = await Promise.all([
+    withRetry(() =>
+      db
+        .select()
+        .from(products)
+        .where(whereClause)
+        .orderBy(desc(products.createdAt))
+        .limit(limit)
+        .offset(offset)
+    ),
+    withRetry(() =>
+      db
+        .select({ total: count() })
+        .from(products)
+        .where(whereClause)
+    ),
+  ]);
 
-  return hydrateProducts(rows);
+  return { rows: await hydrateProducts(rows), totalCount: countResult?.total ?? 0 };
 };
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -314,14 +331,17 @@ export const createProduct = async (input: CreateProductInput): Promise<ProductW
 
   const slug = await uniqueSlug(slugify(productData.slug ?? "untitled-product"));
 
-  const [created] = await db
-    .insert(products)
-    .values({
-      ...productData,
-      slug,
-      updatedAt: new Date(),
-    })
-    .returning({ id: products.id });
+  const created = requireFirstRow(
+    await db
+      .insert(products)
+      .values({
+        ...productData,
+        slug,
+        updatedAt: new Date(),
+      })
+      .returning({ id: products.id }),
+    "Failed to create product."
+  );
 
   await Promise.all([
     replaceProductImages(created.id, imageMediaIds),
@@ -343,33 +363,36 @@ export const duplicateProduct = async (productId: string): Promise<null | Produc
   const duplicateSlug = await uniqueSlug(slugify(source.slug));
   const duplicateName = source.name.trim().length > 0 ? `${source.name} Copy` : "Untitled Product Copy";
 
-  const [created] = await db
-    .insert(products)
-    .values({
-      artisanId: source.artisanId,
-      collectionId: source.collectionId,
-      detailsCondition: source.detailsCondition,
-      detailsDesigner: source.detailsDesigner,
-      detailsFabric: source.detailsFabric,
-      detailsLength: source.detailsLength,
-      detailsWidth: source.detailsWidth,
-      featured: false,
-      metadata: source.metadata,
-      name: duplicateName,
-      originalPricePaise: source.originalPricePaise,
-      pricePaise: source.pricePaise,
-      reservedUntil: null,
-      slug: duplicateSlug,
-      soldAt: null,
-      status: "draft",
-      stockStatus: "available",
-      storyEra: source.storyEra,
-      storyNarrative: source.storyNarrative,
-      storyProvenance: source.storyProvenance,
-      storyTitle: source.storyTitle,
-      updatedAt: new Date(),
-    })
-    .returning({ id: products.id });
+  const created = requireFirstRow(
+    await db
+      .insert(products)
+      .values({
+        artisanId: source.artisanId,
+        collectionId: source.collectionId,
+        detailsCondition: source.detailsCondition,
+        detailsDesigner: source.detailsDesigner,
+        detailsFabric: source.detailsFabric,
+        detailsLength: source.detailsLength,
+        detailsWidth: source.detailsWidth,
+        featured: false,
+        metadata: source.metadata,
+        name: duplicateName,
+        originalPricePaise: source.originalPricePaise,
+        pricePaise: source.pricePaise,
+        reservedUntil: null,
+        slug: duplicateSlug,
+        soldAt: null,
+        status: "draft",
+        stockStatus: "available",
+        storyEra: source.storyEra,
+        storyNarrative: source.storyNarrative,
+        storyProvenance: source.storyProvenance,
+        storyTitle: source.storyTitle,
+        updatedAt: new Date(),
+      })
+      .returning({ id: products.id }),
+    "Failed to duplicate product."
+  );
 
   await Promise.all([
     replaceProductImages(
@@ -401,14 +424,16 @@ export const updateProduct = async (
     productData.slug = slugify(productData.slug);
   }
 
-  const [updated] = await db
-    .update(products)
-    .set({
-      ...productData,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId))
-    .returning({ id: products.id });
+  const updated = getFirstRow(
+    await db
+      .update(products)
+      .set({
+        ...productData,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, productId))
+      .returning({ id: products.id })
+  );
 
   if (!updated) return null;
 
@@ -424,10 +449,12 @@ export const updateProduct = async (
 };
 
 export const deleteProduct = async (productId: string): Promise<boolean> => {
-  const deleted = await db
-    .delete(products)
-    .where(eq(products.id, productId))
-    .returning({ id: products.id });
+  const deleted = await withRetry(() =>
+    db
+      .delete(products)
+      .where(eq(products.id, productId))
+      .returning({ id: products.id })
+  );
 
   return deleted.length > 0;
 };
