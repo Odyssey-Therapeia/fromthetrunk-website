@@ -17,6 +17,10 @@
     "payload:migrate:create": "node ./node_modules/payload/bin.js migrate:create",
     "payload:migrate": "node ./node_modules/payload/bin.js migrate",
     "seed:payload": "node --env-file=.env.local --import tsx scripts/seed-payload.ts",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "prepare": "husky"
   },
   "repository": {

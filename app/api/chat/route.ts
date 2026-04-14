@@ -107,16 +107,7 @@ export async function POST(req: Request) {
         );
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      const isTableMissing =
-        message.includes("relation") && message.includes("does not exist");
-      if (!isTableMissing) {
-        console.error("[api/chat] Conversation lookup failed:", err);
-        return Response.json(
-          { code: "INTERNAL_ERROR", error: "Failed to verify conversation." },
-          { status: 500 },
-        );
-      }
+      console.error("[api/chat] Conversation lookup failed (non-blocking):", err);
     }
   }
 
