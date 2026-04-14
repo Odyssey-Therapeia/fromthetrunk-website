@@ -185,10 +185,16 @@ const hydrateSimilarityRows = async (rows: SimilarityRow[]) => {
     );
 };
 
+const clampLimit = (limit: number, fallback: number): number => {
+  const n = Math.floor(Number(limit));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 100) : fallback;
+};
+
 export const findSimilarProductsByProductId = async (
   productId: string,
   limit = 6
 ) => {
+  const safeLimit = clampLimit(limit, 6);
   const embedding = await ensureProductEmbedding(productId);
   if (!embedding || embedding.length === 0) return [];
 
@@ -204,7 +210,7 @@ export const findSimilarProductsByProductId = async (
         where pe.product_id <> ${productId}
           and p.status = 'published'
         order by pe.embedding <=> ${toVectorLiteral(embedding)}::vector asc
-        limit ${limit}
+        limit ${safeLimit}
       `) as SimilarityRow[]
   );
 
@@ -212,6 +218,7 @@ export const findSimilarProductsByProductId = async (
 };
 
 export const semanticSearchProducts = async (query: string, limit = 12) => {
+  const safeLimit = clampLimit(limit, 12);
   const embedded = await createEmbedding(query);
   if (!embedded) return [];
 
@@ -226,7 +233,7 @@ export const semanticSearchProducts = async (query: string, limit = 12) => {
         join products p on p.id = pe.product_id
         where p.status = 'published'
         order by pe.embedding <=> ${toVectorLiteral(embedded.embedding)}::vector asc
-        limit ${limit}
+        limit ${safeLimit}
       `) as SimilarityRow[]
   );
 
