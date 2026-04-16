@@ -110,3 +110,66 @@ export const deleteConversation = async (
 
   return deleted.length > 0;
 };
+
+/** List conversation summaries for a user, newest first. */
+export const listConversationsForUser = async (
+  userId: string,
+): Promise<
+  Array<{
+    id: string;
+    title: string | null;
+    updatedAt: Date;
+    productId: string | null;
+  }>
+> => {
+  return withRetry(() =>
+    db
+      .select({
+        id: chatConversations.id,
+        title: chatConversations.title,
+        updatedAt: chatConversations.updatedAt,
+        productId: chatConversations.productId,
+      })
+      .from(chatConversations)
+      .where(eq(chatConversations.userId, userId))
+      .orderBy(desc(chatConversations.updatedAt))
+      .limit(50)
+  );
+};
+
+/** Create an empty conversation and return its id. */
+export const createEmptyConversation = async (
+  userId: string,
+): Promise<{ id: string }> => {
+  const row = requireFirstRow(
+    await withRetry(() =>
+      db
+        .insert(chatConversations)
+        .values({ userId, messages: [] })
+        .returning({ id: chatConversations.id })
+    ),
+    "Failed to create conversation.",
+  );
+  return row;
+};
+
+/** Update a conversation's title. */
+export const updateConversationTitle = async (
+  conversationId: string,
+  userId: string,
+  title: string,
+): Promise<boolean> => {
+  const updated = await withRetry(() =>
+    db
+      .update(chatConversations)
+      .set({ title, updatedAt: new Date() })
+      .where(
+        and(
+          eq(chatConversations.id, conversationId),
+          eq(chatConversations.userId, userId),
+        ),
+      )
+      .returning({ id: chatConversations.id })
+  );
+  return updated.length > 0;
+};

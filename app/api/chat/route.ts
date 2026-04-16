@@ -32,6 +32,7 @@ const chatRequestSchema = z.object({
   conversationId: z.string().uuid().optional(),
   formContext: productAssistantFormContextSchema.optional(),
   messages: z.array(z.unknown()),
+  modelId: z.string().optional(),
   productId: z.string().uuid().optional(),
 });
 
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
     conversationId,
     formContext,
     messages: inputMessages,
+    modelId,
     productId,
   } = parsedBody.data;
   const validatedMessages = await safeValidateUIMessages<ProductAssistantUIMessage>({
@@ -114,8 +116,9 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPrompt(formContext);
 
   try {
+    const selectedModel = modelId || "claude-sonnet-4-20250514";
     const result = streamText({
-      model: anthropic("claude-opus-4-6"),
+      model: anthropic(selectedModel),
       providerOptions: {
         anthropic: {
           effort: "medium",
