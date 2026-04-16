@@ -184,7 +184,7 @@ export function AgentAnchorBar() {
           <Select
             value={thinkingEffort}
             onValueChange={(v) =>
-              setThinkingEffort(v as "low" | "medium" | "high")
+              setThinkingEffort(v as "low" | "medium" | "high" | "max")
             }
           >
             <SelectTrigger className="h-7 w-auto gap-1 border-[#444] bg-[#222] px-2 text-[10px] text-[#999]">
@@ -194,6 +194,7 @@ export function AgentAnchorBar() {
               <SelectItem value="low" className="text-xs text-[#ccc]">Low</SelectItem>
               <SelectItem value="medium" className="text-xs text-[#ccc]">Medium</SelectItem>
               <SelectItem value="high" className="text-xs text-[#ccc]">High</SelectItem>
+              <SelectItem value="max" className="text-xs text-[#ccc]">Max</SelectItem>
             </SelectContent>
           </Select>
         )}

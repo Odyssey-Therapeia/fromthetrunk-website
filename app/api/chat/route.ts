@@ -38,7 +38,7 @@ const chatRequestSchema = z.object({
   modelId: z.string().optional(),
   productId: z.string().uuid().optional(),
   thinkingEnabled: z.boolean().optional(),
-  thinkingEffort: z.enum(["low", "medium", "high"]).optional(),
+  thinkingEffort: z.enum(["low", "medium", "high", "max"]).optional(),
 });
 
 export async function POST(req: Request) {
@@ -166,9 +166,10 @@ export async function POST(req: Request) {
     const result = streamText({
       model: anthropic(selectedModel),
       providerOptions: {
-        anthropic: thinkingEnabled
-          ? { effort: thinkingEffort, thinking: { type: "adaptive" } }
-          : {},
+        anthropic: {
+          effort: thinkingEffort,
+          ...(thinkingEnabled && { thinking: { type: "adaptive" as const } }),
+        },
       },
       system: systemPrompt,
       messages: await convertToModelMessages(validatedMessages.data, {

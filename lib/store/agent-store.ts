@@ -14,7 +14,7 @@ export type AgentPanelState = {
   /** Whether extended thinking is enabled */
   thinkingEnabled: boolean;
   /** Thinking effort level */
-  thinkingEffort: "low" | "medium" | "high";
+  thinkingEffort: "low" | "medium" | "high" | "max";
   /** Messages to hydrate when switching to an existing conversation */
   pendingMessages: unknown[] | null;
   /** Admin name for personalized greeting */
@@ -27,7 +27,7 @@ export type AgentPanelState = {
   anchorProduct: (productId: string | null, productName?: string | null) => void;
   setModelId: (modelId: string) => void;
   setThinkingEnabled: (enabled: boolean) => void;
-  setThinkingEffort: (effort: "low" | "medium" | "high") => void;
+  setThinkingEffort: (effort: "low" | "medium" | "high" | "max") => void;
   /** Clear messages and start fresh */
   newChat: () => void;
   /** Load an existing conversation -- sets ID, messages, and remounts */
