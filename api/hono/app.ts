@@ -4,9 +4,12 @@ import { cors } from "hono/cors";
 
 import { authMiddleware } from "@/api/hono/middleware/auth";
 import { registerAddressRoutes } from "@/api/hono/routes/addresses";
+import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard";
+import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
 import { registerAdminOrderRoutes } from "@/api/hono/routes/admin-orders";
 import { registerCartRoutes } from "@/api/hono/routes/cart";
 import { registerCollectionRoutes } from "@/api/hono/routes/collections";
+import { registerConversationRoutes } from "@/api/hono/routes/conversations";
 import { registerCronRoutes } from "@/api/hono/routes/cron";
 import { registerGlobalRoutes } from "@/api/hono/routes/globals";
 import { registerMediaRoutes } from "@/api/hono/routes/media";
@@ -91,9 +94,21 @@ const cronApp = new OpenAPIHono<HonoBindings>();
 registerCronRoutes(cronApp);
 app.route("/cron", cronApp);
 
+const adminDashboardApp = new OpenAPIHono<HonoBindings>();
+registerAdminDashboardRoutes(adminDashboardApp);
+app.route("/admin/dashboard", adminDashboardApp);
+
+const adminImportApp = new OpenAPIHono<HonoBindings>();
+registerAdminImportRoutes(adminImportApp);
+app.route("/admin/import", adminImportApp);
+
 const adminOrdersApp = new OpenAPIHono<HonoBindings>();
 registerAdminOrderRoutes(adminOrdersApp);
 app.route("/admin/orders", adminOrdersApp);
+
+const conversationsApp = new OpenAPIHono<HonoBindings>();
+registerConversationRoutes(conversationsApp);
+app.route("/conversations", conversationsApp);
 
 app.onError((error, c) => {
   console.error("[hono:v2]", error);
