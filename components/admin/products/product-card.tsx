@@ -155,6 +155,11 @@ function ProductImageFrame({
   const imageCount = product.imageCount ?? (product.thumbnailUrl ? 1 : 0);
   const isGallery = mode === "gallery";
   const isCompact = mode === "compact";
+  const imageSizes = isGallery
+    ? "(max-width: 768px) 100vw, (max-width: 1536px) 50vw, 33vw"
+    : isCompact
+      ? "(max-width: 768px) 50vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+      : "(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw";
 
   return (
     <Link href={`/admin/products/${product.id}`} className="block">
@@ -170,13 +175,7 @@ function ProductImageFrame({
             alt={product.name}
             fill
             className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.035]"
-            sizes={
-              isGallery
-                ? "33vw"
-                : isCompact
-                  ? "180px"
-                  : "260px"
-            }
+            sizes={imageSizes}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -336,7 +335,7 @@ export function ProductListRow({
             alt={product.name}
             fill
             className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-            sizes="96px"
+            sizes="(max-width: 760px) 88px, 72px"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">

@@ -22,6 +22,7 @@ import {
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import type { Collection, Product } from "@/types/domain";
 import type { CollectionPageContent } from "@/types/site-content";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -191,11 +192,12 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 <Link
                   href={buildCollectionUrl({ collectionSlug: undefined })}
-                  className={`shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition ${
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition",
                     !activeCollectionSlug
                       ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
-                      : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
-                  }`}
+                      : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground",
+                  )}
                 >
                   All
                 </Link>
@@ -203,11 +205,12 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
                   <Link
                     key={collection.id}
                     href={buildCollectionUrl({ collectionSlug: collection.slug })}
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition ${
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition",
                       activeCollectionSlug === collection.slug
                         ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
-                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
-                    }`}
+                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground",
+                    )}
                   >
                     {collection.name}
                   </Link>
@@ -226,12 +229,13 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
                 {PRODUCT_SORT_OPTIONS.map((option) => (
                   <Link
                     key={option.value}
-                    href={buildCollectionUrl({ sort: option.value })}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.14em] transition ${
+                    href={buildCollectionUrl({ page: 1, sort: option.value })}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.14em] transition",
                       activeSort === option.value
                         ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
-                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
-                    }`}
+                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground",
+                    )}
                   >
                     <span>{option.label}</span>
                     {activeSort === option.value ? (
