@@ -28,10 +28,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-import type { ProductStepperMedia } from "./types";
+import type { ProductStepperMedia, ProductStepperValues } from "./types";
+
+type StepPhotosForm = {
+  setFieldValue: (field: "imageMediaIds", value: string[]) => void;
+  state: {
+    values: Pick<ProductStepperValues, "imageMediaIds">;
+  };
+};
 
 type StepPhotosProps = {
-  form: any;
+  form: StepPhotosForm;
   setUploaded: Dispatch<SetStateAction<ProductStepperMedia[]>>;
   uploaded: ProductStepperMedia[];
 };
@@ -61,7 +68,7 @@ export function StepPhotos({
   const [mediaLibrary, setMediaLibrary] = useState<ProductStepperMedia[]>([]);
 
   const imageMediaIds = useMemo(
-    () => (form.state.values.imageMediaIds ?? []) as string[],
+    () => form.state.values.imageMediaIds ?? [],
     [form.state.values.imageMediaIds]
   );
 

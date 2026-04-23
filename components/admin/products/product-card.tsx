@@ -81,8 +81,8 @@ function ProductStatusBadges({ product }: { product: ProductListItem }) {
           className={cn(
             "h-6 rounded-full bg-background/80 px-2 text-[10px] uppercase tracking-wider backdrop-blur-sm",
             product.stockStatus === "reserved"
-              ? "border-amber-300 text-amber-700"
-              : "border-red-300 text-red-700",
+              ? "border-primary/35 text-primary"
+              : "border-destructive/35 text-destructive",
           )}
         >
           {product.stockStatus}
@@ -172,10 +172,10 @@ function ProductImageFrame({
             className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.035]"
             sizes={
               isGallery
-                ? "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                ? "33vw"
                 : isCompact
-                  ? "(max-width: 768px) 50vw, 16vw"
-                  : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  ? "180px"
+                  : "260px"
             }
           />
         ) : (
@@ -232,7 +232,7 @@ export function ProductCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border/70 bg-card/90 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg motion-safe:hover:-translate-y-0.5",
+        "@container group relative overflow-hidden rounded-xl border border-border/70 bg-card/90 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg motion-safe:hover:-translate-y-0.5",
         isCompact && "rounded-lg",
         isGallery && "rounded-2xl",
         isSelected && "border-primary/70 shadow-md ring-2 ring-primary/25",
@@ -314,7 +314,7 @@ export function ProductListRow({
   return (
     <div
       className={cn(
-        "group grid grid-cols-[auto_88px_minmax(0,1fr)] items-center gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md md:grid-cols-[auto_72px_minmax(220px,1fr)_130px_140px_132px]",
+        "@container group grid grid-cols-[auto_88px_minmax(0,1fr)] items-center gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md @[760px]:grid-cols-[auto_72px_minmax(220px,1fr)_130px_140px_132px]",
         isSelected && "border-primary/70 ring-2 ring-primary/25",
       )}
     >
@@ -328,7 +328,7 @@ export function ProductListRow({
 
       <Link
         href={`/admin/products/${product.id}`}
-        className="relative h-24 w-[88px] overflow-hidden rounded-lg bg-muted/30 md:h-[88px] md:w-[72px]"
+        className="relative h-24 w-[88px] overflow-hidden rounded-lg bg-muted/30 @[760px]:h-[88px] @[760px]:w-[72px]"
       >
         {product.thumbnailUrl ? (
           <Image
@@ -355,21 +355,21 @@ export function ProductListRow({
         <p className="truncate text-xs text-muted-foreground">
           {product.coverImageFilename ?? "Cover image missing"}
         </p>
-        <div className="flex flex-wrap gap-1 md:hidden">
+        <div className="flex flex-wrap gap-1 @[760px]:hidden">
           <ProductStatusBadges product={product} />
         </div>
       </div>
 
-      <div className="hidden items-center md:flex">
+      <div className="hidden items-center @[760px]:flex">
         <ProductStatusBadges product={product} />
       </div>
 
-      <div className="col-span-2 col-start-2 flex items-center justify-between gap-3 md:col-auto md:block">
+      <div className="col-span-2 col-start-2 flex items-center justify-between gap-3 @[760px]:col-auto @[760px]:block">
         <p className="text-sm font-semibold">{formatINR(product.pricePaise)}</p>
         <p className="text-xs text-muted-foreground">{getImageCountLabel(imageCount)}</p>
       </div>
 
-      <div className="col-span-3 flex items-center justify-end md:col-auto">
+      <div className="col-span-3 flex items-center justify-end @[760px]:col-auto">
         <ProductActions product={product} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>

@@ -104,9 +104,9 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:space-y-12 lg:py-14">
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:items-start">
-        <ScrollReveal className="relative isolate min-h-[400px] overflow-hidden rounded-[1.75rem] border border-border/60 bg-trunk-brown shadow-soft">
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:space-y-7 sm:px-6 sm:py-9 lg:space-y-4 lg:py-6">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:items-start">
+        <ScrollReveal className="relative isolate min-h-[400px] overflow-hidden rounded-[1.75rem] border border-border/60 bg-trunk-brown shadow-soft lg:min-h-[320px]">
           <Image
             src={heroPreviewImage}
             alt={previewImages[0]?.name ?? "Sunlit garden saree curation"}
@@ -118,38 +118,38 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(38,24,17,0.92)_0%,rgba(55,31,22,0.76)_48%,rgba(35,22,16,0.2)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/50 to-transparent" />
 
-          <div className="relative flex min-h-[400px] flex-col justify-between p-5 text-white sm:p-8">
-            <div className="max-w-2xl space-y-4">
+          <div className="relative flex min-h-[400px] flex-col justify-between p-5 text-white sm:p-8 lg:min-h-[320px] lg:p-7">
+            <div className="max-w-2xl space-y-4 lg:space-y-3">
               <p className="text-xs uppercase tracking-[0.46em] text-amber-100/75">
                 {cms?.eyebrow ?? "The Collection"}
               </p>
-              <h1 className="max-w-3xl font-serif text-4xl leading-[1.05] text-white sm:text-5xl lg:text-6xl">
+              <h1 className="max-w-3xl font-serif text-4xl leading-[1.05] text-white sm:text-5xl">
                 {cms?.title ?? "Curated pre-loved sarees"}
               </h1>
-              <p className="max-w-xl text-sm leading-7 text-amber-50/85 sm:text-base">
+              <p className="max-w-xl text-sm leading-7 text-amber-50/85 sm:text-base lg:leading-6">
                 {cms?.description ??
                   "Discover heirlooms from private wardrobes, couture archives, and collector trunks. Each piece is authenticated and accompanied by its story."}
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
-              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4">
+              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
                   Live pieces
                 </p>
-                <p className="mt-3 font-serif text-3xl text-white">{totalDocs}</p>
+                <p className="mt-2 font-serif text-3xl text-white">{totalDocs}</p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4">
+              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
                   Edits
                 </p>
-                <p className="mt-3 font-serif text-3xl text-white">{collectionCount}</p>
+                <p className="mt-2 font-serif text-3xl text-white">{collectionCount}</p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4">
+              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
                   View
                 </p>
-                <p className="mt-3 line-clamp-2 text-sm font-medium text-white">
+                <p className="mt-2 line-clamp-2 text-sm font-medium text-white">
                   {activeCollectionLabel}
                 </p>
               </div>
@@ -159,9 +159,9 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
 
         <ScrollReveal
           delay={0.1}
-          className="rounded-[1.5rem] border border-border/60 bg-card/90 p-4 shadow-soft backdrop-blur sm:p-5"
+          className="rounded-[1.5rem] border border-border/60 bg-card/90 p-4 shadow-soft backdrop-blur"
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
                 Curated filters
@@ -169,14 +169,14 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
               <h2 className="font-serif text-2xl text-foreground">
                 {activeCollection?.name ?? cms?.filtersTitle ?? "Browse by collection"}
               </h2>
-              <p className="text-sm leading-6 text-muted-foreground">{filterDescription}</p>
+              <p className="text-sm leading-5 text-muted-foreground">{filterDescription}</p>
             </div>
 
-            <div className="rounded-2xl border border-border/60 bg-background/80 p-3.5">
+            <div className="rounded-2xl border border-border/60 bg-background/80 p-3 lg:hidden 2xl:block">
               <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
                 Curation note
               </p>
-              <p className="mt-2 text-sm leading-6 text-foreground">
+              <p className="mt-1.5 text-sm leading-5 text-foreground">
                 Authenticated pieces, photographed in detail, and released in small drops.
               </p>
             </div>
@@ -191,7 +191,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 <Link
                   href={buildCollectionUrl({ collectionSlug: undefined })}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition ${
+                  className={`shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition ${
                     !activeCollectionSlug
                       ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
                       : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
@@ -203,7 +203,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
                   <Link
                     key={collection.id}
                     href={buildCollectionUrl({ collectionSlug: collection.slug })}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition ${
+                    className={`shrink-0 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] transition ${
                       activeCollectionSlug === collection.slug
                         ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
                         : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
@@ -227,7 +227,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
                   <Link
                     key={option.value}
                     href={buildCollectionUrl({ sort: option.value })}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.14em] transition ${
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.14em] transition ${
                       activeSort === option.value
                         ? "border-trunk-gold/60 bg-trunk-gold/15 text-foreground shadow-sm"
                         : "border-border/70 bg-background/70 text-muted-foreground hover:border-trunk-gold/40 hover:text-foreground"
@@ -242,7 +242,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
               </div>
             </div>
 
-            <p className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <p className="rounded-xl bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
               Showing {items.length} of {totalDocs} curated piece{totalDocs === 1 ? "" : "s"},
               sorted by {activeSortLabel.toLowerCase()}.
             </p>
@@ -250,7 +250,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
         </ScrollReveal>
       </section>
 
-      <section className="flex flex-col gap-3 border-y border-border/60 py-4 sm:flex-row sm:items-end sm:justify-between">
+      <section className="flex flex-col gap-3 border-y border-border/60 py-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
             Current edit

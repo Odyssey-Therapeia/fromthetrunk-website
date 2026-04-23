@@ -73,9 +73,9 @@ const sortProducts = (
       return next.sort((a, b) => (b.imageCount ?? 0) - (a.imageCount ?? 0));
     case "missing-cover-first":
       return next.sort((a, b) => {
-        const aMissing = a.thumbnailUrl ? 1 : 0;
-        const bMissing = b.thumbnailUrl ? 1 : 0;
-        return aMissing - bMissing || a.name.localeCompare(b.name);
+        const aHasCover = a.coverImageFilename ? 1 : 0;
+        const bHasCover = b.coverImageFilename ? 1 : 0;
+        return aHasCover - bHasCover || a.name.localeCompare(b.name);
       });
     default:
       return next.sort((a, b) => toCreatedAtTime(b) - toCreatedAtTime(a));
@@ -134,7 +134,7 @@ export default function AdminProductsPage() {
       return baseProducts.filter((product) => product.imageCount > 0);
     }
     if (imageFilter === "missing-cover") {
-      return baseProducts.filter((product) => !product.thumbnailUrl);
+      return baseProducts.filter((product) => !product.coverImageFilename);
     }
     return baseProducts;
   }, [baseProducts, imageFilter]);
@@ -145,7 +145,7 @@ export default function AdminProductsPage() {
   const stats = useMemo(
     () => ({
       drafts: baseProducts.filter((product) => product.status === "draft").length,
-      missingCover: baseProducts.filter((product) => !product.thumbnailUrl).length,
+      missingCover: baseProducts.filter((product) => !product.coverImageFilename).length,
       published: baseProducts.filter((product) => product.status === "published").length,
       total: baseProducts.length,
     }),

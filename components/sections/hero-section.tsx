@@ -72,6 +72,7 @@ export function HeroSection({ content }: HeroSectionProps) {
           src={content?.heroImage ?? fallbackHeroImage}
           alt="Two women in sarees walking through a sunlit garden"
           fill
+          sizes="100vw"
           priority
           placeholder="blur"
           blurDataURL={heroBlurDataURL}

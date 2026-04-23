@@ -56,6 +56,17 @@ const buildWhere = (clauses: SQL<unknown>[]) => {
   return and(...clauses);
 };
 
+const getProductSortOrder = (sort: ProductSortOption): SQL<unknown>[] => {
+  switch (sort) {
+    case "price-low-to-high":
+      return [asc(products.pricePaise), desc(products.createdAt)];
+    case "price-high-to-low":
+      return [desc(products.pricePaise), desc(products.createdAt)];
+    default:
+      return [desc(products.createdAt)];
+  }
+};
+
 const hydrateProducts = async (rows: ProductRecord[]): Promise<ProductWithRelations[]> => {
   if (rows.length === 0) return [];
 
@@ -164,14 +175,7 @@ export const listProducts = async (options: ListProductsOptions = {}): Promise<{
         .limit(limit)
         .offset(offset);
 
-      switch (sort) {
-        case "price-low-to-high":
-          return query.orderBy(asc(products.pricePaise), desc(products.createdAt));
-        case "price-high-to-low":
-          return query.orderBy(desc(products.pricePaise), desc(products.createdAt));
-        default:
-          return query.orderBy(desc(products.createdAt));
-      }
+      return query.orderBy(...getProductSortOrder(sort));
     }),
     withRetry(() =>
       db
@@ -306,14 +310,7 @@ export const getProductsByCollection = async (
         .limit(limit)
         .offset(offset);
 
-      switch (sort) {
-        case "price-low-to-high":
-          return query.orderBy(asc(products.pricePaise), desc(products.createdAt));
-        case "price-high-to-low":
-          return query.orderBy(desc(products.pricePaise), desc(products.createdAt));
-        default:
-          return query.orderBy(desc(products.createdAt));
-      }
+      return query.orderBy(...getProductSortOrder(sort));
     }),
     withRetry(() =>
       db

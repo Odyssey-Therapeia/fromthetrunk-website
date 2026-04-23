@@ -90,9 +90,9 @@ export function ProductsToolbar({
   onViewModeChange,
 }: ProductsToolbarProps) {
   return (
-    <div className="space-y-3">
+    <div className="@container space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1 lg:max-w-[420px]">
+        <div className="relative min-w-[220px] flex-1 @[900px]:max-w-[420px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -202,7 +202,7 @@ export function ProductsToolbar({
             );
           })}
         </div>
-        <p className="hidden shrink-0 pr-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground sm:block">
+        <p className="hidden shrink-0 pr-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground @[560px]:block">
           {viewOptions.find((option) => option.value === viewMode)?.label} view
         </p>
       </div>
