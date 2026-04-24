@@ -1,4 +1,8 @@
-import { getCollectionBySlug, listCollections } from "@/db/queries/collections";
+import {
+  getCollectionBySlug,
+  listCollections,
+  listCollectionsWithProducts,
+} from "@/db/queries/collections";
 import {
   getFeaturedProducts as getFeaturedProductsQuery,
   getProductBySlug as getProductBySlugQuery,
@@ -12,6 +16,7 @@ import type { Product } from "@/types/domain";
 
 type QueryOptions = {
   includeDrafts?: boolean;
+  onlyWithProducts?: boolean;
   page?: number;
   sort?: ProductSortOption;
 };
@@ -23,8 +28,10 @@ export const getGlobals = async (slug: string, options: QueryOptions = {}) => {
 };
 
 export const getCollections = async (options: QueryOptions = {}) => {
-  void options;
-  const docs = (await listCollections()).sort((a, b) => a.name.localeCompare(b.name));
+  const docs = (await (options.onlyWithProducts
+    ? listCollectionsWithProducts({ includeDrafts: options.includeDrafts })
+    : listCollections()
+  )).sort((a, b) => a.name.localeCompare(b.name));
   return {
     docs,
     totalDocs: docs.length,

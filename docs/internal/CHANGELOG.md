@@ -1,5 +1,38 @@
 # FTT Changelog
 
+## 2026-04-24 — v0.25.0, The Showroom Release
+
+### Fixed
+
+- **Public draft exposure** — Anonymous product API requests now ignore
+  `includeDrafts=true`, and public product detail lookups no longer return draft
+  items.
+- **Missing product status** — Unknown `/collection/[slug]` URLs now return a
+  real HTTP 404 before product detail streaming can produce a soft 200.
+- **Empty collection chips** — Storefront collection filters now only show edits
+  that have visible products, so shoppers do not land on empty shelves.
+- **Mobile menu accessibility** — Added the missing sheet title for the
+  storefront mobile menu.
+- **Product editor autosave** — The admin editor now skips autosave when nothing
+  has changed, preventing unchanged products from being PATCHed every 30 seconds.
+
+### Updated
+
+- **Collection page mobile polish** — Tightened the hero typography, promo bar,
+  stat cards, and mobile text wrapping after visual QA.
+- **Admin release experience** — Added an internal version badge and once-per-
+  version update dialog for admin users.
+- **Dashboard release surface** — Added a compact "Latest update" panel so the
+  team can quickly see what changed after each launch.
+
+### QA Evidence
+
+- Unit tests: `120` passed.
+- Build: `next build` passed.
+- Browser QA: storefront collection desktop/mobile, real 404, public draft
+  visibility, admin release popup, product view modes, search, and product-editor
+  autosave probe passed.
+
 ## 2026-04-05 — Site Feedback Fixes (sprint-abe)
 
 Based on team feedback from Diya, Dr. Meena, and Grace on the live site

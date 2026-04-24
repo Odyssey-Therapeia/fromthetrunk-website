@@ -219,6 +219,26 @@ export const getProductBySlug = async (
   return null;
 };
 
+export const productSlugExists = async (
+  slug: string,
+  options: Pick<ListProductsOptions, "includeDrafts"> = {}
+): Promise<boolean> => {
+  const candidates = [...new Set([slug, slugify(slug)])];
+
+  for (const candidate of candidates) {
+    const whereClause = buildWhere([
+      eq(products.slug, candidate),
+      ...(options.includeDrafts ? [] : [eq(products.status, "published")]),
+    ]);
+    const [row] = await withRetry(() =>
+      db.select({ id: products.id }).from(products).where(whereClause).limit(1)
+    );
+    if (row) return true;
+  }
+
+  return false;
+};
+
 export const getFeaturedProducts = async (
   options: ListProductsOptions = {}
 ): Promise<ProductWithRelations[]> => {

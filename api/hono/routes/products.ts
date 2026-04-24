@@ -30,6 +30,11 @@ const parseDate = (value: null | string | undefined) => {
   return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
+const canIncludeDrafts = (c: Parameters<typeof requireAdmin>[0], requested: boolean) => {
+  if (!requested) return false;
+  return !(requireAdmin(c) instanceof Response);
+};
+
 export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
   // Lightweight admin-only product lookup by ID (for agent panel auto-anchor)
   app.openapi(
@@ -76,8 +81,9 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
     }),
     async (c) => {
       const query = c.req.valid("query");
+      const includeDrafts = canIncludeDrafts(c, Boolean(query.includeDrafts));
       const { rows: products } = await listProducts({
-        includeDrafts: Boolean(query.includeDrafts),
+        includeDrafts,
         limit: query.limit ?? 200,
         offset: query.offset ?? 0,
       });
@@ -173,7 +179,7 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const params = c.req.valid("param");
 
-      const product = await getProductBySlug(params.slug, { includeDrafts: true });
+      const product = await getProductBySlug(params.slug, { includeDrafts: false });
       if (!product) {
         return c.json(
           {

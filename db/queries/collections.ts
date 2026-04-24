@@ -1,8 +1,8 @@
-import { desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNotNull } from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
 import { getFirstRow, requireFirstRow } from "@/db/results";
-import { collections, mediaAssets } from "@/db/schema";
+import { collections, mediaAssets, products } from "@/db/schema";
 
 type CollectionRecord = InferSelectModel<typeof collections>;
 type MediaRecord = InferSelectModel<typeof mediaAssets>;
@@ -46,6 +46,44 @@ export const listCollections = async (limit = 100, offset = 0): Promise<Collecti
     db
       .select()
       .from(collections)
+      .orderBy(desc(collections.createdAt))
+      .limit(limit)
+      .offset(offset)
+  );
+
+  return hydrateCollections(rows);
+};
+
+export const listCollectionsWithProducts = async ({
+  includeDrafts = false,
+  limit = 100,
+  offset = 0,
+}: {
+  includeDrafts?: boolean;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<CollectionWithHeroMedia[]> => {
+  const productCollectionRows = await withRetry(() =>
+    db
+      .selectDistinct({ collectionId: products.collectionId })
+      .from(products)
+      .where(
+        includeDrafts
+          ? isNotNull(products.collectionId)
+          : and(eq(products.status, "published"), isNotNull(products.collectionId))
+      )
+  );
+  const collectionIds = productCollectionRows
+    .map((row) => row.collectionId)
+    .filter((value): value is string => Boolean(value));
+
+  if (collectionIds.length === 0) return [];
+
+  const rows = await withRetry(() =>
+    db
+      .select()
+      .from(collections)
+      .where(inArray(collections.id, collectionIds))
       .orderBy(desc(collections.createdAt))
       .limit(limit)
       .offset(offset)

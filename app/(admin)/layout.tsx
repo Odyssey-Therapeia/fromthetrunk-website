@@ -6,7 +6,9 @@ import "../globals.css";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminTopBar } from "@/components/admin/top-bar";
 import { AgentPanelProvider } from "@/components/admin/agent-panel/agent-panel-provider";
+import { ReleaseAnnouncementDialog } from "@/components/admin/release-announcement-dialog";
 import { Providers } from "@/components/providers";
+import { currentAdminRelease } from "@/lib/admin/releases";
 import { getServerAuthSession } from "@/lib/auth/get-session";
 
 const sans = Inter({
@@ -28,6 +30,7 @@ export default async function AdminLayout({
   }
 
   const user = {
+    id: session.user.id,
     name: session.user.name ?? null,
     email: session.user.email ?? null,
     image: session.user.image ?? null,
@@ -50,6 +53,10 @@ export default async function AdminLayout({
               </div>
             </div>
           </div>
+          <ReleaseAnnouncementDialog
+            adminId={user.id}
+            release={currentAdminRelease}
+          />
           <AgentPanelProvider />
         </Providers>
       </body>

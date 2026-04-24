@@ -44,30 +44,59 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
   const { isEnabled: includeDrafts } = await draftMode();
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const collectionQuery = resolvedSearchParams?.collection;
-  const activeCollectionSlug = Array.isArray(collectionQuery)
+  const requestedCollectionSlug = Array.isArray(collectionQuery)
     ? collectionQuery[0]
     : collectionQuery;
   const activeSort = parseProductSort(resolvedSearchParams?.sort);
   const currentPage = Math.max(1, parseInt(resolvedSearchParams?.page ?? "1", 10));
 
-  const [collectionPage, collectionsResult, productsResult] = await Promise.all([
-    getGlobals("collectionPage", { includeDrafts }),
-    getCollections({ includeDrafts }),
-    activeCollectionSlug
-      ? getProductsByCollection(activeCollectionSlug, ITEMS_PER_PAGE, {
-          includeDrafts,
-          page: currentPage,
-          sort: activeSort,
-        })
-      : getProducts(ITEMS_PER_PAGE, { includeDrafts, page: currentPage, sort: activeSort }),
+  const collectionPagePromise = getGlobals("collectionPage", { includeDrafts });
+  const visibleCollectionsPromise = getCollections({
+    includeDrafts,
+    onlyWithProducts: true,
+  });
+  const allCollectionsPromise = requestedCollectionSlug
+    ? getCollections({ includeDrafts })
+    : visibleCollectionsPromise;
+  const defaultProductsPromise = requestedCollectionSlug
+    ? null
+    : getProducts(ITEMS_PER_PAGE, {
+        includeDrafts,
+        page: currentPage,
+        sort: activeSort,
+      });
+  const [
+    collectionPage,
+    visibleCollectionsResult,
+    allCollectionsResult,
+    defaultProductsResult,
+  ] = await Promise.all([
+    collectionPagePromise,
+    visibleCollectionsPromise,
+    allCollectionsPromise,
+    defaultProductsPromise,
   ]);
 
   const cms = collectionPage as CollectionPageContent | null;
-  const items = (productsResult?.docs ?? []) as Product[];
-  const collections = (collectionsResult?.docs ?? []) as Collection[];
-  const activeCollection = collections.find(
-    (collection) => collection.slug === activeCollectionSlug
+  const collections = (visibleCollectionsResult?.docs ?? []) as Collection[];
+  const allCollections = (allCollectionsResult?.docs ?? []) as Collection[];
+  const activeCollection = allCollections.find(
+    (collection) => collection.slug === requestedCollectionSlug
   );
+  const activeCollectionSlug = activeCollection?.slug;
+  const productsResult = activeCollectionSlug
+    ? await getProductsByCollection(activeCollectionSlug, ITEMS_PER_PAGE, {
+        includeDrafts,
+        page: currentPage,
+        sort: activeSort,
+      })
+    : defaultProductsResult ??
+      (await getProducts(ITEMS_PER_PAGE, {
+        includeDrafts,
+        page: currentPage,
+        sort: activeSort,
+      }));
+  const items = (productsResult?.docs ?? []) as Product[];
 
   const totalDocs = (productsResult as { totalDocs?: number })?.totalDocs ?? items.length;
   const totalPages = Math.ceil(totalDocs / ITEMS_PER_PAGE);
@@ -107,7 +136,7 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:space-y-7 sm:px-6 sm:py-9 lg:space-y-4 lg:py-6">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:items-start">
-        <ScrollReveal className="relative isolate min-h-[400px] overflow-hidden rounded-[1.75rem] border border-border/60 bg-trunk-brown shadow-soft lg:min-h-[320px]">
+        <ScrollReveal className="relative isolate min-h-[430px] overflow-hidden rounded-[1.75rem] border border-border/60 bg-trunk-brown shadow-soft sm:min-h-[400px] lg:min-h-[320px]">
           <Image
             src={heroPreviewImage}
             alt={previewImages[0]?.name ?? "Sunlit garden saree curation"}
@@ -116,38 +145,38 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
             sizes="(max-width: 1024px) 100vw, 60vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(38,24,17,0.92)_0%,rgba(55,31,22,0.76)_48%,rgba(35,22,16,0.2)_100%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-foreground/90 via-foreground/70 to-foreground/35 lg:bg-gradient-to-r" />
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/50 to-transparent" />
 
-          <div className="relative flex min-h-[400px] flex-col justify-between p-5 text-white sm:p-8 lg:min-h-[320px] lg:p-7">
+          <div className="relative flex min-h-[430px] flex-col justify-between gap-8 p-5 text-white sm:min-h-[400px] sm:p-8 lg:min-h-[320px] lg:p-7">
             <div className="max-w-2xl space-y-4 lg:space-y-3">
-              <p className="text-xs uppercase tracking-[0.46em] text-amber-100/75">
+              <p className="text-xs uppercase tracking-[0.32em] text-primary-foreground/75 sm:tracking-[0.46em]">
                 {cms?.eyebrow ?? "The Collection"}
               </p>
-              <h1 className="max-w-3xl font-serif text-4xl leading-[1.05] text-white sm:text-5xl">
+              <h1 className="max-w-[14ch] text-balance font-serif text-3xl leading-[1.08] text-white sm:max-w-3xl sm:text-5xl">
                 {cms?.title ?? "Curated pre-loved sarees"}
               </h1>
-              <p className="max-w-xl text-sm leading-7 text-amber-50/85 sm:text-base lg:leading-6">
+              <p className="max-w-[30ch] text-pretty text-sm leading-6 text-primary-foreground/85 sm:max-w-xl sm:text-base lg:leading-6">
                 {cms?.description ??
                   "Discover heirlooms from private wardrobes, couture archives, and collector trunks. Each piece is authenticated and accompanied by its story."}
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:max-w-xl sm:grid-cols-3 sm:gap-3">
               <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/65 sm:tracking-[0.24em]">
                   Live pieces
                 </p>
                 <p className="mt-2 font-serif text-3xl text-white">{totalDocs}</p>
               </div>
               <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/65 sm:tracking-[0.24em]">
                   Edits
                 </p>
                 <p className="mt-2 font-serif text-3xl text-white">{collectionCount}</p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:p-4 lg:p-3">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/65">
+              <div className="col-span-2 rounded-2xl border border-white/20 bg-white/14 p-3 backdrop-blur-md sm:col-span-1 sm:p-4 lg:p-3">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/65 sm:tracking-[0.24em]">
                   View
                 </p>
                 <p className="mt-2 line-clamp-2 text-sm font-medium text-white">

@@ -174,3 +174,23 @@ describe("Product gallery UX fix", () => {
     );
   });
 });
+
+describe("Public storefront QA regressions", () => {
+  const collectionPage = readSource("app/(site)/collection/page.tsx");
+  const productPage = readSource("app/(site)/collection/[slug]/page.tsx");
+  const siteHeader = readSource("components/layout/site-header.tsx");
+
+  it("collection filter chips are sourced only from collections with products", () => {
+    expect(collectionPage).toContain("onlyWithProducts: true");
+  });
+
+  it("missing product pages explicitly return notFound", () => {
+    expect(productPage).toContain("return notFound();");
+  });
+
+  it("mobile menu sheet has a visually hidden title", () => {
+    expect(siteHeader).toContain("SheetTitle");
+    expect(siteHeader).toContain("sr-only");
+    expect(siteHeader).toContain("Mobile navigation");
+  });
+});
