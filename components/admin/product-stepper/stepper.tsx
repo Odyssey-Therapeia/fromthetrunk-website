@@ -13,6 +13,7 @@ import { useAgentStore } from "@/lib/store/agent-store";
 import { slugify } from "@/lib/utils";
 
 import { LivePreviewCard } from "./live-preview-card";
+import { hasStepperChanges, serializeStepperValues } from "./autosave";
 import { StepDetails } from "./step-details";
 import { StepPhotos } from "./step-photos";
 import { StepPreview } from "./step-preview";
@@ -57,10 +58,16 @@ export function ProductStepper({
     }),
     [initialValues]
   );
+  const lastPersistedSnapshotRef = useRef(serializeStepperValues(mergedInitialValues));
+
+  useEffect(() => {
+    lastPersistedSnapshotRef.current = serializeStepperValues(mergedInitialValues);
+  }, [mergedInitialValues]);
 
   const persistProduct = useCallback(async (values: ProductStepperValues, forceDraft: boolean) => {
     setIsSaving(true);
     setSaveState("Saving...");
+    const currentSnapshot = serializeStepperValues(values);
 
     const payload = {
       collectionId: values.collectionId.trim() || null,
@@ -123,6 +130,7 @@ export function ProductStepper({
         router.replace(`/admin/products/${data.id}`);
       }
 
+      lastPersistedSnapshotRef.current = currentSnapshot;
       setSaveState(forceDraft ? "Draft auto-saved" : "Saved");
       if (forceDraft) {
         toast.success("Draft auto-saved.", { duration: 1200 });
@@ -158,6 +166,9 @@ export function ProductStepper({
 
   useEffect(() => {
     const id = window.setInterval(() => {
+      if (!hasStepperChanges(form.state.values, lastPersistedSnapshotRef.current)) {
+        return;
+      }
       void persistProduct(form.state.values, true);
     }, 30_000);
 
@@ -223,7 +234,7 @@ export function ProductStepper({
 
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            {isSaving ? "Saving..." : saveState ?? "Changes auto-save every 30 seconds"}
+            {isSaving ? "Saving..." : saveState ?? "Changes auto-save after edits"}
           </div>
           <div className="flex gap-2">
             <Button

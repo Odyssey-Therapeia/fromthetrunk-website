@@ -63,7 +63,7 @@ export default async function SareePage({ params }: ProductPageProps) {
   const rawProduct = await getProductBySlug(slug, { includeDrafts });
 
   if (!rawProduct) {
-    notFound();
+    return notFound();
   }
 
   const product = rawProduct as Product;

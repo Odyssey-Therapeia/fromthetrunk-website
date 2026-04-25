@@ -5,6 +5,7 @@ import { Menu, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { AppVersionBadge } from "@/components/admin/app-version-badge";
 import { adminNavItems, adminBottomNavItems } from "@/components/admin/nav-items";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +68,10 @@ export function AdminMobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-[85vw] border-border/70 bg-card/95 sm:max-w-sm">
         <SheetHeader className="text-left">
-          <SheetTitle>FTT Admin</SheetTitle>
+          <div className="flex items-center justify-between gap-3">
+            <SheetTitle>FTT Admin</SheetTitle>
+            <AppVersionBadge />
+          </div>
           <SheetDescription>Move between dashboard, catalog, and operations.</SheetDescription>
         </SheetHeader>
         <nav className="mt-6 space-y-2">

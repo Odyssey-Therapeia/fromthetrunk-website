@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useHasMounted } from "@/lib/hooks/use-has-mounted";
@@ -103,6 +104,7 @@ export function SiteHeader() {
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="bg-background">
+                    <SheetTitle className="sr-only">Mobile navigation</SheetTitle>
                     <div className="flex h-full flex-col gap-6 pt-8">
                       {/* Mobile search */}
                       <form

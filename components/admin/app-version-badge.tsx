@@ -1,0 +1,40 @@
+import { Sparkles } from "lucide-react";
+
+import { currentAdminRelease, type AdminReleaseNote } from "@/lib/admin/releases";
+import { cn } from "@/lib/utils";
+
+type AppVersionBadgeProps = {
+  className?: string;
+  release?: AdminReleaseNote;
+  showLabel?: boolean;
+  tone?: "cream" | "dark" | "outline";
+};
+
+export function AppVersionBadge({
+  className,
+  release = currentAdminRelease,
+  showLabel = false,
+  tone = "cream",
+}: AppVersionBadgeProps) {
+  return (
+    <span
+      aria-label={`From the Trunk admin version ${release.version}`}
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] transition duration-200",
+        "motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-sm",
+        tone === "cream" &&
+          "border-border/80 bg-card/85 text-muted-foreground",
+        tone === "dark" &&
+          "border-primary bg-primary text-primary-foreground",
+        tone === "outline" &&
+          "border-border/80 bg-background/70 text-muted-foreground",
+        className,
+      )}
+    >
+      <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
+      <span className="truncate">
+        {showLabel ? `Version ${release.version}` : `v${release.version}`}
+      </span>
+    </span>
+  );
+}

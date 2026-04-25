@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
 
+import { AppVersionBadge } from "@/components/admin/app-version-badge";
 import { adminNavItems, adminBottomNavItems } from "@/components/admin/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 type AdminSidebarProps = {
   user?: {
+    id?: string;
     name: string | null;
     email: string | null;
     image: string | null;
@@ -90,9 +92,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-screen w-72 border-r border-border/70 bg-card/75 px-5 py-6 backdrop-blur lg:flex lg:flex-col">
       <div className="mb-8 rounded-2xl border border-border/70 bg-background/75 p-4 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
-          FTT Admin
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
+            FTT Admin
+          </p>
+          <AppVersionBadge />
+        </div>
         <p className="mt-3 text-lg font-semibold text-foreground">Control center</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Products, collections, orders, and storefront content in one place.
