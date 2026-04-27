@@ -4,6 +4,7 @@ import { ProductSimilarPanel } from "@/components/admin/product-similar-panel";
 import { ProductStepper } from "@/components/admin/product-stepper/stepper";
 import { mapProductToStepperValues } from "@/components/admin/product-stepper/types";
 import { getProduct } from "@/db/queries/products";
+import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 
 type EditProductPageProps = {
   params: Promise<{
@@ -20,6 +21,22 @@ export default async function EditProductPage({
     notFound();
   }
 
+  const initialMedia = [...product.images]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(({ media }) => {
+      const url = resolveMediaURL(media);
+      if (!url) return null;
+
+      return {
+        filename: media.filename,
+        id: media.id,
+        url,
+      };
+    })
+    .filter((media): media is { filename: string; id: string; url: string } =>
+      Boolean(media)
+    );
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,6 +46,7 @@ export default async function EditProductPage({
         </p>
       </div>
       <ProductStepper
+        initialMedia={initialMedia}
         initialValues={mapProductToStepperValues(product)}
         productId={id}
       />

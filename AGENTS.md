@@ -14,6 +14,7 @@
 - Secrets must never be committed or stored in code; rotate any tokens that appear in chat transcripts
 - Hexagonal architecture (ports & adapters) required for AI/agent systems; strict separation of UI from agent logic; orchestration engine (AI SDK, LangGraph, etc.) must be pluggable
 - Always build mobile-first responsive layouts by default; use Tailwind v4 container queries (`@container`) for component-level responsiveness; viewport queries only for page scaffolding
+- For any UI, storefront, admin UI, layout, checkout, form, accessibility, SEO, animation, or performance-facing change, agents must run `npm run agent:check` before claiming completion. Authenticated admin Lighthouse requires `FTT_LHCI_AUTH_EMAIL` and `FTT_LHCI_AUTH_PASSWORD`; never commit those secrets. If the full gate cannot run, report the exact blocker and at minimum run the narrower relevant commands (`npm test`, `npm run lint`, `npm run build`, `npm run verify:ux`).
 - Optional repo-root `CLAUDE.md` for long-form project brief; keep `AGENTS.md` as the durable learned-memory file and link to `CLAUDE.md` when both exist to avoid duplicating long guidance
 
 ## Learned Workspace Facts
@@ -31,4 +32,7 @@
 - AI agent infrastructure in progress: product creation assistant using Claude (`@ai-sdk/anthropic`), admin chat UI via `@assistant-ui/react` + `@assistant-ui/react-ai-sdk`; agent kernel at `lib/ai/`, API route at `app/api/chat/route.ts`; hexagonal architecture with ports & adapters for pluggable orchestration
 - Internal frontend docs being built at `docs/internal/`; `nextjs-frontend.mdc` cursor rule enforces layout, responsive, and component patterns across the frontend
 - Continual-learning index path: .cursor/hooks/state/continual-learning-index.json
+- Vercel CLI installed globally and project linked via `vercel link`; use `vercel env add` to manage secrets across production/preview/development environments
+- Drizzle convenience scripts in package.json: `db:push`, `db:generate`, `db:migrate`, `db:studio`
+- All `db/queries/*.ts` read operations are wrapped in `withRetry()` for resilience against transient Neon connection failures
 - VPN or split-tunnel setups can cause DNS resolution failures or uneven HTTPS connectivity for github.com, api.vercel.com, and Neon Postgres from the dev machine (Node fetch may behave differently than curl); turning VPN off or adjusting tunneling often resolves it

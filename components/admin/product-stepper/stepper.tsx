@@ -31,11 +31,13 @@ import {
 } from "./types";
 
 type ProductStepperProps = {
+  initialMedia?: ProductStepperMedia[];
   initialValues?: Partial<ProductStepperValues>;
   productId?: string;
 };
 
 const steps = ["Photos", "Details", "Story", "Pricing", "Preview"] as const;
+const emptyInitialMedia: ProductStepperMedia[] = [];
 
 const toNullableText = (value: string) => {
   const trimmed = value.trim();
@@ -43,6 +45,7 @@ const toNullableText = (value: string) => {
 };
 
 export function ProductStepper({
+  initialMedia = emptyInitialMedia,
   initialValues,
   productId,
 }: ProductStepperProps) {
@@ -51,7 +54,9 @@ export function ProductStepper({
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
-  const [uploaded, setUploaded] = useState<ProductStepperMedia[]>([]);
+  const [uploaded, setUploaded] = useState<ProductStepperMedia[]>(
+    () => initialMedia
+  );
   const aiStoryPendingSaveRef = useRef(false);
   const stepContainerRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +74,10 @@ export function ProductStepper({
   useEffect(() => {
     lastPersistedSnapshotRef.current = serializeStepperValues(mergedInitialValues);
   }, [mergedInitialValues]);
+
+  useEffect(() => {
+    setUploaded(initialMedia);
+  }, [initialMedia, productId]);
 
   const persistProduct = useCallback(async (values: ProductStepperValues, forceDraft: boolean) => {
     setIsSaving(true);
