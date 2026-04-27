@@ -93,6 +93,7 @@ jobs:
       FTT_LHCI_SCOPE: admin
       FTT_LHCI_AUTH_EMAIL: ${{ secrets.FTT_LHCI_AUTH_EMAIL }}
       FTT_LHCI_AUTH_PASSWORD: ${{ secrets.FTT_LHCI_AUTH_PASSWORD }}
+      FTT_LHCI_SANITIZED_DB: ${{ secrets.FTT_LHCI_SANITIZED_DB }}
     strategy:
       fail-fast: false
       matrix:
@@ -141,7 +142,7 @@ jobs:
           FTT_LHCI_OUTPUT_DIR: ./test-results/lighthouse/admin-${{ matrix.form-factor }}
 
       - name: Upload admin Lighthouse reports
-        if: always() && steps.admin-secrets.outputs.available == 'true'
+        if: always() && steps.admin-secrets.outputs.available == 'true' && env.FTT_LHCI_SANITIZED_DB == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-ci-admin-${{ matrix.form-factor }}-reports
