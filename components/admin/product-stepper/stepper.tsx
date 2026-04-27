@@ -162,6 +162,7 @@ export function ProductStepper({
       await persistProduct(value, false);
     },
   });
+  const setProductFieldValue = form.setFieldValue;
 
   const handleAiAssist = () => {
     const name =
@@ -172,31 +173,31 @@ export function ProductStepper({
     openAgent();
   };
 
+  const handleStoryApplied = useCallback((event: Event) => {
+    const { detail } = event as CustomEvent<ProductStoryAppliedEventDetail>;
+    if (!detail || detail.productId !== activeProductId) return;
+
+    if (detail.values.storyTitle) {
+      setProductFieldValue("storyTitle", detail.values.storyTitle);
+    }
+    if (detail.values.storyNarrative) {
+      setProductFieldValue("storyNarrative", detail.values.storyNarrative);
+    }
+    if (detail.values.storyProvenance) {
+      setProductFieldValue("storyProvenance", detail.values.storyProvenance);
+    }
+    if (detail.values.storyEra) {
+      setProductFieldValue("storyEra", detail.values.storyEra);
+    }
+    setSaveState("AI story saved");
+  }, [activeProductId, setProductFieldValue]);
+
   useEffect(() => {
-    const handleStoryApplied = (event: Event) => {
-      const { detail } = event as CustomEvent<ProductStoryAppliedEventDetail>;
-      if (!detail || detail.productId !== activeProductId) return;
-
-      if (detail.values.storyTitle) {
-        form.setFieldValue("storyTitle", detail.values.storyTitle);
-      }
-      if (detail.values.storyNarrative) {
-        form.setFieldValue("storyNarrative", detail.values.storyNarrative);
-      }
-      if (detail.values.storyProvenance) {
-        form.setFieldValue("storyProvenance", detail.values.storyProvenance);
-      }
-      if (detail.values.storyEra) {
-        form.setFieldValue("storyEra", detail.values.storyEra);
-      }
-      setSaveState("AI story saved");
-    };
-
     window.addEventListener(PRODUCT_STORY_APPLIED_EVENT, handleStoryApplied);
     return () => {
       window.removeEventListener(PRODUCT_STORY_APPLIED_EVENT, handleStoryApplied);
     };
-  }, [activeProductId, form]);
+  }, [handleStoryApplied]);
 
   useEffect(() => {
     const id = window.setInterval(() => {

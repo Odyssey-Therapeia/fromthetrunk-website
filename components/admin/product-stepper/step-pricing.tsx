@@ -1,3 +1,9 @@
+import type {
+  FormAsyncValidateOrFn,
+  FormValidateOrFn,
+  ReactFormExtendedApi,
+} from "@tanstack/react-form";
+
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +22,28 @@ import {
   productStockStatusOptions,
   type ProductStockStatus,
 } from "./availability";
+import type { ProductStepperValues } from "./types";
+
+type ProductStepperSyncValidator = FormValidateOrFn<ProductStepperValues> | undefined;
+type ProductStepperAsyncValidator = FormAsyncValidateOrFn<ProductStepperValues> | undefined;
+
+type ProductStepperForm = ReactFormExtendedApi<
+  ProductStepperValues,
+  ProductStepperSyncValidator,
+  ProductStepperSyncValidator,
+  ProductStepperAsyncValidator,
+  ProductStepperSyncValidator,
+  ProductStepperAsyncValidator,
+  ProductStepperSyncValidator,
+  ProductStepperAsyncValidator,
+  ProductStepperSyncValidator,
+  ProductStepperAsyncValidator,
+  ProductStepperAsyncValidator,
+  unknown
+>;
 
 type StepPricingProps = {
-  form: any;
+  form: ProductStepperForm;
 };
 
 const formatAvailabilityTimestamp = (value: null | string) => {
@@ -29,6 +54,25 @@ const formatAvailabilityTimestamp = (value: null | string) => {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+};
+
+const toDateTimeLocalValue = (value: null | string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const toIsoTimestamp = (value: string) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
 export function StepPricing({
@@ -53,7 +97,7 @@ export function StepPricing({
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <form.Field name="priceRupees">
-          {(field: any) => (
+          {(field) => (
             <div className="space-y-2">
               <Label htmlFor="price">Price (INR)</Label>
               <Input
@@ -69,7 +113,7 @@ export function StepPricing({
         </form.Field>
 
         <form.Field name="originalPriceRupees">
-          {(field: any) => (
+          {(field) => (
             <div className="space-y-2">
               <Label htmlFor="original-price">Original price (INR)</Label>
               <Input
@@ -87,7 +131,7 @@ export function StepPricing({
 
       <div className="grid gap-4 md:grid-cols-2">
         <form.Field name="stockStatus">
-          {(field: any) => {
+          {(field) => {
             const stockStatus = field.state.value as ProductStockStatus;
             const selectedOption = productStockStatusOptions.find(
               (option) => option.value === stockStatus
@@ -134,16 +178,42 @@ export function StepPricing({
                     <span>Reserved until {reservedUntilLabel}</span>
                   ) : null}
                 </div>
+                {stockStatus === "reserved" ? (
+                  <form.Field name="reservedUntil">
+                    {(reservedField) => (
+                      <div className="grid gap-2 rounded-xl border border-border/70 bg-background/70 p-3 sm:max-w-sm">
+                        <Label htmlFor="reserved-until">Reserved until</Label>
+                        <Input
+                          id="reserved-until"
+                          onBlur={reservedField.handleBlur}
+                          onChange={(event) =>
+                            reservedField.handleChange(toIsoTimestamp(event.target.value))
+                          }
+                          type="datetime-local"
+                          value={toDateTimeLocalValue(reservedField.state.value)}
+                        />
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          Leave blank for a manual hold without an expiry.
+                        </p>
+                      </div>
+                    )}
+                  </form.Field>
+                ) : null}
               </div>
             );
           }}
         </form.Field>
 
         <form.Field name="status">
-          {(field: any) => (
+          {(field) => (
             <div className="space-y-2">
               <Label>Publishing status</Label>
-              <Select onValueChange={field.handleChange} value={field.state.value}>
+              <Select
+                onValueChange={(value) =>
+                  field.handleChange(value as ProductStepperValues["status"])
+                }
+                value={field.state.value}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -157,7 +227,7 @@ export function StepPricing({
         </form.Field>
 
         <form.Field name="featured">
-          {(field: any) => (
+          {(field) => (
             <div className="space-y-2">
               <Label>Featured product</Label>
               <div className="flex h-10 items-center gap-3 rounded-md border px-3">

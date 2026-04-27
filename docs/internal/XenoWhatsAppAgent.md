@@ -20,11 +20,27 @@ Every ticket or reply should record:
 - `sourceChannel`: WhatsApp group name or group id
 - `sourceMessageId`: provider message id
 - `reporterName`
-- `reporterPhoneHash` when available
+- `reporterPhoneHash` when available. This must be an HMAC-SHA256 of the full
+  E.164 phone number using a service-wide secret key, not a plain hash. Store
+  only the hex or base64 HMAC value and never persist the raw phone number.
 - `detectedTrigger`
 - `actor`: `abe`, `xeno`, `reporter`, or `system`
 - `notionPageId`
 - `replyStatus`: `drafted`, `sent`, `failed`, or `skipped`
+
+Phone hash handling:
+
+- Include a key id with every generated `reporterPhoneHash` so old hashes can be
+  verified after rotation.
+- Rotate the HMAC secret quarterly.
+- Keep the current key plus the previous key ids available for verification for
+  up to 30 days.
+- Verify hashes by trying the current key first, then falling back to the prior
+  key id recorded with the event.
+- Retain `reporterPhoneHash` values for 90 days unless a ticket still needs the
+  reporter link for active support follow-up.
+- Securely delete expired reporter hash values and keep only aggregate counts
+  where possible.
 
 ## Trigger Rules
 
@@ -43,7 +59,8 @@ Ignore normal chatter unless it is addressed to Xeno. If someone says something 
 
 1. Receive message from webhook or watcher.
 2. Normalize text and check deterministic triggers.
-3. De-dupe by message id and content hash.
+3. De-dupe by provider message id first, then by channel, reporter identity,
+   content hash, and a configurable time window.
 4. If no trigger, store minimal metadata and stop.
 5. If trigger is present:
    - Split multiple bugs into separate items.
@@ -132,6 +149,11 @@ WhatsApp webhook/watcher
 
 The trigger detector and de-dupe store should be ordinary TypeScript code. The LLM prompt should receive only the triggered message, short surrounding context, and known bug tracker schema.
 
+The de-dupe store should preserve the channel id, reporter id or
+`reporterPhoneHash`, provider message id, content hash, and time-window bucket
+even for ignored messages. This prevents identical text from different reporters
+or repeated incidents in separate windows from collapsing into one record.
+
 ## Initial Notion Ticket Mapping
 
 Created feature ticket:
@@ -142,16 +164,18 @@ https://www.notion.so/34d495f481f481b1b349c4be0a1172c1
 
 1. Choose provider and connect Xeno number.
 2. Build webhook endpoint and signature/auth validation.
-3. Add deterministic trigger and de-dupe module.
-4. Add Notion ticket adapter.
-5. Add Xeno reply adapter with rate limiting.
-6. Add audit table or Notion log.
-7. Add dry-run mode for one day before enabling auto-replies.
+3. Implement deterministic trigger and de-dupe module.
+4. Integrate Notion as the ticket adapter.
+5. Build the Xeno reply adapter with rate limiting.
+6. Maintain an audit table or Notion log.
+7. Run dry-run mode for one day before enabling auto-replies.
 
 ## Safety Defaults
 
 - Never store secrets in code.
 - Store provider tokens in environment variables.
+- Store the phone-hash HMAC secret in the secret manager, publish only key ids,
+  and rotate it on the quarterly schedule.
 - Log message ids and hashes; avoid storing full private chat history unless needed for the ticket.
 - Redact OTPs, phone numbers, and unrelated personal messages.
 - Add a kill switch: `XENO_WHATSAPP_AGENT_ENABLED=false`.

@@ -50,6 +50,24 @@ describe("product stepper availability", () => {
     });
   });
 
+  it("marks a product reserved with an expiry and clears sold timestamps", () => {
+    const values = applyStockStatusChange(
+      {
+        reservedUntil: "2026-04-29T09:00:00.000Z",
+        soldAt: "2026-04-20T10:30:00.000Z",
+        stockStatus: "sold",
+      },
+      "reserved",
+      new Date("2026-04-25T08:00:00.000Z")
+    );
+
+    expect(values).toEqual({
+      reservedUntil: "2026-04-29T09:00:00.000Z",
+      soldAt: null,
+      stockStatus: "reserved",
+    });
+  });
+
   it("preserves sold availability during autosave payload normalization", () => {
     const values = getAvailabilitySaveFields(
       {

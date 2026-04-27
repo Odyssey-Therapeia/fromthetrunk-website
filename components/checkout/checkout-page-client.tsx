@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
@@ -38,14 +39,6 @@ interface CheckoutPageClientProps {
 interface FormErrors {
   [key: string]: string | undefined;
 }
-
-const GST_RATE = 0.12;
-
-const SHIPPING_TIERS = {
-  freeThreshold: 25000,
-  standard: 500,
-  express: 1200,
-};
 
 declare global {
   interface Window {
@@ -67,7 +60,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("standard");
 
   const { data: savedAddresses } = useQuery({
     queryKey: ["checkout-addresses"],

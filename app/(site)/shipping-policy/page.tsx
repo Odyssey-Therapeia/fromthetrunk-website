@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { formatCurrency } from "@/lib/formatters";
-import { SHIPPING_TIERS } from "@/lib/payments/razorpay";
 
 export const metadata: Metadata = {
   title: "Shipping Policy",

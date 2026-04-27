@@ -19,6 +19,11 @@ export type ProductStoryAppliedEventDetail = {
   values: StoryPatchPayload;
 };
 
+/**
+ * Trims optional story text and treats blank input as absent.
+ * @param value Optional story field value from an AI draft.
+ * @returns The trimmed value, or undefined for empty or whitespace-only input.
+ */
 const normalizeStoryValue = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;

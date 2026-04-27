@@ -88,6 +88,8 @@ const climaxLines = [
   },
 ];
 
+gsap.registerPlugin(ScrollTrigger);
+
 export function StoryNarrative({ images, embedded = false }: StoryNarrativeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const beatImageIndexes = beats.reduce<{
@@ -128,8 +130,6 @@ export function StoryNarrative({ images, embedded = false }: StoryNarrativeProps
         });
       return;
     }
-
-    gsap.registerPlugin(ScrollTrigger);
 
     const mm = gsap.matchMedia();
 
@@ -214,22 +214,21 @@ export function StoryNarrative({ images, embedded = false }: StoryNarrativeProps
         const climaxItems =
           climaxSection.querySelectorAll<HTMLElement>(".climax-item");
 
-        climaxItems.forEach((item, i) => {
-          gsap.from(item, {
-            autoAlpha: 0,
-            y: 20,
-            scale: 0.96,
-            duration: 0.7,
-            delay: i * 0.1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: climaxSection,
-              start: "top 78%",
-              toggleActions: "play none none none",
-            },
-            immediateRender: false,
-          });
+        gsap.from(climaxItems, {
+          autoAlpha: 0,
+          y: 20,
+          scale: 0.96,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: climaxSection,
+            start: "top 78%",
+            toggleActions: "play none none none",
+          },
+          immediateRender: false,
         });
+
         gsap.from(climaxSection.querySelector(".climax-cta"), {
           autoAlpha: 0,
           y: 20,
