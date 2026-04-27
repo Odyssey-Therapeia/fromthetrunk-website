@@ -18,7 +18,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     name: product.name,
     description:
       product.storyNarrative ??
-      `${product.name}: ${displayDetails.fabric ?? "Heirloom"} saree.`,
+      `${product.name}: ${displayDetails.fabric}.`,
     ...(image ? { image } : {}),
     brand: {
       "@type": "Brand",
@@ -43,9 +43,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     ...(product.detailsCondition
       ? { itemCondition: "https://schema.org/UsedCondition" }
       : {}),
-    ...(displayDetails.fabric
-      ? { material: displayDetails.fabric }
-      : {}),
+    material: displayDetails.fabric,
   };
 }
 

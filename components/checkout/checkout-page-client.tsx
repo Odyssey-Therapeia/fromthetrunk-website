@@ -119,6 +119,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     subtotal >= SHIPPING_TIERS.freeThreshold ? 0 : SHIPPING_TIERS[shippingMethod];
   const taxAmount = Math.round(subtotal * GST_RATE);
   const total = subtotal + shippingCost + taxAmount;
+  const taxRateLabel = new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 2,
+    style: "percent",
+  }).format(GST_RATE);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -487,7 +491,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-foreground/60">Estimated Tax (12%)</span>
+                        <span className="text-foreground/60">
+                          Estimated Tax ({taxRateLabel})
+                        </span>
                         <span className="font-medium text-foreground">{formatCurrency(taxAmount)}</span>
                       </div>
                     </div>

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyStockStatusChange,
   getAvailabilitySaveFields,
+  validateReservedUntil,
 } from "@/components/admin/product-stepper/availability";
 import { mapProductToStepperValues } from "@/components/admin/product-stepper/types";
 
@@ -99,5 +100,18 @@ describe("product stepper availability", () => {
       soldAt: null,
       stockStatus: "available",
     });
+  });
+
+  it("allows reservation expiry only when the value is blank or in the future", () => {
+    const now = new Date("2026-04-27T10:00:00.000Z");
+
+    expect(validateReservedUntil(null, now)).toBeUndefined();
+    expect(validateReservedUntil("2026-04-27T10:01:00.000Z", now)).toBeUndefined();
+    expect(validateReservedUntil("2026-04-27T09:59:00.000Z", now)).toBe(
+      "Choose a future reservation expiry."
+    );
+    expect(validateReservedUntil("not-a-date", now)).toBe(
+      "Choose a valid reservation expiry."
+    );
   });
 });

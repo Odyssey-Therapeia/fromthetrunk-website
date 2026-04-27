@@ -24,8 +24,18 @@ const parseNumberEnv = (
   return value;
 };
 
+const parseRateEnv = (name: string, fallback: number) => {
+  const value = parseNumberEnv(name, fallback);
+
+  if (value > 1) {
+    throw new Error(`${name} must be a decimal rate between 0 and 1.`);
+  }
+
+  return value;
+};
+
 /** GST rate for textile and apparel products in India. */
-export const GST_RATE = parseNumberEnv("NEXT_PUBLIC_FTT_GST_RATE", 0.12);
+export const GST_RATE = parseRateEnv("NEXT_PUBLIC_FTT_GST_RATE", 0.12);
 
 /** Shipping cost tiers in INR. */
 export const SHIPPING_TIERS = {

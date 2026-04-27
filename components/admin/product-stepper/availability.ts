@@ -36,6 +36,25 @@ export const productStockStatusOptions: Array<{
 
 const currentIsoTimestamp = (now: Date) => now.toISOString();
 
+export const validateReservedUntil = (
+  value: null | string,
+  now = new Date()
+) => {
+  if (!value) return undefined;
+
+  const reservedUntil = new Date(value).getTime();
+
+  if (Number.isNaN(reservedUntil)) {
+    return "Choose a valid reservation expiry.";
+  }
+
+  if (reservedUntil <= now.getTime()) {
+    return "Choose a future reservation expiry.";
+  }
+
+  return undefined;
+};
+
 export function applyStockStatusChange(
   current: ProductAvailabilityFields,
   stockStatus: ProductStockStatus,
