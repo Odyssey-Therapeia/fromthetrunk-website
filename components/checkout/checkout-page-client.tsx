@@ -346,7 +346,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       <SelectContent>
                         {savedAddresses.map((addr) => (
                           <SelectItem key={addr.id} value={addr.id}>
-                            {addr.label || addr.name || addr.line1} — {addr.city}
+                            {addr.label || addr.name || addr.line1}, {addr.city}
                             {addr.isDefault ? " (Default)" : ""}
                           </SelectItem>
                         ))}
@@ -387,7 +387,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       />
                       <div>
                         <p className="text-sm font-bold text-foreground">Standard Delivery</p>
-                        <p className="text-xs text-foreground/60 mt-1">5–7 business days</p>
+                        <p className="text-xs text-foreground/60 mt-1">5 to 7 business days</p>
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">
@@ -406,7 +406,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       />
                       <div>
                         <p className="text-sm font-bold text-foreground">Express Delivery</p>
-                        <p className="text-xs text-foreground/60 mt-1">2–3 business days</p>
+                        <p className="text-xs text-foreground/60 mt-1">2 to 3 business days</p>
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">

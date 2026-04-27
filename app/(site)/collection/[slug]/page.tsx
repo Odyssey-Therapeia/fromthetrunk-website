@@ -47,7 +47,7 @@ export async function generateMetadata({
     title: product.name,
     description:
       product.storyNarrative ??
-      `${product.name} — ${displayDetails.fabric} from the trunk. ${formatCurrency(product.pricePaise / 100)}.`,
+      `${product.name}: ${displayDetails.fabric} from the trunk. ${formatCurrency(product.pricePaise / 100)}.`,
     openGraph: {
       title: product.name,
       description:

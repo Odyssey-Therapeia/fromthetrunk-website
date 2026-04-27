@@ -31,7 +31,7 @@ export default function ReturnPolicyPage() {
           <h2 className="font-serif text-xl text-foreground">Return Eligibility</h2>
           <ul className="list-disc space-y-1 pl-6">
             <li>Returns are accepted within <strong className="text-foreground">7 days</strong> of delivery.</li>
-            <li>The saree must be in its original condition — unworn, unwashed, and in its original packaging.</li>
+            <li>The saree must be in its original condition: unworn, unwashed, and in its original packaging.</li>
             <li>Returns are not accepted for items that have been altered, worn, or damaged after delivery.</li>
           </ul>
         </section>
@@ -51,7 +51,7 @@ export default function ReturnPolicyPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">Refund Process</h2>
           <ul className="list-disc space-y-1 pl-6">
-            <li>Once we receive and inspect the returned item, your refund will be processed within <strong className="text-foreground">5–7 business days</strong>.</li>
+            <li>Once we receive and inspect the returned item, your refund will be processed within <strong className="text-foreground">5 to 7 business days</strong>.</li>
             <li>Refunds are issued to the original payment method.</li>
             <li>Shipping costs are non-refundable unless the return is due to our error.</li>
           </ul>

@@ -34,12 +34,12 @@ export default function ShippingPolicyPage() {
               <tbody>
                 <tr className="border-t border-border/40">
                   <td className="px-4 py-3 text-foreground font-medium">Standard</td>
-                  <td className="px-4 py-3">5–7 business days</td>
+                  <td className="px-4 py-3">5 to 7 business days</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(SHIPPING_TIERS.standard)}</td>
                 </tr>
                 <tr className="border-t border-border/40">
                   <td className="px-4 py-3 text-foreground font-medium">Express</td>
-                  <td className="px-4 py-3">2–3 business days</td>
+                  <td className="px-4 py-3">2 to 3 business days</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(SHIPPING_TIERS.express)}</td>
                 </tr>
               </tbody>

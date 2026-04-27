@@ -16,7 +16,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     name: product.name,
     description:
       product.storyNarrative ??
-      `${product.name} — ${product.detailsFabric ?? "Heirloom"} saree.`,
+      `${product.name}: ${product.detailsFabric ?? "Heirloom"} saree.`,
     ...(image ? { image } : {}),
     brand: {
       "@type": "Brand",

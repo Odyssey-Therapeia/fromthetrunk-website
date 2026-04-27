@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Crown, Gem, ShieldCheck, Sparkles } from "lucide-react";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
@@ -17,8 +16,6 @@ const productLayouts = [
   "lg:col-span-1 lg:row-span-1",
 ];
 
-const productIcons = [Sparkles, Crown, Gem, ShieldCheck];
-
 interface FeaturedCollectionProps {
   products: Product[];
   content?: HomePageContent | null;
@@ -28,9 +25,8 @@ export function FeaturedCollection({ products, content }: FeaturedCollectionProp
   const productCards = products.slice(0, 4).map((product, index) => {
     const image = resolveMediaURL(product.images?.[0]);
     return {
-      Icon: productIcons[index % productIcons.length],
       name: product.name,
-      description: `${product.detailsFabric ?? "Heirloom"} · ${formatCurrency(
+      description: `${product.detailsFabric ?? "Heirloom"}, ${formatCurrency(
         product.pricePaise / 100
       )}`,
       href: `/collection/${product.slug}`,
@@ -53,7 +49,6 @@ export function FeaturedCollection({ products, content }: FeaturedCollectionProp
   const featureCardImage = resolveMediaURL(products[0]?.images?.[1] ?? products[0]?.images?.[0]);
 
   const featureCard = {
-    Icon: ShieldCheck,
     name: "The Trunk Promise",
     description:
       "Each saree is authenticated, restored, and documented with provenance.",
