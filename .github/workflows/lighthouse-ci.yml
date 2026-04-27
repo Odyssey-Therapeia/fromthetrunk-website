@@ -98,27 +98,50 @@ jobs:
       matrix:
         form-factor: [mobile, desktop]
     steps:
-      - uses: actions/checkout@v4
+      - name: Check admin Lighthouse secrets
+        id: admin-secrets
+        shell: bash
+        run: |
+          missing=()
+          for name in DATABASE_URL PAYLOAD_SECRET NEXTAUTH_SECRET FTT_LHCI_AUTH_EMAIL FTT_LHCI_AUTH_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
 
-      - uses: actions/setup-node@v4
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping authenticated admin Lighthouse CI because required secrets are missing: ${missing[*]}"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.admin-secrets.outputs.available == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.admin-secrets.outputs.available == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        if: steps.admin-secrets.outputs.available == 'true'
         run: npm ci --legacy-peer-deps
 
       - name: Build
+        if: steps.admin-secrets.outputs.available == 'true'
         run: npm run build
 
       - name: Run authenticated admin Lighthouse CI
+        if: steps.admin-secrets.outputs.available == 'true'
         run: npm run lhci:autorun
         env:
           FTT_LHCI_FORM_FACTOR: ${{ matrix.form-factor }}
           FTT_LHCI_OUTPUT_DIR: ./test-results/lighthouse/admin-${{ matrix.form-factor }}
 
       - name: Upload admin Lighthouse reports
-        if: always()
+        if: always() && steps.admin-secrets.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-ci-admin-${{ matrix.form-factor }}-reports

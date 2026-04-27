@@ -107,7 +107,7 @@ FTT_LHCI_SCOPE=admin FTT_LHCI_AUTH_EMAIL="admin@example.com" FTT_LHCI_AUTH_PASSW
 
 The GitHub Actions job runs the static policy/packing pages by default so CI does not require a live product database. Local `npm run lhci` audits the broader storefront route set.
 
-Authenticated admin audits require `FTT_LHCI_AUTH_EMAIL` and `FTT_LHCI_AUTH_PASSWORD`. Store those as local shell secrets or GitHub Actions secrets; never commit them.
+Authenticated admin audits require `DATABASE_URL`, `PAYLOAD_SECRET`, `NEXTAUTH_SECRET`, `FTT_LHCI_AUTH_EMAIL`, and `FTT_LHCI_AUTH_PASSWORD`. Store those as local shell secrets or GitHub Actions secrets; never commit them. In GitHub Actions, the authenticated admin job exits cleanly with a notice when those secrets are not configured.
 
 ---
 
