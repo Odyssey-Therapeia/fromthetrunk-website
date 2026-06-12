@@ -49,7 +49,7 @@
 - **Spec**: in create-order: if session user → use session id. Else `getOrCreateCheckoutCustomer` must NOT return an existing **registered** user (passwordHash set or oauth-linked): create the order with the guest shell only if the email row is itself a checkout shell, else `userId: null` with email kept on `orders.shippingEmail`. Current bug: `users.ts:100` returns any existing row.
 - **Tests first**: registered-email guest checkout → order.userId null; fresh email → shell created+linked; repeat guest email → same shell reused.
 - **Verify**: `npm test`. Ladder: +L2. **Depends**: none, but coordinate scope overlap with P1-07 (same files — run sequenced).
-- [ ]
+- [x] (2026-06-13, 7fdb2f9, "passwordHash guard in getOrCreateCheckoutCustomer; race-condition catch also guarded; orders.userId nullable (schema+migration IF NOT EXISTS); 5 checkout-customer tests; 194 tests pass")
 
 ### P1-07: Sign-up claims checkout shells
 - **Objective**: "buy first, register later" works.
@@ -70,7 +70,7 @@
 - **Files**: `api/hono/app.ts` (onError, ~:113), test.
 - **Spec**: log full error server-side; respond `{code:"INTERNAL", message:"Unexpected server error."}`. Keep status mapping.
 - **Verify**: route test asserting a thrown handler returns the generic message. Ladder: +L2.
-- [ ]
+- [x] (2026-06-13, 7ba0754, "handler extracted to lib/http/on-uncaught-error.ts; anti-theater proof: reverting lib file fails 2 of 3 tests; 194 tests pass")
 
 ### P1-10: One INR formatter
 - **Objective**: a single paise-based money formatter; the rupee-taking `formatINR` twin is gone.
@@ -96,7 +96,7 @@
 - **Files**: `api/hono/routes/webhooks.ts:131` area, test.
 - **Spec**: replace `!==` on the top-level HMAC with the `timingSafeEqual` pattern already used in `lib/payments/razorpay.ts`.
 - **Verify**: `npm test`.
-- [ ]
+- [x] (2026-06-13, 2e4ce96, "Buffer.from + timingSafeEqual; length guard; 4 tests incl. malformed-sig path; 194 tests pass")
 
 ### P1-14: Kill the dead-domain fallback
 - **Objective**: a missing `NEXT_PUBLIC_SERVER_URL` cannot silently poison canonical/sitemap/JSON-LD URLs.
@@ -114,7 +114,7 @@
 - **Files**: `tests/unit/json-ld-render.test.ts` (new).
 - **Spec**: render `productJsonLd`/`organizationJsonLd`/breadcrumbs through the actual `JSON.stringify` render path with a fixture containing newlines + `</script>` + quotes; `JSON.parse` the rendered string. NOT `JSON.parse(JSON.stringify(obj))` of the raw object — parse what the page would emit.
 - **Verify**: `npm test`.
-- [ ]
+- [x] (2026-06-13, f23448b, "8 regression tests; description roundtrip; </script> behavior pinned; escaped-newline assertion; 194 tests pass")
 
 ### P1-17: PDP title/meta upgrade
 - **Files**: `app/(site)/collection/[slug]/page.tsx` generateMetadata (:46-58), test.

@@ -3,9 +3,9 @@
 
 ## Current
 - **Programme**: Shopify-parity, planned in `plans/` (master: `plans/000-master-plan.md`).
-- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-05 done (a0be510, 94b063c, 67ff66d, 331b3f5, eceb7ee). 174 tests pass; tsc clean.
+- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-06, P1-09, P1-13, P1-16 done (see plan). 194 tests pass; tsc clean.
 - **Branch reality**: `sprint-abe` carries the unmerged emergency guest-checkout fix (`96e6151`, never merged to main — PR #31 abandoned) + Xeno Slack agent + Drape Room + HR Deno app. Production = `main@caf23bb`, LACKS guest-checkout payment links.
-- **Next concrete action**: Fan out remaining P1 packets in parallel: P1-06 (start first — blocks P1-07/08/19); P1-09, P1-10, P1-11, P1-12, P1-13, P1-14, P1-16, P1-17 all independent.
+- **Next concrete action**: Fan out P1-07 (depends P1-06, now done) + P1-10, P1-11, P1-12, P1-14, P1-17 in parallel. Then P1-08 (after P1-07). P1-15 (ops), P1-18 (analytics), P1-19 (route tests, after P1-06+P1-07).
 
 ## Standing facts (verified 2026-06-13)
 - Tests 174/174 pass; tsc clean; lint clean.
@@ -21,7 +21,10 @@
 - **Extraction-pipeline JSON-LD false positive**: the site's ld+json is valid; naive scrapers that unescape `\n` reproduce a phantom "control character at 457" parse error. Verify the served artifact, not a re-processed copy.
 - **Hot-deploying from unmerged branches loses fixes**: the May guest-checkout hotfix was silently overwritten by the next main deploy. PR-only promotion exists (`enforce-pr-only.yml`) — don't bypass it.
 - **Drizzle mock AST inspection for WHERE predicates**: `whereMock.mock.calls` arguments use `arg._and._ne` shape. Removing the predicate leaves tests green if not asserted — always add the AST filter.
-- **P1-05a TOCTOU**: two concurrent admin PATCH tabs both pass `isStatusChange`, both email — deferred sub-item, not yet fixed.
+- **P1-05a TOCTOU**: two concurrent admin PATCH tabs both pass `isStatusChange`, both email — deferred sub-item.
+- **Drizzle migration journal drift**: `drizzle/0002_agent_panel.sql` was applied to the live DB out-of-band and is absent from `drizzle/meta/_journal.json`. Future `drizzle-kit generate` will re-emit those DDL statements — always use `IF NOT EXISTS` for chat_conversations columns in new migrations until the journal is reconciled.
+- **JSON-LD `</script>` not escaped**: `JSON.stringify` does not escape `<` — embedded `</script>` in product fields creates a potential DOM injection in the page's ld+json script tag. Fix tracked separately (spawned task).
+- **orders.userId is now nullable** (as of 7fdb2f9): any code that previously assumed `order.userId: string` may need null guards. Guest orders have userId=null; access via verifyOrderAccessToken.
 
 ## Decisions
 - **2026-06-12**: No replatform to Shopify — review evidence shows the custom core out-models Shopify for one-of-one inventory; gap is operational features → phased plan in plans/. (Full rationale: plans/000-master-plan.md §7.)
@@ -30,6 +33,13 @@
 - **2026-06-13**: #G-GST resolved — GST-inclusive prices going forward ("for now" — revisit if pricing model changes). pricePaise will be redefined as GST-inclusive in P2-04; `razorpay.ts:182` add-on removed. P2-03 gate closed. Unblocks P5 feed work (Google India requires GST-inclusive prices matching landing page).
 
 ## Log
+### 2026-06-13 — P1-06, P1-09, P1-13, P1-16 executed via ship pipeline
+- **Changed**: db/queries/users.ts+payments.ts+schema+migration (7fdb2f9, P1-06); lib/http/on-uncaught-error.ts+app.ts+test (7ba0754, P1-09); webhooks.ts+test (2e4ce96, P1-13); json-ld-render.test.ts (f23448b, P1-16).
+- **Verified**: 194/194 pass; tsc clean; fable-reviewer ACCEPT on all four (P1-09+P1-06 required repair loops for test theater and migration IF NOT EXISTS).
+- **Decisions**: P1-06 — `orders.userId` must be nullable for guest orders with registered emails; schema change required beyond original packet spec. Drizzle migration uses IF NOT EXISTS to guard against out-of-band journal drift. P1-09 — handler extracted to lib/http/on-uncaught-error.ts to avoid importing heavy app.ts in tests.
+- **New failure modes**: See Known Failure Modes section (JSON-LD </script>, orders.userId nullable, Drizzle migration journal drift).
+- **Next concrete action**: Fan out P1-07 + P1-10/P1-11/P1-12/P1-14/P1-17 in parallel.
+
 ### 2026-06-13 — P1-02..P1-05 executed via ship pipeline
 - **Changed**: `tsconfig.json`+`eslint.config.mjs` (94b063c, P1-02); `lib/email/send.ts`+test (67ff66d, P1-03); `lib/orders/complete-paid-order.ts`+test (331b3f5, P1-04); `api/hono/routes/admin-orders.ts`+`app/(admin)/admin/orders/[id]/page.tsx`+test (eceb7ee, P1-05).
 - **Verified**: 174/174 pass; tsc clean across all packets; fable-reviewer ACCEPT on P1-03/P1-04 (after repair loops for test theater and wrong fixture); P1-05 ACCEPT after 2 repair loops (emailSent truth-value, dead scaffolding).
