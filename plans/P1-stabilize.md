@@ -17,7 +17,7 @@
 - **Files**: `tsconfig.json`, `eslint.config.mjs` (add ignore for symmetry).
 - **Spec**: add `"ftt-hr-gmail-workflow"` to tsconfig `exclude` (currently only `node_modules`). It currently produces 16 errors (Deno URL imports). Long-term home is its own repo (gate question at #G-P1).
 - **Verify**: `npx tsc --noEmit` exit 0; `npm run lint` clean.
-- [ ]
+- [x] (2026-06-13, 94b063c, "npx tsc --noEmit exits 0; 16 Deno errors eliminated; eslint.config.mjs ignores ftt-hr-gmail-workflow for symmetry")
 
 ### P1-03: Resend errors are not success
 - **Objective**: `sendEmail` returns false and logs when Resend returns `{error}`.
@@ -25,7 +25,7 @@
 - **Spec**: resend v6 never throws; the current code does a bare `await resend.emails.send(...)` and returns true without capturing the result at all (`send.ts:40-48`). Capture and destructure `{error}`, log `[EMAIL] Resend error`, return false on error. Keep the existing non-throwing contract.
 - **Tests first**: mock resend returning `{data:null,error:{message:"domain not verified"}}` → expect false; success path → true.
 - **Verify**: `npm test`.
-- [ ]
+- [x] (2026-06-13, 67ff66d, "sendEmail destructures {error}; logs on error; returns false; 174 tests pass; vi.hoisted pattern; env teardown in afterEach")
 
 ### P1-04: Atomic order completion (the double-email race)
 - **Objective**: `completePaidOrder` is exactly-once under concurrent webhook + callback invocation.
@@ -33,14 +33,15 @@
 - **Spec**: replace read-then-act guard (`:78-88`) with conditional claim: `UPDATE orders SET payment_status='paid', … WHERE id=$1 AND payment_status <> 'paid' RETURNING id`. Emails (`:127`), order events, and stock mutation run only for the winning writer. Callers: webhooks.ts:151,179; payments.ts:422,502 — interfaces unchanged.
 - **Tests first**: mocked db where two interleaved calls both start "pending" — exactly one send; idempotent re-call returns alreadyPaid result.
 - **Verify**: `npm test`. Ladder: +L2.
-- [ ]
+- [x] (2026-06-13, 331b3f5, "UPDATE...WHERE paymentStatus<>'paid' RETURNING id; Drizzle AST assertion proves WHERE predicate is real; 174 tests pass; alreadyPaid:false as const on winner path")
 
 ### P1-05: Shipped email only on transition
 - **Objective**: re-saving a shipped order does not re-email the customer or duplicate timeline events.
 - **Files**: `api/hono/routes/admin-orders.ts`, `app/(admin)/admin/orders/[id]/page.tsx`, route test (new file `tests/unit/admin-orders-status.test.ts`).
 - **Spec**: server (real fix): send shipped email and write the event only when `order.status !== body.status` (the unconditional event write is `admin-orders.ts:59`; the shipped-email check `if (body.status === "shipped" && order.shippingEmail)` is `:61` and ignores the previous status). Client: disable Save when nothing changed (`page.tsx:160` area).
 - **Verify**: `npm test` (route test: same-status PATCH → no sendEmail call, no new event). Ladder: +L2.
-- [ ]
+- [x] (2026-06-13, eceb7ee, "isStatusChange guard; emailSent truthful (includes Boolean(shippingEmail)); addOrderEvent removed (updateOrderStatus writes internally); 174 tests pass")
+- [ ] P1-05a: TOCTOU race — two concurrent admin PATCH tabs both pass isStatusChange, both email. Deferred backlog item.
 
 ### P1-06: Guest orders never attach to existing accounts
 - **Objective**: an unverified typed email cannot link an order to a registered user.

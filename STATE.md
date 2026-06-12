@@ -3,25 +3,25 @@
 
 ## Current
 - **Programme**: Shopify-parity, planned in `plans/` (master: `plans/000-master-plan.md`).
-- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01 done (a0be510).
+- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-05 done (a0be510, 94b063c, 67ff66d, 331b3f5, eceb7ee). 174 tests pass; tsc clean.
 - **Branch reality**: `sprint-abe` carries the unmerged emergency guest-checkout fix (`96e6151`, never merged to main — PR #31 abandoned) + Xeno Slack agent + Drape Room + HR Deno app. Production = `main@caf23bb`, LACKS guest-checkout payment links.
-- **Next concrete action**: Fan out P1-02 through P1-14 (parallel-safe; P1-06 before P1-07; P1-04+P1-06 before P1-19). P1-15 is ops (admin action). P1-20 merge after all above done.
+- **Next concrete action**: Fan out remaining P1 packets in parallel: P1-06 (start first — blocks P1-07/08/19); P1-09, P1-10, P1-11, P1-12, P1-13, P1-14, P1-16, P1-17 all independent.
 
-## Standing facts (verified 2026-06-12)
-- Tests 166/166 pass; lint clean; `tsc --noEmit` FAILS with 16 errors, all from untracked `ftt-hr-gmail-workflow/` (Deno app; fix = P1-02).
+## Standing facts (verified 2026-06-13)
+- Tests 174/174 pass; tsc clean; lint clean.
 - Canonical prod domain is `https://www.fromthetrunk.shop`; `fromthetrunk.com` does NOT resolve yet is the code fallback (P1-14). Prod also serves at ftt-fromthetrunk.vercel.app.
 - `CRON_SECRET` is configured in prod (release-reservations cron probe returns 401, not 500).
 - Production has ZERO analytics (verified in repo and live HTML).
-- pricePaise is GST-EXCLUSIVE; checkout adds 12% (`lib/payments/razorpay.ts:182`). Feed work is gated on #G-GST.
+- pricePaise is GST-EXCLUSIVE; checkout adds 12% (`lib/payments/razorpay.ts:182`). Feed work gated on #G-GST (now resolved — P2-04 will make pricePaise GST-inclusive).
 - Prod data contains a published test product ("test chiffon do not buy if not authorized") — P1-15.
 
 ## Known failure modes (traps for future sessions)
-- **resend v6 never throws** — `{data,error}` must be checked; current code reports success on error (`lib/email/send.ts:42`, P1-03).
-- **`formatINR` exists twice with different units** — db/money.ts takes PAISE, lib/email/templates.ts:44 takes RUPEES. 100× display bug if confused (P1-10).
-- **`git add .` is catastrophic here** until P1-01: ~735MB untracked incl. finance xlsx and a 203MB tif. Always add scoped paths.
+- **`formatINR` exists twice with different units** — db/money.ts takes PAISE, lib/email/templates.ts:44 takes RUPEES. 100× display bug if confused (P1-10 pending).
+- **`git add .` is catastrophic here** — ~735MB untracked (P1-01 added .gitignore guards but dirs still exist). Always add scoped paths.
 - **Extraction-pipeline JSON-LD false positive**: the site's ld+json is valid; naive scrapers that unescape `\n` reproduce a phantom "control character at 457" parse error. Verify the served artifact, not a re-processed copy.
 - **Hot-deploying from unmerged branches loses fixes**: the May guest-checkout hotfix was silently overwritten by the next main deploy. PR-only promotion exists (`enforce-pr-only.yml`) — don't bypass it.
-- **completePaidOrder is not atomic yet** (P1-04): webhook + callback race double-sends emails.
+- **Drizzle mock AST inspection for WHERE predicates**: `whereMock.mock.calls` arguments use `arg._and._ne` shape. Removing the predicate leaves tests green if not asserted — always add the AST filter.
+- **P1-05a TOCTOU**: two concurrent admin PATCH tabs both pass `isStatusChange`, both email — deferred sub-item, not yet fixed.
 
 ## Decisions
 - **2026-06-12**: No replatform to Shopify — review evidence shows the custom core out-models Shopify for one-of-one inventory; gap is operational features → phased plan in plans/. (Full rationale: plans/000-master-plan.md §7.)
@@ -30,6 +30,13 @@
 - **2026-06-13**: #G-GST resolved — GST-inclusive prices going forward ("for now" — revisit if pricing model changes). pricePaise will be redefined as GST-inclusive in P2-04; `razorpay.ts:182` add-on removed. P2-03 gate closed. Unblocks P5 feed work (Google India requires GST-inclusive prices matching landing page).
 
 ## Log
+### 2026-06-13 — P1-02..P1-05 executed via ship pipeline
+- **Changed**: `tsconfig.json`+`eslint.config.mjs` (94b063c, P1-02); `lib/email/send.ts`+test (67ff66d, P1-03); `lib/orders/complete-paid-order.ts`+test (331b3f5, P1-04); `api/hono/routes/admin-orders.ts`+`app/(admin)/admin/orders/[id]/page.tsx`+test (eceb7ee, P1-05).
+- **Verified**: 174/174 pass; tsc clean across all packets; fable-reviewer ACCEPT on P1-03/P1-04 (after repair loops for test theater and wrong fixture); P1-05 ACCEPT after 2 repair loops (emailSent truth-value, dead scaffolding).
+- **Decisions**: P1-04 — Drizzle mock WHERE predicate must be asserted via AST filter (`arg._and._ne`); test theater otherwise. P1-05 — `updateOrderStatus` already writes events internally; `addOrderEvent` call in route is a duplicate, removed.
+- **New failure modes**: P1-05a TOCTOU (concurrent admin PATCHes both pass isStatusChange) — deferred sub-item. Note field `.max(500)` missing from admin PATCH schema — cosmetic, deferred.
+- **Next concrete action**: Fan out P1-06 (blocks P1-07/08/19) + P1-09/10/11/12/13/14/16/17 in parallel.
+
 ### 2026-06-13 — P1-01 executed via ship pipeline
 - **Changed**: `.gitignore` (a0be510) — root-scoped dirs `/output/`, `/outputs/`, `/tmp/`, `/.playwright-mcp/`; root-scoped file patterns for PNGs/JSONs; `/docs/finance/` added.
 - **Verified**: `git check-ignore` exits 0 for all 9 paths; `public/apple-touch-icon.png` exits 1 (unaffected); porcelain count 71→62; verifier PASS, fable-reviewer ACCEPT-WITH-MINORS (2 minors resolved in repair loop, 1 false-claim in worker report with no code impact).
