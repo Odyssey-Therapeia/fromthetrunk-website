@@ -519,3 +519,28 @@ export const reservations = pgTable(
     expiresAtIdx: index("reservations_expires_at_idx").on(table.expiresAt),
   })
 );
+
+/**
+ * P2-07: Server-event log — powers P5 admin dashboards and provides durable audit trail.
+ *
+ * event_id is unique across the table: ON CONFLICT DO NOTHING on insert preserves
+ * idempotency under concurrent webhook + callback races (mirrors the P1-04 orders
+ * atomic claim pattern). Shared with client-side pixels (Meta, GA4) for dedup.
+ */
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Stable cross-adapter identifier — generated server-side via crypto.randomUUID(). */
+    eventId: text("event_id").notNull(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    eventIdUnique: uniqueIndex("events_event_id_unique").on(table.eventId),
+    typeIdx: index("events_type_idx").on(table.type),
+    occurredAtIdx: index("events_occurred_at_idx").on(table.occurredAt),
+  })
+);

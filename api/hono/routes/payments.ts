@@ -15,6 +15,7 @@ import { GST_RATE } from "@/lib/config/order-pricing";
 import { isInventoryV2 } from "@/lib/config/flags";
 import { createOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
+import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 import {
   calculateOrderTotals,
   createRazorpayPaymentLink,
@@ -237,6 +238,23 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         taxRate: String(GST_RATE),
         totalPaise,
         userId: customer?.id ?? null,
+      });
+
+      // Fire-and-forget: order_created event — emitted immediately after order is persisted.
+      // emitAnalyticsEvent() never throws; errors are caught + logged inside.
+      void emitAnalyticsEvent({
+        event_id: crypto.randomUUID(),
+        type: "order_created",
+        payload: {
+          orderId: order.id,
+          totalPaise,
+          subtotalPaise,
+          shippingCostPaise,
+          taxAmountPaise,
+          shippingMethod: body.shippingMethod,
+          productIds,
+        },
+        occurredAt: new Date(),
       });
 
       const reservedUntil = new Date(

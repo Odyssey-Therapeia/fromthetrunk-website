@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { expireReservations } from "@/db/queries/reservations";
 import { products } from "@/db/schema";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
+import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 
 export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
@@ -70,6 +71,18 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
               lt(products.reservedUntil, new Date())
             )
           );
+      }
+
+      // Fire-and-forget: reservation_expired event per expired product.
+      // emitAnalyticsEvent() never throws; errors are caught + logged inside.
+      const expiredAt = new Date();
+      for (const row of expiredRows) {
+        void emitAnalyticsEvent({
+          event_id: crypto.randomUUID(),
+          type: "reservation_expired",
+          payload: { productId: row.id },
+          occurredAt: expiredAt,
+        });
       }
 
       // Dual-write: also expire reservation table rows (always runs, flag-agnostic)

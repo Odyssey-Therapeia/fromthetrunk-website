@@ -11,6 +11,7 @@ import {
   orderPurchaseNotificationEmail,
   type EmailOrder,
 } from "@/lib/email/templates";
+import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 
 type CompletePaidOrderInput = {
   orderId: string;
@@ -130,6 +131,22 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
   await addOrderEvent(input.orderId, `${input.source} payment confirmed`, "confirmed", {
     paymentId: input.paymentId,
     paymentReference: input.paymentReference ?? null,
+  });
+
+  // Fire-and-forget: payment_completed event — winner branch only (EXACTLY ONCE).
+  // emitAnalyticsEvent() never throws; errors are caught + logged inside.
+  void emitAnalyticsEvent({
+    event_id: crypto.randomUUID(),
+    type: "payment_completed",
+    payload: {
+      orderId: input.orderId,
+      paymentId: input.paymentId,
+      paymentMethod: input.paymentMethod ?? "razorpay",
+      paymentReference: input.paymentReference ?? null,
+      source: input.source,
+      productIds,
+    },
+    occurredAt: new Date(),
   });
 
   const confirmed = await getOrder(input.orderId);
