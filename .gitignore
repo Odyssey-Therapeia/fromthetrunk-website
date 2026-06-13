@@ -53,3 +53,6 @@ test-results/
 
 # lock files (keep package-lock.json for reproducible builds)
 bun.lock
+
+# Xeno local config (contains secrets / env-specific overrides; .example is tracked)
+lib/ai/xeno-local-config.ts
