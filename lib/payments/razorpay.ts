@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
 
+import { isGstInclusive } from "@/lib/config/flags";
 import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
@@ -171,23 +172,83 @@ export function verifyPaymentLinkSignature({
 }
 
 /**
- * Calculate order totals server-side.
+ * Compute shipping cost in PAISE from a paise subtotal.
+ *
+ * This is the single shipping-cost rule used by every order-charge path. The
+ * SHIPPING_TIERS values (freeThreshold, standard, express) are expressed in
+ * rupees, so they are scaled to paise here. Free above the threshold.
+ *
+ * Both /api/v2/payments/create-order and /api/v2/orders MUST call this (via
+ * calculateOrderTotals) so the customer-charged shipping is identical across
+ * routes.
+ */
+export function toShippingCostPaise(
+  subtotalPaise: number,
+  shippingMethod: ShippingMethod = "standard"
+): number {
+  const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
+  if (subtotalPaise >= freeThresholdPaise) return 0;
+  return SHIPPING_TIERS[shippingMethod] * 100;
+}
+
+export type OrderTotals = {
+  shippingCostPaise: number;
+  shippingMethod: ShippingMethod;
+  subtotalPaise: number;
+  taxAmountPaise: number;
+  taxRate: number;
+  totalPaise: number;
+};
+
+/**
+ * The single source of truth for the amount a customer is charged.
+ *
+ * Both the payment-link route (api/hono/routes/payments.ts) and the order
+ * route (api/hono/routes/orders.ts) MUST call this with the same inputs they
+ * already compute (a paise subtotal + the requested shipping method). It owns
+ * shipping (via toShippingCostPaise), GST, and the grand total so the three
+ * persisted fields — subtotalPaise, taxAmountPaise, totalPaise — and the
+ * Razorpay charge can never drift apart.
+ *
+ * When FTT_FEATURE_GST_INCLUSIVE is "true":
+ *   - pricePaise / subtotalPaise is treated as the all-in (GST-inclusive) price.
+ *   - No GST is added on top; the GST component is backed OUT for display:
+ *       taxAmountPaise = round(subtotalPaise × rate / (1 + rate))
+ *   - totalPaise = subtotalPaise + shippingCostPaise
+ *
+ * When the flag is OFF (default, every current environment):
+ *   - Behaviour is byte-for-byte identical to the inline math it replaces.
+ *   - taxAmountPaise = round(subtotalPaise × rate)
+ *   - totalPaise = subtotalPaise + shippingCostPaise + taxAmountPaise
+ *
+ * totalPaise is never negative.
  */
 export function calculateOrderTotals(
-  subtotal: number,
+  subtotalPaise: number,
   shippingMethod: ShippingMethod = "standard"
-) {
-  const shippingCost =
-    subtotal >= SHIPPING_TIERS.freeThreshold ? 0 : SHIPPING_TIERS[shippingMethod];
-  const taxAmount = Math.round(subtotal * GST_RATE);
-  const total = subtotal + shippingCost + taxAmount;
+): OrderTotals {
+  const shippingCostPaise = toShippingCostPaise(subtotalPaise, shippingMethod);
+
+  let taxAmountPaise: number;
+  let totalPaise: number;
+
+  if (isGstInclusive()) {
+    // Inclusive: back-calculate the GST component for transparency display only.
+    // total = subtotal (already all-in) + shipping; no tax added on top.
+    taxAmountPaise = Math.round((subtotalPaise * GST_RATE) / (1 + GST_RATE));
+    totalPaise = Math.max(0, subtotalPaise + shippingCostPaise);
+  } else {
+    // Exclusive (default): add GST on top of subtotal.
+    taxAmountPaise = Math.round(subtotalPaise * GST_RATE);
+    totalPaise = Math.max(0, subtotalPaise + shippingCostPaise + taxAmountPaise);
+  }
 
   return {
-    subtotal,
-    shippingCost,
+    shippingCostPaise,
     shippingMethod,
+    subtotalPaise,
+    taxAmountPaise,
     taxRate: GST_RATE,
-    taxAmount,
-    total,
+    totalPaise,
   };
 }

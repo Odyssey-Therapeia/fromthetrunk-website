@@ -69,16 +69,22 @@ vi.mock("@/lib/orders/complete-paid-order", () => ({
   completePaidOrder: completePaidOrderMock,
 }));
 
-vi.mock("@/lib/payments/razorpay", () => ({
-  createRazorpayPaymentLink: createRazorpayPaymentLinkMock,
-  getRazorpayPaymentLinkReferenceId: (orderId: string) =>
-    `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`,
-  verifyPaymentLinkSignature: verifyPaymentLinkSignatureMock,
-  verifyPaymentSignature: verifyPaymentSignatureMock,
-  isRazorpayAuthError: isRazorpayAuthErrorMock,
-  RAZORPAY_MIN_AMOUNT_PAISE: 100,
-  RAZORPAY_PAYMENT_LINK_HOLD_MINUTES: 30,
-}));
+vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
+  // Keep the real money math (calculateOrderTotals / toShippingCostPaise) and
+  // only stub the network/SDK boundary, so the charged amount stays authentic.
+  const actual = await importOriginal<typeof import("@/lib/payments/razorpay")>();
+  return {
+    ...actual,
+    createRazorpayPaymentLink: createRazorpayPaymentLinkMock,
+    getRazorpayPaymentLinkReferenceId: (orderId: string) =>
+      `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`,
+    verifyPaymentLinkSignature: verifyPaymentLinkSignatureMock,
+    verifyPaymentSignature: verifyPaymentSignatureMock,
+    isRazorpayAuthError: isRazorpayAuthErrorMock,
+    RAZORPAY_MIN_AMOUNT_PAISE: 100,
+    RAZORPAY_PAYMENT_LINK_HOLD_MINUTES: 30,
+  };
+});
 
 // Rate-limit middleware always passes in tests
 vi.mock("@/lib/http/rate-limit", () => ({

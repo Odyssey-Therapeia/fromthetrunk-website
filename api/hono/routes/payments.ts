@@ -10,10 +10,11 @@ import { addOrderEvent, createOrder, getOrder } from "@/db/queries/orders";
 import { getOrCreateCheckoutCustomer } from "@/db/queries/users";
 import { orders, products } from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
-import { GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
+import { GST_RATE } from "@/lib/config/order-pricing";
 import { createOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 import {
+  calculateOrderTotals,
   createRazorpayPaymentLink,
   getRazorpayPaymentLinkReferenceId,
   isRazorpayAuthError,
@@ -23,12 +24,6 @@ import {
   verifyPaymentLinkSignature,
   verifyPaymentSignature,
 } from "@/lib/payments/razorpay";
-
-const toShippingCostPaise = (subtotalPaise: number, shippingMethod: "express" | "standard") => {
-  const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
-  if (subtotalPaise >= freeThresholdPaise) return 0;
-  return SHIPPING_TIERS[shippingMethod] * 100;
-};
 
 const paymentLinkCallbackSchema = z.object({
   orderId: z.string().uuid().optional(),
@@ -169,9 +164,12 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         (sum, item) => sum + item.pricePaise * item.quantity,
         0
       );
-      const shippingCostPaise = toShippingCostPaise(subtotalPaise, body.shippingMethod);
-      const taxAmountPaise = Math.round(subtotalPaise * GST_RATE);
-      const totalPaise = subtotalPaise + shippingCostPaise + taxAmountPaise;
+      // Single source of truth for the charged amount (shipping + GST + total).
+      // Flag OFF (default) reproduces the previous inline math byte-for-byte.
+      const { shippingCostPaise, taxAmountPaise, totalPaise } = calculateOrderTotals(
+        subtotalPaise,
+        body.shippingMethod
+      );
 
       if (totalPaise < RAZORPAY_MIN_AMOUNT_PAISE) {
         return c.json(

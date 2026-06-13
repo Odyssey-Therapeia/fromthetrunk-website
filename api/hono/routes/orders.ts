@@ -8,13 +8,8 @@ import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { createOrder, getOrder, listOrders } from "@/db/queries/orders";
 import { products } from "@/db/schema";
-import { GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
-
-const toShippingCostPaise = (subtotalPaise: number, shippingMethod: "express" | "standard") => {
-  const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
-  if (subtotalPaise >= freeThresholdPaise) return 0;
-  return SHIPPING_TIERS[shippingMethod] * 100;
-};
+import { GST_RATE } from "@/lib/config/order-pricing";
+import { calculateOrderTotals } from "@/lib/payments/razorpay";
 
 export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
@@ -163,9 +158,12 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
         (sum, item) => sum + item.pricePaise * item.quantity,
         0
       );
-      const shippingCostPaise = toShippingCostPaise(subtotalPaise, body.shippingMethod);
-      const taxAmountPaise = Math.round(subtotalPaise * GST_RATE);
-      const totalPaise = subtotalPaise + shippingCostPaise + taxAmountPaise;
+      // Single source of truth for the charged amount (shipping + GST + total).
+      // Flag OFF (default) reproduces the previous inline math byte-for-byte.
+      const { shippingCostPaise, taxAmountPaise, totalPaise } = calculateOrderTotals(
+        subtotalPaise,
+        body.shippingMethod
+      );
 
       const order = await createOrder({
         items: normalizedItems,

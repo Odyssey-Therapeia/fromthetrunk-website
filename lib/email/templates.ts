@@ -3,6 +3,7 @@
  * Uses inline styles for maximum email client compatibility.
  */
 import { formatINR } from "@/db/money";
+import { isGstInclusive } from "@/lib/config/flags";
 import { getSiteOrigin } from "@/lib/config/site";
 
 export type EmailOrderItem = {
@@ -141,9 +142,9 @@ export function orderConfirmationEmail(order: EmailOrder): {
         <span>Subtotal</span><span>${formatINR(order.subtotal * 100)}</span>
       </div>
       ${(order.shippingCost ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${formatINR(order.shippingCost! * 100)}</span></div>` : ""}
-      ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>GST</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
+      ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>${isGstInclusive() ? "GST (incl.)" : "GST"}</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
       <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:${brandStyles.text};margin:12px 0;padding-top:12px;border-top:2px solid ${brandStyles.border};">
-        <span>Total</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>
+        <span>Total${isGstInclusive() ? " (incl. GST)" : ""}</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>
       </div>
     </div>
 
@@ -221,9 +222,9 @@ export function orderPurchaseNotificationEmail(
         <span>Subtotal</span><span>${formatINR(order.subtotal * 100)}</span>
       </div>
       ${(order.shippingCost ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${formatINR(order.shippingCost! * 100)}</span></div>` : ""}
-      ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>GST</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
+      ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>${isGstInclusive() ? "GST (incl.)" : "GST"}</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
       <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:${brandStyles.text};margin:12px 0;padding-top:12px;border-top:2px solid ${brandStyles.border};">
-        <span>Total paid</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>
+        <span>Total paid${isGstInclusive() ? " (incl. GST)" : ""}</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>
       </div>
     </div>
 

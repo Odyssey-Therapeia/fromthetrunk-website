@@ -194,6 +194,16 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
 
   const shippingCost =
     subtotal >= SHIPPING_TIERS.freeThreshold ? 0 : SHIPPING_TIERS[shippingMethod];
+  // The summary below is a PRE-CHECKOUT estimate, rendered before the order
+  // exists. It mirrors the server's flag-OFF (GST-exclusive) math, which is the
+  // behaviour in every current environment. We deliberately do NOT read the
+  // GST-inclusive flag here: FTT_FEATURE_GST_INCLUSIVE has no NEXT_PUBLIC_
+  // prefix, so it is always false in the browser — branching on it would render
+  // an "incl. GST" label over an exclusive total whenever the server flag is ON.
+  // TODO(P2-04): once create-order returns its full breakdown
+  // (subtotal/shipping/tax/total), display the server-computed totals and labels
+  // instead of re-deriving them here, so the estimate matches the charged amount
+  // under both flag states. Do NOT introduce a client-readable flag for this.
   const taxAmount = Math.round(subtotal * GST_RATE);
   const total = subtotal + shippingCost + taxAmount;
   const taxRateLabel = new Intl.NumberFormat("en-IN", {
@@ -591,7 +601,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-foreground/60">
-                          Estimated Tax ({taxRateLabel})
+                          {`Estimated Tax (${taxRateLabel})`}
                         </span>
                         <span className="font-medium text-foreground">{formatCurrency(taxAmount)}</span>
                       </div>
@@ -600,7 +610,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                     <hr className="border-border/40" />
                     
                     <div className="flex justify-between items-center py-2">
-                      <span className="text-lg font-serif font-bold text-foreground">Total</span>
+                      <span className="text-lg font-serif font-bold text-foreground">
+                        Total
+                      </span>
                       <span className="text-3xl font-serif font-bold text-primary">{formatCurrency(total)}</span>
                     </div>
 
