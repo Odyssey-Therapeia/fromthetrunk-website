@@ -35,7 +35,7 @@ PDP, cart, checkout totals (`calculateOrderTotals`), JSON-LD offers, emails — 
 
 ### P2-06: Durable rate limiting
 Upstash (or Vercel KV-successor via Marketplace) adapter behind `lib/ports/rate-limiter.ts`; in-memory adapter remains for dev/tests. Wire payment:create, try-on, sign-up.
-- [ ]
+- [x] (2026-06-13, 02ce7fb, "port + in-memory(default, mutation-proven byte-identical) + env-gated Upstash adapter; wired payment:create/sign-up/newsletter/cart; async-await correctness fix on newsletter+cart; 419 tests; ACCEPT-WITH-MINORS. try-on wiring rides the untracked labs slice (not shipping). Upstash creds BATCHED.")
 
 ### P2-07: Server-event pipeline
 `lib/ports/analytics-sink.ts` + adapters `internal-events` (new `events` table), `ga4-measurement-protocol`, `meta-capi` (event_id dedup with the P1-18 pixel). Emit: order_created, payment_completed (inside the P1-04 idempotent winner branch), reservation_expired. Fan-out is fire-and-forget with error logging — never blocks the money path. Ladder: +L2.
