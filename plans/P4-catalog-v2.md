@@ -23,7 +23,8 @@ Product stepper consumes the type's schema → schema-form renders attribute ste
 
 ### P4-04: Tags + filtering/facets
 `tags` + join; PDP/listing filter UI (type, fabric, price, availability) backed by `lib/ports/catalog-search.ts` with a Postgres adapter (indexes on the hot attribute paths via expression indexes); embeddings-based search is explicitly deferred (port makes it swappable later).
-- [ ]
+- [x] (2026-06-14, debeb82, "catalog-search port + postgres adapter (type/fabric/price/availability/tags + facets); listing wired (searchProducts ×5); P4-03 tag-condition wired via product_tags; drizzle/0009 expr-indexes + DO-block FKs parse-validated; filter tests assert WHERE via collectPrimitives AST (mutation-proven, was theater→repaired); 715 tests; ACCEPT-WITH-MINORS")
+- [ ] P4-04a: admin tags CRUD (create/assign tags) — search/filter works but no tag-management UI yet. P4-04b: facet counts are static/unfiltered (not contextual within the active filter set) — v1 by design; make contextual later.
 
 ### P4-05: Quantity inventory consumed end-to-end
 Switch reads/writes from the P2-05 compatibility layer to quantities + reservations everywhere: PDP availability, create-order claim (qty-aware), admin stock editing, feeds availability mapping. One-of-one behaviour regression-tested (qty=1 reserve→sold flow identical to today). Ladder: +L2, L3.
