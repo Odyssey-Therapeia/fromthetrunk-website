@@ -150,6 +150,24 @@ export function createInMemoryContentStore(): ContentStore {
       return updated;
     },
 
+    async unpublishPage(pageId: string): Promise<Page> {
+      const page = pagesMap.get(pageId);
+      if (!page) {
+        throw new Error(`Page not found: ${pageId}`);
+      }
+
+      const updated: Page = {
+        ...page,
+        status: "draft",
+        publishedVersionId: null,
+        updatedAt: new Date(),
+      };
+
+      pagesMap.set(pageId, updated);
+      pagesBySlug.set(updated.slug, updated);
+      return updated;
+    },
+
     async getPublishedPage(
       slug: string
     ): Promise<{ page: Page; version: PageVersion } | null> {
@@ -291,6 +309,12 @@ export function createDrizzleContentStore(): ContentStore {
     async publishPage(pageId: string, versionId: string): Promise<Page> {
       const { dbUpdatePagePublish } = await import("@/db/queries/content");
       const row = await dbUpdatePagePublish(pageId, versionId);
+      return rowToPage(row);
+    },
+
+    async unpublishPage(pageId: string): Promise<Page> {
+      const { dbUpdatePageUnpublish } = await import("@/db/queries/content");
+      const row = await dbUpdatePageUnpublish(pageId);
       return rowToPage(row);
     },
 

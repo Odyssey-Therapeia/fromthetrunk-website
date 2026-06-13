@@ -93,6 +93,12 @@ export interface ContentStore {
   /** Sets published_version_id and status=published. */
   publishPage(pageId: string, versionId: string): Promise<Page>;
 
+  /**
+   * Clears published_version_id and sets status back to draft.
+   * The page returns to 404 publicly until re-published.
+   */
+  unpublishPage(pageId: string): Promise<Page>;
+
   /** Returns the published page + its active version, or null if draft/not found. */
   getPublishedPage(slug: string): Promise<{ page: Page; version: PageVersion } | null>;
 

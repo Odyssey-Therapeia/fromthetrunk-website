@@ -10,7 +10,8 @@
 export type AnalyticsEventType =
   | "order_created"
   | "payment_completed"
-  | "reservation_expired";
+  | "reservation_expired"
+  | "content_published";
 
 export type AnalyticsEvent = {
   /** Globally unique per logical event — stable across all adapter calls. */

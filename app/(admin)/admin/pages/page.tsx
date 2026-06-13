@@ -3,7 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Clock, FileText, Loader2, Plus, RotateCcw, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  Eye,
+  FileText,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +97,8 @@ const emptyDraft: Record<string, unknown> = {
 
 // SCHEMA_FORM_PAGES_ADMIN — SchemaForm is rendered below using pageSettingsSchema
 // PAGE_SETTINGS_SCHEMA_DRIVEN — all SEO fields come from pageSettingsSchema
+// PUBLISH_BUTTON_PAGES_ADMIN — Publish/Unpublish buttons wired to /publish and /unpublish
+// PREVIEW_BUTTON_PAGES_ADMIN — Preview button wired to /preview-token
 
 // ── Version history sheet ─────────────────────────────────────────────────────
 
@@ -231,6 +245,127 @@ function VersionHistorySheet({
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+// ── Publish / Unpublish / Preview controls ─────────────────────────────────────
+// PUBLISH_BUTTON_PAGES_ADMIN
+// PREVIEW_BUTTON_PAGES_ADMIN
+
+function PageActions({
+  page,
+  onChanged,
+}: {
+  page: Page;
+  onChanged: () => void;
+}) {
+  const [pendingAction, setPendingAction] = useState<
+    "publish" | "unpublish" | "preview" | null
+  >(null);
+
+  const handlePublish = async () => {
+    setPendingAction("publish");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${page.id}/publish`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      toast.success("Page published.");
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to publish page.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setPendingAction("unpublish");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${page.id}/unpublish`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      toast.success("Page unpublished.");
+      onChanged();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Unable to unpublish page."
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handlePreview = async () => {
+    setPendingAction("preview");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${page.id}/preview-token`);
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      const data = (await res.json()) as { previewUrl: string };
+      window.open(data.previewUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Unable to generate preview link."
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const isLoading = pendingAction !== null;
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Preview button */}
+      <Button
+        disabled={isLoading}
+        onClick={() => void handlePreview()}
+        size="sm"
+        title="Preview draft"
+        type="button"
+        variant="ghost"
+      >
+        {pendingAction === "preview" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Eye className="h-4 w-4" />
+        )}
+      </Button>
+
+      {/* Publish / Unpublish */}
+      {page.status === "published" ? (
+        <Button
+          disabled={isLoading}
+          onClick={() => void handleUnpublish()}
+          size="sm"
+          title="Unpublish page"
+          type="button"
+          variant="ghost"
+        >
+          {pendingAction === "unpublish" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <X className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+      ) : (
+        <Button
+          disabled={isLoading}
+          onClick={() => void handlePublish()}
+          size="sm"
+          title="Publish page"
+          type="button"
+          variant="ghost"
+        >
+          {pendingAction === "publish" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -467,7 +602,7 @@ export default function AdminPagesPage() {
                       <TableHead>Title</TableHead>
                       <TableHead>Slug</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="w-28">Actions</TableHead>
+                      <TableHead className="w-40">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -484,6 +619,11 @@ export default function AdminPagesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            {/* PUBLISH_BUTTON_PAGES_ADMIN / PREVIEW_BUTTON_PAGES_ADMIN */}
+                            <PageActions
+                              page={page}
+                              onChanged={() => void refetch()}
+                            />
                             <Button
                               onClick={() => openHistory(page)}
                               size="sm"
@@ -504,6 +644,18 @@ export default function AdminPagesPage() {
                             >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
+                            {page.status === "published" ? (
+                              <a
+                                href={`/${page.slug}`}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                                title="View published page"
+                              >
+                                <Button size="sm" type="button" variant="ghost">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </a>
+                            ) : null}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -532,6 +684,10 @@ export default function AdminPagesPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
+                        <PageActions
+                          page={page}
+                          onChanged={() => void refetch()}
+                        />
                         <Button
                           onClick={() => openHistory(page)}
                           size="sm"

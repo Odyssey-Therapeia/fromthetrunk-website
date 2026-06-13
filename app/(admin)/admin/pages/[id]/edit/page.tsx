@@ -2,6 +2,7 @@
 
 /**
  * P3-05: Page editor — block composer.
+ * P3-06: Added Publish / Unpublish / Preview controls.
  *
  * Shopify section-list model: ordered block list, no free-form canvas.
  * Add / remove / reorder (up/down buttons) blocks; edit per-block props via
@@ -12,6 +13,8 @@
  *
  * BLOCK_COMPOSER_PAGE — grep anchor for wiring verification.
  * AUTOSAVE_POSTS_VERSION — autosave calls POST /api/v2/admin/pages/:id/versions.
+ * PUBLISH_BUTTON_EDITOR — Publish/Unpublish wired to POST /api/v2/admin/pages/:id/publish|unpublish.
+ * PREVIEW_BUTTON_EDITOR — Preview wired to GET /api/v2/admin/pages/:id/preview-token.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,10 +26,13 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronUp,
+  Eye,
   Loader2,
   Plus,
   Save,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -303,6 +309,9 @@ export default function PageEditorPage() {
   const [blocks, setBlocks] = useState<ComposerBlock[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [pendingPublish, setPendingPublish] = useState<
+    "publish" | "unpublish" | "preview" | null
+  >(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load page ────────────────────────────────────────────────────────────
@@ -311,6 +320,7 @@ export default function PageEditorPage() {
     data: page,
     isLoading: isPageLoading,
     error: pageError,
+    refetch: refetchPage,
   } = useQuery<Page>({
     queryKey: ["admin-page", pageId],
     queryFn: async () => {
@@ -384,6 +394,58 @@ export default function PageEditorPage() {
     [saveVersion]
   );
 
+  // ── Publish / Unpublish / Preview ─────────────────────────────────────────
+
+  // PUBLISH_BUTTON_EDITOR
+  const handlePublish = async () => {
+    setPendingPublish("publish");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${pageId}/publish`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      toast.success("Page published.");
+      await refetchPage();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to publish.");
+    } finally {
+      setPendingPublish(null);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setPendingPublish("unpublish");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${pageId}/unpublish`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      toast.success("Page unpublished.");
+      await refetchPage();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to unpublish.");
+    } finally {
+      setPendingPublish(null);
+    }
+  };
+
+  // PREVIEW_BUTTON_EDITOR
+  const handlePreview = async () => {
+    setPendingPublish("preview");
+    try {
+      const res = await fetch(`/api/v2/admin/pages/${pageId}/preview-token`);
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      const data = (await res.json()) as { previewUrl: string };
+      window.open(data.previewUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Unable to generate preview link."
+      );
+    } finally {
+      setPendingPublish(null);
+    }
+  };
+
   // ── Block mutations ──────────────────────────────────────────────────────
 
   const handleAddBlock = (type: string) => {
@@ -451,6 +513,7 @@ export default function PageEditorPage() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   const isLoading = isPageLoading || isVersionsLoading;
+  const isPublishPending = pendingPublish !== null;
 
   return (
     <div className="space-y-6">
@@ -504,12 +567,29 @@ export default function PageEditorPage() {
             )
           ) : null}
 
+          {/* PREVIEW_BUTTON_EDITOR */}
+          <Button
+            className="gap-2 rounded-full"
+            disabled={isPublishPending || isLoading}
+            onClick={() => void handlePreview()}
+            type="button"
+            variant="outline"
+          >
+            {pendingPublish === "preview" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            Preview
+          </Button>
+
           {/* Manual save */}
           <Button
             className="gap-2 rounded-full"
             disabled={isSaving || isLoading}
             onClick={handleManualSave}
             type="button"
+            variant="outline"
           >
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -518,6 +598,38 @@ export default function PageEditorPage() {
             )}
             Save draft
           </Button>
+
+          {/* PUBLISH_BUTTON_EDITOR */}
+          {page?.status === "published" ? (
+            <Button
+              className="gap-2 rounded-full"
+              disabled={isPublishPending || isLoading}
+              onClick={() => void handleUnpublish()}
+              type="button"
+              variant="secondary"
+            >
+              {pendingPublish === "unpublish" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+              Unpublish
+            </Button>
+          ) : (
+            <Button
+              className="gap-2 rounded-full"
+              disabled={isPublishPending || isLoading}
+              onClick={() => void handlePublish()}
+              type="button"
+            >
+              {pendingPublish === "publish" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              Publish
+            </Button>
+          )}
         </div>
       </div>
 

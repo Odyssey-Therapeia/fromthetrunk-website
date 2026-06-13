@@ -79,6 +79,16 @@ export async function dbUpdatePagePublish(
   return row;
 }
 
+/** Clears published_version_id and sets status back to draft. */
+export async function dbUpdatePageUnpublish(pageId: string): Promise<PageRow> {
+  const [row] = await db
+    .update(pages)
+    .set({ status: "draft", publishedVersionId: null, updatedAt: new Date() })
+    .where(eq(pages.id, pageId))
+    .returning();
+  return row;
+}
+
 // ── Page versions ─────────────────────────────────────────────────────────────
 
 export type InsertPageVersionInput = Omit<InferInsertModel<typeof pageVersions>, "id" | "createdAt">;
