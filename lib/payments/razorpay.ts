@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
+export const RAZORPAY_PAYMENT_LINK_HOLD_MINUTES = 30;
 
 let instance: Razorpay | null = null;
 
@@ -23,6 +24,13 @@ export function isRazorpayAuthError(error: unknown): boolean {
   return directStatus === 401 || nestedStatus === 401;
 }
 
+const timingSafeHexEqual = (expectedSignature: string, signature: string): boolean => {
+  const expected = Buffer.from(expectedSignature, "hex");
+  const received = Buffer.from(signature, "hex");
+
+  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+};
+
 export function getRazorpayInstance(): Razorpay {
   if (!instance) {
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -41,6 +49,70 @@ export function getRazorpayInstance(): Razorpay {
   }
 
   return instance;
+}
+
+export type RazorpayPaymentLinkResponse = {
+  amount?: number;
+  amount_paid?: number;
+  currency?: string;
+  id: string;
+  short_url: string;
+  status?: string;
+};
+
+export type CreateRazorpayPaymentLinkInput = {
+  amountPaise: number;
+  callbackUrl: string;
+  customer: {
+    contact?: string | null;
+    email: string;
+    name: string;
+  };
+  description: string;
+  expireBy?: Date;
+  notes?: Record<string, string>;
+  referenceId: string;
+};
+
+export const getRazorpayPaymentLinkReferenceId = (orderId: string) =>
+  `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`;
+
+export async function createRazorpayPaymentLink({
+  amountPaise,
+  callbackUrl,
+  customer,
+  description,
+  expireBy,
+  notes,
+  referenceId,
+}: CreateRazorpayPaymentLinkInput): Promise<RazorpayPaymentLinkResponse> {
+  const razorpay = getRazorpayInstance();
+  const expiresAt =
+    expireBy ?? new Date(Date.now() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000);
+
+  const paymentLink = await razorpay.paymentLink.create({
+    accept_partial: false,
+    amount: amountPaise,
+    callback_method: "get",
+    callback_url: callbackUrl,
+    currency: "INR",
+    customer: {
+      contact: customer.contact ?? undefined,
+      email: customer.email,
+      name: customer.name,
+    },
+    description,
+    expire_by: Math.floor(expiresAt.getTime() / 1000),
+    notes,
+    notify: {
+      email: true,
+      sms: Boolean(customer.contact),
+    },
+    reference_id: referenceId,
+    reminder_enable: true,
+  });
+
+  return paymentLink as RazorpayPaymentLinkResponse;
 }
 
 /**
@@ -66,10 +138,36 @@ export function verifyPaymentSignature({
     .update(body)
     .digest("hex");
 
-  const expected = Buffer.from(expectedSignature, "hex");
-  const received = Buffer.from(signature, "hex");
+  return timingSafeHexEqual(expectedSignature, signature);
+}
 
-  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+/**
+ * Verify the redirect signature Razorpay sends after a Payment Link payment.
+ */
+export function verifyPaymentLinkSignature({
+  paymentId,
+  paymentLinkId,
+  paymentLinkReferenceId,
+  paymentLinkStatus,
+  signature,
+}: {
+  paymentId: string;
+  paymentLinkId: string;
+  paymentLinkReferenceId: string;
+  paymentLinkStatus: string;
+  signature: string;
+}): boolean {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keySecret) return false;
+
+  const body = `${paymentLinkId}|${paymentLinkReferenceId}|${paymentLinkStatus}|${paymentId}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(body)
+    .digest("hex");
+
+  return timingSafeHexEqual(expectedSignature, signature);
 }
 
 /**

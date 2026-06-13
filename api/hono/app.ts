@@ -22,6 +22,7 @@ import { registerUserRoutes } from "@/api/hono/routes/users";
 import { registerWishlistRoutes } from "@/api/hono/routes/wishlist";
 import { registerWebhookRoutes } from "@/api/hono/routes/webhooks";
 import type { HonoBindings } from "@/api/hono/types";
+import { onUncaughtError } from "@/lib/http/on-uncaught-error";
 
 const app = new OpenAPIHono<HonoBindings>().basePath("/api/v2");
 
@@ -110,15 +111,6 @@ const conversationsApp = new OpenAPIHono<HonoBindings>();
 registerConversationRoutes(conversationsApp);
 app.route("/conversations", conversationsApp);
 
-app.onError((error, c) => {
-  console.error("[hono:v2]", error);
-  return c.json(
-    {
-      code: "INTERNAL_SERVER_ERROR",
-      message: error.message || "Unexpected server error.",
-    },
-    500
-  );
-});
+app.onError(onUncaughtError);
 
 export default app;

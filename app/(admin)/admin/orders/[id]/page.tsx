@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { formatINR } from "@/db/money";
 import { getOrder } from "@/db/queries/orders";
 
+import { OrderStatusEditor } from "./order-status-editor";
+
 type AdminOrderDetailPageProps = {
   params: Promise<{
     id: string;
@@ -193,6 +195,15 @@ export default async function AdminOrderDetailPage({
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Update status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrderStatusEditor initialStatus={order.status} orderId={order.id} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Customer</CardTitle>

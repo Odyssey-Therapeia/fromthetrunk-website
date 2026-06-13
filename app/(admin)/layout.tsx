@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 
 import "../globals.css";
 import { AdminSidebar } from "@/components/admin/sidebar";
@@ -17,6 +17,18 @@ const sans = Inter({
   variable: "--font-sans",
   display: "swap",
 });
+
+export const metadata: Metadata = {
+  title: {
+    default: "FTT Admin",
+    template: "%s | FTT Admin",
+  },
+  description: "From the Trunk admin console.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -60,7 +72,6 @@ export default async function AdminLayout({
           />
           <AgentPanelProvider />
         </Providers>
-        <Analytics />
       </body>
     </html>
   );

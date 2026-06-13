@@ -18,7 +18,6 @@ const protectedPaths = [
   "/account/addresses",
   "/account/orders",
   "/account/wishlist",
-  "/checkout",
 ];
 
 const isProtected = (pathname: string) =>
@@ -85,7 +84,6 @@ export const config = {
     "/account/addresses/:path*",
     "/account/orders/:path*",
     "/account/wishlist/:path*",
-    "/checkout/:path*",
     "/collection/:slug",
   ],
 };

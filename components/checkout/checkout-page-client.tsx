@@ -53,8 +53,11 @@ type CreatePaymentOrderResponse = {
   amount?: number;
   amountPaise: number;
   currency: string;
+  orderAccessToken?: string;
   order_id?: string;
   orderId: string;
+  paymentLinkId?: string;
+  paymentLinkUrl?: string;
   razorpayKeyId?: string;
   razorpayOrderId: string;
 };
@@ -187,7 +190,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     };
   }, []);
 
-  const canCheckout = Boolean(session?.user?.id);
+  const canCheckout = true;
 
   const shippingCost =
     subtotal >= SHIPPING_TIERS.freeThreshold ? 0 : SHIPPING_TIERS[shippingMethod];
@@ -224,14 +227,6 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     setError(null);
 
     try {
-      if (paymentScriptError) {
-        throw new Error(paymentScriptError);
-      }
-
-      if (!isPaymentScriptReady || !window.Razorpay) {
-        throw new Error("Payment system is still loading. Please try again in a moment.");
-      }
-
       const orderPayload = {
         items: items.map((item) => ({
           productId: item.id,
@@ -262,6 +257,19 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
       }
 
       const orderData = (await createResponse.json()) as CreatePaymentOrderResponse;
+      if (orderData.paymentLinkUrl) {
+        window.location.assign(orderData.paymentLinkUrl);
+        return;
+      }
+
+      if (paymentScriptError) {
+        throw new Error(paymentScriptError);
+      }
+
+      if (!isPaymentScriptReady || !window.Razorpay) {
+        throw new Error("Payment system is still loading. Please try again in a moment.");
+      }
+
       const razorpayKeyId =
         orderData.razorpayKeyId ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
       if (!razorpayKeyId) {
@@ -313,7 +321,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
 
             clearCart();
             toast.success("Order placed successfully!");
-            router.push(`/checkout/confirmation?orderId=${orderData.orderId}`);
+            const confirmationPath = orderData.orderAccessToken
+              ? `/checkout/confirmation?orderId=${orderData.orderId}&key=${orderData.orderAccessToken}`
+              : `/checkout/confirmation?orderId=${orderData.orderId}`;
+            router.push(confirmationPath);
           } catch {
             setError("Payment was received but verification failed. Please contact support.");
             setIsSubmitting(false);
@@ -411,16 +422,6 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                   </div>
                 </div>
               </div>
-
-              {/* Login Warning for unauthenticated users */}
-              {!canCheckout && (
-                <div className="rounded-[24px] border border-dashed border-border/70 p-6 text-sm text-foreground/60 bg-card">
-                  Please sign in to place an order.{" "}
-                  <Button asChild variant="link" className="px-0 font-bold text-primary">
-                    <Link href="/account/sign-in">Sign in</Link>
-                  </Button>
-                </div>
-              )}
 
               {/* Shipping Form Section */}
               <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
@@ -529,7 +530,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                   </div>
                   <h4 className="font-bold text-foreground">Payment Handled by Razorpay</h4>
                   <p className="text-sm text-foreground/60 max-w-sm">
-                    You will be redirected to our secure payment gateway to complete your purchase. We support Credit Cards, UPI, Netbanking, and Wallets.
+                    You will continue to Razorpay&apos;s secure payment link to complete your purchase. We support credit cards, UPI, netbanking, and wallets.
                   </p>
                 </div>
               </section>
@@ -607,7 +608,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                     
                     <button 
                       onClick={handleSubmit}
-                      disabled={!canCheckout || isSubmitting}
+                      disabled={!hasItems || isSubmitting}
                       className="w-full bg-primary hover:bg-[#5a1818] text-primary-foreground font-bold py-5 rounded-full shadow-lg shadow-primary/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                     >
                       <span className="uppercase tracking-[0.15em] text-[10px]">
@@ -638,7 +639,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
         ) : (
           <div className="space-y-10">
             <div className="rounded-[24px] border border-dashed border-border/70 bg-card/60 p-12 text-center shadow-soft max-w-2xl mx-auto">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-bold">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-foreground font-bold">
                 Your bag is empty
               </p>
               <h2 className="mt-4 font-serif text-3xl text-foreground font-bold">
@@ -654,7 +655,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
 
             <section className="space-y-8 pt-10">
               <div className="space-y-3 text-center">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-accent font-bold">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
                   Featured Picks
                 </p>
                 <h2 className="font-serif text-3xl text-foreground font-bold">

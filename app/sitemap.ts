@@ -2,10 +2,11 @@ import type { MetadataRoute } from "next";
 
 import { listCollections } from "@/db/queries/collections";
 import { listProducts } from "@/db/queries/products";
+import { getSiteOrigin } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
 
-const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";
+const baseUrl = getSiteOrigin();
 const STATIC_PAGE_LAST_MODIFIED = new Date("2026-04-27T00:00:00.000Z");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
