@@ -23,6 +23,7 @@ import { getProductBySlug, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
+import { buildPdpTitle, buildPdpDescription } from "@/lib/seo/pdp-meta";
 import { getSiteOrigin } from "@/lib/config/site";
 import type { Product } from "@/types/domain";
 
@@ -44,16 +45,20 @@ export async function generateMetadata({
   const image = resolveMediaURL(product.images?.[0]);
   const displayDetails = getProductDisplayDetails(product);
 
+  const pdpTitle = buildPdpTitle(product.name, displayDetails.fabric);
+  const pdpDescription = buildPdpDescription(
+    product.name,
+    displayDetails.fabric,
+    product.storyNarrative,
+    product.storyTitle,
+  );
+
   return {
-    title: product.name,
-    description:
-      product.storyNarrative ??
-      `${product.name}: ${displayDetails.fabric} from the trunk. ${formatCurrency(product.pricePaise / 100)}.`,
+    title: pdpTitle,
+    description: pdpDescription,
     openGraph: {
-      title: product.name,
-      description:
-        product.storyNarrative ??
-        `One-of-a-kind ${displayDetails.fabric}. ${formatCurrency(product.pricePaise / 100)}.`,
+      title: pdpTitle,
+      description: pdpDescription,
       type: "website",
       ...(image ? { images: [{ url: image, alt: product.name }] } : {}),
     },
