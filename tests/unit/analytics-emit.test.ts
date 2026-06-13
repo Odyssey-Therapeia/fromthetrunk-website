@@ -29,6 +29,18 @@ vi.mock("@/db/queries/events", () => ({
 const fetchMock = vi.hoisted(() => vi.fn());
 vi.stubGlobal("fetch", fetchMock);
 
+// Mock the logger — capture log.error calls for L2 assertions
+const logErrorMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/log", () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: logErrorMock,
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Import the module under test AFTER mocks are registered
 // ---------------------------------------------------------------------------
@@ -61,6 +73,7 @@ describe("emitAnalyticsEvent", () => {
     insertEventMock.mockReset();
     insertEventMock.mockResolvedValue(undefined);
     fetchMock.mockReset();
+    logErrorMock.mockReset();
   });
 
   afterEach(() => {
@@ -145,15 +158,12 @@ describe("emitAnalyticsEvent", () => {
   describe("L2: fire-and-forget — throwing adapters do NOT propagate", () => {
     it("resolves without throwing when internal-events sink rejects", async () => {
       insertEventMock.mockRejectedValue(new Error("DB connection failed"));
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await expect(emitAnalyticsEvent(makeEvent())).resolves.toBeUndefined();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[analytics:emit]"),
-        expect.any(Error)
+      expect(logErrorMock).toHaveBeenCalledWith(
+        "Sink failed",
+        expect.objectContaining({ type: "order_created" })
       );
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("resolves without throwing when GA4 adapter returns 500", async () => {
@@ -162,15 +172,12 @@ describe("emitAnalyticsEvent", () => {
       _resetSinks();
 
       fetchMock.mockResolvedValue(new Response("Internal Server Error", { status: 500 }));
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await expect(emitAnalyticsEvent(makeEvent())).resolves.toBeUndefined();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[analytics:emit]"),
-        expect.any(Error)
+      expect(logErrorMock).toHaveBeenCalledWith(
+        "Sink failed",
+        expect.objectContaining({ type: "order_created" })
       );
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("resolves without throwing when Meta CAPI fetch rejects (network error)", async () => {
@@ -179,15 +186,12 @@ describe("emitAnalyticsEvent", () => {
       _resetSinks();
 
       fetchMock.mockRejectedValue(new Error("Network error"));
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await expect(emitAnalyticsEvent(makeEvent())).resolves.toBeUndefined();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[analytics:emit]"),
-        expect.any(Error)
+      expect(logErrorMock).toHaveBeenCalledWith(
+        "Sink failed",
+        expect.objectContaining({ type: "order_created" })
       );
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("continues calling remaining sinks even when internal-events fails", async () => {
@@ -198,18 +202,15 @@ describe("emitAnalyticsEvent", () => {
       // internal-events throws; GA4 succeeds
       insertEventMock.mockRejectedValue(new Error("DB down"));
       fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await expect(emitAnalyticsEvent(makeEvent())).resolves.toBeUndefined();
 
       // GA4 fetch was still called despite internal-events failure (Promise.all runs all)
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[analytics:emit]"),
-        expect.any(Error)
+      expect(logErrorMock).toHaveBeenCalledWith(
+        "Sink failed",
+        expect.objectContaining({ type: "order_created" })
       );
-
-      consoleErrorSpy.mockRestore();
     });
   });
 

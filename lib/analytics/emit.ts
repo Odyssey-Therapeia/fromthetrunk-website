@@ -16,6 +16,9 @@ import { buildGa4Sink } from "@/lib/adapters/ga4-sink";
 import { internalEventsSink } from "@/lib/adapters/internal-events-sink";
 import { buildMetaCapiSink } from "@/lib/adapters/meta-capi-sink";
 import type { AnalyticsEvent, AnalyticsSink } from "@/lib/ports/analytics-sink";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger("analytics:emit");
 
 /** Build the list of active sinks once per process (env vars do not change at runtime). */
 function buildActiveSinks(): AnalyticsSink[] {
@@ -55,10 +58,11 @@ export async function emitAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
   await Promise.all(
     sinks.map((sink) =>
       sink.emit(event).catch((err: unknown) => {
-        console.error(
-          `[analytics:emit] Sink failed for event type="${event.type}" event_id="${event.event_id}":`,
-          err
-        );
+        log.error("Sink failed", {
+          err: err as Record<string, unknown>,
+          type: event.type,
+          event_id: event.event_id,
+        });
       })
     )
   );

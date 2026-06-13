@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
+import { createLogger } from "@/lib/log";
 
 import { requireAuth } from "@/api/hono/middleware/auth";
 import { errorSchema } from "@/api/hono/schemas/common";
@@ -27,6 +28,9 @@ import {
   verifyPaymentLinkSignature,
   verifyPaymentSignature,
 } from "@/lib/payments/razorpay";
+
+const logCreateOrder = createLogger("payments:create-order");
+const logPaymentLinkCallback = createLogger("payments:payment-link-callback");
 
 const paymentLinkCallbackSchema = z.object({
   orderId: z.string().uuid().optional(),
@@ -415,7 +419,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           );
         }
 
-        console.error("[payments:create-order] Razorpay payment link creation failed:", error);
+        logCreateOrder.error("Razorpay payment link creation failed", { err: error as Record<string, unknown> });
         return c.json(
           {
             code: "RAZORPAY_PAYMENT_LINK_CREATE_FAILED",
@@ -611,7 +615,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         });
         redirectUrl.searchParams.set("payment", "paid");
       } catch (error) {
-        console.error("[payments:payment-link-callback] Unable to complete order:", error);
+        logPaymentLinkCallback.error("Unable to complete order", { err: error as Record<string, unknown> });
         redirectUrl.searchParams.set("payment", "review");
       }
 
