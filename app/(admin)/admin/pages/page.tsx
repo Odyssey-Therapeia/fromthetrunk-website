@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Clock, FileText, Loader2, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -246,6 +247,7 @@ export default function AdminPagesPage() {
   const [historyPage, setHistoryPage] = useState<Page | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  const router = useRouter();
   const { error, nudge, success } = useUiHaptics();
 
   const loadPages = async (): Promise<Page[]> => {
@@ -492,6 +494,9 @@ export default function AdminPagesPage() {
                               <Clock className="h-4 w-4" />
                             </Button>
                             <Button
+                              onClick={() =>
+                                router.push(`/admin/pages/${page.id}/edit`)
+                              }
                               size="sm"
                               title="Edit page"
                               type="button"
@@ -537,6 +542,9 @@ export default function AdminPagesPage() {
                           <Clock className="h-4 w-4" />
                         </Button>
                         <Button
+                          onClick={() =>
+                            router.push(`/admin/pages/${page.id}/edit`)
+                          }
                           size="sm"
                           title="Edit page"
                           type="button"
