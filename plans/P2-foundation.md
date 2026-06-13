@@ -16,7 +16,8 @@ Zod schema + field metadata → form model (sections, fields, validation). Pure,
 ### P2-02: `components/admin/schema-form` renderer
 React renderer over the form model using existing shadcn components only (design guardrail applies). Replace ONE existing form (product stepper details step) as the proving ground — kills the 15 `any`s as a side effect.
 **Verify**: L0–L3 (e2e: edit a product via the new form). **Depends**: P2-01.
-- [ ]
+- [x] (2026-06-13, 541a64a, "schema-form-field renders all 11 types to shadcn; step-details refactored, 10 anys killed; 41 tests (361); tsc+lint+drift clean; ACCEPT-WITH-MINORS; L3 e2e→#G-P2 demo")
+- [ ] P2-02a: build the schema-DRIVEN full `SchemaForm` component (FormSchema + values + onChange → deriveFormModel + SchemaFormField across sections, per-field buildZodSchema validation) and make ≥1 real form consume a schema as single source of truth (step-details currently hand-assembles field metadata inline; orphan product-details.schema.ts was removed). Completes the keystone's "no per-type UI code" purpose (D3). **PREREQUISITE for P3-05 (page block editor) and P4-02 (product-attribute forms).**
 
 ### P2-03: #G-GST — GST-inclusive pricing decision (USER GATE)
 Present the options with numbers: (a) display GST-inclusive everywhere (sticker price rises, checkout shows "incl. GST"), (b) absorb GST into pricePaise. Decision blocks P5 feeds. Evidence pack: current price flow (`razorpay.ts:182`, PDP `:183`, JSON-LD), Google India feed policy summary.
