@@ -23,7 +23,8 @@ Findings doc: catalogue every visual section on the current site (home, story, c
 
 ### P3-04: Pages admin — list/create/SEO
 Admin CRUD over pages (schema-form for SEO/settings), version history list with restore. Ladder: +L3.
-- [ ]
+- [x] (2026-06-14, a657a61, "admin pages list/create via content-store port (no raw db); SEO/settings via SchemaForm over pageSettingsSchema — schema-driven; version-history Sheet with restore; api/hono/routes/pages.ts 7 endpoints; reserved-slug 409 SLUG_RESERVED mutation-proven at store+route; restore sets published_version_id to CHOSEN version mutation-proven; Pages nav entry; 763 tests; tsc+lint clean; 0 drift; ACCEPT-WITH-MINORS. L3 e2e → #G-P3.")
+- [ ] P3-04a: wire the Edit-page UI (button is a placeholder with no onClick; PATCH /admin/pages/:id route exists + content-store updatePage works — only the admin edit form is unwired); add deletePage to the content-store port + DELETE route (CRUD is missing delete). Do before #G-P3.
 
 ### P3-05: Page editor — block composer
 The big UI packet (split if >2 days): ordered block list, add/remove/reorder (dnd or up/down buttons v1 — buttons are fine), per-block schema-form props editor, autosave to draft version. No free-form canvas in v1 — Shopify's section list model, not Webflow.
