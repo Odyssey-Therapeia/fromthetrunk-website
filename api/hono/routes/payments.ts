@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
 
 import { requireAuth } from "@/api/hono/middleware/auth";
 import { errorSchema } from "@/api/hono/schemas/common";
@@ -184,8 +184,33 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       }
 
       const shippingName = body.shippingAddress.name;
+      const emailLower = body.shippingAddress.email.toLowerCase();
+
+      // Cap check: max 3 live pending payment links per email.
+      // Race window exists; durable limiting is P2-06.
+      const linkExpiryMs = RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000;
+      const pendingCount = await db
+        .select({ c: count() })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.shippingEmail, emailLower),
+            eq(orders.paymentStatus, "pending"),
+            gt(orders.createdAt, new Date(Date.now() - linkExpiryMs))
+          )
+        );
+      if ((pendingCount[0]?.c ?? 0) >= 3) {
+        return c.json(
+          {
+            code: "TOO_MANY_PENDING_ORDERS",
+            message: "Too many pending orders for this email.",
+          },
+          429
+        );
+      }
+
       const customer = await getOrCreateCheckoutCustomer({
-        email: body.shippingAddress.email,
+        email: emailLower,
         name: shippingName,
         phone: body.shippingAddress.phone,
       });
@@ -198,7 +223,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         shippingCity: body.shippingAddress.city,
         shippingCostPaise,
         shippingCountry: body.shippingAddress.country,
-        shippingEmail: body.shippingAddress.email,
+        shippingEmail: emailLower,
         shippingLine1: body.shippingAddress.line1,
         shippingLine2: body.shippingAddress.line2 ?? null,
         shippingMethod: body.shippingMethod,
@@ -281,7 +306,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           callbackUrl: `${getServerOrigin(c.req.url)}/api/v2/payments/payment-link/callback?orderId=${order.id}`,
           customer: {
             contact: body.shippingAddress.phone,
-            email: body.shippingAddress.email,
+            email: emailLower,
             name: shippingName,
           },
           description: toPaymentDescription(order.id, normalizedItems),
@@ -301,6 +326,11 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             updatedAt: new Date(),
           })
           .where(inArray(products.id, productIds));
+
+        await db
+          .update(orders)
+          .set({ paymentStatus: "failed", updatedAt: new Date() })
+          .where(eq(orders.id, order.id));
 
         if (isRazorpayAuthError(error)) {
           return c.json(
