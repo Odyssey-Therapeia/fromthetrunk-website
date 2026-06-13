@@ -544,3 +544,113 @@ export const events = pgTable(
     occurredAtIdx: index("events_occurred_at_idx").on(table.occurredAt),
   })
 );
+
+// ── P3-01: Content / CMS tables ──────────────────────────────────────────────
+
+export const pageStatusEnum = pgEnum("page_status", ["draft", "published"]);
+export const menuSlotEnum = pgEnum("menu_slot", ["header", "footer"]);
+
+/**
+ * P3-01: CMS pages.
+ *
+ * pages.published_version_id is a nullable self-reference to page_versions.id.
+ * It is set by publishPage() and null for drafts.
+ * Unique slug prevents two pages sharing the same URL segment.
+ */
+export const pages = pgTable(
+  "pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    status: pageStatusEnum("status").notNull().default("draft"),
+    seo: jsonb("seo").$type<Record<string, unknown> | null>(),
+    /**
+     * FK to page_versions.id — set nullable so drafts don't need a version.
+     * Defined as AnyPgColumn to break the forward-reference cycle with page_versions.
+     */
+    publishedVersionId: uuid("published_version_id").references(
+      (): AnyPgColumn => pageVersions.id,
+      { onDelete: "set null" }
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex("pages_slug_unique").on(table.slug),
+    statusIdx: index("pages_status_idx").on(table.status),
+  })
+);
+
+/**
+ * P3-01: CMS page versions — IMMUTABLE.
+ *
+ * Rows are only ever inserted, never updated. Each version captures the full
+ * block tree at publish time. This gives us an audit trail and safe rollback.
+ */
+export const pageVersions = pgTable(
+  "page_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    blocks: jsonb("blocks").$type<unknown[]>().notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pageIdIdx: index("page_versions_page_id_idx").on(table.pageId),
+  })
+);
+
+/**
+ * P3-01: Global theme settings — SINGLETON ROW.
+ *
+ * Only one row exists. id is always 1 (enforced by the application layer via
+ * upsert). tokens holds arbitrary design-token key/value pairs.
+ */
+export const themeSettings = pgTable("theme_settings", {
+  id: integer("id").primaryKey().default(1),
+  tokens: jsonb("tokens").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * P3-01: Navigation menus — one row per slot (header | footer).
+ *
+ * items is a JSON array of { label, href } objects (or richer shapes in the
+ * future). Uniqueness on slot is enforced by application upsert logic; the
+ * slot enum prevents typos.
+ */
+export const navigationMenus = pgTable(
+  "navigation_menus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slot: menuSlotEnum("slot").notNull(),
+    items: jsonb("items").$type<unknown[]>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slotUnique: uniqueIndex("navigation_menus_slot_unique").on(table.slot),
+  })
+);
+
+/**
+ * P3-01: URL redirects.
+ *
+ * from_path is unique — a single canonical destination per source URL.
+ * Both paths must be absolute (begin with /); validation is at the port layer.
+ */
+export const redirects = pgTable(
+  "redirects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fromPath: text("from_path").notNull(),
+    toPath: text("to_path").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    fromPathUnique: uniqueIndex("redirects_from_path_unique").on(table.fromPath),
+  })
+);
