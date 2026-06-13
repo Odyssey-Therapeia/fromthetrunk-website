@@ -267,9 +267,11 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       // ── Inventory claim ──────────────────────────────────────────────────
       // FLAG OFF (default): existing stock_status atomic claim — EXACTLY as before.
-      // FLAG ON: reservations-based quantity check (defence-in-depth pre-check),
-      //   then falls through to the same stock_status update for the actual atomic
-      //   claim (full atomic SQL claim deferred to P4-05).
+      // FLAG ON: insertReservation is now the atomic single-statement quantity
+      //   pre-check (P4-05); it eliminates the read-then-insert window but is NOT
+      //   the authoritative concurrency guard. Both flag states fall through to the
+      //   stock_status UPDATE below, which is the authoritative concurrency guard
+      //   in both flag states (see comment above that UPDATE).
       // Dual-write (quantity_available + reservations table) occurs in BOTH paths.
 
       if (isInventoryV2()) {

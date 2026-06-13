@@ -1,8 +1,25 @@
 /**
- * P2-05: Inventory v2 — reservation query helpers.
+ * P2-05 / P4-05: Inventory v2 — reservation query helpers.
  *
- * insertReservation: conditional claim — succeeds only if quantity_available >= qty.
- *   Throws "QUANTITY_INSUFFICIENT" otherwise.
+ * insertReservation: ATOMIC single-statement quantity pre-check — a single SQL round-trip:
+ *   INSERT INTO reservations (...) SELECT ... FROM products
+ *   WHERE id = $productId AND quantity_available >= $qty
+ *   RETURNING id
+ *
+ *   If the WHERE predicate fails (qty=0 or product not found), the INSERT
+ *   produces no rows and the function throws "QUANTITY_INSUFFICIENT".
+ *   Because the quantity check and the row insertion are in the same SQL statement,
+ *   this eliminates the P2-05 read-then-insert race window.
+ *
+ *   NOTE: insertReservation is a quantity pre-check, NOT the authoritative oversell
+ *   guard. It does NOT decrement quantity_available, and the reservations table has no
+ *   unique constraint on product_id. Therefore two concurrent callers can both insert
+ *   reservation rows if quantity_available is still >= qty for both (e.g. the first
+ *   insert does not decrement the count). The authoritative concurrency guard is the
+ *   atomic UPDATE products SET stock_status='reserved' ... WHERE stock_status='available'
+ *   (or expired-reserved) RETURNING id in api/hono/routes/payments.ts, which runs in
+ *   both flag states and is the single serialization point for oversell prevention.
+ *   (P4-05: replaces the non-atomic read-then-insert from P2-05.)
  *
  * expireReservations: deletes expired rows from the reservations table.
  *   Called by the release-reservations cron (dual-write alongside the existing
@@ -13,9 +30,9 @@
  *   - api/hono/routes/cron.ts      (expireReservations, always runs for dual-write)
  */
 
-import { and, eq, lt } from "drizzle-orm";
+import { and, count, eq, gt, lt } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, rawSql } from "@/db";
 import { products, reservations } from "@/db/schema";
 
 export interface InsertReservationInput {
@@ -26,45 +43,46 @@ export interface InsertReservationInput {
 }
 
 /**
- * Conditional reservation claim.
+ * Atomic single-statement quantity pre-check (P4-05).
  *
- * 1. Reads quantity_available for the product.
- * 2. If quantity_available < qty → throws "QUANTITY_INSUFFICIENT".
- * 3. Otherwise inserts a reservations row and returns it.
+ * Uses a single INSERT ... SELECT ... WHERE statement so the quantity check
+ * and the reservation row insertion happen in one DB round-trip, eliminating
+ * the P2-05 read-then-insert race window.
  *
- * Note: this is NOT a single atomic SQL statement today (that requires a
- * database-level INSERT … WHERE or CTE). For the one-of-one model, the
- * upstream stockStatus atomic claim (flag OFF path) remains the primary
- * concurrency guard. The flag ON path adds the quantity check as a
- * defence-in-depth pre-check before delegating to the same stockStatus
- * update; full atomic v2 claim is a future upgrade (P4-05).
+ * This function is a pre-check, NOT the authoritative oversell guard.
+ * quantity_available is not decremented by this INSERT, and there is no unique
+ * constraint on product_id in reservations, so two concurrent callers can both
+ * succeed if both find quantity_available >= qty at evaluation time.
+ * The authoritative concurrency guard is the atomic UPDATE products
+ * SET stock_status='reserved' ... WHERE stock_status='available' (or
+ * expired-reserved) RETURNING id in api/hono/routes/payments.ts; that UPDATE
+ * runs in both flag states and is the single serialization point.
+ *
+ * Returns { id } of the inserted reservation row.
+ * Throws "QUANTITY_INSUFFICIENT" if no row was inserted (qty=0 or product not found).
  */
 export async function insertReservation(input: InsertReservationInput): Promise<{ id: string }> {
-  const [row] = await db
-    .select({ quantityAvailable: products.quantityAvailable })
-    .from(products)
-    .where(eq(products.id, input.productId))
-    .limit(1);
+  // Single round-trip: INSERT only if quantity_available >= qty.
+  // rawSql is the Neon sql tag (neon<false, false>) that executes raw SQL
+  // and returns an array of typed rows.
+  const rows = (await rawSql`
+    INSERT INTO reservations (order_id, product_id, qty, expires_at)
+    SELECT
+      ${input.orderId}::uuid,
+      ${input.productId}::uuid,
+      ${input.qty}::integer,
+      ${input.expiresAt}::timestamptz
+    FROM products
+    WHERE id = ${input.productId}::uuid
+      AND quantity_available >= ${input.qty}::integer
+    RETURNING id
+  `) as Array<{ id: string }>;
 
-  if (!row || row.quantityAvailable < input.qty) {
+  if (!rows[0]) {
     throw new Error("QUANTITY_INSUFFICIENT");
   }
 
-  const [inserted] = await db
-    .insert(reservations)
-    .values({
-      expiresAt: input.expiresAt,
-      orderId: input.orderId,
-      productId: input.productId,
-      qty: input.qty,
-    })
-    .returning({ id: reservations.id });
-
-  if (!inserted) {
-    throw new Error("RESERVATION_INSERT_FAILED");
-  }
-
-  return inserted;
+  return { id: rows[0].id };
 }
 
 /**
@@ -105,4 +123,32 @@ export async function releaseReservationsByProducts(productIds: string[]): Promi
   await db
     .delete(reservations)
     .where(inArray(reservations.productId, productIds));
+}
+
+/**
+ * P4-05: Count non-expired reservation rows for a product.
+ *
+ * Used by the PDP when isInventoryV2() is ON to derive availability via
+ * deriveStockStatus(quantityAvailable, activeReservationsCount).
+ * When the flag is OFF this function is NOT called — the PDP reads stockStatus directly.
+ *
+ * NOTE (P5 feeds mapping): lib/ports/catalog-search.ts availability filter
+ * currently reads stockStatus directly. When P5 wires feeds, availability
+ * counts should call this function (or a batch variant) to stay consistent
+ * with the v2 source of truth.
+ */
+export async function getActiveReservationsCount(
+  productId: string,
+  asOf: Date = new Date()
+): Promise<number> {
+  const [result] = await db
+    .select({ total: count() })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.productId, productId),
+        gt(reservations.expiresAt, asOf)
+      )
+    );
+  return result?.total ?? 0;
 }

@@ -16,12 +16,14 @@ import { suggestTagIds } from "@/lib/ai/tag-suggestions";
 import {
   createProduct,
   deleteProduct,
+  deriveQuantityAvailable,
   duplicateProduct,
   getProduct,
   getProductBySlug,
   listProducts,
   updateProduct,
 } from "@/db/queries/products";
+import { isInventoryV2 } from "@/lib/config/flags";
 
 const parseDate = (value: null | string | undefined) => {
   if (value === undefined) return undefined;
@@ -306,8 +308,16 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
+      // P4-05: when flag ON, dual-write quantityAvailable derived from stockStatus.
+      // Flag OFF: only stockStatus is written (v1 byte-identical behavior).
+      const quantityAvailableOverride =
+        isInventoryV2() && body.stockStatus != null
+          ? { quantityAvailable: deriveQuantityAvailable(body.stockStatus) }
+          : {};
+
       const updated = await updateProduct(params.id, {
         ...body,
+        ...quantityAvailableOverride,
         reservedUntil: parseDate(body.reservedUntil),
         soldAt: parseDate(body.soldAt),
       });

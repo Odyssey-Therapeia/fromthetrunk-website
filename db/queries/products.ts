@@ -555,3 +555,19 @@ export const deleteProduct = async (productId: string): Promise<boolean> => {
 
   return deleted.length > 0;
 };
+
+/**
+ * P4-05: Derive the quantity_available value from a stockStatus string.
+ *
+ * Used by the admin PATCH handler when isInventoryV2() is ON to dual-write
+ * quantityAvailable alongside stockStatus. When the flag is OFF, this function
+ * is NOT called and the admin PATCH writes stockStatus only (v1 behavior).
+ *
+ * Rules (one-of-one model):
+ *   - "sold"      → 0  (physically gone)
+ *   - "available" → 1  (ready to purchase)
+ *   - "reserved"  → 1  (qty stays 1 during reserve; reservation row tracks the hold)
+ */
+export function deriveQuantityAvailable(stockStatus: "available" | "reserved" | "sold"): number {
+  return stockStatus === "sold" ? 0 : 1;
+}
