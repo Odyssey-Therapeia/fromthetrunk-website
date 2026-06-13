@@ -3,9 +3,9 @@
 
 ## Current
 - **Programme**: Shopify-parity, planned in `plans/` (master: `plans/000-master-plan.md`).
-- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-09, P1-11..P1-13, P1-16 done (see plan). 219 tests pass; tsc clean.
+- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-14, P1-16..P1-18 done (see plan). 245 tests pass; tsc clean.
 - **Branch reality**: `sprint-abe` carries the unmerged emergency guest-checkout fix (`96e6151`, never merged to main — PR #31 abandoned) + Xeno Slack agent + Drape Room + HR Deno app. Production = `main@caf23bb`, LACKS guest-checkout payment links.
-- **Next concrete action**: Wave 2 — P1-14 alone (conflicts with P1-10/P1-17/P1-18; must run solo). Then Wave 3: P1-10 + P1-17 + P1-18. Wave 4: P1-19. P1-15 (ops, no code).
+- **Next concrete action**: P1-19 (route tests for payment-link money path — depends P1-04+P1-06, both done). P1-15 (ops, no code — unpublish test product). Then P1-20 (commit slices + merge main) → #G-P1.
 
 ## Standing facts (verified 2026-06-13)
 - Tests 174/174 pass; tsc clean; lint clean.
@@ -33,6 +33,13 @@
 - **2026-06-13**: #G-GST resolved — GST-inclusive prices going forward ("for now" — revisit if pricing model changes). pricePaise will be redefined as GST-inclusive in P2-04; `razorpay.ts:182` add-on removed. P2-03 gate closed. Unblocks P5 feed work (Google India requires GST-inclusive prices matching landing page).
 
 ## Log
+### 2026-06-13 — P1-10, P1-17, P1-18 executed via ship pipeline (Wave 3)
+- **Changed**: lib/email/templates.ts+test (87c1305, P1-10); lib/seo/pdp-meta.ts+page+test (d18defd, P1-17); layout.tsx+lib/analytics/gtm.ts+test+package.json+.env.example (544443d, P1-18).
+- **Verified**: 245/245 pass; tsc clean; fable-reviewer required 1 repair loop on P1-17 (truncation test theater + fabric/Heirloom saree edge) and P1-18 (admin layout scope creep + test theater). P1-10 ACCEPT-WITH-MINORS.
+- **Decisions**: P1-10 — EmailOrder carries rupees (toEmailOrder divides paise by 100); templates.ts ×100 bridge is correct. Future packet (P1-10a) renames fields to *Paise and removes the bridge. P1-17 — fabric value normalized to strip trailing "saree" before building title suffix (prevents "Heirloom saree Saree"). P1-18 — GTM gate logic extracted to lib/analytics/gtm.ts so tests are not theater; admin routes excluded.
+- **New failure modes**: P1-10 EmailOrder unit ambiguity — fields have no paise suffix; a future constructor passing raw paise would inflate prices 100×. Guard: lib/orders/complete-paid-order.ts:toEmailOrder is the only constructor; must stay as the single entry point.
+- **Next concrete action**: P1-19 — route tests for payment-link money path (tests/unit/payments-route.test.ts + webhooks-route.test.ts; no prod code changes). Then P1-20 + #G-P1.
+
 ### 2026-06-13 — P1-07, P1-08, P1-11, P1-12 executed via ship pipeline (Wave 1)
 - **Changed**: users.ts+queries/users.ts+test (2e86603, P1-07); rate-limit.ts+payments.ts+tests (0d1adc9, P1-08); order-access-token.ts+test (8f42fce, P1-11); xeno-slack-agent.ts+test+.gitignore (3e2aa5c, P1-12).
 - **Verified**: 219/219 pass; tsc clean; fable-reviewer round required 2-loop repair on P1-07/P1-08/P1-12, 1-loop on P1-09.

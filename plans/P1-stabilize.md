@@ -80,7 +80,8 @@
 - **Files**: `db/money.ts` (canonical), `lib/email/templates.ts:44` (delete local formatINR; call canonical with paise), `lib/formatters.ts` (re-export or deprecate), all call sites (grep `formatINR|formatCurrency`).
 - **Tests first**: email template renders ₹17,500 for 1750000 paise (the 100× trap).
 - **Verify**: `npm test`; `grep -rn "function formatINR" lib db | wc -l` == 1.
-- [ ]
+- [x] (2026-06-13, 87c1305, "245 tests pass; grep const/function formatINR lib db: 1; tsc clean; getSiteOrigin + sprint-abe escapeHtml co-travel included")
+- [ ] P1-10a: EmailOrder carries rupees (no paise suffix on fields) — rupees→paise bridge in templates is correct but implicit. Future packet: rename fields to *Paise, remove ×100 bridge, update toEmailOrder.
 
 ### P1-11: Order access tokens expire
 - **Objective**: confirmation-URL tokens stop being permanent PII keys.
@@ -105,8 +106,8 @@
 - **Objective**: a missing `NEXT_PUBLIC_SERVER_URL` cannot silently poison canonical/sitemap/JSON-LD URLs.
 - **Files**: wherever `fromthetrunk.com` is the fallback (grep; sitemap/layout/seo), `lib/config/` central origin helper (new).
 - **Spec**: single `getSiteOrigin()` reading `NEXT_PUBLIC_SERVER_URL`; in production builds, throw at startup if unset; default `https://www.fromthetrunk.shop` (the actual canonical) for non-prod. **#G-DOMAIN** decides .com's future — do not buy/wire anything here.
-- **Verify**: `grep -rn "fromthetrunk.com" app lib` → 0; `npm test`; build with env unset fails loudly (`NODE_ENV=production` unit of the helper).
-- [ ]
+- **Verify**: `grep -rn '"https://fromthetrunk\.com"' app lib api` → 0 (email addresses legitimately remain); `npm test`; build with env unset fails loudly (`NODE_ENV=production` unit of the helper).
+- [x] (2026-06-13, f10aa8f, "getSiteOrigin() helper; 8 URL fallbacks + newsletter.ts ?? [REDACTED] replaced; 223 tests pass; grep 0 URL hits; tsc clean. templates.ts getSiteOrigin() deferred to P1-10 slice")
 
 ### P1-15 (ops, not code): Unpublish the live test product
 - **Spec**: "test chiffon do not buy if not authorized" is published+sold in prod data; set status draft via admin (or one-off authenticated API call). **Evidence**: live `GET /api/v2/products` no longer returns it.
@@ -123,14 +124,14 @@
 - **Files**: `app/(site)/collection/[slug]/page.tsx` generateMetadata (:46-58), test.
 - **Spec**: title `{name} | Preloved {fabric} Saree` with redundancy guard (skip the suffix when name already ends in "{fabric} saree", case-insensitive; layout template appends brand — don't double it); description = first ~150 chars of storyNarrative, word-boundary truncated, fallback chain storyNarrative→storyTitle→name+fabric. `displayDetails.fabric` is already computed at :44.
 - **Verify**: `npm test` (redundant-name case, truncation case, fallback case).
-- [ ]
+- [x] (2026-06-13, d18defd, "14 tests; exact toBe truncation guard; fabric normalization strips trailing saree; 245 tests pass; tsc clean")
 
 ### P1-18: Analytics base — GA4 + Meta Pixel + Vercel
 - **Objective**: production measures something. (Currently zero analytics, verified live.)
 - **Files**: `app/(site)/layout.tsx` (or a `components/analytics/` client island), `package.json` (`@vercel/analytics`, `@vercel/speed-insights`), `.env.example` (`NEXT_PUBLIC_GTM_ID`).
 - **Spec**: GTM container snippet via `next/script` `afterInteractive`, gated on env presence (no-op when unset — keeps dev clean); GA4 + Pixel configured inside GTM (ops task, document in `docs/internal/analytics-setup.md`); `<Analytics/>` + `<SpeedInsights/>` from Vercel packages. No admin-route tracking.
 - **Verify**: `npm run build`; e2e: rendered HTML contains gtm script iff env set. Ladder: +L3.
-- [ ]
+- [x] (2026-06-13, 544443d, "Analytics+SpeedInsights site-only; GTM gate via lib/analytics/gtm.ts; 5 tests import production code; 245 tests pass; tsc clean")
 
 ### P1-19: Route tests for the payment-link money path
 - **Objective**: the highest-risk untested surface gets L2 coverage.
