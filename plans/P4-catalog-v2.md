@@ -5,7 +5,7 @@ Architecture fixed in `000-master-plan.md` §3.3: typed core columns + per-type 
 
 ### P4-00 (spike): type taxonomy with the user
 Findings doc: the actual product types FTT will sell (sarees, blouses, accessories, made-to-order?), per-type attributes, which need filtering/facets, which feed into channel feeds (P5 needs: condition, fabric, occasion). Includes the pricing/variant question: are any types multi-quantity or multi-variant (size)? Decision recorded — variants are OUT of v1 scope unless this spike proves a near-term need (one-of-one preloved is the core business).
-- [ ]
+- [x] (2026-06-13, 03c7cca, "docs/spikes/product-types.md: ASSUMED preloved-saree(backfill)+blouse+accessory, one-of-one, variants OUT; attributes mapped from details* (fabric/condition/length/width/designer + NEW occasion/color/blouse_piece); facets+feed mapping; runtime-zod via P2-01/02; ACCEPT. Taxonomy + 4 items BATCHED for user.")
 
 ### P4-01: `product_types` schema + runtime validation
 Table + drizzle queries; `lib/catalog/type-schema.ts` builds a zod schema from attribute_defs (field types reuse the P2-01 engine's field-type set); products gain `type_id` + `attributes`; existing products backfilled to type "preloved-saree" with attributes mapped from current `details*` columns (keep columns until P4-07 retires them). Ladder: +L2.

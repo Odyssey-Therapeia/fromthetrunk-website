@@ -5,7 +5,7 @@ Architecture is fixed in `000-master-plan.md` §3.2: blocks-as-data, closed rend
 
 ### P3-00 (spike): block inventory
 Findings doc: catalogue every visual section on the current site (home, story, collection, PDP, policies) → the v1 block set (hero, rich-text, image+text split, product-grid [by collection/tag/manual], story/editorial, FAQ (with FAQPage JSON-LD), newsletter signup, spacer/divider, announcement bar) with props each needs. Screenshot references into `docs/spikes/blocks/`.
-- [ ]
+- [x] (2026-06-13, 03c7cca, "docs/spikes/blocks/block-inventory.md: 9 v1 blocks (added story-editorial; product-grid source incl. featured) mapped to P2-01 field types + tokens + closed-registry contract; grounded citations spot-checked; ACCEPT")
 
 ### P3-01: Content schema + migrations
 `pages`, `page_versions`, `theme_settings`, `navigation_menus`, `redirects` tables + drizzle queries + `lib/ports/content-store.ts` + drizzle adapter. Reserved-slug deny-list (`collection`, `checkout`, `account`, `admin`, `api`, …) as a tested pure function. Ladder: +L2.
