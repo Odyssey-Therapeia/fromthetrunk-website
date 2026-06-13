@@ -39,7 +39,7 @@ Upstash (or Vercel KV-successor via Marketplace) adapter behind `lib/ports/rate-
 
 ### P2-07: Server-event pipeline
 `lib/ports/analytics-sink.ts` + adapters `internal-events` (new `events` table), `ga4-measurement-protocol`, `meta-capi` (event_id dedup with the P1-18 pixel). Emit: order_created, payment_completed (inside the P1-04 idempotent winner branch), reservation_expired. Fan-out is fire-and-forget with error logging — never blocks the money path. Ladder: +L2.
-- [ ]
+- [x] (2026-06-13, 355715d, "analytics-sink port + internal-events/GA4/Meta-CAPI; emit.ts fire-and-forget (void+catch, mutation-proven); order_created/payment_completed(winner,exactly-once)/reservation_expired; drizzle/0005 IF-NOT-EXISTS idx5; onConflictDoNothing; 438 tests; ACCEPT-WITH-MINORS. GA4/Meta creds BATCHED.")
 
 ### P2-08: Payload excision
 Remove 5 `@payloadcms/*` packages + `payload`, `payload.config.ts`, `payload:*` scripts; archive `scripts/migrate-payload-to-drizzle.ts` under `scripts/archive/`; drop `--legacy-peer-deps` from CI; also delete unused `lenis`. **Verify**: `npm ci` without the flag; `npm run verify` green; bundle/install delta recorded.
