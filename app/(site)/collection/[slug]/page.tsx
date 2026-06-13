@@ -22,7 +22,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { getProductBySlug, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
-import { productJsonLd, breadcrumbJsonLd } from "@/lib/seo/json-ld";
+import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
+import { getSiteOrigin } from "@/lib/config/site";
 import type { Product } from "@/types/domain";
 
 interface ProductPageProps {
@@ -137,7 +138,7 @@ export default async function SareePage({ params }: ProductPageProps) {
     .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
 
-  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";
+  const baseUrl = getSiteOrigin();
   const jsonLd = productJsonLd(product as Product);
   const breadcrumbs = breadcrumbJsonLd([
     { name: "Home", url: baseUrl },
@@ -149,11 +150,11 @@ export default async function SareePage({ params }: ProductPageProps) {
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-6 sm:px-6 sm:py-10 lg:space-y-16 lg:py-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbs) }}
       />
       <ProductViewTracker
         id={product.id}

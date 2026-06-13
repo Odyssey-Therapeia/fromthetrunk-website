@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Cormorant_Garamond, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import "../globals.css";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Providers } from "@/components/providers";
-import { organizationJsonLd } from "@/lib/seo/json-ld";
+import { organizationJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
+import { getSiteOrigin } from "@/lib/config/site";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -21,7 +23,7 @@ const sans = Inter({
   display: "swap",
 });
 
-const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://fromthetrunk.com";
+const baseUrl = getSiteOrigin();
 
 export const metadata: Metadata = {
   title: {
@@ -66,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd()),
+            __html: safeJsonLd(organizationJsonLd()),
           }}
         />
         {/* Skip to content link for keyboard navigation */}
@@ -83,6 +85,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </main>
           <SiteFooter />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
