@@ -9,7 +9,7 @@ Findings doc: catalogue every visual section on the current site (home, story, c
 
 ### P3-01: Content schema + migrations
 `pages`, `page_versions`, `theme_settings`, `navigation_menus`, `redirects` tables + drizzle queries + `lib/ports/content-store.ts` + drizzle adapter. Reserved-slug deny-list (`collection`, `checkout`, `account`, `admin`, `api`, …) as a tested pure function. Ladder: +L2.
-- [ ]
+- [x] (2026-06-13, fe12352, "5 tables + content-store port/adapter/in-mem double + reserved-slug deny-list (mutation-proven, page can't shadow routes); page_versions immutable; publish flow; drizzle/0006 DO-blocks for enums/FK + IF-NOT-EXISTS tables/indexes, all 13 stmts PG-grammar parse-validated (repaired from REJECT); 524 tests. Migration BATCHED.")
 
 ### P3-02: Block registry + first 3 renderers
 `lib/content/blocks/registry.ts`; hero, rich-text, product-grid renderers as RSCs consuming theme tokens only. Each block: propsSchema (zod) + Renderer + editorMeta. Unit: registry rejects unknown types; props validated on save AND render (defense in depth).
