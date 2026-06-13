@@ -9,7 +9,9 @@ Findings doc `docs/spikes/form-engine.md`: inventory every admin form (product s
 Zod schema + field metadata → form model (sections, fields, validation). Pure, heavily unit-tested (target: every field type + nested groups + conditionals). No React in this layer.
 **Verify**: `npm test` new suite ≥ 25 cases. **Depends**: P2-00.
 **P2-00 inputs (from spike)**: FT-03 rich-text has no installed editor primitive — select Tiptap/Markdown or defer rich-text to textarea in v1; FT-07 multi-select needs shadcn Command (add it or formalise CSV-text); **settings shipping fields hold RUPEES not paise** (spike M1 — money-paise type is for product pricePaise only); FT-11 conditional already live in step-pricing.tsx:155-202 (doc-and-enforce).
-- [ ]
+- [x] (2026-06-13, b9e5154, "lib/forms pure engine; 46 tests (320 suite); all 11 field types; mutation-proven (z.any→9 fail, strip showIf→2 fail); tsc clean; ACCEPT-WITH-MINORS")
+- [ ] P2-01a: add malformed list-of-group (FT-10) rejection test (only field type lacking a negative case); vet & adopt-or-delete the pre-existing untracked tests/unit/forms-types.test.ts (13 tests, now exercises the real engine).
+- [ ] P2-01b: FT-10 `itemSchema` is display-only — buildZodSchema validates only the top-level array zod, ignores itemSchema (can drift). Add `buildListItemZod(itemSchema)` helper OR document loudly. Route to P2-02 (renderer) / P4-01 (type-schema builder).
 
 ### P2-02: `components/admin/schema-form` renderer
 React renderer over the form model using existing shadcn components only (design guardrail applies). Replace ONE existing form (product stepper details step) as the proving ground — kills the 15 `any`s as a side effect.
