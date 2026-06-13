@@ -47,7 +47,8 @@ Remove 5 `@payloadcms/*` packages + `payload`, `payload.config.ts`, `payload:*` 
 
 ### P2-09: Structured logger
 `lib/log.ts` (level, namespace, JSON in prod) replacing the 16 ad-hoc console.* in lib/+api/; onError (P1-09) routes through it.
-- [ ]
+- [x] (2026-06-13, 0375815, "lib/log.ts never-throws (probed circular/throwing-toJSON/BigInt) + JSON-in-prod; 13 console.* converted in 8 tracked lib/+api files, pure swaps, envelope unchanged; 459 tests; ACCEPT-WITH-MINORS")
+- [ ] P2-09a: route app/api/chat/route.ts (4 console.error) through lib/log.ts (app/ was outside P2-09's lib/+api/ scope). Minor.
 
 ### P2-10: `docs/design-system.md` — the token contract
 Document the Tailwind v4 variable tokens, type scale, spacing, component inventory; add the mechanical drift checks (no raw hex / px) to the verifier's standard checklist. UI packets in P3+ cite this doc.
