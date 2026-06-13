@@ -18,7 +18,8 @@ Product stepper consumes the type's schema → schema-form renders attribute ste
 
 ### P4-03: Collections (manual + smart)
 `collections`, `collection_products` join, `rules jsonb` (conditions: type, tag, price range, attribute equals) with a tested evaluator in `db/queries/collections.ts`; admin CRUD (schema-form for rules v1 — condition rows, not a query builder); public collection pages render via the P3 product-grid block (`source: collection`). Ladder: +L2, L3.
-- [ ]
+- [x] (2026-06-13, e1297f0, "evaluateRules mutation-proven; getCollectionProductIds unions manual+smart+legacy, WIRED into render path (getProductsByCollection→getCollectionProductIds→getProductsByIds — was dead-code REJECT, repaired); /collections/[slug] + product-grid source=collection surface all 3; getProductsByIds closes P3-02a manual source; drizzle/0008 parse-validated; 656 tests; ACCEPT. Migration BATCHED.")
+- [ ] P4-03a: collection union sort/limit/offset + totalCount are computed IN-MEMORY (3-source union has no single SQL ORDER BY) — fine for v1 catalog size; move to SQL-side when the catalog grows (or fold into P4-04 catalog-search). Minor.
 
 ### P4-04: Tags + filtering/facets
 `tags` + join; PDP/listing filter UI (type, fabric, price, availability) backed by `lib/ports/catalog-search.ts` with a Postgres adapter (indexes on the hot attribute paths via expression indexes); embeddings-based search is explicitly deferred (port makes it swappable later).
