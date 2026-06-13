@@ -556,6 +556,110 @@ export const deleteProduct = async (productId: string): Promise<boolean> => {
   return deleted.length > 0;
 };
 
+// ---------------------------------------------------------------------------
+// P4-06: Batch / bulk mutation helpers
+// ---------------------------------------------------------------------------
+
+export type BulkOperationResult = {
+  updated: number;
+  failed: number;
+  errors: Array<{ id: string; message: string }>;
+};
+
+/**
+ * updateProductsBatch — SET the same status/field on N products atomically.
+ *
+ * Returns a BulkOperationResult so the caller can surface partial failures.
+ * Implementation issues a single UPDATE … WHERE id IN (…) for atomicity.
+ */
+export const updateProductsBatch = async (
+  productIds: string[],
+  input: Pick<UpdateProductInput, "status" | "stockStatus" | "featured">
+): Promise<BulkOperationResult> => {
+  if (productIds.length === 0) {
+    return { updated: 0, failed: 0, errors: [] };
+  }
+
+  try {
+    const updated = await withRetry(() =>
+      db
+        .update(products)
+        .set({ ...input, updatedAt: new Date() })
+        .where(inArray(products.id, productIds))
+        .returning({ id: products.id })
+    );
+    return { updated: updated.length, failed: 0, errors: [] };
+  } catch (err) {
+    return {
+      updated: 0,
+      failed: productIds.length,
+      errors: productIds.map((id) => ({
+        id,
+        message: err instanceof Error ? err.message : "Unknown error",
+      })),
+    };
+  }
+};
+
+/**
+ * bulkSetProductTags — ADD or REMOVE tag IDs for each product in the batch.
+ *
+ * For each product: reads current tag IDs, applies +addTagIds / -removeTagIds,
+ * then calls replaceProductTags with the merged result.
+ *
+ * This is done per-product (N queries) to support additive/subtractive semantics
+ * without a full replace. Partial failures are collected and returned.
+ */
+export const bulkSetProductTags = async (
+  productIds: string[],
+  addTagIds: number[],
+  removeTagIds: number[]
+): Promise<BulkOperationResult> => {
+  if (productIds.length === 0) {
+    return { updated: 0, failed: 0, errors: [] };
+  }
+
+  const removeSet = new Set(removeTagIds);
+  let updated = 0;
+  const errors: BulkOperationResult["errors"] = [];
+
+  // Fetch current tags for all products in one query
+  const currentTagRows = await withRetry(() =>
+    db
+      .select({ productId: productTags.productId, tagId: productTags.tagId })
+      .from(productTags)
+      .where(inArray(productTags.productId, productIds))
+  );
+
+  // Group by productId
+  const tagsByProductId = new Map<string, Set<number>>();
+  for (const row of currentTagRows) {
+    const set = tagsByProductId.get(row.productId) ?? new Set<number>();
+    set.add(row.tagId);
+    tagsByProductId.set(row.productId, set);
+  }
+
+  // Apply changes per product
+  for (const productId of productIds) {
+    try {
+      const current = tagsByProductId.get(productId) ?? new Set<number>();
+      const next = new Set(current);
+      for (const tagId of addTagIds) next.add(tagId);
+      for (const tagId of removeSet) next.delete(tagId);
+
+      await replaceProductTags(productId, Array.from(next));
+      updated++;
+    } catch (err) {
+      errors.push({
+        id: productId,
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  }
+
+  return { updated, failed: errors.length, errors };
+};
+
 /**
  * P4-05: Derive the quantity_available value from a stockStatus string.
  *

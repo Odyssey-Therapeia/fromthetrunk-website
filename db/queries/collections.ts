@@ -408,3 +408,84 @@ export const removeProductFromCollection = async (
 
   return deleted.length > 0;
 };
+
+// ---------------------------------------------------------------------------
+// P4-06: Bulk collection membership helpers
+// ---------------------------------------------------------------------------
+
+export type BulkCollectionResult = {
+  updated: number;
+  failed: number;
+  errors: Array<{ id: string; message: string }>;
+};
+
+/**
+ * bulkAddProductsToCollection — idempotent batch INSERT into collection_products.
+ *
+ * Issues a single INSERT … ON CONFLICT DO NOTHING so duplicate members are
+ * silently skipped. Partial failure on DB errors is reported in the result.
+ */
+export const bulkAddProductsToCollection = async (
+  collectionId: string,
+  productIds: string[]
+): Promise<BulkCollectionResult> => {
+  if (productIds.length === 0) {
+    return { updated: 0, failed: 0, errors: [] };
+  }
+
+  try {
+    const inserted = await db
+      .insert(collectionProducts)
+      .values(productIds.map((productId) => ({ collectionId, productId })))
+      .onConflictDoNothing()
+      .returning({ productId: collectionProducts.productId });
+
+    return { updated: inserted.length, failed: 0, errors: [] };
+  } catch (err) {
+    return {
+      updated: 0,
+      failed: productIds.length,
+      errors: productIds.map((id) => ({
+        id,
+        message: err instanceof Error ? err.message : "Unknown error",
+      })),
+    };
+  }
+};
+
+/**
+ * bulkRemoveProductsFromCollection — batch DELETE from collection_products.
+ *
+ * Issues a single DELETE … WHERE product_id IN (…) AND collection_id = collectionId.
+ */
+export const bulkRemoveProductsFromCollection = async (
+  collectionId: string,
+  productIds: string[]
+): Promise<BulkCollectionResult> => {
+  if (productIds.length === 0) {
+    return { updated: 0, failed: 0, errors: [] };
+  }
+
+  try {
+    const deleted = await db
+      .delete(collectionProducts)
+      .where(
+        and(
+          eq(collectionProducts.collectionId, collectionId),
+          inArray(collectionProducts.productId, productIds)
+        )
+      )
+      .returning({ productId: collectionProducts.productId });
+
+    return { updated: deleted.length, failed: 0, errors: [] };
+  } catch (err) {
+    return {
+      updated: 0,
+      failed: productIds.length,
+      errors: productIds.map((id) => ({
+        id,
+        message: err instanceof Error ? err.message : "Unknown error",
+      })),
+    };
+  }
+};
