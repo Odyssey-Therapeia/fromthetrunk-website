@@ -3,9 +3,10 @@
 
 ## Current
 - **Programme**: Shopify-parity, planned in `plans/` (master: `plans/000-master-plan.md`).
-- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-14, P1-16..P1-18 done (see plan). 245 tests pass; tsc clean.
-- **Branch reality**: `sprint-abe` carries the unmerged emergency guest-checkout fix (`96e6151`, never merged to main — PR #31 abandoned) + Xeno Slack agent + Drape Room + HR Deno app. Production = `main@caf23bb`, LACKS guest-checkout payment links.
-- **Next concrete action**: P1-19 (route tests for payment-link money path — depends P1-04+P1-06, both done). P1-15 (ops, no code — unpublish test product). Then P1-20 (commit slices + merge main) → #G-P1.
+- **Active phase**: P1 — `plans/P1-stabilize.md`. P1-01..P1-14, P1-16..P1-19 done; P1-20 IN PROGRESS (see plan). Committed tree verified CI-green: clean-worktree `tsc` clean + **231 tests pass**.
+- **Branch reality**: emergency guest-checkout fix is NOW committed on `sprint-abe` (527bc02) — was uncommitted in the working tree, and committed P1-08's payments.ts imported its symbols, so HEAD did not compile until this slice. `96e6151` on `codex/emergency-razorpay-links` (PR #31) is a SEPARATE/older copy. Production = `main` LACKS guest-checkout payment links until the dev→main leg lands.
+- **PRs**: #35 `sprint-abe → development` OPEN (P1 + emergency fix + P1-19; CI running). #28 (sprint-abe→main, stale) CLOSED/superseded. Flow: sprint-abe → development → main (development is staging).
+- **Next concrete action**: P1-20 main leg — `git merge origin/main` on sprint-abe (9 behind; conflicts in payments/razorpay/checkout/admin-orders, "take ours"), re-run ladder, then PR development→main, then #G-P1 deploy + live guest-checkout smoke. Decide ship-to-main for the still-dirty admin-labs / saree-try-on / docs / tooling slices. P1-15 (ops, no code — unpublish test product). **Xeno redaction** before any Xeno commit: `lib/xeno/dispatcher.ts` (channel ID `C0B4S6V22LE`→env; strip "Meena"/"Rekha" from regex), `lib/xeno/context-capsule.ts` (name "Rekha" + financial fact), `scripts/onboarding/slack-macos-dmg-gates.sh` (`gkarthik@outlook.com` + workspace URL).
 
 ## Standing facts (verified 2026-06-13)
 - Tests 174/174 pass; tsc clean; lint clean.
@@ -33,6 +34,13 @@
 - **2026-06-13**: #G-GST resolved — GST-inclusive prices going forward ("for now" — revisit if pricing model changes). pricePaise will be redefined as GST-inclusive in P2-04; `razorpay.ts:182` add-on removed. P2-03 gate closed. Unblocks P5 feed work (Google India requires GST-inclusive prices matching landing page).
 
 ## Log
+### 2026-06-13 — P1-19 + P1-20 slices + Xeno excision; dev PR opened (Wave 4 + ship-to-main)
+- **Changed**: tests/unit/payments-route.test.ts + webhooks-route.test.ts (2e07c3d, P1-19, via background Workflow pipeline); emergency-fix slice (527bc02 — razorpay.ts/recipients.ts/proxy.ts/checkout confirmation+client); P1-test+migration slice (da16792); Xeno excision (a6676a9 — `git rm --cached` agent+test+example).
+- **Verified**: clean git worktree at HEAD (true CI image) — `tsc --noEmit` exit 0, **231 tests pass** (41 files). P1-19 webhooks required a repair loop (WHERE-scoping was theater — proven by blanket-release mutation passing all tests; fixed with collectPrimitives AST assertion). payments-route ACCEPT-WITH-MINORS (P1-19a/b sub-tasks). Pushed sprint-abe; opened PR #35 (→development); closed #28.
+- **Decisions**: (1) **HEAD didn't compile** — committed payments.ts (P1-08) imported createRazorpayPaymentLink/RAZORPAY_PAYMENT_LINK_HOLD_MINUTES/RAZORPAY_MIN_AMOUNT_PAISE from razorpay.ts, defined ONLY in the uncommitted working tree. The emergency-fix slice was build-critical, not optional. (2) **Xeno excised, not committed** — committed xeno-slack-agent.ts imported untracked lib/xeno/* which carries confidential data (real names, private channel ID, 3rd-party email); untracked the agent+test (kept on disk for the local socket bridge) rather than ship it. Completes P1-12's objective. (3) Flow is sprint-abe→development→main per user; development = staging.
+- **New failure modes**: **Committed HEAD can be non-self-consistent when prior packets reference uncommitted working-tree symbols** — always verify in a CLEAN git worktree (untracked files mask dangling imports; `next-env.d.ts` is gitignored so a bare worktree needs it copied in for the ambient `*.png` decl, else false TS2307 on png imports). `recipients.ts` (business emails OK) and `clear-cart-on-confirmation.tsx` were also build-critical untracked files.
+- **Next concrete action**: P1-20 main leg — `git merge origin/main` (9 behind; "take ours" on payments/razorpay/checkout/admin-orders), re-run ladder, PR development→main, #G-P1 deploy gate. Per-slice ship decision for the still-dirty admin-labs/saree-try-on/docs/tooling.
+
 ### 2026-06-13 — P1-10, P1-17, P1-18 executed via ship pipeline (Wave 3)
 - **Changed**: lib/email/templates.ts+test (87c1305, P1-10); lib/seo/pdp-meta.ts+page+test (d18defd, P1-17); layout.tsx+lib/analytics/gtm.ts+test+package.json+.env.example (544443d, P1-18).
 - **Verified**: 245/245 pass; tsc clean; fable-reviewer required 1 repair loop on P1-17 (truncation test theater + fabric/Heirloom saree edge) and P1-18 (admin layout scope creep + test theater). P1-10 ACCEPT-WITH-MINORS.

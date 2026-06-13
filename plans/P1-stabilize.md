@@ -138,12 +138,20 @@
 - **Files**: `tests/unit/payments-route.test.ts`, `tests/unit/webhooks-route.test.ts` (new), no production code (bugs found → report, fix in P1-04/05/06 loops).
 - **Spec**: mocked-db Hono pattern (`tests/unit/admin-user-management-routes.test.ts`). Cover: create-order happy path + reserved conflict + AMOUNT_TOO_LOW; callback signature valid/invalid/expired-order; webhook `payment_link.paid` → completePaidOrder called once; `payment.failed` → releases only own order's reservation.
 - **Verify**: `npm test`. **Depends**: P1-04, P1-06.
-- [ ]
+- [x] (2026-06-13, 2e07c3d, "16 route tests; webhooks WHERE-scoping mutation-proven (blanket release → fail); payments callback sig-check mutation-proven; clean-worktree 231 pass, tsc clean; opus adversarial review, webhooks repaired from theater")
+- [ ] P1-19a: callback order-ID cross-check (`order.razorpayOrderId !== query.razorpay_payment_link_id`, payments.ts:513) is untested — dropping it passed all tests. Add a valid-sig + mismatched-link-id case → payment=review, completePaidOrder not called.
+- [ ] P1-19b: Case 6 mislabeled "expired-order" — the callback has no token-expiry path (HMAC only); it actually tests missing-order. Rename to "missing order" to avoid implying coverage that doesn't exist.
 
 ### P1-20: Commit slices + merge main (orchestrated by principal, not a worker)
 - **Spec**: commit the working tree in reviewed slices (emergency-fix slice; xeno-extraction slice; labs slice; docs slice — each its own commit after its packets pass); `git merge origin/main` — expected conflicts: payments.ts, razorpay.ts, checkout-page-client.tsx (take ours, re-verify L1/L2), `admin/orders/[id]/page.tsx` (**decision**: keep server component from main, port the status editor in as a client island — the P1-05 packet's client edit lands there); run full ladder; PR sprint-abe→development→main per `enforce-pr-only.yml`.
 - **Verify**: `npm run verify` green; PR checks green. **Depends**: all above.
-- [ ]
+- [ ] IN PROGRESS (2026-06-13):
+  - [x] emergency-fix slice committed (527bc02) — razorpay/recipients/proxy/checkout/confirmation; this UNBLOCKED the build (committed payments.ts imported undefined razorpay symbols → HEAD didn't compile).
+  - [x] P1-test+migration slice committed (da16792) — payment-calc + json-ld tests, drizzle 0002 meta.
+  - [x] Xeno NOT extracted-to-commit but EXCISED (a6676a9) — `git rm --cached` xeno-slack-agent + test + example; the untracked `lib/xeno/*` carries confidential data (real names, channel ID `C0B4S6V22LE`, 3rd-party email) → cannot ship. Files kept local for the socket bridge. Redaction list in STATE. Productionizing = #G-DOMAIN/#G-P1 follow-up.
+  - [x] PR sprint-abe→development opened (#35); stale #28 (sprint-abe→main, "Lighthouse") closed/superseded.
+  - [ ] `git merge origin/main` (sprint-abe is 9 behind) + resolve conflicts + re-run ladder. **Working tree still dirty**: admin-labs slice (admin/orders/page.tsx +526, nav-items, app/(admin)/admin/labs, components/admin/labs, app/api/admin), saree-try-on (lib/adapters/openai-saree-try-on + port + test), docs (.env.production.example has channel ID `C0B4S6V22LE` — redact before commit; docs/internal has local path + names), tooling-kit (.claude/.agents/.codex/.state) — DECIDE per-slice ship-to-main before/after the merge.
+  - [ ] PR development→main; then #G-P1 deploy gate.
 
 ### #G-P1: USER CHECKPOINT — deploy & live smoke
 Present: diff summary, ladder evidence, preview-deploy guest-checkout e2e run (Playwright against preview URL: browse → checkout → payment link created), the Deno-app/Xeno relocation question, #G-DOMAIN tee-up. User approves prod promotion. Post-deploy: live smoke + confirm guest checkout works in production.
