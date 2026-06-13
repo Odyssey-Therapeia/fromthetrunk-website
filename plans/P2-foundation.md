@@ -3,11 +3,12 @@
 
 ### P2-00 (spike): form-engine survey
 Findings doc `docs/spikes/form-engine.md`: inventory every admin form (product stepper, status editors, settings), the TanStack Form usage and its `any` clusters (`step-details.tsx`, `step-story.tsx`), and shadcn primitives available; define the field-type set the engine must cover (text, textarea, rich-ish text, number, money-paise, select, multi-select, boolean, image-ref, list-of-group, conditional). No code. Ladder: L5 only.
-- [ ]
+- [x] (2026-06-13, b1242c9, "docs/spikes/form-engine.md: 11 field types, 15 any-clusters cited, engine API sketch; adversarial ACCEPT-WITH-MINORS")
 
 ### P2-01: `lib/forms` schema→form core ⭐ keystone
 Zod schema + field metadata → form model (sections, fields, validation). Pure, heavily unit-tested (target: every field type + nested groups + conditionals). No React in this layer.
 **Verify**: `npm test` new suite ≥ 25 cases. **Depends**: P2-00.
+**P2-00 inputs (from spike)**: FT-03 rich-text has no installed editor primitive — select Tiptap/Markdown or defer rich-text to textarea in v1; FT-07 multi-select needs shadcn Command (add it or formalise CSV-text); **settings shipping fields hold RUPEES not paise** (spike M1 — money-paise type is for product pricePaise only); FT-11 conditional already live in step-pricing.tsx:155-202 (doc-and-enforce).
 - [ ]
 
 ### P2-02: `components/admin/schema-form` renderer
@@ -45,11 +46,11 @@ Remove 5 `@payloadcms/*` packages + `payload`, `payload.config.ts`, `payload:*` 
 
 ### P2-10: `docs/design-system.md` — the token contract
 Document the Tailwind v4 variable tokens, type scale, spacing, component inventory; add the mechanical drift checks (no raw hex / px) to the verifier's standard checklist. UI packets in P3+ cite this doc.
-- [ ]
+- [x] (2026-06-13, 2b7834f, "docs/design-system.md: real Tailwind v4 tokens + 21 ui primitives + drift greps; adversarial ACCEPT")
 
 ### P2-11: Route-test factory
 Extract the mocked-db Hono harness from `admin-user-management-routes.test.ts` into `tests/helpers/route-harness.ts`; port 2 existing tests to prove it. Target: writing an L2 test for a new route ≤ 30 lines.
-- [ ]
+- [x] (2026-06-13, d7ab795, "tests/helpers/route-harness.ts; admin 185→158, payments 572→456; 261 tests; adversarial ACCEPT mutation-proven")
 
 ### #G-P2: USER CHECKPOINT
 Demo: schema-form editing a product; inventory-v2 rehearsal evidence (Neon branch, rowcounts, rollback plan); pricing decision implemented and visible; CI green without legacy-peer-deps.
