@@ -1,4 +1,4 @@
-import { desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNull } from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
 import { getFirstRow, requireFirstRow } from "@/db/results";
@@ -150,6 +150,38 @@ export const updateUser = async (
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId))
+      .returning()
+  );
+
+  if (!updated) return null;
+  const [hydrated] = await hydrateUsers([updated]);
+  return hydrated ?? null;
+};
+
+export type ClaimCheckoutShellFields = {
+  passwordHash: string;
+  name?: string;
+};
+
+/**
+ * Atomically upgrades a checkout shell row to a full account.
+ * The WHERE predicate includes `password_hash IS NULL` so that only one
+ * concurrent writer succeeds — the loser gets null back (0 rows returned).
+ */
+export const claimCheckoutShell = async (
+  userId: string,
+  fields: ClaimCheckoutShellFields
+): Promise<UserWithDefaultAddress | null> => {
+  const updated = getFirstRow(
+    await db
+      .update(users)
+      .set({
+        passwordHash: fields.passwordHash,
+        name: fields.name,
+        role: "customer",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(users.id, userId), isNull(users.passwordHash)))
       .returning()
   );
 
