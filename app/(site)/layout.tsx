@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Cormorant_Garamond, Inter } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { shouldRenderGtm, buildGtmSrc } from "@/lib/analytics/gtm";
 
 import "../globals.css";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -86,6 +89,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteFooter />
         </Providers>
         <Analytics />
+        <SpeedInsights />
+        {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (
+          <Script
+            strategy="afterInteractive"
+            src={buildGtmSrc(process.env.NEXT_PUBLIC_GTM_ID!)}
+          />
+        )}
       </body>
     </html>
   );
