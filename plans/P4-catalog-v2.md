@@ -36,7 +36,10 @@ Switch reads/writes from the P2-05 compatibility layer to quantities + reservati
 
 ### P4-06: Bulk operations
 Extend the existing batch import (admin import routes) to be type-aware; bulk edit (status, collection membership, tags) over the products grid; CSV export includes attributes. Ladder: +L2.
-- [ ]
+- [x] (2026-06-14, f659974, "type-aware CSV import validates attributes via buildTypeZodSchema before persist [rejects invalid rows per-row; hardens P4-02a on the import path; mutation-proven]; bulk edit status[draft/published]/collections/tags over the grid via real db helpers [updateProductsBatch/bulkAdd|RemoveProductsToCollection/bulkSetProductTags], DB-layer mutation-proven with collectPrimitives [mock @/db, run REAL helpers — single-row WHERE / dropped collectionId guard / wrong tag-merge each fail]; CSV export incl. per-type attr columns + tags, multi-select pipe-joined to round-trip with import; wired admin UI → /bulk-edit + /export.csv [requireAdmin]; tsc 0; 889 tests; opus panel REJECT[DB-layer theater + export round-trip bug]→repair→ACCEPT. NOTE real status enum is draft/published not active/archived.")
+- [ ] P4-06a: bulk tag-edit requires typing raw numeric tag IDs (no tag picker; no /api/v2/tags list endpoint) — error-prone. Add a tag-list endpoint + picker. Folds into P4-04a (admin tags CRUD).
+- [ ] P4-06b: CSV export selection silently drops ids that don't resolve; full export uses limit:5000 (truncates catalogs >5000). Surface unresolved ids + paginate/raise the cap. Minor at current scale.
+- [ ] P4-06c (test maintenance): tests/unit/bulk-edit-db-queries.test.ts uses module-level FIFO mock queues (deleteReturnQueue/insertReturnQueue) coupled to each helper's exact .returning()/await chain — a future chain change silently desyncs them. Refactor to fresh per-call builders keyed by call-shape. Also remove the pre-existing unused PRODUCT_NO_ATTRS fixture (csv-export.test.ts) + the over-provisioned deleteReturnQueue entry.
 
 ### P4-07: Retire legacy detail columns
 Once P4-02 ships and data is verified migrated, drop `details*` columns reads, then columns (separate migration, rehearsed on Neon branch like P2-05).
