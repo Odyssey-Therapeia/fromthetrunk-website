@@ -32,7 +32,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Run verification harness
         run: npm run verify
@@ -61,7 +61,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Build
         run: npm run build
@@ -128,7 +128,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.admin-secrets.outputs.available == 'true'
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Build
         if: steps.admin-secrets.outputs.available == 'true'
