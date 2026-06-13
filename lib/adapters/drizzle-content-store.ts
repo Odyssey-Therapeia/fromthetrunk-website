@@ -24,6 +24,7 @@ import type {
   PageVersion,
   Redirect,
   ThemeSettings,
+  UpdatePageInput,
 } from "@/lib/ports/content-store";
 
 // ── Helper: reserved-slug guard ───────────────────────────────────────────────
@@ -84,8 +85,28 @@ export function createInMemoryContentStore(): ContentStore {
       return pagesBySlug.get(slug) ?? null;
     },
 
+    async getPageById(pageId: string): Promise<Page | null> {
+      return pagesMap.get(pageId) ?? null;
+    },
+
     async listPages(): Promise<Page[]> {
       return Array.from(pagesMap.values());
+    },
+
+    async updatePage(pageId: string, input: UpdatePageInput): Promise<Page | null> {
+      const page = pagesMap.get(pageId);
+      if (!page) return null;
+
+      const updated: Page = {
+        ...page,
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.seo !== undefined ? { seo: input.seo } : {}),
+        updatedAt: new Date(),
+      };
+
+      pagesMap.set(pageId, updated);
+      pagesBySlug.set(updated.slug, updated);
+      return updated;
     },
 
     // ── Page versions ─────────────────────────────────────────────────────
@@ -103,6 +124,12 @@ export function createInMemoryContentStore(): ContentStore {
       const existing = versionsByPage.get(input.pageId) ?? [];
       versionsByPage.set(input.pageId, [...existing, version]);
       return version;
+    },
+
+    async listPageVersions(pageId: string): Promise<PageVersion[]> {
+      const versions = versionsByPage.get(pageId) ?? [];
+      // Return newest first
+      return [...versions].reverse();
     },
 
     async publishPage(pageId: string, versionId: string): Promise<Page> {
@@ -224,10 +251,25 @@ export function createDrizzleContentStore(): ContentStore {
       return row ? rowToPage(row) : null;
     },
 
+    async getPageById(pageId: string): Promise<Page | null> {
+      const { dbSelectPageById } = await import("@/db/queries/content");
+      const row = await dbSelectPageById(pageId);
+      return row ? rowToPage(row) : null;
+    },
+
     async listPages(): Promise<Page[]> {
       const { dbSelectAllPages } = await import("@/db/queries/content");
       const rows = await dbSelectAllPages();
       return rows.map(rowToPage);
+    },
+
+    async updatePage(pageId: string, input: UpdatePageInput): Promise<Page | null> {
+      const { dbUpdatePage } = await import("@/db/queries/content");
+      const row = await dbUpdatePage(pageId, {
+        title: input.title,
+        seo: input.seo,
+      });
+      return row ? rowToPage(row) : null;
     },
 
     async createPageVersion(input: CreatePageVersionInput): Promise<PageVersion> {
@@ -238,6 +280,12 @@ export function createDrizzleContentStore(): ContentStore {
         createdBy: input.createdBy,
       });
       return rowToVersion(row);
+    },
+
+    async listPageVersions(pageId: string): Promise<PageVersion[]> {
+      const { dbSelectPageVersionsByPageId } = await import("@/db/queries/content");
+      const rows = await dbSelectPageVersionsByPageId(pageId);
+      return rows.map(rowToVersion);
     },
 
     async publishPage(pageId: string, versionId: string): Promise<Page> {

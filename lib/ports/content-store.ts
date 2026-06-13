@@ -68,17 +68,27 @@ export interface CreatePageVersionInput {
   createdBy: string;
 }
 
+export interface UpdatePageInput {
+  title?: string;
+  seo?: Record<string, unknown> | null;
+}
+
 // ── Port interface ───────────────────────────────────────────────────────────
 
 export interface ContentStore {
   // Pages
   getPageBySlug(slug: string): Promise<Page | null>;
+  getPageById(pageId: string): Promise<Page | null>;
   listPages(): Promise<Page[]>;
   /** Creates a page in draft status. Rejects reserved slugs. */
   createPage(input: CreatePageInput): Promise<Page>;
+  /** Updates mutable page fields (title, seo). Does not change slug or status. */
+  updatePage(pageId: string, input: UpdatePageInput): Promise<Page | null>;
 
   // Page versions (immutable — only inserted, never updated)
   createPageVersion(input: CreatePageVersionInput): Promise<PageVersion>;
+  /** Lists all versions for a page, newest first. */
+  listPageVersions(pageId: string): Promise<PageVersion[]>;
 
   /** Sets published_version_id and status=published. */
   publishPage(pageId: string, versionId: string): Promise<Page>;

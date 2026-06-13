@@ -1,4 +1,5 @@
 import {
+  FileText,
   FolderOpen,
   Globe,
   Image,
@@ -22,6 +23,7 @@ export const adminNavItems: AdminNavItem[] = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/customers", label: "Users", icon: Users },
   { href: "/admin/media", label: "Media", icon: Image },
+  { href: "/admin/pages", label: "Pages", icon: FileText },
   { href: "/admin/globals", label: "Globals", icon: Globe },
 ];
 

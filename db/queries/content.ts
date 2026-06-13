@@ -6,7 +6,7 @@
  * validation (reserved slugs, FK checks) belongs in the adapter.
  */
 
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -40,8 +40,31 @@ export async function dbSelectPageBySlug(slug: string): Promise<PageRow | null> 
   return row ?? null;
 }
 
+export async function dbSelectPageById(id: string): Promise<PageRow | null> {
+  const [row] = await db.select().from(pages).where(eq(pages.id, id)).limit(1);
+  return row ?? null;
+}
+
 export async function dbSelectAllPages(): Promise<PageRow[]> {
   return db.select().from(pages);
+}
+
+export type UpdatePageFields = { title?: string; seo?: Record<string, unknown> | null };
+
+export async function dbUpdatePage(
+  pageId: string,
+  fields: UpdatePageFields
+): Promise<PageRow | null> {
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (fields.title !== undefined) set.title = fields.title;
+  if (fields.seo !== undefined) set.seo = fields.seo;
+
+  const [row] = await db
+    .update(pages)
+    .set(set)
+    .where(eq(pages.id, pageId))
+    .returning();
+  return row ?? null;
 }
 
 export async function dbUpdatePagePublish(
@@ -70,6 +93,14 @@ export async function dbInsertPageVersion(
 export async function dbSelectPageVersionById(id: string): Promise<PageVersionRow | null> {
   const [row] = await db.select().from(pageVersions).where(eq(pageVersions.id, id)).limit(1);
   return row ?? null;
+}
+
+export async function dbSelectPageVersionsByPageId(pageId: string): Promise<PageVersionRow[]> {
+  return db
+    .select()
+    .from(pageVersions)
+    .where(eq(pageVersions.pageId, pageId))
+    .orderBy(desc(pageVersions.createdAt));
 }
 
 // ── Theme settings (singleton row, id = 1) ────────────────────────────────────
