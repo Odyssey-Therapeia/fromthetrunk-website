@@ -97,7 +97,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Payments"],
     }),
     async (c) => {
-      const rateLimited = rateLimitResponse(c.req.raw, "payment:create", {
+      const rateLimited = await rateLimitResponse(c.req.raw, "payment:create", {
         limit: 5,
         windowSeconds: 60,
       });

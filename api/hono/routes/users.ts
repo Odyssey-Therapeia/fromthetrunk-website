@@ -128,7 +128,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Users"],
     }),
     async (c) => {
-      const rateLimited = rateLimitResponse(c.req.raw, "auth:signup", {
+      const rateLimited = await rateLimitResponse(c.req.raw, "auth:signup", {
         limit: 5,
         windowSeconds: 60,
       });
