@@ -34,9 +34,8 @@ vi.mock("@/lib/products/display-details", () => ({
 }));
 
 // Import AFTER mocks are registered
-const { productJsonLd, organizationJsonLd, breadcrumbJsonLd } = await import(
-  "@/lib/seo/json-ld"
-);
+const { productJsonLd, organizationJsonLd, breadcrumbJsonLd, safeJsonLd } =
+  await import("@/lib/seo/json-ld");
 
 const fixture = {
   name: 'Banarasi "Silk" Saree',
@@ -55,20 +54,20 @@ const fixture = {
 
 describe("JSON-LD render path", () => {
   describe("productJsonLd", () => {
-    it("Test A — roundtrip through JSON.stringify/JSON.parse yields correct @type and name", () => {
+    it("Test A — roundtrip through safeJsonLd/JSON.parse yields correct @type and name", () => {
       const jsonLd = productJsonLd(fixture);
-      // Exactly what the page inserts into the DOM
-      const html = JSON.stringify(jsonLd);
-      // What the browser would parse
+      // Exactly what the page now inserts into the DOM
+      const html = safeJsonLd(jsonLd);
+      // What the browser's JSON parser would produce after the HTML parser delivers the script text
       const parsed = JSON.parse(html);
 
       expect(parsed["@type"]).toBe("Product");
       expect(parsed.name).toBe(fixture.name);
       expect(typeof parsed.offers.price).toBe("number");
-      // description round-trip: newlines and </script> in storyNarrative must survive
+      // description round-trip: newlines and </script> in storyNarrative must survive parsing
       expect(parsed.description).toBe(fixture.storyNarrative);
-      // Current behavior: JSON.stringify does not escape </script> — fix tracked separately
-      expect(html).toContain("</script>");
+      // The raw HTML must not contain </script> — that sequence would close the tag early
+      expect(html).not.toContain("</script>");
     });
 
     it("Test B — serialised string contains no raw control characters", () => {
@@ -108,6 +107,25 @@ describe("JSON-LD render path", () => {
       const parsed = JSON.parse(JSON.stringify(org));
       expect(parsed["@context"]).toBe("https://schema.org");
       expect(typeof parsed.name).toBe("string");
+    });
+  });
+
+  describe("safeJsonLd", () => {
+    it("escapes < so </script> cannot close the enclosing script tag", () => {
+      const html = safeJsonLd({ xss: "</script><script>alert(1)</script>" });
+      expect(html).not.toContain("</script>");
+      expect(html).toContain("\\u003c");
+    });
+
+    it("round-trips through JSON.parse — < is restored from \\u003c", () => {
+      const input = { description: "has </script> inside" };
+      const parsed = JSON.parse(safeJsonLd(input));
+      expect(parsed.description).toBe(input.description);
+    });
+
+    it("escapes < anywhere in the value, not just in </script>", () => {
+      const html = safeJsonLd({ tag: "<b>bold</b>" });
+      expect(html).not.toMatch(/<b>/);
     });
   });
 
