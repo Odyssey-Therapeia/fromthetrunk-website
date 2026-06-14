@@ -41,6 +41,20 @@ export function _resetSinks(): void {
   _sinks = null;
 }
 
+/**
+ * Exposed for testing — directly override the active sink list.
+ * Use this to inject a throwing/spy sink without relying on vi.doMock after import.
+ * Call _resetSinks() to restore env-gated defaults after the test.
+ *
+ * @example
+ *   _overrideSinks([{ emit: vi.fn().mockRejectedValue(new Error("boom")) }]);
+ *   await emitAnalyticsEvent(...);  // must not throw
+ *   _resetSinks();
+ */
+export function _overrideSinks(sinks: AnalyticsSink[]): void {
+  _sinks = sinks;
+}
+
 function getActiveSinks(): AnalyticsSink[] {
   if (!_sinks) _sinks = buildActiveSinks();
   return _sinks;

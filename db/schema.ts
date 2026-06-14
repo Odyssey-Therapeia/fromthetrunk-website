@@ -315,6 +315,38 @@ export const wishlistItems = pgTable(
   })
 );
 
+/**
+ * P6-04: Restock notify requests — captures restock intent for sold/reserved one-of-one items.
+ *
+ * When a visitor (guest or logged-in) taps "Notify me if it returns" on a sold/reserved PDP:
+ *   - An event is emitted (demand signal, fire-and-forget).
+ *   - Optionally, a row is inserted here (durable intent capture).
+ *
+ * Composite PK (product_id, email) ensures at-most-one request per email per product.
+ * userId is nullable — guests identify by email only.
+ * The actual restock email is OUT OF SCOPE for P6-04 (future cron).
+ * Migration: drizzle/0015_wishlist-notify.sql (build-not-run).
+ */
+export const restockNotifyRequests = pgTable(
+  "restock_notify_requests",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.productId, table.email],
+      name: "restock_notify_requests_pkey",
+    }),
+    productIdx: index("restock_notify_requests_product_idx").on(table.productId),
+    emailIdx: index("restock_notify_requests_email_idx").on(table.email),
+  })
+);
+
 export const orders = pgTable(
   "orders",
   {

@@ -11,6 +11,7 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
+import { RestockNotifyButton } from "@/components/product/restock-notify-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -235,9 +236,28 @@ export default async function SareePage({ params }: ProductPageProps) {
               </p>
             )}
             {effectiveStockStatus === "sold" && (
-              <p className="text-xs text-muted-foreground">
-                This piece has found a new home. Browse the collection for similar treasures.
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  This piece has found a new home. Browse the collection for similar treasures.
+                </p>
+                {/* P6-04: capture restock intent for sold one-of-one items */}
+                <RestockNotifyButton
+                  productId={product.id}
+                  productName={product.name}
+                />
+              </div>
+            )}
+            {effectiveStockStatus === "reserved" && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  This piece is currently reserved. Notify me if it becomes available.
+                </p>
+                {/* P6-04: capture restock intent for reserved one-of-one items */}
+                <RestockNotifyButton
+                  productId={product.id}
+                  productName={product.name}
+                />
+              </div>
             )}
           </div>
 
