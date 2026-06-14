@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNull, or } from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
 import { getFirstRow, requireFirstRow } from "@/db/results";
@@ -66,18 +66,45 @@ export const listOrders = async (options?: {
   limit?: number;
   offset?: number;
   status?: OrderRecord["status"];
+  /**
+   * P6-01: When both userId and userEmail are provided, returns orders that
+   * belong to the user (orders.userId = userId) UNION guest orders that were
+   * placed with the same email (orders.shipping_email = userEmail). This
+   * surfaces pre-claim checkout orders that were linked to the user's email
+   * before they signed up (P1-07 checkout shell pattern).
+   *
+   * Auth-scoping: userId MUST come from the session — never from user input.
+   */
   userId?: string;
+  userEmail?: string;
 }): Promise<OrderWithRelations[]> => {
   const {
     limit = 100,
     offset = 0,
     status,
     userId,
+    userEmail,
   } = options ?? {};
 
   const filters = [];
   if (status) filters.push(eq(orders.status, status));
-  if (userId) filters.push(eq(orders.userId, userId));
+
+  if (userId && userEmail) {
+    // Return orders owned by the user OR guest orders (userId IS NULL) with the
+    // same email. The isNull guard mirrors the detail-route access rule
+    // (api/hono/routes/orders.ts:91-95) and prevents surfacing an order that
+    // belongs to a DIFFERENT registered user who happens to share this email in
+    // shippingEmail. Without it, the list query is strictly broader than the
+    // detail guard: a listed order the detail route would 403 on.
+    filters.push(
+      or(
+        eq(orders.userId, userId),
+        and(isNull(orders.userId), eq(orders.shippingEmail, userEmail.toLowerCase()))
+      )
+    );
+  } else if (userId) {
+    filters.push(eq(orders.userId, userId));
+  }
 
   const whereClause = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
 

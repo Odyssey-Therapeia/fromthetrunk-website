@@ -26,6 +26,7 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
       const status = c.req.query("status");
+      const isAdmin = authUserOrResponse.role === "admin";
       const orders = await listOrders({
         status:
           status === "confirmed" ||
@@ -34,7 +35,13 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
           status === "shipped"
             ? status
             : undefined,
-        userId: authUserOrResponse.role === "admin" ? undefined : authUserOrResponse.id,
+        userId: isAdmin ? undefined : authUserOrResponse.id,
+        // P6-01: also surface guest orders by the user's verified email so
+        // pre-claim checkout history appears in the account orders tab.
+        userEmail:
+          isAdmin || !authUserOrResponse.email
+            ? undefined
+            : authUserOrResponse.email,
       });
 
       return c.json(orders, 200);
@@ -71,7 +78,23 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "ORDER_NOT_FOUND", message: "Order not found." }, 404);
       }
 
-      if (authUserOrResponse.role !== "admin" && order.userId !== authUserOrResponse.id) {
+      // Allow access when:
+      //   (a) admin bypass, OR
+      //   (b) the order belongs to the authenticated user (userId match), OR
+      //   (c) guest order (userId null) whose shippingEmail matches the
+      //       session user's verified email — mirrors the list-route visibility
+      //       rule added in P6-01 so guest orders surfaced in the orders list
+      //       are also openable on the detail route.
+      const isAdmin = authUserOrResponse.role === "admin";
+      const isOwner = order.userId === authUserOrResponse.id;
+      const sessionEmail = authUserOrResponse.email ?? null;
+      const isEmailClaim =
+        order.userId === null &&
+        order.shippingEmail !== null &&
+        sessionEmail !== null &&
+        order.shippingEmail.toLowerCase() === sessionEmail.toLowerCase();
+
+      if (!isAdmin && !isOwner && !isEmailClaim) {
         return c.json({ code: "FORBIDDEN", message: "Forbidden." }, 403);
       }
 

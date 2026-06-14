@@ -373,6 +373,41 @@ export function reservationExpiryReminderEmail(params: {
   };
 }
 
+/**
+ * P6-01: Email-change verification email.
+ *
+ * Sent to the NEW email address. The customer must click the link to confirm
+ * the address change. The link includes a signed HMAC token.
+ */
+export function emailChangeVerificationEmail(verifyUrl: string): {
+  subject: string;
+  html: string;
+} {
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:24px;color:${brandStyles.text};margin:0 0 4px;">Verify Your New Email Address</h2>
+    </div>
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.6;">
+      You recently requested to change the email address on your From the Trunk account.
+      Please confirm this new address by clicking the button below.
+    </p>
+    <div style="text-align:center;margin-top:24px;">
+      <a href="${escapeHtml(verifyUrl)}"
+         style="display:inline-block;padding:12px 32px;background:${brandStyles.primary};color:#fff;border-radius:100px;text-decoration:none;font-size:14px;">
+        Confirm New Email
+      </a>
+    </div>
+    <p style="font-size:12px;color:${brandStyles.muted};margin-top:16px;text-align:center;">
+      This link expires in 24 hours. If you did not request an email change, you can safely ignore this email.
+    </p>
+  `;
+
+  return {
+    subject: "Confirm your new email address | From the Trunk",
+    html: wrapper(content),
+  };
+}
+
 export function newsletterConfirmationEmail(confirmUrl: string): {
   subject: string;
   html: string;
