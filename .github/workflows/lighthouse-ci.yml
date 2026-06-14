@@ -47,7 +47,8 @@ jobs:
       NEXTAUTH_SECRET: ci-build-secret-placeholder
       NEXT_PUBLIC_SERVER_URL: http://127.0.0.1:3000
       FTT_LHCI_BASE_URL: http://127.0.0.1:3000
-      FTT_LHCI_URL_PATHS: /privacy-policy,/shipping-policy,/return-policy,/packing
+      # P6-06: expanded to home + collection (PDP entry) for LCP/CLS budget enforcement
+      FTT_LHCI_URL_PATHS: /,/collection,/privacy-policy,/shipping-policy,/return-policy,/packing
     strategy:
       fail-fast: false
       matrix:
