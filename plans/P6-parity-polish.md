@@ -40,7 +40,10 @@ Lighthouse CI thresholds raised to budget (LCP ≤ 2.5s p75 on PDP/home, CLS ≤
 
 ### P6-07: Operational guardrails
 Sentry (or Vercel-native) error tracking wired to the P2-09 logger; uptime check on /api/v2/products + checkout; weekly automated Control-Centre digest to ops email (cron + Resend — after P1-03).
-- [ ]
+- [x] (2026-06-14, 02d6482, "error-tracking PORT [lib/ports/error-tracker.ts] env-gated [no SENTRY_DSN→no-op, never throws] + no-op default, WIRED to lib/log.ts error path + P1-09 onError [mutation-proven]; adapter = documented stdout stub [no @sentry dep, real SDK batched]. /api/v2/health real DB probe → 200/503 [mutation-proven]. CRON_SECRET-gated /api/v2/cron/weekly-ops-digest composes REAL composeDashboard → email to ORDER_NOTIFICATION_EMAILS, fire-and-forget [mutation-proven]; vercel.json '0 9 * * 1'. tsc 0; 1585 tests; opus 3-lens ACCEPT. Sentry/uptime creds BATCHED.")
+- [ ] P6-07a: double-capture — both the onError handler (on-uncaught-error.ts:11) AND log.error (log.ts:143) call tracker.capture, so a server error caught by onError is captured twice once a real Sentry SDK lands (duplicate events/quota). Latent (stdout stub now). Drop the direct onError capture + rely on log.error's path, OR a shared idempotency key.
+- [ ] P6-07b: the REAL adapter env-gate (lib/adapters/sentry-error-tracker.ts buildSentryAdapter → null without DSN) has no direct test (the test mocks it with a re-implemented gate); port-level env-gating IS proven. Add a direct buildSentryAdapter() test.
+- [ ] P6-07c: the digest cron composes the dashboard + renders the email (.toFixed() on metrics) BEFORE the fire-and-forget sendEmail try/catch (cron.ts:~341) — a malformed channel_metrics JSONB row (getChannelMetrics casts without runtime validation, cf. P5-05a) would throw → 500 the cron instead of failing gracefully. Safe with current typed-zero defaults. Wrap compose+template in the same try/catch (or validate the cast).
 
 ### #G-P6: USER CHECKPOINT — parity scorecard
 Walk the Shopify benchmark list (pages/themes ✓ P3, catalog ✓ P4, channels ✓ P5, discounts/search/accounts ✓ P6, analytics ✓ P2/P5) and decide: done, or another ranked round.
