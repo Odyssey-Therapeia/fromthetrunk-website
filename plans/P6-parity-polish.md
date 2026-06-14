@@ -17,7 +17,9 @@ Order history (guest-claim flow from P1-07 surfaced in UI), address book (defaul
 
 ### P6-03: Storefront search
 Postgres ILIKE/trigram v1 over name/story/attributes behind `lib/ports/catalog-search.ts` (P4-04); instant-results UI; embeddings upgrade only if v1 relevance proves insufficient on real queries (Control Centre search-term report decides).
-- [ ]
+- [x] (2026-06-14, cc1ca70, "free-text query EXTENDED into the P4-04 catalog-search port + Postgres adapter [ILIKE over name/storyTitle/storyNarrative/attributes->>'fabric', ANDed w/ published-only base, combines w/ existing filters]; NOT parallel — deleted the old inline /search ILIKE, delegates to the port; lib/data searchProducts orphaned+@deprecated; mutation-proven [drop-clause/wrong-column[extractIlikeColumnNames AST]/remove-block fail; 4-term-count invariant]; empty/whitespace no-op [no %% leak]; header SearchBar debounced 300ms → /api/v2/search → port; /search page; ILIKE-only no migration [embeddings deferred behind port]; tsc 0; 1481 tests; opus 3-lens ACCEPT.")
+- [ ] P6-03a: lib/data/products.ts searchProducts is now dead (zero importers — all consumers use the catalog-search port) + @deprecated; delete it in a cleanup pass.
+- [ ] P6-03b: the test product ("test chiffon…") is NOT excluded by the catalog-search port (only the P5 feeds exclude it) — both the old and new search leak it if a query matches ('chiffon'/'test'); no regression, but centralize the test-product exclusion into the published-products query layer (ties to P1-15 unpublish-test-product). Also noted: search narrowed to name+story+fabric (dropped detailsDesigner/storyEra/storyProvenance the old search had — spec-aligned; UI copy updated).
 
 ### P6-04: Wishlist / save-for-later
 Session-backed for guests, account-backed for users; emits events (P2-07) — for one-of-one inventory this doubles as demand signal on reserved/sold items ("notify me if it returns").
