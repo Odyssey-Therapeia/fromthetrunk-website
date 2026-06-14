@@ -19,6 +19,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "customer"]);
+export const discountTypeEnum = pgEnum("discount_type", ["percent", "fixed"]);
 export const productStatusEnum = pgEnum("product_status", ["draft", "published"]);
 export const stockStatusEnum = pgEnum("stock_status", ["available", "reserved", "sold"]);
 export const orderStatusEnum = pgEnum("order_status", [
@@ -350,6 +351,15 @@ export const orders = pgTable(
      * Requires migration: drizzle/0012_order-reminder-sent.sql (build-not-run).
      */
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    /**
+     * P6-02: Discount tracking.
+     * discountId: FK to discounts.id — used to increment usageCount on payment confirmation.
+     * discountCode: denormalised code string stored for display + audit without needing a JOIN.
+     * Both nullable: null when no discount was applied.
+     * Requires migration: drizzle/0014_orders_discount.sql (build-not-run).
+     */
+    discountId: uuid("discount_id").references((): AnyPgColumn => discounts.id, { onDelete: "set null" }),
+    discountCode: text("discount_code"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -812,5 +822,56 @@ export const redirects = pgTable(
   },
   (table) => ({
     fromPathUnique: uniqueIndex("redirects_from_path_unique").on(table.fromPath),
+  })
+);
+
+/**
+ * P6-02: Discount codes — server-side validated, never client-computed.
+ *
+ * Constraints:
+ *   - code: unique, stored upper-case for case-insensitive lookup.
+ *   - type: "percent" (0–100) | "fixed" (paise amount).
+ *   - value: for percent, 0–100 decimal; for fixed, paise amount.
+ *   - minSubtotalPaise: minimum order subtotal for eligibility (0 = no minimum).
+ *   - collectionId: optional scope — discount applies only if at least one order
+ *     item belongs to the referenced collection (FK to collections.id).
+ *   - startsAt / endsAt: optional ISO 8601 validity window.
+ *   - usageLimit: optional cap (null = unlimited).
+ *   - usageCount: current total redemptions. Incremented atomically on order confirm.
+ *   - active: soft-delete / pause flag.
+ *
+ * The CLIENT sends only the code string. The server looks up this table, validates
+ * all constraints, and passes the result to calculateOrderTotals.
+ * Migration: drizzle/0013_discounts.sql (build-not-run).
+ */
+export const discounts = pgTable(
+  "discounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    type: discountTypeEnum("type").notNull(),
+    /** For percent: 0–100 (percent points). For fixed: paise amount. */
+    value: integer("value").notNull(),
+    minSubtotalPaise: integer("min_subtotal_paise").notNull().default(0),
+    /** Optional: restrict discount to products in a specific collection. */
+    collectionId: uuid("collection_id").references(() => collections.id, { onDelete: "set null" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    usageLimit: integer("usage_limit"),
+    usageCount: integer("usage_count").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // Unique index on UPPER(code) for case-insensitive lookup.
+    // Drizzle does not support functional indexes natively; the SQL migration
+    // creates this as a raw CREATE UNIQUE INDEX on UPPER(code).
+    codeUniqueIdx: uniqueIndex("discounts_code_unique").on(table.code),
+    collectionIdx: index("discounts_collection_idx").on(table.collectionId),
+    activeIdx: index("discounts_active_idx").on(table.active),
+    valuePositive: check("discounts_value_positive", sql`${table.value} >= 0`),
+    minSubtotalPositive: check("discounts_min_subtotal_paise_positive", sql`${table.minSubtotalPaise} >= 0`),
+    usageCountPositive: check("discounts_usage_count_positive", sql`${table.usageCount} >= 0`),
   })
 );

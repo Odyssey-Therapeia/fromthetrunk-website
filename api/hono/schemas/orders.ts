@@ -23,6 +23,12 @@ export const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1),
   shippingAddress: shippingAddressSchema,
   shippingMethod: z.enum(["express", "standard"]).optional().default("standard"),
+  /**
+   * P6-02: Optional discount code supplied by the customer.
+   * The server validates + applies the code — the CLIENT never computes amounts.
+   * Invalid/expired/ineligible codes return a 400 with a clear error message.
+   */
+  discountCode: z.string().trim().toUpperCase().max(64).optional(),
 });
 
 export const orderStatusPatchSchema = z.object({

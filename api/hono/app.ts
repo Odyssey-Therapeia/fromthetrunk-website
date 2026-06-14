@@ -7,6 +7,8 @@ import { registerAddressRoutes } from "@/api/hono/routes/addresses";
 import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard";
 import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
 import { registerAdminOrderRoutes } from "@/api/hono/routes/admin-orders";
+import { registerAdminDiscountRoutes } from "@/api/hono/routes/admin-discounts";
+import { registerDiscountRoutes } from "@/api/hono/routes/discounts";
 import { registerNavigationRoutes } from "@/api/hono/routes/navigation";
 import { registerPagesRoutes } from "@/api/hono/routes/pages";
 import { registerRedirectsRoutes } from "@/api/hono/routes/redirects";
@@ -111,6 +113,14 @@ app.route("/admin/import", adminImportApp);
 const adminOrdersApp = new OpenAPIHono<HonoBindings>();
 registerAdminOrderRoutes(adminOrdersApp);
 app.route("/admin/orders", adminOrdersApp);
+
+const adminDiscountsApp = new OpenAPIHono<HonoBindings>();
+registerAdminDiscountRoutes(adminDiscountsApp);
+app.route("/admin/discounts", adminDiscountsApp);
+
+const discountsApp = new OpenAPIHono<HonoBindings>();
+registerDiscountRoutes(discountsApp);
+app.route("/discounts", discountsApp);
 
 const adminPagesApp = new OpenAPIHono<HonoBindings>();
 registerPagesRoutes(adminPagesApp);

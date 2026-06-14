@@ -10,13 +10,16 @@ import { db } from "@/db";
 import { addOrderEvent, createOrder, getOrder } from "@/db/queries/orders";
 import { insertReservation, releaseReservationsByProducts } from "@/db/queries/reservations";
 import { getOrCreateCheckoutCustomer } from "@/db/queries/users";
-import { orders, products } from "@/db/schema";
+import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
+import { getCollectionProductIds } from "@/db/queries/collections";
+import { collections, orders, products } from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { GST_RATE } from "@/lib/config/order-pricing";
 import { isInventoryV2 } from "@/lib/config/flags";
 import { createOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { validateDiscountCode } from "@/lib/discounts/validate";
 import {
   calculateOrderTotals,
   createRazorpayPaymentLink,
@@ -171,11 +174,78 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         (sum, item) => sum + item.pricePaise * item.quantity,
         0
       );
+
+      // P6-02: Resolve optional discount code SERVER-SIDE.
+      // The client sends only the code string; the server computes the amount.
+      let validatedDiscount: ReturnType<typeof toValidatedDiscount> | undefined;
+      // P6-02 (CRITICAL): when the discount is collection-scoped, the discount
+      // applies ONLY to the sum of in-collection line items (scoped base). This
+      // variable is passed as discountableSubtotalPaise to calculateOrderTotals.
+      // When there is no scope, it equals subtotalPaise.
+      let discountableSubtotalPaise: number = subtotalPaise;
+      if (body.discountCode) {
+        const discountRow = await findDiscountByCode(body.discountCode);
+        if (!discountRow) {
+          return c.json(
+            { code: "DISCOUNT_INVALID", message: "Discount code is invalid or inactive." },
+            400
+          );
+        }
+
+        // Resolve collection product IDs for scope check (empty if no scope).
+        let collectionProductIds: string[] = [];
+        if (discountRow.collectionId) {
+          // getCollectionProductIds requires the full collection object with rules.
+          // We do a targeted lookup for the collection row.
+          const [collectionRow] = await db
+            .select()
+            .from(collections)
+            .where(eq(collections.id, discountRow.collectionId))
+            .limit(1);
+          if (collectionRow) {
+            collectionProductIds = await getCollectionProductIds({
+              id: collectionRow.id,
+              rules: collectionRow.rules ?? null,
+            });
+          }
+        }
+
+        const validation = validateDiscountCode(toValidatedDiscount(discountRow), {
+          subtotalPaise,
+          itemProductIds: normalizedItems.map((i) => i.productId),
+          collectionProductIds,
+          now: new Date(),
+          usageCount: discountRow.usageCount,
+        });
+
+        if (!validation.valid) {
+          return c.json(
+            { code: "DISCOUNT_INELIGIBLE", message: validation.error },
+            400
+          );
+        }
+
+        validatedDiscount = toValidatedDiscount(discountRow);
+
+        // Compute the scoped discountable base:
+        //   - Collection-scoped: sum of pricePaise*quantity for items IN the collection.
+        //   - No scope: full subtotalPaise.
+        if (discountRow.collectionId && collectionProductIds.length > 0) {
+          const collectionSet = new Set(collectionProductIds);
+          discountableSubtotalPaise = normalizedItems
+            .filter((i) => collectionSet.has(i.productId))
+            .reduce((s, i) => s + i.pricePaise * i.quantity, 0);
+        }
+      }
+
       // Single source of truth for the charged amount (shipping + GST + total).
       // Flag OFF (default) reproduces the previous inline math byte-for-byte.
-      const { shippingCostPaise, taxAmountPaise, totalPaise } = calculateOrderTotals(
+      // P6-02: passes the server-validated discount + scoped base to calculateOrderTotals.
+      const { shippingCostPaise, taxAmountPaise, totalPaise, discountAmountPaise } = calculateOrderTotals(
         subtotalPaise,
-        body.shippingMethod
+        body.shippingMethod,
+        validatedDiscount,
+        discountableSubtotalPaise
       );
 
       if (totalPaise < RAZORPAY_MIN_AMOUNT_PAISE) {
@@ -242,6 +312,10 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         taxRate: String(GST_RATE),
         totalPaise,
         userId: customer?.id ?? null,
+        // P6-02: Persist discount association so completePaidOrder can
+        // increment usageCount atomically on payment confirmation.
+        discountId: validatedDiscount?.id ?? null,
+        discountCode: validatedDiscount?.code ?? null,
       });
 
       // Fire-and-forget: order_created event — emitted immediately after order is persisted.
@@ -253,6 +327,8 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           orderId: order.id,
           totalPaise,
           subtotalPaise,
+          discountAmountPaise,
+          discountCode: body.discountCode ?? null,
           shippingCostPaise,
           taxAmountPaise,
           shippingMethod: body.shippingMethod,
