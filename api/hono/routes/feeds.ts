@@ -136,6 +136,106 @@ ${items}
 }
 
 // ---------------------------------------------------------------------------
+// CSV serialisation helpers (Meta catalog feed — P5-02)
+// ---------------------------------------------------------------------------
+
+/**
+ * Escape a single CSV cell per RFC 4180.
+ * Wraps in double-quotes if the value contains a comma, double-quote, or newline.
+ * Embedded double-quotes are doubled.
+ */
+function escapeCsvCell(value: unknown): string {
+  const str = value == null ? "" : String(value);
+  return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+/**
+ * Meta catalog CSV column headers.
+ * Required by Meta: id, title, description, availability, condition, price,
+ * link, image_link, brand. Optional but recommended: additional_image_link.
+ */
+const META_CSV_HEADERS = [
+  "id",
+  "title",
+  "description",
+  "availability",
+  "condition",
+  "price",
+  "link",
+  "image_link",
+  "brand",
+  "additional_image_link",
+] as const;
+
+/**
+ * Serialise eligible products to a Meta catalog CSV string.
+ *
+ * Exported so tests can call it directly with injected product arrays
+ * (mock @/db, run listProducts for real, then call this serialiser).
+ *
+ * The ONLY Meta-specific code here is the column mapping (FeedItemData field
+ * names → Meta CSV column names + value formats). All price, availability,
+ * description, exclusion, and image logic lives in lib/channels/feed-mapping.ts
+ * and feeds.ts:shouldExcludeFromFeed — this function does not duplicate any of it.
+ *
+ * @param activeReservationsCounts - Optional batch reservations map (productId → count).
+ *   When provided (i.e. when FTT_FEATURE_INVENTORY_V2 is ON), each product's
+ *   effective stockStatus is derived via deriveStockStatus(). Mirrors Google route.
+ */
+export function buildMetaCatalogCsv(
+  products: ProductWithRelations[],
+  activeReservationsCounts?: Map<string, number>
+): string {
+  const eligible = products.filter((p) => !shouldExcludeFromFeed(p));
+
+  const headerRow = META_CSV_HEADERS.map(escapeCsvCell).join(",");
+
+  const dataRows = eligible.map((product) => {
+    // Mirror the Google route: when inventory v2 is active, derive effective
+    // stockStatus so the Meta feed matches the PDP — same pattern as Google.
+    let effectiveProduct = product;
+    if (activeReservationsCounts !== undefined) {
+      const activeReservationsCount =
+        activeReservationsCounts.get(product.id) ?? 0;
+      const effectiveStockStatus = deriveStockStatus({
+        quantityAvailable: product.quantityAvailable,
+        activeReservationsCount,
+      });
+      if (effectiveStockStatus !== product.stockStatus) {
+        effectiveProduct = { ...product, stockStatus: effectiveStockStatus };
+      }
+    }
+
+    // THE LOAD-BEARING CALL: reuse the shared mapping — no reimplementation.
+    const item = mapProductToFeedItem(effectiveProduct);
+
+    // Meta vocabulary:
+    // - availability: "in_stock" / "out_of_stock" (same as FeedAvailability)
+    // - price: "1234.00 INR"
+    // - additional_image_link: first additional image (Meta accepts one per column;
+    //   for multiple extras, rows can repeat or a comma-separated list is used —
+    //   we emit the first additional image URL in the column, which is the common
+    //   single-column approach for Meta catalog CSVs).
+    const cells: string[] = [
+      escapeCsvCell(item.id),
+      escapeCsvCell(item.title),
+      escapeCsvCell(item.description),
+      escapeCsvCell(item.availability),
+      escapeCsvCell(item.condition),
+      escapeCsvCell(`${item.price.toFixed(2)} ${item.currency}`),
+      escapeCsvCell(item.link),
+      escapeCsvCell(item.imageUrl ?? ""),
+      escapeCsvCell(item.brand),
+      escapeCsvCell(item.additionalImageUrls[0] ?? ""),
+    ];
+
+    return cells.join(",");
+  });
+
+  return [headerRow, ...dataRows].join("\n");
+}
+
+// ---------------------------------------------------------------------------
 // Route registration
 // ---------------------------------------------------------------------------
 
@@ -175,6 +275,53 @@ export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       status: 200,
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
+        // Instruct intermediate caches to hold the feed for 1 hour
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // P5-02: Meta catalog feed
+  // GET /api/v2/feeds/meta-catalog.csv
+  // Reuses the SAME shared mapping (mapProductToFeedItem), SAME exclusion
+  // function (shouldExcludeFromFeed), and SAME listProducts query as the
+  // Google feed — only the serialiser differs (CSV instead of RSS XML).
+  // -------------------------------------------------------------------------
+  app.get("/meta-catalog.csv", async (c) => {
+    // Optional deterrent token gate — identical to Google feed gate
+    const configuredToken = process.env.FEEDS_PUBLIC_TOKEN;
+    if (configuredToken) {
+      const provided = c.req.query("token");
+      if (provided !== configuredToken) {
+        return new Response("Forbidden", { status: 403 });
+      }
+    }
+
+    // Fetch ALL published products — SAME query as the Google feed and sitemap
+    const { rows: products } = await listProducts({
+      includeDrafts: false,
+      limit: 1000,
+      offset: 0,
+    });
+
+    // When FTT_FEATURE_INVENTORY_V2 is ON, derive each product's effective
+    // stockStatus from quantity + active reservations — mirrors Google route
+    // exactly so both feeds agree with the PDP on availability.
+    let activeReservationsCounts: Map<string, number> | undefined;
+    if (isInventoryV2()) {
+      const eligibleIds = products
+        .filter((p) => !shouldExcludeFromFeed(p))
+        .map((p) => p.id);
+      activeReservationsCounts = await getBatchActiveReservationsCounts(eligibleIds);
+    }
+
+    const csv = buildMetaCatalogCsv(products, activeReservationsCounts);
+
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
         // Instruct intermediate caches to hold the feed for 1 hour
         "Cache-Control": "public, max-age=3600",
       },
