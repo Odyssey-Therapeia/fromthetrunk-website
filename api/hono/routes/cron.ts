@@ -4,9 +4,14 @@ import { and, eq, isNotNull, lt } from "drizzle-orm";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { expireReservations } from "@/db/queries/reservations";
+import { upsertChannelMetric } from "@/db/queries/channel-metrics";
 import { products } from "@/db/schema";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { pullAllMetrics } from "@/lib/ports/channel-metrics";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger("cron:channel-metrics");
 
 export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
@@ -96,6 +101,112 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
           released: expiredRows.length,
           reservationsExpired: reservationsDeleted,
           timestamp: new Date().toISOString(),
+        },
+        200
+      );
+    }
+  );
+
+  // ── P5-04: Refresh channel metrics cache ──────────────────────────────────
+
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/refresh-channel-metrics",
+      responses: {
+        200: {
+          description: "Channel metrics refreshed and cached",
+        },
+        401: {
+          description: "Unauthorized — invalid or missing cron secret",
+        },
+        500: {
+          description: "CRON_SECRET not configured",
+        },
+      },
+      tags: ["Cron"],
+    }),
+    async (c) => {
+      const cronSecret = process.env.CRON_SECRET;
+      if (!cronSecret) {
+        return c.json(
+          {
+            code: "CRON_SECRET_MISSING",
+            message: "CRON_SECRET is not configured.",
+          },
+          500
+        );
+      }
+
+      const authHeader = c.req.header("authorization") ?? null;
+      if (!verifyBearerSecret(authHeader, cronSecret)) {
+        return c.json(
+          {
+            code: "UNAUTHORIZED",
+            message: "Invalid cron secret.",
+          },
+          401
+        );
+      }
+
+      // Pull all 4 adapters in parallel — error-isolated, never throws.
+      const metrics = await pullAllMetrics();
+
+      const fetchedAt = new Date();
+
+      // Upsert each adapter's metrics into channel_metrics.
+      // Each upsert is wrapped individually so a DB failure on one does NOT
+      // block the others (mirrors the analytics-sink fire-and-forget isolation).
+      const adapterStatus: Record<string, string> = {};
+
+      const upsertResults = await Promise.allSettled([
+        upsertChannelMetric({
+          source: "search-console",
+          metricKey: "metrics",
+          value: metrics.searchConsole as unknown as Record<string, unknown>,
+          fetchedAt,
+        }),
+        upsertChannelMetric({
+          source: "ga4-data",
+          metricKey: "metrics",
+          value: metrics.ga4Data as unknown as Record<string, unknown>,
+          fetchedAt,
+        }),
+        upsertChannelMetric({
+          source: "vercel-insights",
+          metricKey: "metrics",
+          value: metrics.vercelInsights as unknown as Record<string, unknown>,
+          fetchedAt,
+        }),
+        upsertChannelMetric({
+          source: "meta-marketing",
+          metricKey: "metrics",
+          value: metrics.metaMarketing as unknown as Record<string, unknown>,
+          fetchedAt,
+        }),
+      ]);
+
+      const adapterNames = ["searchConsole", "ga4Data", "vercelInsights", "metaMarketing"] as const;
+
+      for (let i = 0; i < upsertResults.length; i++) {
+        const result = upsertResults[i];
+        const name = adapterNames[i]!;
+        if (result.status === "fulfilled") {
+          adapterStatus[name] = "ok";
+        } else {
+          adapterStatus[name] = "error";
+          log.error("[channel-metrics cron] upsert failed", {
+            adapter: name,
+            err: result.reason as Record<string, unknown>,
+          });
+        }
+      }
+
+      return c.json(
+        {
+          ok: true,
+          adapters: adapterStatus,
+          timestamp: fetchedAt.toISOString(),
         },
         200
       );

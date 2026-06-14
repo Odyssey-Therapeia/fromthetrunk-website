@@ -612,6 +612,38 @@ export const events = pgTable(
   })
 );
 
+// ── P5-04: Channel metrics cache ─────────────────────────────────────────────
+
+/**
+ * P5-04: Channel metrics cache — stores the latest pulled metric per source/key.
+ *
+ * Upserted by the /api/v2/cron/refresh-channel-metrics cron.
+ * Read by the Control Centre (P5-05).
+ *
+ * One row per (source, metricKey) pair:
+ *   source: "search-console" | "ga4-data" | "vercel-insights" | "meta-marketing"
+ *   metricKey: e.g. "topQueries", "sessions", "cwv", "catalogItemCount"
+ *   value: arbitrary jsonb — the typed metric shape for that key
+ *   fetchedAt: when the adapter pulled this value
+ */
+export const channelMetrics = pgTable(
+  "channel_metrics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    source: text("source").notNull(),
+    metricKey: text("metric_key").notNull(),
+    value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceKeyUnique: uniqueIndex("channel_metrics_source_key_unique").on(table.source, table.metricKey),
+    sourceIdx: index("channel_metrics_source_idx").on(table.source),
+    fetchedAtIdx: index("channel_metrics_fetched_at_idx").on(table.fetchedAt),
+  })
+);
+
 // ── P4-01: Product types + attribute validation ──────────────────────────────
 
 /**
