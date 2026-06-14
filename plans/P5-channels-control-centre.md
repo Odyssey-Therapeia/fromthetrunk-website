@@ -15,7 +15,9 @@ Findings doc: state of Google Merchant Center, Search Console property (which do
 
 ### P5-02: Meta catalog feed
 Same query → Meta CSV/XML dialect; shared mapping module `lib/channels/feed-mapping.ts` so the two feeds cannot drift. Ladder: +L2.
-- [ ]
+- [x] (2026-06-14, f002c55, "Meta product-catalog CSV at /api/v2/feeds/meta-catalog.csv over the SAME listProducts query, REUSING lib/channels/feed-mapping.ts mapProductToFeedItem + shouldExcludeFromFeed + the v2 batched-reservations availability path [NO reimplemented price/availability/description/exclusion in the Meta serializer]; mutation-proven no-drift [changing feed-mapping price /100→/1000 or the availability ternary fails BOTH feeds]; required Meta fields in Meta vocab; RFC-4180 PARSED tests; exclusions mutation-proven ABSENT; FEEDS_PUBLIC_TOKEN gate; Content-Type text/csv; Google feed unregressed [feed-mapping.ts byte-identical to HEAD]; tsc 0; 1225 tests; opus 3-lens ACCEPT. Console submission BATCHED P5-03.")
+- [ ] P5-02a: the named "reuse" cross-check tests (Meta price/availability/description == Google) only prove equality, not value-correctness (the real mutation-kill is the absolute-value tests). Add an absolute-literal assertion alongside each reuse test (e.g. stockStatus 'reserved' → 'out_of_stock') for independent mutation-kill value.
+- [ ] P5-02b: Meta additional_image_link emits only the FIRST additional image (feeds.ts:229); Meta CSV supports up to 20 (comma-separated in one column) and the Google RSS feed emits all. No drift (same FeedItem source) but extra saree detail shots are dropped from Meta. Emit a comma-separated list (escapeCsvCell already quotes) for image parity.
 
 ### P5-03 (ops): console wiring
 Submit feeds, GTIN-exemption flow, shipping (₹500/standard, free ≥ ₹25,000 — `lib/config/order-pricing.ts`) and returns config in both consoles; Search Console property + sitemap submission; request indexing on top pages. Evidence: screenshots/status into `docs/internal/channel-setup.md`.
