@@ -4,6 +4,7 @@ import { and, eq, isNotNull, lt } from "drizzle-orm";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { expireReservations } from "@/db/queries/reservations";
+import { sendReservationExpiryReminders } from "@/db/queries/reservation-reminders";
 import { upsertChannelMetric } from "@/db/queries/channel-metrics";
 import { products } from "@/db/schema";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
@@ -207,6 +208,65 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
           ok: true,
           adapters: adapterStatus,
           timestamp: fetchedAt.toISOString(),
+        },
+        200
+      );
+    }
+  );
+
+  // ── P5-07: Reservation-expiry reminder emails ─────────────────────────────
+
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/send-reservation-expiry-reminders",
+      responses: {
+        200: {
+          description:
+            "Sent reservation-expiry reminder emails to eligible abandoned checkouts",
+        },
+        401: {
+          description: "Unauthorized — invalid or missing cron secret",
+        },
+        500: {
+          description: "CRON_SECRET not configured",
+        },
+      },
+      tags: ["Cron"],
+    }),
+    async (c) => {
+      const cronSecret = process.env.CRON_SECRET;
+      if (!cronSecret) {
+        return c.json(
+          {
+            code: "CRON_SECRET_MISSING",
+            message: "CRON_SECRET is not configured.",
+          },
+          500
+        );
+      }
+
+      const authHeader = c.req.header("authorization") ?? null;
+      if (!verifyBearerSecret(authHeader, cronSecret)) {
+        return c.json(
+          {
+            code: "UNAUTHORIZED",
+            message: "Invalid cron secret.",
+          },
+          401
+        );
+      }
+
+      const result = await sendReservationExpiryReminders();
+
+      return c.json(
+        {
+          ok: true,
+          sent: result.sent,
+          skippedSold: result.skippedSold,
+          skippedNoEmail: result.skippedNoEmail,
+          errors: result.errors,
+          timestamp: new Date().toISOString(),
         },
         200
       );

@@ -342,6 +342,14 @@ export const orders = pgTable(
     shippingPhone: text("shipping_phone"),
     shippingEmail: text("shipping_email"),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * P5-07: Reservation-expiry reminder dedupe column.
+     * Set to NOW() after a successful reminder email send.
+     * The send-reservation-expiry-reminders cron filters WHERE reminder_sent_at IS NULL
+     * so a re-run never re-sends for the same order.
+     * Requires migration: drizzle/0012_order-reminder-sent.sql (build-not-run).
+     */
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

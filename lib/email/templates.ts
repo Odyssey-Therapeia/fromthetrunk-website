@@ -322,6 +322,57 @@ export function welcomeEmail(name: string): {
   };
 }
 
+/**
+ * P5-07: Reservation-expiry reminder — transactional service notice.
+ *
+ * Sent when a customer's hold window expires without payment.
+ * Deep-links to the CART (not the dead Razorpay payment link) so the customer
+ * can re-initiate checkout if the piece is still available.
+ *
+ * TRANSACTIONAL ONLY — no marketing copy, no promotions.
+ */
+export function reservationExpiryReminderEmail(params: {
+  itemName: string;
+  orderId: string;
+}): { subject: string; html: string } {
+  const cartUrl = `${getSiteOrigin()}/cart`;
+  const shortId = params.orderId.slice(0, 8).toUpperCase();
+
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:22px;color:${brandStyles.text};margin:0 0 4px;">Your Reservation Has Expired</h2>
+      <p style="font-size:14px;color:${brandStyles.muted};margin:0;">Order reference: #${escapeHtml(shortId)}</p>
+    </div>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      Your temporary hold on <strong style="color:${brandStyles.text};">${escapeHtml(params.itemName)}</strong>
+      has expired — the reservation window has passed without a completed payment.
+    </p>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      The piece may still be available. If you would like to complete your purchase,
+      please return to your cart and proceed through checkout again.
+    </p>
+
+    <div style="text-align:center;margin-top:28px;">
+      <a href="${cartUrl}"
+         style="display:inline-block;padding:12px 32px;background:${brandStyles.primary};color:#fff;border-radius:100px;text-decoration:none;font-size:14px;letter-spacing:0.05em;">
+        Return to Cart
+      </a>
+    </div>
+
+    <p style="font-size:12px;color:${brandStyles.muted};margin-top:24px;text-align:center;line-height:1.6;">
+      This is a service notice about your recent checkout session on From the Trunk.
+      If you did not initiate a checkout, please disregard this email.
+    </p>
+  `;
+
+  return {
+    subject: `Your reservation for ${params.itemName} has expired | From the Trunk`,
+    html: wrapper(content),
+  };
+}
+
 export function newsletterConfirmationEmail(confirmUrl: string): {
   subject: string;
   html: string;
