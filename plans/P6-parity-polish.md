@@ -34,7 +34,9 @@ Admin: refund flow surfaced (Razorpay refund API behind `lib/ports/payments.ts` 
 
 ### P6-06: Performance & a11y budgets enforced
 Lighthouse CI thresholds raised to budget (LCP ≤ 2.5s p75 on PDP/home, CLS ≤ 0.1) and made blocking in CI (currently report-only); image pipeline: enforce dimensions/alt on upload (media library), convert >1MB uploads (4–8MB JPEGs live today); axe-core pass in e2e for storefront + admin critical paths. Ladder: L4 becomes blocking.
-- [ ]
+- [x] (2026-06-14, c623a03, "image pipeline: media /complete enforces alt [Zod min(1)+helper throw] + auto-compresses >=1MB via sharp resize+webp [fetch Blob→sharp→re-store]; both UI producers send alt+size; mutation-proven [remove alt gate→4 fail, size gate→3 fail]. LHCI budget made BLOCKING [lighthouserc.cjs error-level: perf 0.7, LCP≤2500, CLS≤0.1; home+/collection paths]. axe-core a11y-critical-paths.test renders REAL ProductGallery → 0 violations [mutation-proven: removing alt/broken fixtures fire violations], in the blocking vitest suite. tsc 0; 1569 tests; new dev-deps axe-core/jsdom (+sharp dep). opus 3-lens ACCEPT. Full-browser Lighthouse/axe e2e → #G-P6.")
+- [ ] P6-06a: axe coverage is thin — only ProductGallery is checked. Add component-level axe for ≥1 more storefront critical component (SiteFooter / AnnouncementBar are server-renderable now); the deferral rationale ("needs a running app for next/image") is partly inaccurate (ProductGallery uses next/image + renders fine via renderToStaticMarkup). Full-page/browser axe over all storefront+admin critical paths → #G-P6.
+- [ ] P6-06b: lighthouserc.cjs:99-100 comment claims aggregationMethod 'optimistic' "enforces the p75 budget" — wrong (optimistic takes the BEST run, opposite of p75); harmless at numberOfRuns=1 but misleading. Fix the comment, or switch to 'median'/raise FTT_LHCI_RUNS for true p75. (Also: the pre-existing <img> lint warning at media/page.tsx is unrelated to this packet.)
 
 ### P6-07: Operational guardrails
 Sentry (or Vercel-native) error tracking wired to the P2-09 logger; uptime check on /api/v2/products + checkout; weekly automated Control-Centre digest to ops email (cron + Resend — after P1-03).
