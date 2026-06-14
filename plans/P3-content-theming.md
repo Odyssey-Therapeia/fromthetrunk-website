@@ -55,7 +55,9 @@ image+text, story/editorial, FAQ (+FAQPage JSON-LD — rendered-output test per 
 
 ### P3-09: Navigation & redirects managers
 Menu editor (header/footer slots) from `navigation_menus`; redirects table consulted in middleware/proxy with loop guard; admin CRUD. Ladder: +L2.
-- [ ]
+- [x] (2026-06-14, 87454c4, "nav menus: admin CRUD over navigation_menus [header flat items / footer sections], site header+footer SERVER wrappers CONSUME managed menus w/ default fallback [mutation-proven]; per-slot POST schema, isValidHref on every incl. nested footer href; footer save round-trip proven through REAL route+store [reverting schema fails]. redirects: admin CRUD; resolver consulted in proxy.ts per non-excluded request with LOOP GUARD [self/cycle/chain terminate — mutation-proven, visited-set+MAX hops]; checkout /cart excluded, payment-link path unchanged; toPath constrained [relative/http(s) only, javascript:/data:/// → 400, closes admin-gated open-redirect, mutation-proven]. tsc 0; 1122 tests [re-verified after parallel mutation-probes]; no migration. opus 3-lens REJECT[footer-save schema mismatch + test theater + open-redirect]→repair→ACCEPT.")
+- [ ] P3-09a: the broadened proxy.ts matcher now runs resolveRedirect (an uncached dbSelectRedirect query) on EVERY non-excluded request (homepage + all content pages) — money RESPONSE path (/checkout,/cart) excluded so no correctness regression, but a new per-request DB round-trip. Add a short-TTL in-memory or unstable_cache (tag 'redirects', invalidated on redirect CRUD) so general traffic isn't slowed. Perf.
+- [ ] P3-09b: nav-link href policy gap — isValidHref blocks javascript:/data: (XSS) but a nav/footer link href of "//evil.com" (protocol-relative) or "/\\evil.com" still passes (200/persists). Admin-gated + identical to the already-accepted header path, so minor; tighten nav href validation to match the redirect toPath discipline (block protocol-relative).
 
 ### P3-10: Migrate one real page
 Rebuild the current homepage (or story page) as blocks; pixel-diff acceptable deltas listed; old hardcoded page retired behind a flag until #G-P3.
