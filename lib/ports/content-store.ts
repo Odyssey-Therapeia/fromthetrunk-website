@@ -40,6 +40,13 @@ export interface ThemeSettings {
   updatedAt: Date;
 }
 
+export interface ThemeVersion {
+  id: string;
+  tokens: Record<string, unknown>;
+  createdBy: string;
+  createdAt: Date;
+}
+
 export interface NavigationMenu {
   id: string;
   slot: MenuSlot;
@@ -104,7 +111,15 @@ export interface ContentStore {
 
   // Theme settings (singleton)
   getThemeSettings(): Promise<ThemeSettings | null>;
-  saveThemeSettings(tokens: Record<string, unknown>): Promise<ThemeSettings>;
+  /** Persists tokens to the singleton row AND appends an immutable version row. */
+  saveThemeSettings(
+    tokens: Record<string, unknown>,
+    createdBy?: string
+  ): Promise<ThemeSettings>;
+  /** Returns all theme versions, newest first. */
+  listThemeVersions(): Promise<ThemeVersion[]>;
+  /** Returns a single theme version by id, or null. */
+  getThemeVersion(id: string): Promise<ThemeVersion | null>;
 
   // Navigation menus
   getMenu(slot: MenuSlot): Promise<NavigationMenu | null>;

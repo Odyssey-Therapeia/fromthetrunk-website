@@ -24,6 +24,7 @@ import type {
   PageVersion,
   Redirect,
   ThemeSettings,
+  ThemeVersion,
   UpdatePageInput,
 } from "@/lib/ports/content-store";
 
@@ -52,6 +53,7 @@ export function createInMemoryContentStore(): ContentStore {
   const versionsMap = new Map<string, PageVersion>();
   const versionsByPage = new Map<string, PageVersion[]>();
   let themeRow: ThemeSettings | null = null;
+  const themeVersionsList: ThemeVersion[] = [];
   const menusMap = new Map<MenuSlot, NavigationMenu>();
   const redirectsByFrom = new Map<string, Redirect>();
 
@@ -188,13 +190,33 @@ export function createInMemoryContentStore(): ContentStore {
       return themeRow;
     },
 
-    async saveThemeSettings(tokens: Record<string, unknown>): Promise<ThemeSettings> {
+    async saveThemeSettings(
+      tokens: Record<string, unknown>,
+      createdBy: string = "unknown"
+    ): Promise<ThemeSettings> {
       themeRow = {
         id: 1,
         tokens,
         updatedAt: new Date(),
       };
+      // Append an immutable version row
+      const version: ThemeVersion = {
+        id: newId(),
+        tokens,
+        createdBy,
+        createdAt: new Date(),
+      };
+      themeVersionsList.unshift(version); // newest first
       return themeRow;
+    },
+
+    async listThemeVersions(): Promise<ThemeVersion[]> {
+      // Already stored newest-first
+      return [...themeVersionsList];
+    },
+
+    async getThemeVersion(id: string): Promise<ThemeVersion | null> {
+      return themeVersionsList.find((v) => v.id === id) ?? null;
     },
 
     // ── Navigation menus ──────────────────────────────────────────────────
@@ -341,10 +363,31 @@ export function createDrizzleContentStore(): ContentStore {
         : null;
     },
 
-    async saveThemeSettings(tokens: Record<string, unknown>): Promise<ThemeSettings> {
-      const { dbUpsertThemeSettings } = await import("@/db/queries/content");
-      const row = await dbUpsertThemeSettings(tokens);
+    async saveThemeSettings(
+      tokens: Record<string, unknown>,
+      createdBy: string = "unknown"
+    ): Promise<ThemeSettings> {
+      const { dbUpsertThemeSettings, dbInsertThemeVersion } = await import(
+        "@/db/queries/content"
+      );
+      // Dual-write: update singleton + append immutable version row
+      const [row] = await Promise.all([
+        dbUpsertThemeSettings(tokens),
+        dbInsertThemeVersion({ tokens, createdBy }),
+      ]);
       return { id: row.id, tokens: row.tokens as Record<string, unknown>, updatedAt: row.updatedAt };
+    },
+
+    async listThemeVersions(): Promise<ThemeVersion[]> {
+      const { dbSelectThemeVersions } = await import("@/db/queries/content");
+      const rows = await dbSelectThemeVersions();
+      return rows.map(rowToThemeVersion);
+    },
+
+    async getThemeVersion(id: string): Promise<ThemeVersion | null> {
+      const { dbSelectThemeVersionById } = await import("@/db/queries/content");
+      const row = await dbSelectThemeVersionById(id);
+      return row ? rowToThemeVersion(row) : null;
     },
 
     async getMenu(slot: MenuSlot): Promise<NavigationMenu | null> {
@@ -377,7 +420,12 @@ export function createDrizzleContentStore(): ContentStore {
 
 // ── Row mappers ───────────────────────────────────────────────────────────────
 
-import type { PageRow, PageVersionRow, RedirectRow } from "@/db/queries/content";
+import type {
+  PageRow,
+  PageVersionRow,
+  RedirectRow,
+  ThemeVersionRow,
+} from "@/db/queries/content";
 
 function rowToPage(row: PageRow): Page {
   return {
@@ -407,6 +455,15 @@ function rowToRedirect(row: RedirectRow): Redirect {
     id: row.id,
     fromPath: row.fromPath,
     toPath: row.toPath,
+    createdAt: row.createdAt,
+  };
+}
+
+function rowToThemeVersion(row: ThemeVersionRow): ThemeVersion {
+  return {
+    id: row.id,
+    tokens: row.tokens as Record<string, unknown>,
+    createdBy: row.createdBy,
     createdAt: row.createdAt,
   };
 }

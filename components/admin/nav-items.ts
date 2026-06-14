@@ -5,6 +5,7 @@ import {
   Image,
   LayoutDashboard,
   Package,
+  Palette,
   Settings,
   ShoppingCart,
   Users,
@@ -24,6 +25,7 @@ export const adminNavItems: AdminNavItem[] = [
   { href: "/admin/customers", label: "Users", icon: Users },
   { href: "/admin/media", label: "Media", icon: Image },
   { href: "/admin/pages", label: "Pages", icon: FileText },
+  { href: "/admin/theme", label: "Theme", icon: Palette },
   { href: "/admin/globals", label: "Globals", icon: Globe },
 ];
 

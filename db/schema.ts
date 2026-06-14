@@ -717,6 +717,26 @@ export const themeSettings = pgTable("theme_settings", {
 });
 
 /**
+ * P3-07: Theme version history — IMMUTABLE.
+ *
+ * Rows are only ever inserted, never updated. Each save of theme_settings
+ * appends a new row here. Mirrors page_versions shape exactly so restore
+ * logic is structurally identical.
+ */
+export const themeVersions = pgTable(
+  "theme_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokens: jsonb("tokens").$type<Record<string, unknown>>().notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("theme_versions_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
  * P3-01: Navigation menus — one row per slot (header | footer).
  *
  * items is a JSON array of { label, href } objects (or richer shapes in the

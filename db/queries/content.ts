@@ -16,6 +16,7 @@ import {
   pages,
   redirects,
   themeSettings,
+  themeVersions,
 } from "@/db/schema";
 
 // ── Exported row types ────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ import {
 export type PageRow = InferSelectModel<typeof pages>;
 export type PageVersionRow = InferSelectModel<typeof pageVersions>;
 export type ThemeSettingsRow = InferSelectModel<typeof themeSettings>;
+export type ThemeVersionRow = InferSelectModel<typeof themeVersions>;
 export type NavigationMenuRow = InferSelectModel<typeof navigationMenus>;
 export type RedirectRow = InferSelectModel<typeof redirects>;
 
@@ -132,6 +134,38 @@ export async function dbUpsertThemeSettings(
     })
     .returning();
   return row;
+}
+
+// ── Theme versions ────────────────────────────────────────────────────────────
+
+export type InsertThemeVersionInput = Omit<
+  InferInsertModel<typeof themeVersions>,
+  "id" | "createdAt"
+>;
+
+export async function dbInsertThemeVersion(
+  input: InsertThemeVersionInput
+): Promise<ThemeVersionRow> {
+  const [row] = await db.insert(themeVersions).values(input).returning();
+  return row;
+}
+
+export async function dbSelectThemeVersions(): Promise<ThemeVersionRow[]> {
+  return db
+    .select()
+    .from(themeVersions)
+    .orderBy(desc(themeVersions.createdAt));
+}
+
+export async function dbSelectThemeVersionById(
+  id: string
+): Promise<ThemeVersionRow | null> {
+  const [row] = await db
+    .select()
+    .from(themeVersions)
+    .where(eq(themeVersions.id, id))
+    .limit(1);
+  return row ?? null;
 }
 
 // ── Navigation menus ──────────────────────────────────────────────────────────

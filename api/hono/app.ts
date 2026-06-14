@@ -8,6 +8,7 @@ import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard"
 import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
 import { registerAdminOrderRoutes } from "@/api/hono/routes/admin-orders";
 import { registerPagesRoutes } from "@/api/hono/routes/pages";
+import { registerThemeRoutes } from "@/api/hono/routes/theme";
 import { registerCartRoutes } from "@/api/hono/routes/cart";
 import { registerCollectionRoutes } from "@/api/hono/routes/collections";
 import { registerConversationRoutes } from "@/api/hono/routes/conversations";
@@ -111,6 +112,10 @@ app.route("/admin/orders", adminOrdersApp);
 const adminPagesApp = new OpenAPIHono<HonoBindings>();
 registerPagesRoutes(adminPagesApp);
 app.route("/admin/pages", adminPagesApp);
+
+const adminThemeApp = new OpenAPIHono<HonoBindings>();
+registerThemeRoutes(adminThemeApp);
+app.route("/admin/theme", adminThemeApp);
 
 const conversationsApp = new OpenAPIHono<HonoBindings>();
 registerConversationRoutes(conversationsApp);
