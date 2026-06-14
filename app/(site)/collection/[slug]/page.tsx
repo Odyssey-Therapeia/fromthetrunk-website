@@ -63,7 +63,6 @@ export async function generateMetadata({
       title: pdpTitle,
       description: pdpDescription,
       type: "website",
-      ...(image ? { images: [{ url: image, alt: product.name }] } : {}),
     },
   };
 }
