@@ -23,7 +23,9 @@ Postgres ILIKE/trigram v1 over name/story/attributes behind `lib/ports/catalog-s
 
 ### P6-04: Wishlist / save-for-later
 Session-backed for guests, account-backed for users; emits events (P2-07) — for one-of-one inventory this doubles as demand signal on reserved/sold items ("notify me if it returns").
-- [ ]
+- [x] (2026-06-14, 5655bc7, "wishlist_items [PK user+product] account-backed auth-scoped [IDOR mutation-proven] + guest session store merged on login via canonical WishlistMergeOnLogin [de-duped]; idempotent toggle; WishlistButton on PDP+cards [real API]; add/remove emit P2-07 wishlist_added/removed ROUTE-mutation-proven [delete emit block → test red] + fire-and-forget; RestockNotifyButton on sold/reserved captures restock intent [restock_notify_requests durable upsert + event, email NOT in payload, rate-limited /notify]; drizzle/0015 NOT run; tsc 0; 1515 tests; no draft leak; opus 3-lens REJECT[add/remove emit test theater]→repair→ACCEPT. Restock EMAIL deferred. Migration 0015 BATCHED.")
+- [ ] P6-04a: stale comment in components/wishlist/wishlist-merge-on-login.tsx:21-22 still references the now-removed per-button "belt-and-suspenders" merge fallback — update it (the per-button merge was deleted in the repair; this is the sole merge path now).
+- [ ] P6-04b: (scaling/polish) the wishlist page (app/(site)/account/wishlist/page.tsx) fetches /api/v2/products?limit=500 + joins client-side — wishlisted items beyond 500 silently drop; use getProductsByIds (exists) to fetch only the wishlisted IDs. Also: wishlist-button.tsx:177 uses raw text-red-* classes (storefront convention is semantic tokens text-destructive); wishlist.ts:102 status filter admits 'draft' but the page drops drafts for non-admins (latent — align if drafts become wishlist-eligible); REPAIR-1/3 tests lean on existence/import checks (REPAIR-2/4 are route-coupled — strengthen 1/3).
 
 ### P6-05: Order ops polish
 Admin: refund flow surfaced (Razorpay refund API behind `lib/ports/payments.ts` extension), order notes (the P1-05 packet's note field made first-class), packing-slip print view, shipment tracking field → customer email (the P1-05-guarded one) with tracking link.
