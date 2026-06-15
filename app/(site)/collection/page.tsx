@@ -118,9 +118,20 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
 
   const cms = collectionPage as CollectionPageContent | null;
   const collections = (visibleCollectionsResult?.docs ?? []) as Collection[];
-  const activeCollection = collections.find(
+  let activeCollection = collections.find(
     (c) => c.slug === requestedCollectionSlug
   );
+  // A requested collection may have members only via the manual
+  // (collection_products) or smart (rules) path, which the onlyWithProducts
+  // visibility query (legacy products.collectionId only) misses. Resolve the
+  // requested slug directly so a direct link shows THAT collection — the listing
+  // below uses getProductsByCollection, which resolves the manual+smart+legacy
+  // union — instead of falling through to the all-products listing.
+  if (requestedCollectionSlug && !activeCollection) {
+    const { getCollectionBySlug } = await import("@/db/queries/collections");
+    const resolved = await getCollectionBySlug(requestedCollectionSlug);
+    if (resolved) activeCollection = resolved as unknown as Collection;
+  }
   const activeCollectionSlug = activeCollection?.slug;
 
   // Use searchProducts when catalog filters are active, otherwise fall back

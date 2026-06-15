@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
+import { computeCheckoutEstimate, isFreeShipping } from "@/lib/checkout/estimate";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
@@ -251,8 +252,6 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     setDiscountError(null);
   };
 
-  const shippingCost =
-    subtotal >= SHIPPING_TIERS.freeThreshold ? 0 : SHIPPING_TIERS[shippingMethod];
   // The summary below is a PRE-CHECKOUT estimate, rendered before the order
   // exists. It mirrors the server's flag-OFF (GST-exclusive) math, which is the
   // behaviour in every current environment. We deliberately do NOT read the
@@ -260,13 +259,19 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
   // prefix, so it is always false in the browser — branching on it would render
   // an "incl. GST" label over an exclusive total whenever the server flag is ON.
   // P6-02: when a discount is applied, the server has already told us the
-  // discountAmountPaise; we reduce the displayed subtotal accordingly for the
-  // estimate. The final authoritative total is always computed server-side at
-  // order creation time (via calculateOrderTotals).
+  // discountAmountPaise; we reduce the displayed subtotal accordingly. Shipping
+  // AND GST are evaluated on the DISCOUNTED subtotal — mirroring the server's
+  // calculateOrderTotals order-of-operations (razorpay.ts:225-229) — so the
+  // displayed total matches the Razorpay charge. See lib/checkout/estimate.ts.
+  // The final authoritative total is always computed server-side at order
+  // creation time.
   const discountAmountRupees = discountApplied ? discountApplied.amountPaise / 100 : 0;
-  const effectiveSubtotal = subtotal - discountAmountRupees;
-  const taxAmount = Math.round(effectiveSubtotal * GST_RATE);
-  const total = Math.max(0, effectiveSubtotal + shippingCost + taxAmount);
+  const { effectiveSubtotal, shippingCost, taxAmount, total } =
+    computeCheckoutEstimate({
+      subtotal,
+      shippingMethod,
+      discountAmount: discountAmountRupees,
+    });
   const taxRateLabel = new Intl.NumberFormat("en-IN", {
     maximumFractionDigits: 2,
     style: "percent",
@@ -579,7 +584,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">
-                      {subtotal >= SHIPPING_TIERS.freeThreshold ? "Complimentary" : formatCurrency(SHIPPING_TIERS.standard)}
+                      {isFreeShipping(effectiveSubtotal) ? "Complimentary" : formatCurrency(SHIPPING_TIERS.standard)}
                     </span>
                   </label>
                   <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "express" ? "border-primary bg-primary/5" : "border-border"}`}>
@@ -598,7 +603,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">
-                      {subtotal >= SHIPPING_TIERS.freeThreshold ? "Complimentary" : formatCurrency(SHIPPING_TIERS.express)}
+                      {isFreeShipping(effectiveSubtotal) ? "Complimentary" : formatCurrency(SHIPPING_TIERS.express)}
                     </span>
                   </label>
                 </div>
