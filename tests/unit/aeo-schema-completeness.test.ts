@@ -17,7 +17,7 @@
  *  - Parse the emitted JSON, do not assert literals.
  *  - Mutation-proof: removing a required Offer field causes the assertion to fail.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Product } from "@/types/domain";
 
@@ -261,6 +261,19 @@ function assertValidProductOffer(
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+// getSiteOrigin() (lib/config/site.ts) reads NEXT_PUBLIC_SERVER_URL at runtime,
+// falling back to the canonical origin only when it is unset. Some CI jobs export
+// NEXT_PUBLIC_SERVER_URL=http://127.0.0.1:3000 for their Lighthouse server, which
+// would make these origin-dependent assertions pass locally but fail in that job.
+// Pin the canonical origin so every assertion here is hermetic (this matches the
+// dev/test default, so it is a no-op except where ambient env would otherwise leak in).
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_SERVER_URL", "https://www.fromthetrunk.shop");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("P5-06: AEO schema completeness audit", () => {
   describe("Product+Offer completeness — iterates ALL fixtures", () => {
