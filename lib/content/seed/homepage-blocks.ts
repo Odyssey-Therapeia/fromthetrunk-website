@@ -12,11 +12,13 @@
  *   - Copy is taken verbatim from the hardcoded components to maximise
  *     equivalence; image UUIDs are omitted since no media rows exist yet.
  *
- * UNMAPPED SECTIONS (no registered block — out of scope for P3-10):
- *   - TrustSignals: 3-stat static row (components/sections/trust-signals.tsx).
- *     No "trust-signals" block in registry. Deferred.
- *   - HowItWorks: 3-step process grid (components/sections/how-it-works.tsx).
- *     No "how-it-works" block in registry. Deferred.
+ * NEWLY MAPPED (2026-06-15): TrustSignals + HowItWorks now have registered
+ * blocks (trust-signals, how-it-works) and are included below — the fixture is
+ * now a faithful, complete representation of all 6 homepage sections.
+ *
+ * REMAINING ACCEPTABLE DELTAS (layout/dynamic-data only, content equivalent):
+ *   - HowItWorks: per-step product images dropped (a CMS block can't fetch
+ *     products); copy + structure preserved verbatim.
  *   - FeaturedCollection: bento-grid layout with a feature card.
  *     Approximated by "product-grid" with source="featured". Layout delta is
  *     documented (bento → standard grid); content (featured products) is
@@ -29,9 +31,9 @@
  * SECTION ORDER (matches page.tsx order):
  *   1. Hero (hero block) — maps HeroSection
  *   2. Story editorial (story-editorial block) — maps StoryNarrative
- *      [3. TrustSignals — OMITTED: no block]
+ *   3. Trust signals (trust-signals block) — maps TrustSignals
  *   4. Featured products (product-grid block, source=featured) — maps FeaturedCollection
- *      [5. HowItWorks — OMITTED: no block]
+ *   5. How it works (how-it-works block) — maps HowItWorks
  *   6. Newsletter (newsletter-signup block) — maps Newsletter
  *
  * This fixture is consumed by:
@@ -122,8 +124,15 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
     },
   },
 
-  // NOTE: TrustSignals (position 3 in page.tsx) is OMITTED — no registered
-  // block equivalent. See UNMAPPED SECTIONS above.
+  // ── 3. TRUST SIGNALS ───────────────────────────────────────────────────────
+  // Maps: TrustSignals in app/(site)/page.tsx (position 3). Block added 2026-06-15.
+  // props:{} → the trust-signals block defaults reproduce the live 3-stat row
+  // (200+/Authenticated Sarees, 50+/Happy Collectors, 100%/Provenance Verified),
+  // verified verbatim against components/sections/trust-signals.tsx.
+  {
+    type: "trust-signals",
+    props: {},
+  },
 
   // ── 4. FEATURED PRODUCTS GRID ──────────────────────────────────────────────
   // Maps: FeaturedCollection in app/(site)/page.tsx line 52
@@ -152,8 +161,16 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
     },
   },
 
-  // NOTE: HowItWorks (position 5 in page.tsx) is OMITTED — no registered
-  // block equivalent. See UNMAPPED SECTIONS above.
+  // ── 5. HOW IT WORKS ────────────────────────────────────────────────────────
+  // Maps: HowItWorks in app/(site)/page.tsx (position 5). Block added 2026-06-15.
+  // props:{} → the how-it-works block defaults reproduce the live 3-step bento
+  // (eyebrow "How It Works" / heading "From trunk to your wardrobe" /
+  // Curate-Authenticate-Deliver). ACCEPTABLE DELTA: per-step product images are
+  // dropped (a CMS block can't fetch products) — same delta class as story-editorial.
+  {
+    type: "how-it-works",
+    props: {},
+  },
 
   // ── 6. NEWSLETTER ──────────────────────────────────────────────────────────
   // Maps: Newsletter in app/(site)/page.tsx line 54

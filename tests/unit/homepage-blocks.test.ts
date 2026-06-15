@@ -183,12 +183,16 @@ describe("HOMEPAGE_BLOCKS fixture integrity", () => {
     }
   });
 
-  it("contains the 4 mappable homepage sections (hero, story-editorial, product-grid, newsletter-signup)", () => {
+  it("contains all 6 homepage sections in page.tsx order (hero, story-editorial, trust-signals, product-grid, how-it-works, newsletter-signup)", () => {
     const types = HOMEPAGE_BLOCKS.map((b) => b.type);
-    expect(types).toContain("hero");
-    expect(types).toContain("story-editorial");
-    expect(types).toContain("product-grid");
-    expect(types).toContain("newsletter-signup");
+    expect(types).toEqual([
+      "hero",
+      "story-editorial",
+      "trust-signals",
+      "product-grid",
+      "how-it-works",
+      "newsletter-signup",
+    ]);
   });
 
   it("hero block is first in the fixture (ordered correctly)", () => {
@@ -506,25 +510,22 @@ describe("EQUIVALENCE: blocks fixture reproduces homepage content", () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe("ACCEPTABLE DELTAS: sections absent from blocks version", () => {
-  it("DELTA-1: TrustSignals section has no registered block — absent from fixture", () => {
-    // TrustSignals (3-stat static row in components/sections/trust-signals.tsx)
-    // has no registered block type. It is ABSENT from the blocks version.
-    // This is an ACCEPTABLE DELTA for the P3-10 proof-of-concept.
-    // A future workstream task should add a trust-signals block to the registry.
+  it("DELTA-1 RESOLVED: TrustSignals now has a registered block and IS in the fixture", () => {
+    // 2026-06-15: the trust-signals block was added to the registry; the fixture
+    // now includes it, so the homepage is faithfully composable (delta resolved).
     const hasTrustBlock = HOMEPAGE_BLOCKS.some(
       (b) => b.type === "trust-signals"
     );
-    expect(hasTrustBlock).toBe(false); // documents the delta, not a failure
+    expect(hasTrustBlock).toBe(true);
   });
 
-  it("DELTA-2: HowItWorks section has no registered block — absent from fixture", () => {
-    // HowItWorks (3-step process grid in components/sections/how-it-works.tsx)
-    // has no registered block type. It is ABSENT from the blocks version.
-    // A future workstream task should add a how-it-works block to the registry.
+  it("DELTA-2 RESOLVED: HowItWorks now has a registered block and IS in the fixture", () => {
+    // 2026-06-15: the how-it-works block was added to the registry; the fixture
+    // now includes it (per-step product images remain a documented render delta).
     const hasHowItWorksBlock = HOMEPAGE_BLOCKS.some(
       (b) => b.type === "how-it-works"
     );
-    expect(hasHowItWorksBlock).toBe(false); // documents the delta, not a failure
+    expect(hasHowItWorksBlock).toBe(true);
   });
 
   it("DELTA-3: FeaturedCollection bento layout has no block equivalent — product-grid is used instead", () => {
@@ -606,99 +607,67 @@ describe("MUTATION PROOF: renderBlock is the real registry dispatch", () => {
 // the blocks path is DETECTABLY DIFFERENT from the hardcoded path because
 // TrustSignals and HowItWorks have no block equivalents.
 
-describe("MUTATION PROOF: isBlocksHomepage flag guard is load-bearing (flag-off diverges from blocks path)", () => {
-  it("TrustSignals renders content that is absent from all HOMEPAGE_BLOCKS renders", async () => {
-    // Import the REAL TrustSignals (pure RSC — no browser deps beyond lucide-react SVGs)
-    const { TrustSignals } = await import(
-      "@/components/sections/trust-signals"
-    );
-
-    // HARDCODED PATH: render TrustSignals to get the text it produces.
-    const trustHtml = renderToStaticMarkup(
-      createElement(TrustSignals as React.ComponentType<Record<string, never>>, {})
-    );
-    const trustText = extractText(trustHtml);
-
-    // TrustSignals must render some content (basic sanity check).
-    expect(trustText.length).toBeGreaterThan(0);
-
-    // BLOCKS PATH: render ALL HOMEPAGE_BLOCKS via the REAL renderBlock.
-    const allBlocksText: string[] = [];
+describe("FAITHFULNESS: blocks fixture reproduces the formerly hardcoded-only sections", () => {
+  // 2026-06-15: trust-signals + how-it-works blocks were added to the registry
+  // and inserted into HOMEPAGE_BLOCKS, so the blocks path now FAITHFULLY
+  // reproduces every homepage section (it previously omitted these two). These
+  // tests assert that faithfulness via the REAL renderBlock dispatch.
+  async function renderAllBlocks(): Promise<string> {
+    const parts: string[] = [];
     for (const block of HOMEPAGE_BLOCKS) {
       const node = await renderBlock({ type: block.type, props: block.props });
-      const html = renderToStaticMarkup(node as React.ReactElement);
-      allBlocksText.push(extractText(html));
+      parts.push(extractText(renderToStaticMarkup(node as React.ReactElement)));
     }
-    const combinedBlocksText = allBlocksText.join(" ");
+    return parts.join(" ");
+  }
 
-    // TrustSignals renders "Authenticated Sarees", "Happy Collectors",
-    // "Provenance Verified". These labels must appear in the hardcoded render
-    // (proved by the test above) but MUST NOT appear in the blocks path —
-    // proving the two paths diverge (flag guard is load-bearing).
-    expect(trustText).toContain("Authenticated Sarees");
-    expect(combinedBlocksText).not.toContain("Authenticated Sarees");
-    expect(trustText).toContain("Happy Collectors");
-    expect(combinedBlocksText).not.toContain("Happy Collectors");
-    expect(trustText).toContain("Provenance Verified");
-    expect(combinedBlocksText).not.toContain("Provenance Verified");
+  it("blocks path reproduces TrustSignals content (trust-signals block now in fixture)", async () => {
+    const combined = await renderAllBlocks();
+    expect(combined).toContain("Authenticated Sarees");
+    expect(combined).toContain("Happy Collectors");
+    expect(combined).toContain("Provenance Verified");
   });
 
-  it("forcing blocks path (bypassing flag) causes TrustSignals text to be absent — proves isBlocksHomepage() is the guard", async () => {
-    // This test makes the causal relationship explicit:
-    // isBlocksHomepage() === false → hardcoded path → TrustSignals is rendered
-    // isBlocksHomepage() === true  → blocks path   → TrustSignals is ABSENT
-    //
-    // We simulate flag-off (hardcoded) by rendering TrustSignals directly.
-    // We simulate flag-on (blocks) by rendering all HOMEPAGE_BLOCKS.
-    // The divergence between the two outputs IS the mutation that removing the
-    // flag guard would cause.
+  it("blocks path reproduces HowItWorks content (how-it-works block now in fixture)", async () => {
+    const combined = await renderAllBlocks();
+    expect(combined).toContain("From trunk to your wardrobe");
+    expect(combined).toContain("Curate");
+    expect(combined).toContain("Authenticate");
+    expect(combined).toContain("Deliver");
+  });
 
-    const { TrustSignals } = await import(
-      "@/components/sections/trust-signals"
-    );
-    const flagOffHtml = renderToStaticMarkup(
-      createElement(TrustSignals as React.ComponentType<Record<string, never>>, {})
-    );
-    const flagOffText = extractText(flagOffHtml);
-
-    const blockNodes = await Promise.all(
-      HOMEPAGE_BLOCKS.map((b) =>
-        renderBlock({ type: b.type, props: b.props })
+  it("the blocks path still differs from the hardcoded TrustSignals component render (block reframes the same content)", async () => {
+    // Sanity: the all-blocks render is a superset, not byte-identical to a lone
+    // TrustSignals component — confirms the blocks path is the real dispatch.
+    const { TrustSignals } = await import("@/components/sections/trust-signals");
+    const trustOnly = extractText(
+      renderToStaticMarkup(
+        createElement(TrustSignals as React.ComponentType<Record<string, never>>, {})
       )
     );
-    const flagOnText = blockNodes
-      .map((n) => extractText(renderToStaticMarkup(n as React.ReactElement)))
-      .join(" ");
-
-    // Key invariant: TrustSignals content in flag-off, absent in flag-on.
-    // Removing isBlocksHomepage() would silently drop this content from prod.
-    expect(flagOffText).toContain("200+");
-    expect(flagOnText).not.toContain("Authenticated Sarees");
-    // The two paths produce different text — flag guard is NOT a no-op.
-    expect(flagOffText).not.toBe(flagOnText);
+    const combined = await renderAllBlocks();
+    expect(combined).not.toBe(trustOnly);
+    expect(combined.length).toBeGreaterThan(trustOnly.length);
   });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FLAG-GUARD MUTATION PROOF: REAL Home() render
 //
-// This is the critical mutation proof: it imports and renders the REAL
-// Home() async function from app/(site)/page.tsx under both flag states.
+// Imports and renders the REAL Home() async function from app/(site)/page.tsx
+// under both flag states.
 //
-// FLAG OFF (env var unset):
-//   - Home() runs the hardcoded JSX path.
-//   - Output contains "Authenticated Sarees" (from TrustSignals).
-//   - This text is ONLY present in the flag-OFF hardcoded path.
-//
-// FLAG ON (env var = "true"):
-//   - Home() runs the blocks path via renderBlock.
-//   - Output does NOT contain "Authenticated Sarees" (TrustSignals absent).
-//   - Output DOES contain the fixture's hero headline (blocks ran).
+// 2026-06-15: the blocks fixture is now FAITHFUL (trust-signals + how-it-works
+// added), so both paths render the same CONTENT — that is the goal (the homepage
+// is safe to flip onto blocks). The flag guard is therefore proven load-bearing
+// STRUCTURALLY, not by content: the hardcoded path and the blocks path produce
+// DIFFERENT HTML (FeaturedCollection bento vs product-grid, StoryNarrative
+// GSAP+images vs static, HowItWorks product images vs none).
 //
 // MUTATION PROOF:
-//   If `if (isBlocksHomepage())` at app/(site)/page.tsx:35 is changed to
-//   `if (true)`, the flag-OFF test below FAILS because the blocks branch always
-//   runs, making "Authenticated Sarees" absent from the output.
+//   If `if (isBlocksHomepage())` at app/(site)/page.tsx is changed to `if (true)`,
+//   the flag-OFF render becomes the blocks render → identical HTML to flag-ON →
+//   the "two paths produce different HTML" assertion below FAILS.
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe("FLAG-GUARD MUTATION PROOF: REAL Home() from app/(site)/page.tsx", () => {
@@ -729,30 +698,52 @@ describe("FLAG-GUARD MUTATION PROOF: REAL Home() from app/(site)/page.tsx", () =
     expect(text).toContain("Authenticated Sarees");
   });
 
-  it("flag ON: Home() renders blocks path via renderBlock — TrustSignals text absent, hero headline present", async () => {
-    // Set flag ON.
+  it("flag ON: Home() renders blocks path — FAITHFULLY reproduces TrustSignals + hero headline (blocks ran)", async () => {
     const prev = process.env.FTT_FEATURE_BLOCKS_HOMEPAGE;
     process.env.FTT_FEATURE_BLOCKS_HOMEPAGE = "true";
 
     const { default: Home } = await import("@/app/(site)/page");
+    const text = extractText(
+      renderToStaticMarkup(await (Home as () => Promise<React.ReactElement>)())
+    );
 
-    const node = await (Home as () => Promise<React.ReactElement>)();
-    const html = renderToStaticMarkup(node);
-    const text = extractText(html);
-
-    // Restore env.
     if (prev !== undefined) {
       process.env.FTT_FEATURE_BLOCKS_HOMEPAGE = prev;
     } else {
       delete process.env.FTT_FEATURE_BLOCKS_HOMEPAGE;
     }
 
-    // TrustSignals text must NOT appear in flag-ON output (blocks path, no TrustSignals block).
-    expect(text).not.toContain("Authenticated Sarees");
-
-    // The hero fixture headline MUST appear in flag-ON output (blocks actually ran).
+    // 2026-06-15: the blocks path now reproduces TrustSignals content faithfully
+    // (trust-signals block added to the fixture).
+    expect(text).toContain("Authenticated Sarees");
+    // ...and the hero fixture headline (proves the blocks actually ran).
     const heroFixture = HOMEPAGE_BLOCKS.find((b) => b.type === "hero")!;
-    const heroHeadline = heroFixture.props.headline as string;
-    expect(text).toContain(heroHeadline);
+    expect(text).toContain(heroFixture.props.headline as string);
+  });
+
+  it("MUTATION PROOF: flag-OFF and flag-ON produce DIFFERENT HTML (guard switches code paths)", async () => {
+    // Content is faithful, but the two paths differ STRUCTURALLY (bento vs
+    // product-grid, GSAP+images vs static). If `if (isBlocksHomepage())` became
+    // `if (true)`, flag-OFF would equal flag-ON and this assertion would fail.
+    const prev = process.env.FTT_FEATURE_BLOCKS_HOMEPAGE;
+    const { default: Home } = await import("@/app/(site)/page");
+
+    delete process.env.FTT_FEATURE_BLOCKS_HOMEPAGE;
+    const offHtml = renderToStaticMarkup(
+      await (Home as () => Promise<React.ReactElement>)()
+    );
+
+    process.env.FTT_FEATURE_BLOCKS_HOMEPAGE = "true";
+    const onHtml = renderToStaticMarkup(
+      await (Home as () => Promise<React.ReactElement>)()
+    );
+
+    if (prev !== undefined) {
+      process.env.FTT_FEATURE_BLOCKS_HOMEPAGE = prev;
+    } else {
+      delete process.env.FTT_FEATURE_BLOCKS_HOMEPAGE;
+    }
+
+    expect(offHtml).not.toBe(onHtml);
   });
 });
