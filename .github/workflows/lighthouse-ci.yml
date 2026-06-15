@@ -67,8 +67,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      # ADVISORY (P6-06d): this job runs `next start` against a PLACEHOLDER
+      # DATABASE_URL, so the DB-backed pages (/, /collection) 500 at SSR
+      # (ERRORED_DOCUMENT_REQUEST) and Lighthouse cannot load them. Real CWV
+      # (LCP/CLS) budgets on those pages require a live DB — point lhci at the
+      # Vercel preview deployment (needs VERCEL_API_TOKEN) or provision a CI
+      # Postgres + seed. Until then this is non-blocking so it cannot masquerade
+      # as either a passing perf gate (it isn't testing the real pages) or a hard
+      # blocker (it physically can't pass here). See plans/P6-parity-polish.md P6-06d.
       - name: Run Lighthouse CI
         run: npm run lhci:autorun
+        continue-on-error: true
         env:
           FTT_LHCI_FORM_FACTOR: ${{ matrix.form-factor }}
           FTT_LHCI_OUTPUT_DIR: ./test-results/lighthouse/${{ matrix.form-factor }}
