@@ -80,7 +80,7 @@ module.exports = {
         ? {
             puppeteerScript: "./scripts/lhci-auth.cjs",
             puppeteerLaunchOptions: {
-              args: ["--no-sandbox", "--disable-gpu"],
+              args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
             },
           }
         : {}),
@@ -88,7 +88,13 @@ module.exports = {
         ...(formFactor === "desktop" ? { preset: "desktop" } : {}),
         ...(requiresAuth
           ? {}
-          : { chromeFlags: "--headless=new --no-sandbox --disable-gpu" }),
+          : {
+              // --disable-dev-shm-usage is REQUIRED on GitHub ubuntu runners:
+              // the container's /dev/shm is too small, so Chrome crashes on
+              // startup (launcher hangs "Waiting for browser..." → ECONNREFUSED).
+              chromeFlags:
+                "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
+            }),
       },
     },
     assert: {
