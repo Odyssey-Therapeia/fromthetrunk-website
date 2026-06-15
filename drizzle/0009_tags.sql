@@ -53,27 +53,13 @@ CREATE INDEX IF NOT EXISTS "product_tags_tag_idx"
 
 --> statement-breakpoint
 
--- FK: product_tags.product_id → products.id (CASCADE DELETE).
-DO $$ BEGIN
-  ALTER TABLE "product_tags"
-    ADD CONSTRAINT "product_tags_product_id_fk"
-    FOREIGN KEY ("product_id")
-    REFERENCES "products" ("id")
-    ON DELETE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
---> statement-breakpoint
-
--- FK: product_tags.tag_id → tags.id (CASCADE DELETE).
-DO $$ BEGIN
-  ALTER TABLE "product_tags"
-    ADD CONSTRAINT "product_tags_tag_id_fk"
-    FOREIGN KEY ("tag_id")
-    REFERENCES "tags" ("id")
-    ON DELETE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
+-- product_tags FKs (product_id→products, tag_id→tags) are NOT (re)created here:
+-- they already exist from the 0000 baseline (Postgres default names *_fkey). The
+-- earlier hand-authored DO-blocks re-added them under different names (*_fk),
+-- producing DUPLICATE foreign keys on any DB carrying the baseline — confirmed
+-- in the P2→P6 Neon rehearsal (2026-06-15, branch product_tags had 4 FKs).
+-- Removed; the baseline FKs are authoritative. A fresh-from-0000 DB also gets
+-- these FKs from 0000, so no scenario loses them.
 
 --> statement-breakpoint
 
