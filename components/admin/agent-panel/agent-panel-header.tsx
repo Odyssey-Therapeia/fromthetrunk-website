@@ -11,12 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAgentStore } from "@/lib/store/agent-store";
 
-type AgentPanelHeaderProps = {
-  onToggleHistory: () => void;
-};
-
-export function AgentPanelHeader({ onToggleHistory }: AgentPanelHeaderProps) {
-  const { newChat, close } = useAgentStore();
+export function AgentPanelHeader() {
+  const { newChat, close, toggleHistory } = useAgentStore();
 
   return (
     <div className="flex items-center gap-3 border-b border-[#333] px-4 py-3">
@@ -30,7 +26,6 @@ export function AgentPanelHeader({ onToggleHistory }: AgentPanelHeaderProps) {
           Curator Intelligence
         </p>
       </div>
-
       {/* Menu + close */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -54,7 +49,7 @@ export function AgentPanelHeader({ onToggleHistory }: AgentPanelHeaderProps) {
             New Chat
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={onToggleHistory}
+            onClick={() => toggleHistory()}
             className="gap-2 text-xs focus:bg-[#333] focus:text-[#e5e5e5]"
           >
             <History className="h-3.5 w-3.5" />
@@ -62,7 +57,6 @@ export function AgentPanelHeader({ onToggleHistory }: AgentPanelHeaderProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
       <Button
         onClick={close}
         size="icon"

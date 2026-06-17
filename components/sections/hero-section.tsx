@@ -39,7 +39,7 @@ export function HeroSection({ content }: HeroSectionProps) {
     if (typeof window === "undefined") return;
 
     const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
+      "(prefers-reduced-motion: reduce)",
     ).matches;
 
     if (prefersReducedMotion) return;
@@ -77,8 +77,8 @@ export function HeroSection({ content }: HeroSectionProps) {
           blurDataURL={heroBlurDataURL}
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/88 via-black/52 to-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/18" />
+        <div className="absolute inset-0 bg-linear-to-r from-black/88 via-black/52 to-black/20" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-black/18" />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 pb-20 pt-32 md:pt-36">
@@ -100,7 +100,10 @@ export function HeroSection({ content }: HeroSectionProps) {
             asChild
             className="rounded-full px-8 py-6 text-sm transition hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0"
           >
-            <Link href={content?.primaryCtaHref ?? "/collection"} onClick={nudge}>
+            <Link
+              href={content?.primaryCtaHref ?? "/collection"}
+              onClick={nudge}
+            >
               {content?.primaryCtaLabel ?? "Explore the Collection"}
             </Link>
           </Button>
@@ -109,7 +112,10 @@ export function HeroSection({ content }: HeroSectionProps) {
             variant="heroSecondary"
             className="rounded-full px-8 py-6 text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0"
           >
-            <Link href={content?.secondaryCtaHref ?? "/our-story"} onClick={nudge}>
+            <Link
+              href={content?.secondaryCtaHref ?? "/our-story"}
+              onClick={nudge}
+            >
               {content?.secondaryCtaLabel ?? "Read the Story"}
             </Link>
           </Button>

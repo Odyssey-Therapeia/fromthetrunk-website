@@ -31,7 +31,7 @@ export function BrandStoryTeaser() {
         </ScrollReveal>
 
         <ScrollReveal delay={0.1} className="relative">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-soft">
+          <div className="relative aspect-4/5 overflow-hidden rounded-3xl shadow-soft">
             <Image
               src={storyImage}
               alt="Vintage trunk with silk textiles"

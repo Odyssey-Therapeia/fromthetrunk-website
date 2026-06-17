@@ -7,7 +7,16 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle, Circle, Truck, CreditCard, ShieldCheck, Lock, ShoppingCart, CheckCircle2 } from "lucide-react";
+import {
+  CheckCircle,
+  Circle,
+  Truck,
+  CreditCard,
+  ShieldCheck,
+  Lock,
+  ShoppingCart,
+  CheckCircle2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +29,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
-import { computeCheckoutEstimate, isFreeShipping } from "@/lib/checkout/estimate";
+import {
+  GST_RATE,
+  SHIPPING_TIERS,
+  type ShippingMethod,
+} from "@/lib/config/order-pricing";
+import {
+  computeCheckoutEstimate,
+  isFreeShipping,
+} from "@/lib/checkout/estimate";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
@@ -45,7 +61,10 @@ declare global {
   interface Window {
     Razorpay: new (options: RazorpayOptions) => {
       open: () => void;
-      on: (event: "payment.failed", handler: (response: RazorpayFailureResponse) => void) => void;
+      on: (
+        event: "payment.failed",
+        handler: (response: RazorpayFailureResponse) => void,
+      ) => void;
     };
   }
 }
@@ -108,9 +127,16 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isPaymentScriptReady, setIsPaymentScriptReady] = useState(false);
-  const [paymentScriptError, setPaymentScriptError] = useState<string | null>(null);
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("standard");
+  // Readiness is NOT tracked as state: at submit time `window.Razorpay` is the
+  // live, authoritative signal that the SDK is usable, and `paymentScriptError`
+  // carries the load-failure case. A separate boolean would only be a staler
+  // mirror of those facts -- and writing it synchronously inside the script
+  // effect was the source of the cascading-render warning.
+  const [paymentScriptError, setPaymentScriptError] = useState<string | null>(
+    null,
+  );
+  const [shippingMethod, setShippingMethod] =
+    useState<ShippingMethod>("standard");
 
   const { data: savedAddresses } = useQuery({
     queryKey: ["checkout-addresses"],
@@ -147,20 +173,29 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     country: "India",
   });
 
-  useEffect(() => {
-    if (session?.user?.email) {
-      setForm((prev) => ({ ...prev, email: session.user.email ?? "" }));
-    }
-  }, [session?.user?.email]);
+  // The session resolves asynchronously, so `user.email` can arrive after
+  // mount. Seed it into the form when it appears or changes -- a render-phase
+  // state adjustment keyed on the resolved email (React's documented "adjust
+  // state when a prop changes" pattern), NOT an effect, so there's no
+  // synchronous setState inside an effect body to trigger a cascading render.
+  // Behaviour matches the prior effect, including overwriting the email field
+  // whenever the session email changes.
+  const sessionEmail = session?.user?.email ?? "";
+  const [seededSessionEmail, setSeededSessionEmail] = useState(sessionEmail);
+  if (sessionEmail && sessionEmail !== seededSessionEmail) {
+    setSeededSessionEmail(sessionEmail);
+    setForm((prev) => ({ ...prev, email: sessionEmail }));
+  }
 
   useEffect(() => {
-    if (window.Razorpay) {
-      setIsPaymentScriptReady(true);
-      return;
-    }
+    // Already on `window` (cached from a prior mount or another route) -- there
+    // is nothing to inject or subscribe to; submit reads `window.Razorpay` live.
+    if (window.Razorpay) return;
 
     const scriptSrc = "https://checkout.razorpay.com/v1/checkout.js";
-    let script = document.querySelector<HTMLScriptElement>(`script[src="${scriptSrc}"]`);
+    let script = document.querySelector<HTMLScriptElement>(
+      `script[src="${scriptSrc}"]`,
+    );
     const wasExistingScript = Boolean(script);
 
     if (!script) {
@@ -170,13 +205,15 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
       document.body.appendChild(script);
     }
 
+    // setState here is confined to the subscription callbacks -- the sanctioned
+    // effect pattern -- so it never fires synchronously in the effect body.
     const handleLoad = () => {
       setPaymentScriptError(null);
-      setIsPaymentScriptReady(true);
     };
     const handleError = () => {
-      setIsPaymentScriptReady(false);
-      setPaymentScriptError("Payment system could not load. Please refresh and try again.");
+      setPaymentScriptError(
+        "Payment system could not load. Please refresh and try again.",
+      );
     };
 
     script.addEventListener("load", handleLoad);
@@ -225,7 +262,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
         }),
       });
 
-      const data = await res.json() as { discountAmountPaise?: number; message?: string };
+      const data = (await res.json()) as {
+        discountAmountPaise?: number;
+        message?: string;
+      };
 
       if (!res.ok) {
         setDiscountError(data.message ?? "Invalid discount code.");
@@ -265,7 +305,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
   // displayed total matches the Razorpay charge. See lib/checkout/estimate.ts.
   // The final authoritative total is always computed server-side at order
   // creation time.
-  const discountAmountRupees = discountApplied ? discountApplied.amountPaise / 100 : 0;
+  const discountAmountRupees = discountApplied
+    ? discountApplied.amountPaise / 100
+    : 0;
   const { effectiveSubtotal, shippingCost, taxAmount, total } =
     computeCheckoutEstimate({
       subtotal,
@@ -348,7 +390,8 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
         throw new Error(errorData?.message || "Unable to create order.");
       }
 
-      const orderData = (await createResponse.json()) as CreatePaymentOrderResponse;
+      const orderData =
+        (await createResponse.json()) as CreatePaymentOrderResponse;
       if (orderData.paymentLinkUrl) {
         window.location.assign(orderData.paymentLinkUrl);
         return;
@@ -358,8 +401,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
         throw new Error(paymentScriptError);
       }
 
-      if (!isPaymentScriptReady || !window.Razorpay) {
-        throw new Error("Payment system is still loading. Please try again in a moment.");
+      if (!window.Razorpay) {
+        throw new Error(
+          "Payment system is still loading. Please try again in a moment.",
+        );
       }
 
       const razorpayKeyId =
@@ -392,7 +437,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
             } = response;
 
             if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-              throw new Error("Razorpay returned an incomplete payment response.");
+              throw new Error(
+                "Razorpay returned an incomplete payment response.",
+              );
             }
 
             const verifyResponse = await fetch("/api/v2/payments/verify", {
@@ -408,7 +455,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
 
             if (!verifyResponse.ok) {
               const errorData = await verifyResponse.json().catch(() => null);
-              throw new Error(errorData?.message || "Payment verification failed.");
+              throw new Error(
+                errorData?.message || "Payment verification failed.",
+              );
             }
 
             clearCart();
@@ -418,7 +467,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
               : `/checkout/confirmation?orderId=${orderData.orderId}`;
             router.push(confirmationPath);
           } catch {
-            setError("Payment was received but verification failed. Please contact support.");
+            setError(
+              "Payment was received but verification failed. Please contact support.",
+            );
             setIsSubmitting(false);
           }
         },
@@ -441,7 +492,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
       });
       rzp.open();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to process payment.");
+      setError(
+        err instanceof Error ? err.message : "Unable to process payment.",
+      );
       setIsSubmitting(false);
     }
   };
@@ -452,9 +505,11 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     value: string,
     type = "text",
     placeholder = "",
-    span = 1
+    span = 1,
   ) => (
-    <div className={`flex flex-col gap-2.5 ${span > 1 ? `md:col-span-${span}` : ""}`}>
+    <div
+      className={`flex flex-col gap-2.5 ${span > 1 ? `md:col-span-${span}` : ""}`}
+    >
       <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70">
         {label}
       </label>
@@ -469,15 +524,13 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
         disabled={!canCheckout || isSubmitting}
         className={`w-full rounded-xl border border-border bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all p-4 text-foreground placeholder:text-foreground/30 ${errors[id] ? "border-destructive focus:ring-destructive focus:border-destructive" : ""}`}
       />
-      {errors[id] && (
-        <p className="text-xs text-destructive">{errors[id]}</p>
-      )}
+      {errors[id] && <p className="text-xs text-destructive">{errors[id]}</p>}
     </div>
   );
 
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="max-w-7xl mx-auto w-full px-6 py-12 lg:px-20 flex-grow">
+      <main className="max-w-7xl mx-auto w-full px-6 py-12 lg:px-20 grow">
         {!hasHydrated ? (
           <div className="rounded-[24px] border border-border/60 bg-card/70 p-8 text-center text-sm text-foreground/60 shadow-soft">
             Loading your bag...
@@ -486,15 +539,20 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* Left Column: Checkout Form */}
             <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-10">
-              
               {/* Progress Component */}
               <div className="bg-card p-8 rounded-[24px] shadow-soft border border-border/20">
                 <div className="flex items-end justify-between mb-6">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-[0.15em]">Step 02 of 03</span>
-                    <h2 className="text-2xl font-serif font-bold text-foreground">Shipping & Payment</h2>
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-[0.15em]">
+                      Step 02 of 03
+                    </span>
+                    <h2 className="text-2xl font-serif font-bold text-foreground">
+                      Shipping & Payment
+                    </h2>
                   </div>
-                  <span className="text-xs text-foreground/60 font-medium italic">66% Complete</span>
+                  <span className="text-xs text-foreground/60 font-medium italic">
+                    66% Complete
+                  </span>
                 </div>
                 <div className="w-full bg-border/20 h-2 rounded-full overflow-hidden">
                   <div className="bg-primary h-full w-2/3 transition-all duration-700 ease-in-out"></div>
@@ -502,15 +560,21 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                 <div className="flex justify-between mt-6">
                   <div className="flex items-center gap-2 text-primary">
                     <CheckCircle className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Shipping</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
+                      Shipping
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-primary">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Payment</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
+                      Payment
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-foreground/60">
                     <Circle className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Review</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
+                      Review
+                    </span>
                   </div>
                 </div>
               </div>
@@ -519,7 +583,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
               <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
                 <div className="flex items-center gap-3 mb-8 text-foreground">
                   <Truck className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold">Shipping Details</h3>
+                  <h3 className="text-xl font-serif font-bold">
+                    Shipping Details
+                  </h3>
                 </div>
 
                 {savedAddresses && savedAddresses.length > 0 && (
@@ -534,7 +600,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       <SelectContent>
                         {savedAddresses.map((addr) => {
                           const savedAddressLabel =
-                            addr.label || addr.name || addr.line1 || "Saved address";
+                            addr.label ||
+                            addr.name ||
+                            addr.line1 ||
+                            "Saved address";
                           return (
                             <SelectItem key={addr.id} value={addr.id}>
                               {savedAddressLabel}
@@ -551,24 +620,73 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {renderField("firstName", "First Name", form.firstName)}
                   {renderField("lastName", "Last Name", form.lastName)}
-                  {renderField("email", "Email Address", form.email, "email", "john@example.com", 2)}
-                  {renderField("phone", "Phone Number", form.phone, "tel", "+91 98765 43210", 2)}
-                  {renderField("address", "Address Line 1", form.address, "text", "123 Modern Way", 2)}
-                  {renderField("city", "City", form.city, "text", "San Francisco")}
-                  {renderField("state", "State", form.state, "text", "California")}
-                  {renderField("postal", "Postal Code", form.postal, "text", "94103")}
-                  {renderField("country", "Country", form.country, "text", "India")}
+                  {renderField(
+                    "email",
+                    "Email Address",
+                    form.email,
+                    "email",
+                    "john@example.com",
+                    2,
+                  )}
+                  {renderField(
+                    "phone",
+                    "Phone Number",
+                    form.phone,
+                    "tel",
+                    "+91 98765 43210",
+                    2,
+                  )}
+                  {renderField(
+                    "address",
+                    "Address Line 1",
+                    form.address,
+                    "text",
+                    "123 Modern Way",
+                    2,
+                  )}
+                  {renderField(
+                    "city",
+                    "City",
+                    form.city,
+                    "text",
+                    "San Francisco",
+                  )}
+                  {renderField(
+                    "state",
+                    "State",
+                    form.state,
+                    "text",
+                    "California",
+                  )}
+                  {renderField(
+                    "postal",
+                    "Postal Code",
+                    form.postal,
+                    "text",
+                    "94103",
+                  )}
+                  {renderField(
+                    "country",
+                    "Country",
+                    form.country,
+                    "text",
+                    "India",
+                  )}
                 </div>
               </section>
 
               {/* Shipping Method Section */}
-               <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
+              <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
                 <div className="flex items-center gap-3 mb-8">
                   <Truck className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold text-foreground">Shipping Method</h3>
+                  <h3 className="text-xl font-serif font-bold text-foreground">
+                    Shipping Method
+                  </h3>
                 </div>
                 <div className="space-y-4">
-                  <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "standard" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <label
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "standard" ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
                     <div className="flex items-center gap-4">
                       <input
                         type="radio"
@@ -579,15 +697,23 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                         className="accent-primary w-4 h-4"
                       />
                       <div>
-                        <p className="text-sm font-bold text-foreground">Standard Delivery</p>
-                        <p className="text-xs text-foreground/60 mt-1">5 to 7 business days</p>
+                        <p className="text-sm font-bold text-foreground">
+                          Standard Delivery
+                        </p>
+                        <p className="text-xs text-foreground/60 mt-1">
+                          5 to 7 business days
+                        </p>
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">
-                      {isFreeShipping(effectiveSubtotal) ? "Complimentary" : formatCurrency(SHIPPING_TIERS.standard)}
+                      {isFreeShipping(effectiveSubtotal)
+                        ? "Complimentary"
+                        : formatCurrency(SHIPPING_TIERS.standard)}
                     </span>
                   </label>
-                  <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "express" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <label
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "express" ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
                     <div className="flex items-center gap-4">
                       <input
                         type="radio"
@@ -598,12 +724,18 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                         className="accent-primary w-4 h-4"
                       />
                       <div>
-                        <p className="text-sm font-bold text-foreground">Express Delivery</p>
-                        <p className="text-xs text-foreground/60 mt-1">2 to 3 business days</p>
+                        <p className="text-sm font-bold text-foreground">
+                          Express Delivery
+                        </p>
+                        <p className="text-xs text-foreground/60 mt-1">
+                          2 to 3 business days
+                        </p>
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground">
-                      {isFreeShipping(effectiveSubtotal) ? "Complimentary" : formatCurrency(SHIPPING_TIERS.express)}
+                      {isFreeShipping(effectiveSubtotal)
+                        ? "Complimentary"
+                        : formatCurrency(SHIPPING_TIERS.express)}
                     </span>
                   </label>
                 </div>
@@ -613,35 +745,42 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
               <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
                 <div className="flex items-center gap-3 mb-8">
                   <CreditCard className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold text-foreground">Secure Payment</h3>
+                  <h3 className="text-xl font-serif font-bold text-foreground">
+                    Secure Payment
+                  </h3>
                 </div>
-                
+
                 <div className="flex flex-col items-center justify-center py-10 px-6 border border-dashed border-border/60 rounded-xl bg-background/50 text-center gap-4">
                   <div className="p-4 bg-primary/5 rounded-full text-primary">
                     <ShieldCheck className="w-8 h-8" />
                   </div>
-                  <h4 className="font-bold text-foreground">Payment Handled by Razorpay</h4>
+                  <h4 className="font-bold text-foreground">
+                    Payment Handled by Razorpay
+                  </h4>
                   <p className="text-sm text-foreground/60 max-w-sm">
-                    You will continue to Razorpay&apos;s secure payment link to complete your purchase. We support credit cards, UPI, netbanking, and wallets.
+                    You will continue to Razorpay&apos;s secure payment link to
+                    complete your purchase. We support credit cards, UPI,
+                    netbanking, and wallets.
                   </p>
                 </div>
               </section>
-
             </div>
 
             {/* Right Column: Order Summary */}
             <div className="lg:col-span-5 xl:col-span-4">
-              <div className="sticky top-[104px] space-y-8">
+              <div className="sticky top-26 space-y-8">
                 <div className="bg-card rounded-[24px] shadow-lift border border-border/20 overflow-hidden">
                   <div className="p-8 border-b border-border/40 bg-background/50">
-                    <h3 className="text-2xl font-serif font-bold text-foreground">Order Summary</h3>
+                    <h3 className="text-2xl font-serif font-bold text-foreground">
+                      Order Summary
+                    </h3>
                   </div>
                   <div className="p-8 space-y-6">
                     {/* Cart Items */}
                     <div className="space-y-6">
                       {items.map((item) => (
                         <div key={item.id} className="flex gap-5">
-                          <div className="h-24 w-24 flex-shrink-0 bg-background rounded-2xl overflow-hidden p-2 flex items-center justify-center border border-border/30">
+                          <div className="h-24 w-24 shrink-0 bg-background rounded-2xl overflow-hidden p-2 flex items-center justify-center border border-border/30">
                             {item.image ? (
                               <Image
                                 src={item.image}
@@ -657,8 +796,12 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                             )}
                           </div>
                           <div className="flex flex-col justify-center">
-                            <p className="text-sm font-bold text-foreground">{item.name}</p>
-                            <p className="text-[11px] text-foreground/50 mt-1 uppercase tracking-widest">Qty: {item.quantity}</p>
+                            <p className="text-sm font-bold text-foreground">
+                              {item.name}
+                            </p>
+                            <p className="text-[11px] text-foreground/50 mt-1 uppercase tracking-widest">
+                              Qty: {item.quantity}
+                            </p>
                             <p className="text-sm font-bold text-primary mt-2">
                               {formatCurrency(item.price)}
                             </p>
@@ -666,9 +809,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                         </div>
                       ))}
                     </div>
-                    
+
                     <hr className="border-border/40" />
-                    
+
                     {/* P6-02: Discount code entry */}
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70">
@@ -681,7 +824,10 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                               {discountApplied.code}
                             </span>
                             <p className="text-[10px] text-accent/80 mt-0.5">
-                              Saving {formatCurrency(discountApplied.amountPaise / 100)}
+                              Saving{" "}
+                              {formatCurrency(
+                                discountApplied.amountPaise / 100,
+                              )}
                             </p>
                           </div>
                           <button
@@ -701,7 +847,8 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                               setDiscountError(null);
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") void handleValidateDiscount();
+                              if (e.key === "Enter")
+                                void handleValidateDiscount();
                             }}
                             placeholder="Enter code"
                             className="font-mono uppercase text-sm rounded-xl border-border bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all"
@@ -711,19 +858,29 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                             type="button"
                             variant="outline"
                             onClick={() => void handleValidateDiscount()}
-                            disabled={!discountCode.trim() || isValidatingDiscount || isSubmitting}
+                            disabled={
+                              !discountCode.trim() ||
+                              isValidatingDiscount ||
+                              isSubmitting
+                            }
                             className="rounded-xl shrink-0"
                           >
                             {isValidatingDiscount ? (
-                              <span className="text-[10px] uppercase tracking-widest">...</span>
+                              <span className="text-[10px] uppercase tracking-widest">
+                                ...
+                              </span>
                             ) : (
-                              <span className="text-[10px] uppercase tracking-widest">Apply</span>
+                              <span className="text-[10px] uppercase tracking-widest">
+                                Apply
+                              </span>
                             )}
                           </Button>
                         </div>
                       )}
                       {discountError && (
-                        <p className="text-xs text-destructive font-medium">{discountError}</p>
+                        <p className="text-xs text-destructive font-medium">
+                          {discountError}
+                        </p>
                       )}
                     </div>
 
@@ -733,7 +890,9 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-foreground/60">Subtotal</span>
-                        <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+                        <span className="font-medium text-foreground">
+                          {formatCurrency(subtotal)}
+                        </span>
                       </div>
                       {discountApplied && (
                         <div className="flex justify-between text-sm">
@@ -748,14 +907,18 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       <div className="flex justify-between text-sm">
                         <span className="text-foreground/60">Shipping</span>
                         <span className="font-bold text-accent tracking-wider">
-                          {shippingCost === 0 ? "COMPLIMENTARY" : formatCurrency(shippingCost)}
+                          {shippingCost === 0
+                            ? "COMPLIMENTARY"
+                            : formatCurrency(shippingCost)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-foreground/60">
                           {`Estimated Tax (${taxRateLabel})`}
                         </span>
-                        <span className="font-medium text-foreground">{formatCurrency(taxAmount)}</span>
+                        <span className="font-medium text-foreground">
+                          {formatCurrency(taxAmount)}
+                        </span>
                       </div>
                     </div>
 
@@ -765,12 +928,18 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       <span className="text-lg font-serif font-bold text-foreground">
                         Total
                       </span>
-                      <span className="text-3xl font-serif font-bold text-primary">{formatCurrency(total)}</span>
+                      <span className="text-3xl font-serif font-bold text-primary">
+                        {formatCurrency(total)}
+                      </span>
                     </div>
 
-                    {error && <p className="text-sm text-destructive font-medium bg-destructive/10 p-3 rounded-lg text-center">{error}</p>}
-                    
-                    <button 
+                    {error && (
+                      <p className="text-sm text-destructive font-medium bg-destructive/10 p-3 rounded-lg text-center">
+                        {error}
+                      </p>
+                    )}
+
+                    <button
                       onClick={handleSubmit}
                       disabled={!hasItems || isSubmitting}
                       className="w-full bg-primary hover:bg-[#5a1818] text-primary-foreground font-bold py-5 rounded-full shadow-lg shadow-primary/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
@@ -780,20 +949,24 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       </span>
                       <Lock className="w-4 h-4" />
                     </button>
-                    
+
                     <p className="text-[9px] text-center text-foreground/50 mt-6 uppercase tracking-[0.2em] font-bold">
                       Secure SSL Encrypted Gateway
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Trust Badge */}
                 <div className="bg-primary/5 border border-primary/10 rounded-[24px] p-8 flex items-start gap-6">
                   <ShieldCheck className="text-primary w-8 h-8 shrink-0" />
                   <div className="flex flex-col gap-2">
-                    <h4 className="text-[11px] font-bold text-primary uppercase tracking-[0.15em]">FTT Buyer Assurance</h4>
+                    <h4 className="text-[11px] font-bold text-primary uppercase tracking-[0.15em]">
+                      FTT Buyer Assurance
+                    </h4>
                     <p className="text-xs text-foreground/70 leading-relaxed italic">
-                      Premium protection for your acquisitions. We ensure complete satisfaction or a full reconciliation securely via our payment partners.
+                      Premium protection for your acquisitions. We ensure
+                      complete satisfaction or a full reconciliation securely
+                      via our payment partners.
                     </p>
                   </div>
                 </div>
@@ -810,10 +983,19 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                 Add a treasure to continue
               </h2>
               <p className="mt-4 text-sm text-foreground/70 leading-relaxed">
-                Browse our curated collection of luxury items and return here to complete your acquisition.
+                Browse our curated collection of luxury items and return here to
+                complete your acquisition.
               </p>
-              <Button asChild className="mt-8 rounded-full px-10 py-6 bg-primary hover:bg-[#5a1818] text-primary-foreground">
-                <Link href="/collection" className="uppercase tracking-[0.15em] text-[10px] font-bold">Explore the Collection</Link>
+              <Button
+                asChild
+                className="mt-8 rounded-full px-10 py-6 bg-primary hover:bg-[#5a1818] text-primary-foreground"
+              >
+                <Link
+                  href="/collection"
+                  className="uppercase tracking-[0.15em] text-[10px] font-bold"
+                >
+                  Explore the Collection
+                </Link>
               </Button>
             </div>
 
@@ -835,7 +1017,7 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
                       href={`/collection/${product.slug}`}
                       className="group flex flex-col items-center gap-5 rounded-[24px] border border-border/40 bg-card p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-lift"
                     >
-                      <div className="relative h-40 w-full overflow-hidden rounded-[16px] bg-background">
+                      <div className="relative h-40 w-full overflow-hidden rounded-3xl bg-background">
                         {imageSrc ? (
                           <Image
                             src={imageSrc}
