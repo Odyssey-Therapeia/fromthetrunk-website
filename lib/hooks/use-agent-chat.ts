@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useChatRuntime,
   AssistantChatTransport,
@@ -15,30 +15,34 @@ import { useAgentStore } from "@/lib/store/agent-store";
  *
  * Critical design: the transport is created ONCE (empty deps). Dynamic values
  * (conversationId, modelId, productId) are read at request-time via
- * `useAgentStore.getState()` inside the `body` function. This prevents
- * transport recreation on every state change, which was causing the entire
- * runtime tree to remount and kill keyboard focus.
+ * `useAgentStore.getState()` inside the `body` thunk. This prevents transport
+ * recreation on every state change, which was remounting the whole runtime
+ * tree and killing keyboard focus.
  *
  * The provider uses `key={runtimeKey}` to force remount ONLY for intentional
  * actions: "New Chat" and "Switch Conversation".
  */
 export function useAgentChat() {
-  // Capture pending messages ONCE at mount via store snapshot (no subscription)
-  // so the component doesn't re-render when pendingMessages later clears.
-  const initialMessagesRef = useRef<UIMessage[] | undefined>(
-    (useAgentStore.getState().pendingMessages as UIMessage[] | undefined) ??
+  // Capture pending messages exactly ONCE at mount via a lazy initializer.
+  // useState's initializer runs a single time and is render-safe (unlike
+  // reading ref.current during render). We never call the setter, so the
+  // component does NOT re-render when the store's pendingMessages later clears.
+  const [initialMessages] = useState<UIMessage[] | undefined>(
+    () =>
+      (useAgentStore.getState().pendingMessages as UIMessage[] | undefined) ??
       undefined,
   );
-  const initialMessages = initialMessagesRef.current;
 
-  // Side effect: clear consumed pendingMessages after mount (kept out of useMemo)
+  // Clear consumed pendingMessages after mount. Reading the captured snapshot
+  // in an effect is fine; `initialMessages` is stable for the component's life.
   useEffect(() => {
-    if (initialMessagesRef.current) {
+    if (initialMessages) {
       useAgentStore.getState().setPendingMessages(null);
     }
-  }, []);
+  }, [initialMessages]);
 
-  // Transport created ONCE -- body reads latest store values per-request
+  // Transport created ONCE -- the `body` thunk reads the latest store values
+  // per-request, so dynamic values never force transport recreation.
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -60,10 +64,10 @@ export function useAgentChat() {
   return useChatRuntime({
     transport,
     messages: initialMessages,
+    // `onError` is typed as ChatOnErrorCallback = (error: Error) => void by the
+    // upgraded package, so `error` is no longer implicitly `any`.
     onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : "AI request failed";
-      toast.error(message);
+      toast.error(error.message);
     },
   });
 }

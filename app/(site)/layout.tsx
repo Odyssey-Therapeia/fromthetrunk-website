@@ -5,7 +5,6 @@ import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { shouldRenderGtm, buildGtmSrc } from "@/lib/analytics/gtm";
-
 import "../globals.css";
 import { SiteFooterServer } from "@/components/layout/site-footer-server";
 import { SiteHeaderServer } from "@/components/layout/site-header-server";
@@ -68,10 +67,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable}`}>
-      {/* P3-07: Inject active theme tokens as :root CSS custom-property overrides.
-          When no theme is saved, ThemeStyler returns null and globals.css defaults apply. */}
-      <ThemeStyler />
       <body className="bg-background font-sans text-foreground">
+        {/* P3-07: Inject active theme tokens as :root CSS custom-property overrides.
+            MUST render inside <body> (not as a child of <html>): a <style> without
+            a `precedence` placed outside <head>/<body> triggers React 19's resource
+            hoisting, which errors without a precedence + href key. Inside <body> the
+            <style> is rendered in place, and its unlayered :root rule still overrides
+            globals.css (unlayered beats @layer base; and body comes after <head> at
+            equal specificity). When no theme is saved, ThemeStyler returns null and
+            globals.css defaults apply. */}
+        <ThemeStyler />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -81,7 +86,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Skip to content link for keyboard navigation */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-primary focus:px-6 focus:py-3 focus:text-primary-foreground focus:shadow-lg"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-full focus:bg-primary focus:px-6 focus:py-3 focus:text-primary-foreground focus:shadow-lg"
         >
           Skip to main content
         </a>
