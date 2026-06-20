@@ -1,6 +1,6 @@
 import { handle } from "hono/vercel";
 
-import app from "@/api/hono/app";
+import app from "@/api/hono/site-app";
 
 export const GET = handle(app);
 export const POST = handle(app);

@@ -1,5 +1,31 @@
-import type { ProductStepperValues } from "@/components/admin/product-stepper/types";
 import { z } from "zod";
+
+type ProductAssistantFormValues = {
+  attributeValues?: Record<string, unknown>;
+  collectionId?: string | null;
+  detailsCondition?: string | null;
+  detailsDesigner?: string | null;
+  detailsFabric?: string | null;
+  detailsLength?: string | null;
+  detailsWidth?: string | null;
+  featured?: boolean;
+  imageMediaIds?: string[];
+  name?: string;
+  originalPriceRupees?: number;
+  priceRupees?: number;
+  reservedUntil?: null | string;
+  slug?: string;
+  soldAt?: null | string;
+  status?: "draft" | "published";
+  stockStatus?: "available" | "reserved" | "sold";
+  storyEra?: string | null;
+  storyNarrative?: string | null;
+  storyProvenance?: string | null;
+  storyTitle?: string | null;
+  tagsCsv?: string;
+  typeId?: null | string;
+};
+
 
 const BRAND_VOICE = `You are the AI product assistant for **From the Trunk** (FTT), a curated marketplace for pre-loved luxury sarees with provenance.
 
@@ -63,7 +89,7 @@ export const productAssistantFormValuesSchema = z.object({
   storyProvenance: z.string().optional(),
   storyTitle: z.string().optional(),
   tagsCsv: z.string().optional(),
-}) satisfies z.ZodType<Partial<ProductStepperValues>>;
+}) satisfies z.ZodType<Partial<ProductAssistantFormValues>>;
 
 export const productAssistantFormContextSchema = z.object({
   currentStep: z.string(),
