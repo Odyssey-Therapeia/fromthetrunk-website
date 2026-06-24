@@ -31,9 +31,34 @@ const configuredOrigins = (requestUrl: string): Set<string> => {
   return origins;
 };
 
-const isAllowedBrowserOrigin = (origin: string | null, requestUrl: string) => {
+/**
+ * Canonical CSRF same-origin check: the browser Origin's host must equal the
+ * request Host header. This holds for any legitimate same-origin request —
+ * localhost, a LAN IP (mobile testing), or production behind a proxy — while a
+ * genuine cross-site request (Origin host ≠ our Host) is still rejected. The
+ * Host header reflects the host the browser actually connected to, so it is the
+ * reliable comparison point (c.req.url can be an internal/proxied origin).
+ */
+const originHostMatchesHost = (
+  origin: string,
+  hostHeader: string | null | undefined,
+): boolean => {
+  if (!hostHeader) return false;
+  try {
+    return new URL(origin).host === hostHeader;
+  } catch {
+    return false;
+  }
+};
+
+const isAllowedBrowserOrigin = (
+  origin: string | null,
+  requestUrl: string,
+  hostHeader: string | null | undefined,
+) => {
   if (!origin) return true;
-  return configuredOrigins(requestUrl).has(origin);
+  if (configuredOrigins(requestUrl).has(origin)) return true;
+  return originHostMatchesHost(origin, hostHeader);
 };
 
 export const sameOriginCors = cors({
@@ -48,7 +73,9 @@ export const sameOriginCors = cors({
   ],
   maxAge: 600,
   origin: (origin, c) =>
-    isAllowedBrowserOrigin(origin || null, c.req.url) ? origin : null,
+    isAllowedBrowserOrigin(origin || null, c.req.url, c.req.header("host"))
+      ? origin
+      : null,
 });
 
 export const sameOriginMutationGuard: MiddlewareHandler<HonoBindings> = async (
@@ -61,7 +88,7 @@ export const sameOriginMutationGuard: MiddlewareHandler<HonoBindings> = async (
   }
 
   const origin = c.req.header("origin") ?? null;
-  if (!isAllowedBrowserOrigin(origin, c.req.url)) {
+  if (!isAllowedBrowserOrigin(origin, c.req.url, c.req.header("host"))) {
     return c.json(
       {
         code: "FORBIDDEN_ORIGIN",

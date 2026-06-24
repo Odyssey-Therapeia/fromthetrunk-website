@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -17,9 +17,15 @@ function WhatsAppGlyph() {
   );
 }
 
-/** Fixed bottom-right WhatsApp button that shakes periodically, with a chat bubble. */
+/**
+ * Draggable floating WhatsApp button. Defaults above the mobile add-to-bag bar
+ * (so it never overlaps it), and can be dragged anywhere on screen; a tap still
+ * opens WhatsApp. The bubble appears once per session.
+ */
 export function FloatingWhatsApp() {
   const reduceMotion = useReducedMotion();
+  const constraintsRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
   const [showBubble, setShowBubble] = useState(false);
 
   useEffect(() => {
@@ -38,54 +44,83 @@ export function FloatingWhatsApp() {
   };
 
   return (
-    <div className="fixed bottom-6 right-5 z-60 flex flex-col items-end gap-3 print:hidden">
-      {showBubble ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="relative max-w-60 rounded-2xl rounded-br-sm border border-ftt-border bg-ftt-card px-4 py-3 shadow-[var(--ftt-soft-shadow)]"
-        >
-          <button
-            type="button"
-            onClick={dismissBubble}
-            aria-label="Dismiss message"
-            className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy/60 transition hover:text-ftt-burgundy"
-          >
-            <X className="size-3" />
-          </button>
-          <p className="font-serif text-base leading-tight text-ftt-navy">
-            Hey, I&apos;m here to help 👋
-          </p>
-          <p className="mt-0.5 text-xs text-ftt-burgundy/65">
-            Chat with us on WhatsApp.
-          </p>
-        </motion.div>
-      ) : null}
-
-      <motion.a
-        href={whatsappLink(DEFAULT_WHATSAPP_MESSAGE)}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat with us on WhatsApp"
-        onClick={dismissBubble}
-        animate={reduceMotion ? undefined : { rotate: [0, -12, 12, -8, 8, 0] }}
-        transition={
-          reduceMotion
-            ? undefined
-            : {
-                duration: 0.6,
-                repeat: Infinity,
-                repeatDelay: 3.5,
-                ease: "easeInOut",
-              }
-        }
-        whileHover={{ scale: 1.06, rotate: 0 }}
-        whileTap={{ scale: 0.94 }}
-        className="grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 ring-4 ring-[#25D366]/15"
+    // Full-viewport drag boundary; pointer-events-none so it never blocks the page.
+    <div
+      ref={constraintsRef}
+      className="pointer-events-none fixed inset-0 z-60 print:hidden"
+    >
+      <motion.div
+        drag
+        dragConstraints={constraintsRef}
+        dragElastic={0.04}
+        dragMomentum={false}
+        onDragStart={() => {
+          draggingRef.current = true;
+        }}
+        onDragEnd={() => {
+          // Keep the flag set through the trailing click, then clear it.
+          window.setTimeout(() => {
+            draggingRef.current = false;
+          }, 0);
+        }}
+        className="pointer-events-auto absolute bottom-24 right-5 flex touch-none cursor-grab flex-col items-end gap-3 active:cursor-grabbing sm:bottom-6"
       >
-        <WhatsAppGlyph />
-      </motion.a>
+        {showBubble ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="relative max-w-60 rounded-2xl rounded-br-sm border border-ftt-border bg-ftt-card px-4 py-3 shadow-[var(--ftt-soft-shadow)]"
+          >
+            <button
+              type="button"
+              onClick={dismissBubble}
+              aria-label="Dismiss message"
+              className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy/60 transition hover:text-ftt-burgundy"
+            >
+              <X className="size-3" />
+            </button>
+            <p className="font-serif text-base leading-tight text-ftt-navy">
+              Hey, I&apos;m here to help 👋
+            </p>
+            <p className="mt-0.5 text-xs text-ftt-burgundy/65">
+              Chat with us on WhatsApp.
+            </p>
+          </motion.div>
+        ) : null}
+
+        <motion.a
+          href={whatsappLink(DEFAULT_WHATSAPP_MESSAGE)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat with us on WhatsApp"
+          draggable={false}
+          onClick={(event) => {
+            // Suppress the click that fires at the end of a drag.
+            if (draggingRef.current) {
+              event.preventDefault();
+              return;
+            }
+            dismissBubble();
+          }}
+          animate={reduceMotion ? undefined : { rotate: [0, -12, 12, -8, 8, 0] }}
+          transition={
+            reduceMotion
+              ? undefined
+              : {
+                  duration: 0.6,
+                  repeat: Infinity,
+                  repeatDelay: 3.5,
+                  ease: "easeInOut",
+                }
+          }
+          whileHover={{ scale: 1.06, rotate: 0 }}
+          whileTap={{ scale: 0.94 }}
+          className="grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 ring-4 ring-[#25D366]/15"
+        >
+          <WhatsAppGlyph />
+        </motion.a>
+      </motion.div>
     </div>
   );
 }
