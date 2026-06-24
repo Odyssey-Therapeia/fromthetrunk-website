@@ -4,13 +4,17 @@ import Link from "next/link";
 
 import { FilterLink } from "@/components/collection/filter-link";
 import { MobileFilterDisclosure } from "@/components/collection/mobile-filter-disclosure";
-import { draftMode } from "next/headers";
 
 import { CollectionPageSizeSelect } from "@/components/product/collection-page-size-select";
 import { ProductCard } from "@/components/product/product-card";
 import { CollectionHeroCarousel } from "@/components/sections/collection-hero-carousel";
 import { CollectionPromoCarousel } from "@/components/sections/collection-promo-carousel";
-import { getCollections, getGlobals } from "@/lib/data/products";
+import {
+  getCachedCatalogFacets,
+  getCachedCollectionPage,
+  getCachedSearchProducts,
+  getCachedVisibleCollections,
+} from "@/lib/data/catalog-cache";
 import {
   DEFAULT_PRODUCT_SORT,
   parseProductSort,
@@ -18,12 +22,11 @@ import {
   type ProductSortOption,
 } from "@/lib/products/sort";
 import type { CatalogFacets } from "@/lib/ports/catalog-search";
-import { searchProducts } from "@/lib/ports/catalog-search";
 import type { Collection, Product } from "@/types/domain";
 import type { CollectionPageContent } from "@/types/site-content";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Collection",
@@ -297,11 +300,34 @@ const getPriceRangeLabel = (
   return "Price";
 };
 
+const buildPerfRequestId = (
+  params: Awaited<CollectionPageProps["searchParams"]> | undefined,
+) => {
+  const entries = Object.entries(params ?? {}).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+
+  if (entries.length === 0) return "collection:index";
+
+  const key = entries
+    .map(([name, value]) =>
+      Array.isArray(value)
+        ? `${name}=${value.join("|")}`
+        : `${name}=${value ?? ""}`,
+    )
+    .join("&");
+
+  return `collection:${key}`;
+};
+
 export default async function CollectionPage({
   searchParams,
 }: CollectionPageProps) {
-  const { isEnabled: includeDrafts } = await draftMode();
   const resolvedSearchParams = await Promise.resolve(searchParams);
+  const perfRequestId =
+    process.env.PERF_DEBUG === "1"
+      ? buildPerfRequestId(resolvedSearchParams)
+      : undefined;
 
   const requestedCollectionSlug = firstStr(resolvedSearchParams?.collection);
   const activeSort = parseProductSort(resolvedSearchParams?.sort);
@@ -324,11 +350,9 @@ export default async function CollectionPage({
     activeAvailability ||
     activeTags.length > 0;
 
-  const collectionPagePromise = getGlobals("collectionPage", { includeDrafts });
-  const visibleCollectionsPromise = getCollections({
-    includeDrafts,
-    onlyWithProducts: true,
-  });
+  const collectionPagePromise = getCachedCollectionPage(perfRequestId);
+  const visibleCollectionsPromise =
+    getCachedVisibleCollections(perfRequestId);
 
   const [collectionPage, visibleCollectionsResult] = await Promise.all([
     collectionPagePromise,
@@ -348,6 +372,9 @@ export default async function CollectionPage({
   }
 
   const activeCollectionSlug = activeCollection?.slug;
+  const cachedFacetsPromise = getCachedCatalogFacets({
+    collectionSlug: activeCollectionSlug,
+  }, perfRequestId);
   let items: Product[] = [];
   let totalDocs = 0;
   let facets: CatalogFacets = {
@@ -359,75 +386,52 @@ export default async function CollectionPage({
   };
 
   if (hasFilters) {
-    const result = await searchProducts({
-      collectionSlug: activeCollectionSlug,
-      type: activeType,
-      fabric: activeFabric,
-      priceMin: activePriceMin,
-      priceMax: activePriceMax,
-      availability: activeAvailability || undefined,
-      tags: activeTags.length > 0 ? activeTags : undefined,
-      limit: visibleLimit,
-      sort: activeSort,
-    });
+    const [result, cachedFacets] = await Promise.all([
+      getCachedSearchProducts({
+        collectionSlug: activeCollectionSlug,
+        type: activeType,
+        fabric: activeFabric,
+        priceMin: activePriceMin,
+        priceMax: activePriceMax,
+        availability: activeAvailability || undefined,
+        tags: activeTags.length > 0 ? activeTags : undefined,
+        limit: visibleLimit,
+        sort: activeSort,
+        includeFacets: false,
+      }, perfRequestId),
+      cachedFacetsPromise,
+    ]);
 
     totalDocs = result.totalDocs;
     items = result.products as unknown as Product[];
-    facets = result.facets;
+    facets = cachedFacets;
   } else if (activeCollectionSlug) {
-    if (!includeDrafts) {
-      const result = await searchProducts({
+    const [result, cachedFacets] = await Promise.all([
+      getCachedSearchProducts({
         collectionSlug: activeCollectionSlug,
         limit: visibleLimit,
         sort: activeSort,
-      });
+        includeFacets: false,
+      }, perfRequestId),
+      cachedFacetsPromise,
+    ]);
 
-      items = result.products as unknown as Product[];
-      totalDocs = result.totalDocs;
-      facets = result.facets;
-    } else {
-      const { getProductsByCollection } = await import("@/lib/data/products");
-      const [result, facetResult] = await Promise.all([
-        getProductsByCollection(activeCollectionSlug, visibleLimit, {
-          includeDrafts,
-          page: 1,
-          sort: activeSort,
-        }),
-        searchProducts({
-          collectionSlug: activeCollectionSlug,
-          facetsOnly: true,
-        }),
-      ]);
-
-      items = (result?.docs ?? []) as Product[];
-      totalDocs = (result as { totalDocs?: number })?.totalDocs ?? items.length;
-      facets = facetResult.facets;
-    }
+    items = result.products as unknown as Product[];
+    totalDocs = result.totalDocs;
+    facets = cachedFacets;
   } else {
-    if (!includeDrafts) {
-      const result = await searchProducts({
+    const [result, cachedFacets] = await Promise.all([
+      getCachedSearchProducts({
         limit: visibleLimit,
         sort: activeSort,
-      });
+        includeFacets: false,
+      }, perfRequestId),
+      cachedFacetsPromise,
+    ]);
 
-      items = result.products as unknown as Product[];
-      totalDocs = result.totalDocs;
-      facets = result.facets;
-    } else {
-      const { getProducts } = await import("@/lib/data/products");
-      const [result, facetResult] = await Promise.all([
-        getProducts(visibleLimit, {
-          includeDrafts,
-          page: 1,
-          sort: activeSort,
-        }),
-        searchProducts({ facetsOnly: true }),
-      ]);
-
-      items = (result?.docs ?? []) as Product[];
-      totalDocs = (result as { totalDocs?: number })?.totalDocs ?? items.length;
-      facets = facetResult.facets;
-    }
+    items = result.products as unknown as Product[];
+    totalDocs = result.totalDocs;
+    facets = cachedFacets;
   }
 
   const hasMoreProducts = items.length < totalDocs;
@@ -972,6 +976,7 @@ export default async function CollectionPage({
                   <div className="flex justify-center pt-2">
                     <Link
                       href={buildUrl({ page: currentPage + 1 })}
+                      prefetch={false}
                       scroll={false}
                       className="rounded-full bg-[var(--ftt-royal-navy)] px-8 py-3 text-sm font-semibold text-[var(--ftt-ivory)] shadow-[0_14px_34px_rgba(20,29,70,0.18)] transition hover:bg-[var(--ftt-midnight)]"
                     >
@@ -1017,6 +1022,7 @@ function CollectionRailCard({
   return (
     <Link
       href={href}
+      prefetch={false}
       className={cn(
         "min-w-56 rounded-[1.15rem] border bg-[var(--ftt-card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_14px_35px_rgba(20,29,70,0.10)]",
         active

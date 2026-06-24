@@ -63,7 +63,7 @@ export function FeaturedCollection({
     name: "The Trunk Promise",
     description:
       "Each saree is authenticated, restored, and documented with provenance.",
-    href: "/our-story",
+    href: "/founders",
     cta: "Discover our curation",
     className: "h-full",
     layoutClassName: "lg:col-span-2 lg:row-span-1",

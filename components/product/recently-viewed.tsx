@@ -83,6 +83,7 @@ export function RecentlyViewed({ excludeId, limit = 6 }: RecentlyViewedProps) {
           <Link
             key={item.id}
             href={`/collection/${item.slug}`}
+            prefetch={false}
             className="group space-y-2"
           >
             <div className="relative aspect-4/5 overflow-hidden rounded-xl bg-muted">
@@ -91,6 +92,7 @@ export function RecentlyViewed({ excludeId, limit = 6 }: RecentlyViewedProps) {
                   src={item.image}
                   alt={item.name}
                   fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                   className="object-cover transition duration-500 group-hover:scale-105"
                 />
               ) : (

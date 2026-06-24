@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/our-story`,
+      url: `${baseUrl}/founders`,
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,

@@ -77,7 +77,7 @@ const BentoCard = ({
           size="sm"
           className="pointer-events-auto p-0 text-white/90 hover:text-white"
         >
-          <Link href={href}>
+          <Link href={href} prefetch={false}>
             {cta}
             <ArrowRightIcon className="ms-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
           </Link>
@@ -96,7 +96,7 @@ const BentoCard = ({
         size="sm"
         className="pointer-events-auto p-0 text-white/90 hover:text-white"
       >
-        <Link href={href}>
+        <Link href={href} prefetch={false}>
           {cta}
           <ArrowRightIcon className="ms-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
         </Link>

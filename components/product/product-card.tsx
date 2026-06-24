@@ -57,6 +57,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       <div className="relative">
         <Link
           href={`/collection/${product.slug}`}
+          prefetch={false}
           className="block"
           aria-label={`View ${product.name}`}
         >
@@ -112,6 +113,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       <div className="flex min-w-0 flex-1 flex-col p-2 @sm:p-4">
         <Link
           href={`/collection/${product.slug}`}
+          prefetch={false}
           className="block min-w-0 flex-1 space-y-1 @sm:space-y-1.5"
         >
           <div className="flex items-start justify-between gap-1.5">

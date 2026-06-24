@@ -162,6 +162,7 @@ export function SearchBar() {
                   <Link
                     key={product.id}
                     href={`/collection/${product.slug}`}
+                    prefetch={false}
                     onClick={handleSelect}
                     className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-muted/50"
                   >
@@ -171,6 +172,7 @@ export function SearchBar() {
                           src={image}
                           alt={product.name}
                           fill
+                          sizes="40px"
                           className="object-cover"
                         />
                       ) : (

@@ -43,7 +43,6 @@ import { isInventoryV2 } from "@/lib/config/flags";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import {
   getTimedPublicProductBySlug,
-  probeTimedPublicProductCache,
 } from "@/lib/data/products";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { createLogger } from "@/lib/log";
@@ -137,6 +136,9 @@ const canIncludeDrafts = (
   return !(requireAdmin(c) instanceof Response);
 };
 
+const toIsoString = (value: Date | string) =>
+  value instanceof Date ? value.toISOString() : value;
+
 export const serializePublicProduct = (product: ProductWithRelations) => ({
   id: product.id,
   name: product.name,
@@ -177,8 +179,8 @@ export const serializePublicProduct = (product: ProductWithRelations) => ({
     name: tag.name,
     slug: tag.slug,
   })),
-  createdAt: product.createdAt.toISOString(),
-  updatedAt: product.updatedAt.toISOString(),
+  createdAt: toIsoString(product.createdAt),
+  updatedAt: toIsoString(product.updatedAt),
 });
 
 export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
@@ -453,10 +455,15 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const timings = c.get("perfTimings") ?? [];
       const requestId = getRequestId(c.req.raw);
       const rateLimited = await timeAsync(timings, "rate-limit", () =>
-        rateLimitResponse(c.req.raw, "products:stock", {
-          limit: 240,
-          windowSeconds: 60,
-        }),
+        rateLimitResponse(
+          c.req.raw,
+          "products:stock",
+          {
+            limit: 240,
+            windowSeconds: 60,
+          },
+          { timingSink: (entry) => timings.push(entry) },
+        ),
       );
       if (rateLimited) return rateLimited;
 
@@ -529,17 +536,21 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const timings = c.get("perfTimings") ?? [];
       const requestId = getRequestId(c.req.raw);
       const rateLimited = await timeAsync(timings, "rate-limit", () =>
-        rateLimitResponse(c.req.raw, "products:detail", {
-          limit: 120,
-          windowSeconds: 60,
-        }),
+        rateLimitResponse(
+          c.req.raw,
+          "products:detail",
+          {
+            limit: 120,
+            windowSeconds: 60,
+          },
+          { timingSink: (entry) => timings.push(entry) },
+        ),
       );
       if (rateLimited) return rateLimited;
 
       const params = c.req.valid("param");
-      const productCacheStatus = probeTimedPublicProductCache(params.slug);
-      c.header("X-FTT-Product-Cache", productCacheStatus);
       c.header("X-FTT-Related-Cache", "N/A");
+      const timingStartIndex = timings.length;
 
       const product = await timeAsync(
         timings,
@@ -548,8 +559,15 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
           getTimedPublicProductBySlug(params.slug, (entry) =>
             timings.push(entry),
           ),
-        productCacheStatus,
       );
+      const productCacheStatus = timings
+        .slice(timingStartIndex)
+        .some((entry) => entry.name === "db-product-query")
+        ? "MISS"
+        : "HIT";
+      timings.findLast((entry) => entry.name === "product-cache")!.description =
+        productCacheStatus;
+      c.header("X-FTT-Product-Cache", productCacheStatus);
       if (!product) {
         setPublicReadHeaders(c, {
           cacheControl: "public, max-age=30, stale-while-revalidate=60",

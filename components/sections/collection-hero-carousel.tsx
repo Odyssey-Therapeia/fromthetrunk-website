@@ -55,7 +55,6 @@ export function CollectionHeroCarousel({
               src={image.src}
               alt={isActive ? image.alt : ""}
               fill
-              preload={index === 0}
               loading={index === 0 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : "auto"}
               sizes="(max-width: 1024px) 100vw, 52vw"

@@ -11,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <SessionProvider>
+    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <QueryClientProvider client={queryClient}>
         {/* Session-scoped guest wishlist merge — runs on every page after login,
             not only on pages that happen to mount a WishlistButton. */}
