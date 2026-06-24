@@ -209,7 +209,6 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       // Mirrors newsletter.ts:32-36 — 3 requests per 60 s per IP.
       const rateLimited = await rateLimitResponse(c.req.raw, "restock:notify", {
         limit: 3,
-        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;

@@ -13,7 +13,6 @@ import { validateRow, transformRow } from "@/lib/import/row-validator";
 import { createProduct } from "@/db/queries/products";
 import { getProductTypeById } from "@/db/queries/product-types";
 import { buildTypeZodSchema } from "@/lib/catalog/type-schema";
-import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import type { AttributeDef } from "@/lib/catalog/type-schema";
 import { slugify } from "@/lib/utils";
 import type { FieldMapping, ImportPreviewRow } from "@/lib/ports/batch-import";
@@ -373,9 +372,6 @@ export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       // Clean up cached file
       fileCache.delete(fileId);
-      if (created > 0) {
-        revalidateProductsCache();
-      }
 
       return c.json(
         {

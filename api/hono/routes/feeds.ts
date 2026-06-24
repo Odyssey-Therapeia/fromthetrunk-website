@@ -18,7 +18,9 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { HonoBindings } from "@/api/hono/types";
 import { listProducts } from "@/db/queries/products";
 import type { ProductWithRelations } from "@/db/queries/products";
-import { resolveProductRowStockStatus } from "@/db/inventory";
+import { getBatchActiveReservationsCounts } from "@/db/queries/reservations";
+import { deriveStockStatus } from "@/db/inventory";
+import { isInventoryV2 } from "@/lib/config/flags";
 import { mapProductToFeedItem } from "@/lib/channels/feed-mapping";
 
 // ---------------------------------------------------------------------------
@@ -71,22 +73,35 @@ function el(tag: string, value: string | null | undefined): string {
  * This function is exported so tests can call it directly with injected product
  * arrays (mock @/db, run listProducts for real, then call this serialiser).
  *
- * Stock status is resolved from the canonical product row so the feed, PDP, and
- * lightweight stock API cannot disagree during the inventory-v2 transition.
+ * @param activeReservationsCounts - Optional batch reservations map (productId → count).
+ *   When provided (i.e. when FTT_FEATURE_INVENTORY_V2 is ON), each product's
+ *   effective stockStatus is derived via deriveStockStatus() instead of reading
+ *   the raw column. This mirrors app/(site)/collection/[slug]/page.tsx:86-91.
+ *   When absent (flag OFF), the raw column is used as-is.
  */
-export function buildGoogleMerchantFeedXml(products: ProductWithRelations[]): string {
+export function buildGoogleMerchantFeedXml(
+  products: ProductWithRelations[],
+  activeReservationsCounts?: Map<string, number>
+): string {
   const eligible = products.filter((p) => !shouldExcludeFromFeed(p));
 
   const items = eligible
     .map((product) => {
-      const effectiveStockStatus = resolveProductRowStockStatus({
-        reservedUntil: product.reservedUntil,
-        stockStatus: product.stockStatus,
-      });
-      const effectiveProduct =
-        effectiveStockStatus === product.stockStatus
-          ? product
-          : { ...product, stockStatus: effectiveStockStatus };
+      // When inventory v2 is active, derive the effective stockStatus so the feed
+      // matches the PDP — a product whose raw status is "reserved" but whose
+      // reservation has expired will correctly appear as "in_stock" here.
+      let effectiveProduct = product;
+      if (activeReservationsCounts !== undefined) {
+        const activeReservationsCount =
+          activeReservationsCounts.get(product.id) ?? 0;
+        const effectiveStockStatus = deriveStockStatus({
+          quantityAvailable: product.quantityAvailable,
+          activeReservationsCount,
+        });
+        if (effectiveStockStatus !== product.stockStatus) {
+          effectiveProduct = { ...product, stockStatus: effectiveStockStatus };
+        }
+      }
       const item = mapProductToFeedItem(effectiveProduct);
 
       const additionalImages = item.additionalImageUrls
@@ -163,24 +178,33 @@ const META_CSV_HEADERS = [
  * description, exclusion, and image logic lives in lib/channels/feed-mapping.ts
  * and feeds.ts:shouldExcludeFromFeed — this function does not duplicate any of it.
  *
- * Stock status is resolved from the canonical product row. The v2 reservation
- * table is not allowed to override public feed availability until it becomes
- * the canonical checkout source.
+ * @param activeReservationsCounts - Optional batch reservations map (productId → count).
+ *   When provided (i.e. when FTT_FEATURE_INVENTORY_V2 is ON), each product's
+ *   effective stockStatus is derived via deriveStockStatus(). Mirrors Google route.
  */
-export function buildMetaCatalogCsv(products: ProductWithRelations[]): string {
+export function buildMetaCatalogCsv(
+  products: ProductWithRelations[],
+  activeReservationsCounts?: Map<string, number>
+): string {
   const eligible = products.filter((p) => !shouldExcludeFromFeed(p));
 
   const headerRow = META_CSV_HEADERS.map(escapeCsvCell).join(",");
 
   const dataRows = eligible.map((product) => {
-    const effectiveStockStatus = resolveProductRowStockStatus({
-      reservedUntil: product.reservedUntil,
-      stockStatus: product.stockStatus,
-    });
-    const effectiveProduct =
-      effectiveStockStatus === product.stockStatus
-        ? product
-        : { ...product, stockStatus: effectiveStockStatus };
+    // Mirror the Google route: when inventory v2 is active, derive effective
+    // stockStatus so the Meta feed matches the PDP — same pattern as Google.
+    let effectiveProduct = product;
+    if (activeReservationsCounts !== undefined) {
+      const activeReservationsCount =
+        activeReservationsCounts.get(product.id) ?? 0;
+      const effectiveStockStatus = deriveStockStatus({
+        quantityAvailable: product.quantityAvailable,
+        activeReservationsCount,
+      });
+      if (effectiveStockStatus !== product.stockStatus) {
+        effectiveProduct = { ...product, stockStatus: effectiveStockStatus };
+      }
+    }
 
     // THE LOAD-BEARING CALL: reuse the shared mapping — no reimplementation.
     const item = mapProductToFeedItem(effectiveProduct);
@@ -233,7 +257,19 @@ export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       offset: 0,
     });
 
-    const xml = buildGoogleMerchantFeedXml(products);
+    // P5-01 (prior finding): when FTT_FEATURE_INVENTORY_V2 is ON, derive each
+    // product's effective stockStatus from quantity + active reservations (batch,
+    // one round-trip) — mirroring app/(site)/collection/[slug]/page.tsx:86-91.
+    // When flag OFF: pass no map; buildGoogleMerchantFeedXml reads the raw column.
+    let activeReservationsCounts: Map<string, number> | undefined;
+    if (isInventoryV2()) {
+      const eligibleIds = products
+        .filter((p) => !shouldExcludeFromFeed(p))
+        .map((p) => p.id);
+      activeReservationsCounts = await getBatchActiveReservationsCounts(eligibleIds);
+    }
+
+    const xml = buildGoogleMerchantFeedXml(products, activeReservationsCounts);
 
     return new Response(xml, {
       status: 200,
@@ -269,7 +305,18 @@ export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       offset: 0,
     });
 
-    const csv = buildMetaCatalogCsv(products);
+    // When FTT_FEATURE_INVENTORY_V2 is ON, derive each product's effective
+    // stockStatus from quantity + active reservations — mirrors Google route
+    // exactly so both feeds agree with the PDP on availability.
+    let activeReservationsCounts: Map<string, number> | undefined;
+    if (isInventoryV2()) {
+      const eligibleIds = products
+        .filter((p) => !shouldExcludeFromFeed(p))
+        .map((p) => p.id);
+      activeReservationsCounts = await getBatchActiveReservationsCounts(eligibleIds);
+    }
+
+    const csv = buildMetaCatalogCsv(products, activeReservationsCounts);
 
     return new Response(csv, {
       status: 200,

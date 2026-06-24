@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { ReactNode } from "react";
 
 import { AccountShell } from "@/components/account/account-shell";
 

@@ -10,16 +10,11 @@
  * (payments.ts, users.ts, newsletter.ts, cart.ts, tests) need no changes.
  */
 
-import {
-  getRateLimiter,
-  isDurableRateLimiterConfigured,
-} from "@/lib/ports/rate-limiter";
+import { getRateLimiter } from "@/lib/ports/rate-limiter";
 
 export interface RateLimitOptions {
   /** Maximum number of requests in the window. */
   limit: number;
-  /** Fail closed in production unless the durable adapter is configured. */
-  requireDurable?: boolean;
   /** Window duration in seconds. */
   windowSeconds: number;
 }
@@ -75,33 +70,6 @@ export async function rateLimitResponse(
   prefix: string,
   options: RateLimitOptions
 ): Promise<Response | null> {
-  const requestHost = new URL(request.url).hostname;
-  const isLoopbackRequest =
-    requestHost === "localhost" ||
-    requestHost === "127.0.0.1" ||
-    requestHost === "::1";
-
-  if (
-    options.requireDurable &&
-    process.env.NODE_ENV === "production" &&
-    !isLoopbackRequest &&
-    !isDurableRateLimiterConfigured()
-  ) {
-    return new Response(
-      JSON.stringify({
-        code: "RATE_LIMITER_UNAVAILABLE",
-        message: "This action is temporarily unavailable.",
-      }),
-      {
-        status: 503,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": "60",
-        },
-      }
-    );
-  }
-
   const key = getRateLimitKey(request, prefix);
   const result = await checkRateLimit(key, options);
 
@@ -116,8 +84,6 @@ export async function rateLimitResponse(
         headers: {
           "Content-Type": "application/json",
           "Retry-After": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
-          "X-RateLimit-Remaining": String(result.remaining),
-          "X-RateLimit-Reset": String(result.resetAt),
         },
       }
     );

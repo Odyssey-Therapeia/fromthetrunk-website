@@ -7,10 +7,6 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
-  slug?: string;
-  detailsFabric?: string | null;
-  /** Signed proof that this client received the active server reservation. */
-  reservationToken?: string | null;
   /** ISO date string — when the server-side reservation expires. */
   reservedUntil?: string | null;
 }
@@ -20,18 +16,12 @@ export interface CartItem {
  * Fire-and-forget — failures are silently ignored since the cron job
  * will clean up expired reservations anyway.
  */
-async function releaseReservation(
-  productId: string,
-  reservationToken?: null | string,
-): Promise<void> {
+async function releaseReservation(productId: string): Promise<void> {
   try {
     await fetch("/api/v2/cart/release", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productId,
-        ...(reservationToken ? { reservationToken } : {}),
-      }),
+      body: JSON.stringify({ productId }),
     });
   } catch {
     // Non-critical — cron will clean up
@@ -93,10 +83,8 @@ export const useCartStore = create<CartState>()(
           };
         }),
       removeItem: (id) => {
-        const item = get().items.find((cartItem) => cartItem.id === id);
-        if (item?.reservedUntil) {
-          releaseReservation(id, item.reservationToken);
-        }
+        // Release the server-side reservation
+        releaseReservation(id);
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
         }));
@@ -110,9 +98,7 @@ export const useCartStore = create<CartState>()(
       clearCartWithRelease: () => {
         const currentItems = get().items;
         for (const item of currentItems) {
-          if (item.reservedUntil) {
-            releaseReservation(item.id, item.reservationToken);
-          }
+          releaseReservation(item.id);
         }
         set({ items: [] });
       },

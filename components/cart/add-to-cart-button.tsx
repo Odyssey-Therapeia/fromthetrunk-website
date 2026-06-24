@@ -32,7 +32,6 @@ export function AddToCartButton({ product, initialStatus }: AddToCartButtonProps
   const addItem = useCartStore((state) => state.addItem);
   const hasItem = useCartStore((state) => state.hasItem);
   const [added, setAdded] = useState(false);
-  const [isReserving, setIsReserving] = useState(false);
   const image = resolveMediaURL(product.images?.[0]) ?? "";
   const inCart = hasItem(product.id);
 
@@ -49,44 +48,6 @@ export function AddToCartButton({ product, initialStatus }: AddToCartButtonProps
     const timer = setTimeout(() => setAdded(false), 2000);
     return () => clearTimeout(timer);
   }, [added]);
-
-  const handleAddToCart = async () => {
-    if (!isBuyable || isReserving) return;
-
-    setIsReserving(true);
-    try {
-      const response = await fetch("/api/v2/cart/reserve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        message?: string;
-        reservationToken?: string;
-        reservedUntil?: string;
-      } | null;
-
-      if (!response.ok) {
-        toast.error(payload?.message ?? "This piece is no longer available.");
-        return;
-      }
-
-      addItem({
-        id: product.id,
-        name: product.name,
-        price: product.pricePaise / 100,
-        image,
-        slug: product.slug,
-        detailsFabric: product.detailsFabric ?? null,
-        reservationToken: payload?.reservationToken ?? null,
-        reservedUntil: payload?.reservedUntil ?? null,
-      });
-      setAdded(true);
-      toast.success(`${product.name} added to your bag`);
-    } finally {
-      setIsReserving(false);
-    }
-  };
 
   if (stockStatus === "sold") {
     return (
@@ -115,10 +76,19 @@ export function AddToCartButton({ product, initialStatus }: AddToCartButtonProps
   return (
     <Button
       className="w-full rounded-full py-6"
-      disabled={!isBuyable || isReserving}
-      onClick={handleAddToCart}
+      disabled={!isBuyable}
+      onClick={() => {
+        addItem({
+          id: product.id,
+          name: product.name,
+          price: product.pricePaise / 100,
+          image,
+        });
+        setAdded(true);
+        toast.success(`${product.name} added to your bag`);
+      }}
     >
-      {isReserving ? "Reserving..." : added ? "Added to Bag" : stockLabels[stockStatus]}
+      {added ? "Added to Bag" : stockLabels[stockStatus]}
     </Button>
   );
 }

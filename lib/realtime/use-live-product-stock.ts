@@ -7,7 +7,6 @@ import { useElectricShapeRows } from "@/lib/realtime/use-electric-shape";
 type StockStatus = "available" | "reserved" | "sold";
 
 type LiveProductStockOptions = {
-  enabled?: boolean;
   initialStatus: StockStatus;
   productId: string;
   productSlug: string;
@@ -18,23 +17,6 @@ type ProductStockRow = {
   reservedUntil: null | string;
   stockStatus: StockStatus;
 };
-
-const STOCK_FALLBACK_CACHE_MS = 5_000;
-
-const fallbackStockCache = new Map<
-  string,
-  { expiresAt: number; rows: ProductStockRow[] }
->();
-const fallbackStockRequests = new Map<string, Promise<ProductStockRow[]>>();
-
-const toFallbackStockRow = (
-  productId: string,
-  stockStatus: StockStatus,
-): ProductStockRow => ({
-  id: productId,
-  reservedUntil: null,
-  stockStatus,
-});
 
 const normalizeStockRow = (
   value: unknown,
@@ -61,59 +43,36 @@ const normalizeStockRow = (
   };
 };
 
-const fetchFallbackStockRows = ({
-  initialStatus,
-  productId,
-  productSlug,
-}: Pick<LiveProductStockOptions, "initialStatus" | "productId" | "productSlug">) => {
-  const cacheKey = productSlug;
-  const cached = fallbackStockCache.get(cacheKey);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now) {
-    return Promise.resolve(cached.rows);
-  }
-
-  const inFlight = fallbackStockRequests.get(cacheKey);
-  if (inFlight) return inFlight;
-
-  const request = fetch(`/api/v2/products/${encodeURIComponent(productSlug)}/stock`, {
-    headers: {
-      Accept: "application/json",
-    },
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        return [toFallbackStockRow(productId, initialStatus)];
-      }
-
-      const payload = (await response.json()) as Record<string, unknown>;
-      const row = normalizeStockRow(payload, initialStatus);
-      return [row ?? toFallbackStockRow(productId, initialStatus)];
-    })
-    .catch(() => [toFallbackStockRow(productId, initialStatus)])
-    .then((rows) => {
-      fallbackStockCache.set(cacheKey, {
-        expiresAt: Date.now() + STOCK_FALLBACK_CACHE_MS,
-        rows,
-      });
-      return rows;
-    })
-    .finally(() => {
-      fallbackStockRequests.delete(cacheKey);
-    });
-
-  fallbackStockRequests.set(cacheKey, request);
-  return request;
-};
-
 export const useLiveProductStock = ({
-  enabled = true,
   initialStatus,
   productId,
   productSlug,
 }: LiveProductStockOptions) => {
   const fallbackFetch = useCallback(async () => {
-    return fetchFallbackStockRows({ initialStatus, productId, productSlug });
+    const response = await fetch(`/api/v2/products/${productSlug}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [
+        {
+          id: productId,
+          reservedUntil: null,
+          stockStatus: initialStatus,
+        },
+      ] satisfies ProductStockRow[];
+    }
+    const payload = (await response.json()) as Record<string, unknown>;
+    const row = normalizeStockRow(payload, initialStatus);
+    if (!row) {
+      return [
+        {
+          id: productId,
+          reservedUntil: null,
+          stockStatus: initialStatus,
+        },
+      ] satisfies ProductStockRow[];
+    }
+    return [row];
   }, [initialStatus, productId, productSlug]);
 
   const shapeParams = useMemo(
@@ -133,7 +92,6 @@ export const useLiveProductStock = ({
   );
 
   const { mode, rows } = useElectricShapeRows<ProductStockRow>({
-    enabled,
     fallbackFetch,
     initialRows: [
       {
@@ -142,10 +100,8 @@ export const useLiveProductStock = ({
         stockStatus: initialStatus,
       },
     ],
-    immediateFallbackFetch: false,
     mapRows: mapStockRows,
-    pollIntervalMs: 60_000,
-    pollWhenHidden: false,
+    pollIntervalMs: 10_000,
     shapeParams,
     table: "products",
   });

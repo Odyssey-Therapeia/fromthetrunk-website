@@ -3,8 +3,6 @@ import {
   listCollections,
   listCollectionsWithProducts,
 } from "@/db/queries/collections";
-import { unstable_cache } from "next/cache";
-import { cache } from "react";
 import {
   getFeaturedProducts as getFeaturedProductsQuery,
   getProductBySlug as getProductBySlugQuery,
@@ -14,11 +12,7 @@ import {
   searchProducts as searchProductsQuery,
 } from "@/db/queries/products";
 import { getGlobal } from "@/db/queries/globals";
-import {
-  DEFAULT_PRODUCT_SORT,
-  type ProductSortOption,
-} from "@/lib/products/sort";
-import { PRODUCTS_CACHE_TAG, productCacheTag } from "@/lib/cache/product-cache";
+import type { ProductSortOption } from "@/lib/products/sort";
 import type { Product } from "@/types/domain";
 
 type QueryOptions = {
@@ -27,44 +21,6 @@ type QueryOptions = {
   page?: number;
   sort?: ProductSortOption;
 };
-
-const getPublicProductBySlugPersistent = (slug: string) =>
-  unstable_cache(
-    async () => getProductBySlugQuery(slug, { includeDrafts: false }),
-    ["public-product-by-slug", slug],
-    {
-      revalidate: 300,
-      tags: [PRODUCTS_CACHE_TAG, productCacheTag(slug)],
-    },
-  )();
-
-const getProductBySlugCached = cache(async (slug: string, includeDrafts: boolean) => {
-  if (includeDrafts) {
-    return getProductBySlugQuery(slug, { includeDrafts: true });
-  }
-
-  return getPublicProductBySlugPersistent(slug);
-});
-
-const getPublicProductsPersistent = (
-  limit: number,
-  offset: number,
-  sort: ProductSortOption,
-) =>
-  unstable_cache(
-    async () =>
-      listProductsQuery({
-        includeDrafts: false,
-        limit,
-        offset,
-        sort,
-      }),
-    ["public-products", String(limit), String(offset), sort],
-    {
-      revalidate: 300,
-      tags: [PRODUCTS_CACHE_TAG],
-    },
-  )();
 
 export const getGlobals = async (slug: string, options: QueryOptions = {}) => {
   void options;
@@ -86,15 +42,12 @@ export const getCollections = async (options: QueryOptions = {}) => {
 export const getProducts = async (limit = 200, options: QueryOptions = {}) => {
   const page = options.page ?? 1;
   const offset = (page - 1) * limit;
-  const sort = options.sort ?? DEFAULT_PRODUCT_SORT;
-  const { rows, totalCount } = options.includeDrafts
-    ? await listProductsQuery({
-        includeDrafts: true,
-        limit,
-        offset,
-        sort,
-      })
-    : await getPublicProductsPersistent(limit, offset, sort);
+  const { rows, totalCount } = await listProductsQuery({
+    includeDrafts: options.includeDrafts,
+    limit,
+    offset,
+    sort: options.sort,
+  });
 
   return {
     docs: rows,
@@ -143,7 +96,11 @@ export const getFeaturedProducts = async (
 };
 
 export const getProductBySlug = async (slug: string, options: QueryOptions = {}) => {
-  return getProductBySlugCached(slug, Boolean(options.includeDrafts));
+  const result = await getProductBySlugQuery(slug, {
+    includeDrafts: options.includeDrafts,
+  });
+
+  return result;
 };
 
 /**

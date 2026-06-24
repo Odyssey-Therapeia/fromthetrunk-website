@@ -10,7 +10,6 @@ import { getChannelMetrics, getEventCounts } from "@/db/queries/control-centre";
 import { products } from "@/db/schema";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
-import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { pullAllMetrics } from "@/lib/ports/channel-metrics";
 import { composeDashboard } from "@/lib/control-centre/compose-dashboard";
 import { sendEmail } from "@/lib/email/send";
@@ -56,7 +55,7 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
       }
 
       const expiredRows = await db
-        .select({ id: products.id, slug: products.slug })
+        .select({ id: products.id })
         .from(products)
         .where(
           and(
@@ -83,7 +82,6 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
               lt(products.reservedUntil, new Date())
             )
           );
-        revalidateProductsCache(expiredRows.map((row) => row.slug));
       }
 
       // Fire-and-forget: reservation_expired event per expired product.
