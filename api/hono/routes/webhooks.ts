@@ -6,6 +6,7 @@ import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { addOrderEvent, getOrder } from "@/db/queries/orders";
 import { orders, products } from "@/db/schema";
+import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 
 type RazorpayWebhookEvent = {
@@ -73,14 +74,16 @@ const releaseOrderReservation = async (orderId: string, eventNote: string) => {
     .filter((id): id is string => Boolean(id));
 
   if (productIds.length > 0) {
-    await db
+    const released = await db
       .update(products)
       .set({
         reservedUntil: null,
         stockStatus: "available",
         updatedAt: new Date(),
       })
-      .where(and(inArray(products.id, productIds), eq(products.stockStatus, "reserved")));
+      .where(and(inArray(products.id, productIds), eq(products.stockStatus, "reserved")))
+      .returning({ slug: products.slug });
+    revalidateProductsCache(released.map((product) => product.slug));
   }
 
   await db

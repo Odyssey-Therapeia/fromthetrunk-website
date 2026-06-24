@@ -207,6 +207,7 @@ export const products = pgTable(
   (table) => ({
     slugUnique: uniqueIndex("products_slug_unique").on(table.slug),
     collectionIdx: index("products_collection_idx").on(table.collectionId),
+    statusCreatedAtIdx: index("products_status_created_at_idx").on(table.status, table.createdAt),
     statusIdx: index("products_status_idx").on(table.status),
     stockStatusIdx: index("products_stock_status_idx").on(table.stockStatus),
   })
@@ -255,6 +256,7 @@ export const productImages = pgTable(
   },
   (table) => ({
     productIdx: index("product_images_product_idx").on(table.productId),
+    productSortIdx: index("product_images_product_sort_idx").on(table.productId, table.sortOrder),
     mediaIdx: index("product_images_media_idx").on(table.mediaId),
   })
 );
@@ -312,6 +314,7 @@ export const wishlistItems = pgTable(
       columns: [table.userId, table.productId],
       name: "wishlist_items_pkey",
     }),
+    productIdx: index("wishlist_items_product_idx").on(table.productId),
   })
 );
 
@@ -658,6 +661,7 @@ export const reservations = pgTable(
   (table) => ({
     orderIdx: index("reservations_order_idx").on(table.orderId),
     productIdx: index("reservations_product_idx").on(table.productId),
+    productExpiresAtIdx: index("reservations_product_expires_at_idx").on(table.productId, table.expiresAt),
     expiresAtIdx: index("reservations_expires_at_idx").on(table.expiresAt),
   })
 );

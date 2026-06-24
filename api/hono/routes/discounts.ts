@@ -57,6 +57,7 @@ export const registerDiscountRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const rateLimited = await rateLimitResponse(c.req.raw, "discount:validate", {
         limit: 20,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;

@@ -75,7 +75,7 @@ export function FloatingReviewTab() {
         aria-hidden={!isVisible}
         aria-label="Open review form"
         tabIndex={isVisible ? 0 : -1}
-        className={`fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 border border-[#AA8657]/50 bg-[#3C0C0F] px-3 py-5 text-[#F8F4EF] shadow-[0_18px_50px_rgba(60,12,15,0.28)] transition duration-500 hover:bg-[#280609] hover:text-[#AA8657] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EF] md:flex ${
+        className={`fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 border border-[#B39152]/50 bg-[#601D1C] px-3 py-5 text-[#FDF7F1] shadow-[0_18px_50px_rgba(96,29,28,0.28)] transition duration-500 hover:bg-[#0E0D0E] hover:text-[#B39152] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] md:flex ${
           isVisible
             ? "visible translate-x-0 opacity-100"
             : "invisible pointer-events-none translate-x-full opacity-0"
@@ -104,13 +104,13 @@ export function FloatingReviewTab() {
             aria-modal="true"
             aria-labelledby="review-dialog-title"
             tabIndex={-1}
-            className="relative w-full max-w-xl border border-[#AA8657]/35 bg-[#F8F4EF] p-6 text-[#3C0C0F] shadow-[0_30px_100px_rgba(0,0,0,0.38)] outline-none md:p-9"
+            className="relative w-full max-w-xl border border-[#B39152]/35 bg-[#FDF7F1] p-6 text-[#601D1C] shadow-[0_30px_100px_rgba(0,0,0,0.38)] outline-none md:p-9"
           >
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               aria-label="Close review form"
-              className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-[#3C0C0F]/12 text-[#3C0C0F] transition hover:border-[#AA8657] hover:text-[#AA8657] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657]"
+              className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-[#601D1C]/12 text-[#601D1C] transition hover:border-[#B39152] hover:text-[#B39152] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152]"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -128,20 +128,20 @@ export function FloatingReviewTab() {
 
             {isSubmitted ? (
               <div className="py-10 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#AA8657]">
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#B39152]">
                   Thank You
                 </p>
-                <h2 className="mt-4 font-serif text-4xl leading-tight text-[#3C0C0F] md:text-5xl">
+                <h2 className="mt-4 font-serif text-4xl leading-tight text-[#601D1C] md:text-5xl">
                   Thank you for sharing your story.
                 </h2>
-                <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-[#3C0C0F]/68">
+                <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-[#601D1C]/68">
                   Your note helps us understand how each restored saree begins
                   its next chapter.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="mt-8 rounded-full border border-[#AA8657] bg-[#3C0C0F] px-7 py-3 text-sm font-semibold text-[#AA8657] transition hover:-translate-y-0.5 hover:bg-[#280609] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657] focus-visible:ring-offset-2"
+                  className="mt-8 rounded-full border border-[#B39152] bg-[#601D1C] px-7 py-3 text-sm font-semibold text-[#B39152] transition hover:-translate-y-0.5 hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2"
                 >
                   Close
                 </button>
@@ -156,22 +156,22 @@ export function FloatingReviewTab() {
                   setIsSubmitted(true);
                 }}
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#AA8657]">
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#B39152]">
                   Customer Review
                 </p>
                 <h2
                   id="review-dialog-title"
-                  className="mt-4 max-w-md font-serif text-4xl leading-tight text-[#3C0C0F] md:text-5xl"
+                  className="mt-4 max-w-md font-serif text-4xl leading-tight text-[#601D1C] md:text-5xl"
                 >
                   Share your From The Trunk experience.
                 </h2>
-                <p className="mt-4 max-w-md text-sm leading-7 text-[#3C0C0F]/68">
+                <p className="mt-4 max-w-md text-sm leading-7 text-[#601D1C]/68">
                   Tell us how the saree felt, where it travelled, or what made
                   the piece feel personal.
                 </p>
 
-                <div className="mt-8 border-y border-[#3C0C0F]/10 py-6">
-                  <p className="text-sm font-semibold text-[#3C0C0F]">
+                <div className="mt-8 border-y border-[#601D1C]/10 py-6">
+                  <p className="text-sm font-semibold text-[#601D1C]">
                     Your rating
                   </p>
                   <div
@@ -187,10 +187,10 @@ export function FloatingReviewTab() {
                         onBlur={() => setHoverRating(null)}
                         onClick={() => setRating(star)}
                         aria-label={`Set rating to ${star} star${star > 1 ? "s" : ""}`}
-                        className={`text-4xl leading-none transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657] ${
+                        className={`text-4xl leading-none transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] ${
                           star <= activeRating
-                            ? "text-[#AA8657]"
-                            : "text-[#3C0C0F]/20"
+                            ? "text-[#B39152]"
+                            : "text-[#601D1C]/20"
                         }`}
                       >
                         ★
@@ -201,7 +201,7 @@ export function FloatingReviewTab() {
 
                 <label
                   htmlFor="review-comment"
-                  className="mt-6 block text-sm font-semibold text-[#3C0C0F]"
+                  className="mt-6 block text-sm font-semibold text-[#601D1C]"
                 >
                   Your comment
                 </label>
@@ -212,20 +212,20 @@ export function FloatingReviewTab() {
                   rows={5}
                   required
                   placeholder="Write your review here..."
-                  className="mt-3 w-full resize-none border border-[#3C0C0F]/15 bg-white/70 px-4 py-3 text-sm leading-6 text-[#3C0C0F] outline-none transition placeholder:text-[#3C0C0F]/35 focus:border-[#AA8657] focus:ring-2 focus:ring-[#AA8657]/25"
+                  className="mt-3 w-full resize-none border border-[#601D1C]/15 bg-white/70 px-4 py-3 text-sm leading-6 text-[#601D1C] outline-none transition placeholder:text-[#601D1C]/35 focus:border-[#B39152] focus:ring-2 focus:ring-[#B39152]/25"
                 />
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="submit"
-                    className="rounded-full border border-[#AA8657] bg-[#3C0C0F] px-7 py-3 text-sm font-semibold text-[#AA8657] transition hover:-translate-y-0.5 hover:bg-[#280609] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657] focus-visible:ring-offset-2"
+                    className="rounded-full border border-[#B39152] bg-[#601D1C] px-7 py-3 text-sm font-semibold text-[#B39152] transition hover:-translate-y-0.5 hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2"
                   >
                     Submit Review
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="text-sm font-semibold text-[#3C0C0F]/58 transition hover:text-[#3C0C0F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657]"
+                    className="text-sm font-semibold text-[#601D1C]/58 transition hover:text-[#601D1C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152]"
                   >
                     Maybe later
                   </button>

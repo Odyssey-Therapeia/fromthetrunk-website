@@ -6,7 +6,14 @@ const nextConfig: NextConfig = {
   ...(isStandaloneBuild ? { output: "standalone" as const } : {}),
   // Dev-only: allow the LAN "Network" URL host to reach dev resources (HMR, etc.).
   // Ignored in production builds. Add more entries if you test from other devices.
-  allowedDevOrigins: ["192.168.1.3"],
+  allowedDevOrigins: [
+    "localhost",
+    "127.0.0.1",
+    "192.168.0.2",
+    "192.168.1.88",
+    "192.168.*.*",
+    "192.168.*",
+  ],
   turbopack: {
     root: __dirname,
   },
@@ -22,11 +29,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "mgkwfyatucnr0yzo.public.blob.vercel-storage.com",
+        hostname: "**.public.blob.vercel-storage.com",
       },
       {
         protocol: "https",
-        hostname: "njufw8f4mlcjsl7g.public.blob.vercel-storage.com",
+        hostname: "behold.pictures",
+      },
+      {
+        protocol: "https",
+        hostname: "**.behold.pictures",
+      },
+      {
+        protocol: "https",
+        hostname: "**.cdninstagram.com",
       },
     ],
   },

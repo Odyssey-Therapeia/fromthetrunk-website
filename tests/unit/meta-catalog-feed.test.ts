@@ -724,12 +724,13 @@ describe("Meta feed — Inventory V2 availability (mutation-proven, FTT_FEATURE_
     vi.unstubAllEnvs();
   });
 
-  it("MUTATION-PROVEN: expired reservation — raw=reserved, qty=1, activeCount=0 → in_stock", async () => {
+  it("MUTATION-PROVEN: expired product-row reservation → in_stock", async () => {
     vi.stubEnv("FTT_FEATURE_INVENTORY_V2", "true");
     delete process.env.FEEDS_PUBLIC_TOKEN;
 
     const reservedButExpired = mkProduct({
       id: "prod-uuid-v2-reserved",
+      reservedUntil: new Date("2026-01-01T00:00:00.000Z"),
       slug: "reserved-but-expired",
       stockStatus: "reserved",
       quantityAvailable: 1,
@@ -746,17 +747,17 @@ describe("Meta feed — Inventory V2 availability (mutation-proven, FTT_FEATURE_
     const { rows } = parseCsv(csv);
     expect(rows).toHaveLength(1);
 
-    // MUST be in_stock: deriveStockStatus({qty=1, activeCount=0}) = "available" → "in_stock"
-    // A route that reads the raw column would emit "out_of_stock" here — the test FAILS.
+    // MUST be in_stock: resolveProductRowStockStatus() treats expired holds as available.
     expect(rows[0]["availability"]).toBe("in_stock");
   });
 
-  it("MUTATION-PROVEN: active reservation — raw=reserved, qty=1, activeCount=1 → out_of_stock", async () => {
+  it("MUTATION-PROVEN: active product-row reservation → out_of_stock", async () => {
     vi.stubEnv("FTT_FEATURE_INVENTORY_V2", "true");
     delete process.env.FEEDS_PUBLIC_TOKEN;
 
     const reservedActive = mkProduct({
       id: "prod-uuid-v2-active",
+      reservedUntil: new Date("2999-01-01T00:00:00.000Z"),
       slug: "reserved-active",
       stockStatus: "reserved",
       quantityAvailable: 1,
@@ -775,7 +776,7 @@ describe("Meta feed — Inventory V2 availability (mutation-proven, FTT_FEATURE_
     const { rows } = parseCsv(csv);
     expect(rows).toHaveLength(1);
 
-    // MUST be out_of_stock: active reservation holds the item
+    // MUST be out_of_stock: active product-row reservation holds the item.
     expect(rows[0]["availability"]).toBe("out_of_stock");
   });
 

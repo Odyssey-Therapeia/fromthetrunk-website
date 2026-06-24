@@ -3,10 +3,10 @@
  *
  * These tests verify:
  *  1. The proxy consults the redirect resolver and issues the right HTTP status.
- *  2. The EXISTING product-404 and auth-protection behavior is unchanged.
+ *  2. The product-detail pass-through and auth-protection behavior is unchanged.
  *  3. The redirect is additive — it does not alter the money path.
  *
- * We mock @/db/queries/products (for productSlugExists) and
+ * We mock @/db/queries/products to prove productSlugExists is not consulted and
  * @/lib/content/redirect-resolver (for resolveRedirect) at the lowest level —
  * NOT @/proxy itself.
  */
@@ -63,10 +63,9 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("does not call resolveRedirect for /collection/:slug paths (product-404 path)", async () => {
-    // For product detail pages, the proxy runs the slug-exists check.
-    // Redirect check should NOT interfere with collection paths — the
-    // proxy handles /collection/:slug with the product 404 guard first.
+  it("does not call resolveRedirect or the database for /collection/:slug paths", async () => {
+    // Product detail pages now resolve 404s in the page itself so the proxy
+    // does not add a DB round trip before every PDP render.
     productSlugExistsMock.mockResolvedValue(true);
     resolveRedirectMock.mockResolvedValue(null);
 
@@ -75,11 +74,12 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(productSlugExistsMock).toHaveBeenCalledWith("my-saree", { includeDrafts: false });
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(resolveRedirectMock).not.toHaveBeenCalled();
   });
 });
 
-describe("proxy.ts — EXISTING behavior unchanged (money path regression)", () => {
+describe("proxy.ts — auth behavior unchanged (money path regression)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
@@ -87,15 +87,15 @@ describe("proxy.ts — EXISTING behavior unchanged (money path regression)", () 
     getTokenMock.mockResolvedValue(null);
   });
 
-  it("still returns 404 for missing product slugs (existing behavior preserved)", async () => {
+  it("lets the PDP handle missing product slugs instead of doing a proxy DB lookup", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/missing-saree")
     );
 
-    expect(response.status).toBe(404);
-    expect(response.headers.get("x-robots-tag")).toBe("noindex");
+    expect(response.status).toBe(200);
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 
   it("still redirects unauthenticated users from /account/* (existing behavior preserved)", async () => {

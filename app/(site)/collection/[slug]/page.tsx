@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import type { ReactElement } from "react";
+import Link from "next/link";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
+import {
+  BadgeCheck,
+  Gem,
+  PackageCheck,
+  Ruler,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+} from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
@@ -22,18 +30,21 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { getProductBySlug, getProducts } from "@/lib/data/products";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
-import { getProductDisplayDetails } from "@/lib/products/display-details";
+import {
+  getProductDisplayDetails,
+  type ProductDisplayDetails,
+} from "@/lib/products/display-details";
 import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { buildPdpTitle, buildPdpDescription } from "@/lib/seo/pdp-meta";
 import { getSiteOrigin } from "@/lib/config/site";
-import { isInventoryV2 } from "@/lib/config/flags";
-import { deriveStockStatus } from "@/db/inventory";
-import { getActiveReservationsCount } from "@/db/queries/reservations";
+import { resolveProductRowStockStatus } from "@/db/inventory";
 import type { Product } from "@/types/domain";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
+
+type EffectiveStockStatus = "available" | "reserved" | "sold";
 
 export async function generateMetadata({
   params,
@@ -46,8 +57,8 @@ export async function generateMetadata({
   }
 
   const product = rawProduct as Product;
-  const image = resolveMediaURL(product.images?.[0]);
   const displayDetails = getProductDisplayDetails(product);
+  const image = resolveMediaURL(product.images?.[0]);
 
   const pdpTitle = buildPdpTitle(product.name, displayDetails.fabric);
   const pdpDescription = buildPdpDescription(
@@ -64,6 +75,7 @@ export async function generateMetadata({
       title: pdpTitle,
       description: pdpDescription,
       type: "website",
+      images: image ? [{ url: image }] : undefined,
     },
   };
 }
@@ -78,96 +90,33 @@ export default async function SareePage({ params }: ProductPageProps) {
   }
 
   const product = rawProduct as Product;
-
-  // P4-05: when flag ON, derive availability from quantity_available + active reservations.
-  // Flag OFF: read stockStatus directly (byte-identical to pre-P4-05 behavior).
-  // NOTE (P5 feeds mapping): lib/ports/catalog-search.ts availability filter reads
-  // stockStatus directly. Map this derived value there when P5 wires feeds.
-  const effectiveStockStatus: "available" | "reserved" | "sold" = isInventoryV2()
-    ? deriveStockStatus({
-        quantityAvailable: product.quantityAvailable,
-        activeReservationsCount: await getActiveReservationsCount(product.id),
-      })
-    : product.stockStatus;
+  const effectiveStockStatus: EffectiveStockStatus = resolveProductRowStockStatus({
+    reservedUntil: product.reservedUntil,
+    stockStatus: product.stockStatus,
+  });
 
   const displayDetails = getProductDisplayDetails(product);
-  const allProducts = await getProducts(12, { includeDrafts });
-  const relatedPool = (allProducts.docs as Product[]).filter(
-    (item) => item.slug !== product.slug
-  );
-  const productOccasions = new Set(product.tags.map((tag) => tag.name));
-  const normalizedFabric = displayDetails.fabric.toLowerCase();
-  const normalizedEra = product.storyEra?.toLowerCase() ?? "";
-
-  const rankedRelated = relatedPool
-    .map((candidate) => {
-      const candidateDisplayDetails = getProductDisplayDetails(candidate);
-      const candidateOccasions = new Set(candidate.tags.map((tag) => tag.name));
-      const candidateFabric = candidateDisplayDetails.fabric.toLowerCase();
-      let score = 0;
-
-      if (
-        normalizedEra &&
-        candidate.storyEra &&
-        candidate.storyEra.toLowerCase() === normalizedEra
-      ) {
-        score += 3;
-      }
-
-      if (
-        normalizedFabric &&
-        candidateFabric === normalizedFabric
-      ) {
-        score += 2;
-      }
-
-      for (const occasion of productOccasions) {
-        if (candidateOccasions.has(occasion)) {
-          score += 1;
-          break;
-        }
-      }
-
-      return { candidate, displayDetails: candidateDisplayDetails, score };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  const related = rankedRelated.slice(0, 3).map((item) => item.candidate);
-  const topRecommendation = rankedRelated[0];
-  const sameEraMatch = Boolean(
-    topRecommendation &&
-      normalizedEra &&
-      topRecommendation.candidate.storyEra?.toLowerCase() === normalizedEra
-  );
-  const sameFabricMatch = Boolean(
-    topRecommendation &&
-      normalizedFabric &&
-      topRecommendation.displayDetails.fabric.toLowerCase() === normalizedFabric
-  );
-  const recommendationEyebrow = sameEraMatch
-    ? "From the same era"
-    : sameFabricMatch
-      ? `Similar ${displayDetails.fabric}`
-      : "You May Also Love";
-  const recommendationTitle = sameEraMatch
-    ? "Curated pieces from the same chapter"
-    : sameFabricMatch
-      ? "More treasures in a similar weave"
-      : "More treasures from the trunk";
   const images = (product.images ?? [])
     .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
-
+  const tags = product.tags.map((tag) => tag.name).filter(Boolean);
   const baseUrl = getSiteOrigin();
-  const jsonLd = productJsonLd(product as Product);
+  const jsonLd = productJsonLd(product);
   const breadcrumbs = breadcrumbJsonLd([
     { name: "Home", url: baseUrl },
     { name: "Collection", url: `${baseUrl}/collection` },
     { name: product.name, url: `${baseUrl}/collection/${product.slug}` },
   ]);
 
+  const allProducts = await getProducts(12, { includeDrafts });
+  const related = rankRelatedProducts(
+    product,
+    (allProducts.docs as Product[]).filter((item) => item.slug !== product.slug),
+    displayDetails,
+  ).slice(0, 4);
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-6 sm:px-6 sm:py-10 lg:space-y-16 lg:py-16">
+    <main className="bg-[#FDF7F1] pb-24 text-[#0E0D0E] md:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
@@ -183,149 +132,447 @@ export default async function SareePage({ params }: ProductPageProps) {
         price={product.pricePaise / 100}
         image={images[0] ?? ""}
       />
-      <div className="grid gap-6 lg:gap-12 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="order-2 lg:order-1">
+
+      <div className="mx-auto w-full max-w-[1440px] space-y-7 px-4 py-4 sm:px-6 sm:py-6 lg:space-y-9 lg:px-8 lg:py-7">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#601D1C]/55"
+        >
+          <Link href="/" className="transition hover:text-[#141D46]">
+            Home
+          </Link>
+          <span>/</span>
+          <Link href="/collection" className="transition hover:text-[#141D46]">
+            Collection
+          </Link>
+          <span>/</span>
+          <span className="max-w-[18rem] truncate text-[#141D46]">
+            Product dossier
+          </span>
+        </nav>
+
+        <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.58fr)] md:items-stretch md:[--pdp-panel-height:min(72vh,760px)] lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.58fr)] lg:gap-7 lg:[--pdp-panel-height:min(74vh,800px)]">
           <ProductGallery images={images} alt={product.name} />
-        </div>
 
-        <ScrollReveal delay={0.1} className="order-1 flex flex-col gap-6 lg:order-2">
-          <div className="space-y-3">
-            <Badge className="bg-secondary text-muted-foreground">
-              {product.storyEra ?? "Archive"}
-            </Badge>
-            <h1 className="font-serif text-3xl text-foreground md:text-4xl">
-              {product.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {product.storyTitle}
-            </p>
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-semibold text-foreground">
-                {formatCurrency(product.pricePaise / 100)}
-              </span>
-              {product.originalPricePaise && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatCurrency(product.originalPricePaise / 100)}
+          <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-[var(--pdp-panel-height)] lg:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">
+                    Product Dossier
+                  </p>
+                  <p className="mt-1 text-xs text-[#141D46]/52">
+                    One-of-one circular saree
+                  </p>
+                </div>
+                <StockBadge stockStatus={effectiveStockStatus} />
+              </div>
+
+              <h1 className="mt-4 font-serif text-[clamp(2rem,3.2vw,3.35rem)] leading-[0.93] text-[#601D1C]">
+                {product.name}
+              </h1>
+              <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#141D46]/68">
+                {product.storyTitle || "A restored heirloom from the trunk."}
+              </p>
+
+              <div className="mt-4 grid gap-2 min-[420px]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+                <TrustSignal
+                  icon={<BadgeCheck />}
+                  label="Verified"
+                  value="By FTT"
+                />
+                <TrustSignal
+                  icon={<ShieldCheck />}
+                  label="Condition"
+                  value="Graded"
+                />
+                <TrustSignal icon={<Gem />} label="Edition" value="1 of 1" />
+                <TrustSignal
+                  icon={<Sparkles />}
+                  label="Origin"
+                  value={product.storyProvenance || "Private trunk"}
+                />
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-end gap-3 border-y border-[#E7DDD4] py-3">
+                <span className="text-2xl font-semibold text-[#141D46]">
+                  {formatCurrency(product.pricePaise / 100)}
                 </span>
-              )}
-              <WishlistButton
-                productId={product.id}
-                productName={product.name}
-              />
-            </div>
-          </div>
-
-          <div className="order-2 space-y-4 border-t border-border/60 pt-6 lg:order-3">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
-                Length
-              </p>
-              <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3 text-sm text-foreground">
-                {displayDetails.length}
+                {product.originalPricePaise ? (
+                  <span className="pb-0.5 text-sm text-[#601D1C]/45 line-through">
+                    {formatCurrency(product.originalPricePaise / 100)}
+                  </span>
+                ) : null}
+                {product.storyEra ? (
+                  <span className="ml-auto rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1 text-xs text-[#601D1C]/70">
+                    {product.storyEra}
+                  </span>
+                ) : null}
               </div>
-            </div>
-            {/* P4-05: pass effectiveStockStatus as initialStatus so the buy button's
-                buyability is gated by the v2 availability when flag ON.
-                Flag OFF: initialStatus equals product.stockStatus — byte-identical. */}
-            <AddToCartButton product={product} initialStatus={effectiveStockStatus} />
-            {/* P4-05: effectiveStockStatus is flag-gated: flag ON uses deriveStockStatus,
-                flag OFF uses product.stockStatus directly. */}
-            {effectiveStockStatus === "available" && (
-              <p className="text-xs text-muted-foreground">
-                This is a one-of-a-kind piece. It will be reserved for you once added to your bag.
-              </p>
-            )}
-            {effectiveStockStatus === "sold" && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  This piece has found a new home. Browse the collection for similar treasures.
-                </p>
-                {/* P6-04: capture restock intent for sold one-of-one items */}
-                <RestockNotifyButton
-                  productId={product.id}
-                  productName={product.name}
-                />
-              </div>
-            )}
-            {effectiveStockStatus === "reserved" && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  This piece is currently reserved. Notify me if it becomes available.
-                </p>
-                {/* P6-04: capture restock intent for reserved one-of-one items */}
-                <RestockNotifyButton
-                  productId={product.id}
-                  productName={product.name}
-                />
-              </div>
-            )}
-          </div>
 
-          <div className="order-3 space-y-4 border-t border-border/60 pt-6 lg:order-2">
-            <p className="text-sm text-muted-foreground">
-              {product.storyNarrative}
-            </p>
-            {product.storyProvenance && (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  Provenance:
-                </span>{" "}
-                {product.storyProvenance}
-              </p>
-            )}
-          </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <DossierFact label="Fabric" value={displayDetails.fabric} />
+                <DossierFact label="Grade" value={displayDetails.condition} />
+                <DossierFact label="Length" value={displayDetails.length} />
+                <DossierFact label="Width" value={displayDetails.width} />
+              </div>
 
-          <Accordion
-            type="single"
-            collapsible
-            className="order-4 w-full border-t border-border/60 pt-2"
-          >
-            <AccordionItem value="details">
-              <AccordionTrigger>Product Details</AccordionTrigger>
-              <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                <p>Fabric: {displayDetails.fabric}</p>
-                <p>Length: {displayDetails.length}</p>
-                <p>Width: {displayDetails.width}</p>
-                <p>Condition: {displayDetails.condition}</p>
-                {displayDetails.designer && (
-                  <p>Designer: {displayDetails.designer}</p>
+              <div className="mt-4 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <AddToCartButton
+                      product={product}
+                      initialStatus={effectiveStockStatus}
+                    />
+                  </div>
+                  <WishlistButton
+                    productId={product.id}
+                    productName={product.name}
+                    className="h-11 w-11 shrink-0 border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1]"
+                  />
+                </div>
+
+                {effectiveStockStatus === "available" ? (
+                  <p className="text-xs leading-5 text-[#141D46]/58">
+                    Adding this piece reserves the one-of-one saree in your bag.
+                    Final ownership is confirmed at checkout.
+                  </p>
+                ) : (
+                  <div className="space-y-2 rounded-xl border border-[#601D1C]/16 bg-[#601D1C]/5 p-3">
+                    <p className="text-xs leading-5 text-[#601D1C]/75">
+                      {effectiveStockStatus === "sold"
+                        ? "This piece has found its next wardrobe."
+                        : "This piece is currently reserved by another buyer."}
+                    </p>
+                    <RestockNotifyButton
+                      productId={product.id}
+                      productName={product.name}
+                    />
+                  </div>
                 )}
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="care">
-              <AccordionTrigger>Care Instructions</AccordionTrigger>
-              <AccordionContent className="text-sm text-muted-foreground">
-                Dry clean only. Store in the provided muslin wrap away from
-                direct sunlight and humidity.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </ScrollReveal>
-      </div>
+              </div>
 
-      {related.length > 0 && (
-        <section className="space-y-6">
-          <ScrollReveal className="flex items-end justify-between">
+              <div className="mt-4 grid gap-2 rounded-[1rem] border border-[#141D46]/10 bg-[#141D46] p-3 text-[#FDF7F1]">
+                <TrustLine icon={<ShieldCheck />} text="Authenticated by hand" />
+                <TrustLine icon={<PackageCheck />} text="Packed with muslin care" />
+                <TrustLine icon={<Truck />} text="Shipping at checkout" />
+              </div>
+
+              <Accordion
+                type="single"
+                collapsible
+                className="mt-3 border-t border-[#E7DDD4]"
+              >
+                <AccordionItem value="story" className="border-[#E7DDD4]">
+                  <AccordionTrigger className="text-sm text-[#141D46]">
+                    Story and provenance
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm leading-6 text-[#141D46]/65">
+                    <p>
+                      {product.storyNarrative ||
+                        "This saree has been reviewed, restored, and prepared for its next chapter."}
+                    </p>
+                    {product.storyProvenance ? (
+                      <p>
+                        <span className="font-semibold text-[#141D46]">
+                          Provenance:
+                        </span>{" "}
+                        {product.storyProvenance}
+                      </p>
+                    ) : null}
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="care" className="border-[#E7DDD4]">
+                  <AccordionTrigger className="text-sm text-[#141D46]">
+                    Care and ownership
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm leading-6 text-[#141D46]/65">
+                    Dry clean only. Store folded in muslin, away from direct
+                    sunlight and humidity. Shipping and taxes are calculated at
+                    checkout.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="measurements" className="border-[#E7DDD4]">
+                  <AccordionTrigger className="text-sm text-[#141D46]">
+                    Measurements
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm leading-6 text-[#141D46]/65">
+                    Length: {displayDetails.length}. Width:{" "}
+                    {displayDetails.width}. Condition:{" "}
+                    {displayDetails.condition}.
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+          </aside>
+        </section>
+
+        <section className="overflow-hidden rounded-[1.25rem] border border-[#141D46]/10 bg-[#141D46] p-4 text-[#FDF7F1] shadow-[0_16px_42px_rgba(20,29,70,0.13)] sm:p-5 lg:grid lg:grid-cols-[0.9fr_1.4fr] lg:items-center lg:gap-5">
             <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
-                {recommendationEyebrow}
+              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">
+                Provenance Promise
               </p>
-              <h2 className="font-serif text-2xl text-foreground">
-                {recommendationTitle}
+              <h2 className="mt-2 max-w-xl font-serif text-[clamp(1.7rem,2.6vw,2.7rem)] leading-[0.98]">
+                Not just pre-loved. Carefully re-storied.
               </h2>
             </div>
-          </ScrollReveal>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-6 lg:grid-cols-3">
-            {related.map((item, index) => (
-              <ScrollReveal key={item.id} delay={index * 0.05}>
-                <ProductCard product={item} />
-              </ScrollReveal>
-            ))}
-          </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:mt-0">
+              <PromiseStat label="Authenticated" value="By hand" />
+              <PromiseStat label="Condition" value={displayDetails.condition} />
+              <PromiseStat label="Ownership" value="One of one" />
+            </div>
         </section>
-      )}
 
-      <RecentlyViewed excludeId={product.id} limit={6} />
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <InfoCard
+            icon={<Gem />}
+            title="Provenance"
+            body={
+              product.storyProvenance ||
+              "Sourced from a private trunk and reviewed before listing."
+            }
+          />
+          <InfoCard
+            icon={<ShieldCheck />}
+            title="Condition"
+            body={displayDetails.condition}
+          />
+          <InfoCard
+            icon={<Sparkles />}
+            title="Textile"
+            body={
+              displayDetails.designer
+                ? `${displayDetails.fabric} by ${displayDetails.designer}`
+                : displayDetails.fabric
+            }
+          />
+          <InfoCard
+            icon={<Ruler />}
+            title="Measurements"
+            body={`${displayDetails.length}. ${displayDetails.width}.`}
+          />
+          <InfoCard
+            icon={<PackageCheck />}
+            title="Care"
+            body="Dry clean only. Store in muslin and keep away from direct sunlight."
+          />
+          <InfoCard
+            icon={<Truck />}
+            title="Shipping and ownership"
+            body="Secure packing. Shipping and taxes are calculated at checkout."
+          />
+        </section>
+
+        {tags.length > 0 ? (
+          <section className="flex flex-wrap gap-2 border-y border-[#E7DDD4] py-5">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-[#E7DDD4] bg-[#FFFCF8] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[#601D1C]/65"
+              >
+                {tag}
+              </span>
+            ))}
+          </section>
+        ) : null}
+
+        {related.length > 0 ? (
+          <section className="space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+                  Curation
+                </p>
+                <h2 className="mt-2 font-serif text-[clamp(2.1rem,4vw,4rem)] leading-none text-[#601D1C]">
+                  Pieces from a similar chapter.
+                </h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-[#141D46]/58">
+                Selected by fabric, era, and the quiet details that make this
+                saree feel connected to the rest of the trunk.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-4">
+              {related.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <RecentlyViewed excludeId={product.id} limit={6} />
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E7DDD4] bg-[#FDF7F1]/96 px-3 py-3 shadow-[0_-14px_34px_rgba(20,29,70,0.10)] backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-screen-sm items-center gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-[#141D46]/62">
+              {product.name}
+            </p>
+            <p className="text-base font-semibold text-[#141D46]">
+              {formatCurrency(product.pricePaise / 100)}
+            </p>
+          </div>
+          <div className="min-w-0 flex-1">
+            <AddToCartButton
+              product={product}
+              initialStatus={effectiveStockStatus}
+            />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function rankRelatedProducts(
+  product: Product,
+  candidates: Product[],
+  displayDetails: ProductDisplayDetails,
+) {
+  const productTags = new Set(product.tags.map((tag) => tag.name));
+  const normalizedFabric = displayDetails.fabric.toLowerCase();
+  const normalizedEra = product.storyEra?.toLowerCase() ?? "";
+
+  return candidates
+    .map((candidate) => {
+      const candidateDisplayDetails = getProductDisplayDetails(candidate);
+      const candidateTags = new Set(candidate.tags.map((tag) => tag.name));
+      let score = 0;
+
+      if (
+        normalizedEra &&
+        candidate.storyEra?.toLowerCase() === normalizedEra
+      ) {
+        score += 3;
+      }
+
+      if (
+        normalizedFabric &&
+        candidateDisplayDetails.fabric.toLowerCase() === normalizedFabric
+      ) {
+        score += 2;
+      }
+
+      for (const tag of productTags) {
+        if (candidateTags.has(tag)) {
+          score += 1;
+          break;
+        }
+      }
+
+      return { candidate, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.candidate);
+}
+
+function StockBadge({ stockStatus }: { stockStatus: EffectiveStockStatus }) {
+  const label =
+    stockStatus === "available"
+      ? "In stock"
+      : stockStatus === "reserved"
+        ? "Reserved"
+        : "Sold";
+
+  return (
+    <Badge
+      className={
+        stockStatus === "available"
+          ? "rounded-full border border-[#141D46]/15 bg-[#141D46]/8 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#141D46] shadow-none"
+          : "rounded-full border border-[#601D1C]/20 bg-[#601D1C]/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#601D1C] shadow-none"
+      }
+    >
+      {label}
+    </Badge>
+  );
+}
+
+function DossierFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[#E7DDD4] bg-[#FDF7F1]/80 p-2.5">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#B39152]">
+        {label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-5 text-[#141D46] sm:text-sm">
+        {value}
+      </p>
     </div>
+  );
+}
+
+function TrustSignal({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactElement;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-[#E7DDD4] bg-[#FDF7F1]/72 p-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#B39152]/12 text-[#B39152] [&_svg]:h-4 [&_svg]:w-4">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-[#601D1C]/52">
+          {label}
+        </span>
+        <span className="mt-0.5 block truncate text-xs font-medium text-[#141D46]">
+          {value}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function TrustLine({
+  icon,
+  text,
+}: {
+  icon: ReactElement;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 text-xs text-[#FDF7F1]/78">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#B39152]/14 text-[#B39152] [&_svg]:h-3.5 [&_svg]:w-3.5">
+        {icon}
+      </span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function PromiseStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/8 p-3">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#B39152]">
+        {label}
+      </p>
+      <p className="mt-1.5 line-clamp-2 font-serif text-xl leading-none text-[#FDF7F1]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function InfoCard({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactElement;
+  title: string;
+  body: string;
+}) {
+  return (
+    <article className="h-full rounded-[1.25rem] border border-[#E7DDD4] bg-[#FFFCF8]/82 p-4 shadow-[0_14px_34px_rgba(20,29,70,0.05)]">
+      <div className="mb-4 grid h-9 w-9 place-items-center rounded-full bg-[#141D46] text-[#B39152] [&_svg]:h-4 [&_svg]:w-4">
+        {icon}
+      </div>
+      <h3 className="font-serif text-[1.45rem] leading-none text-[#601D1C]">
+        {title}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-[#141D46]/62">{body}</p>
+    </article>
   );
 }

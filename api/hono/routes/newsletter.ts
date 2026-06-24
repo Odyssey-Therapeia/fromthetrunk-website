@@ -31,6 +31,7 @@ export const registerNewsletterRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const rateLimited = await rateLimitResponse(c.req.raw, "newsletter:sub", {
         limit: 3,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;

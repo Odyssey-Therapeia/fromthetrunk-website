@@ -31,9 +31,25 @@
  * would interfere with queue-based test mocks.
  */
 
-import { and, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
+import {
+  getCollectionBySlug,
+  getCollectionProductIds,
+} from "@/db/queries/collections";
 import { hydrateProducts as hydrateProductsQuery } from "@/db/queries/products";
 import {
   products,
@@ -42,12 +58,53 @@ import {
   tags,
 } from "@/db/schema";
 import type { CatalogFacets, CatalogSearchFilters, CatalogSearchPort } from "@/lib/ports/catalog-search";
+import { DEFAULT_PRODUCT_SORT } from "@/lib/products/sort";
+import type { ProductSortOption } from "@/lib/products/sort";
 
 // ── Facet helpers ─────────────────────────────────────────────────────────────
 
-/** Resolve facet counts for the FULL published catalog (static). */
-async function buildFacets(): Promise<CatalogFacets> {
-  const publishedFilter = eq(products.status, "published" as const);
+/** Resolve static facet counts for the active published catalog scope. */
+const emptyFacets = (): CatalogFacets => ({
+  fabric: {},
+  type: {},
+  availability: {},
+  tags: {},
+  tagDetails: {},
+});
+
+const getProductSortOrder = (sort: ProductSortOption) => {
+  switch (sort) {
+    case "price-low-to-high":
+      return [asc(products.pricePaise), desc(products.createdAt)];
+    case "price-high-to-low":
+      return [desc(products.pricePaise), desc(products.createdAt)];
+    default:
+      return [desc(products.createdAt)];
+  }
+};
+
+async function buildScopedCollectionIds(
+  collectionSlug?: string,
+): Promise<string[] | undefined> {
+  if (!collectionSlug) return undefined;
+
+  const collection = await getCollectionBySlug(collectionSlug);
+  if (!collection) return [];
+
+  return getCollectionProductIds(collection);
+}
+
+async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
+  if (productIds && productIds.length === 0) {
+    return emptyFacets();
+  }
+
+  const publishedFilter = productIds
+    ? and(
+        eq(products.status, "published" as const),
+        inArray(products.id, productIds),
+      )
+    : eq(products.status, "published" as const);
 
   const [fabricRows, typeRows, availabilityRows, tagRows] = await Promise.all([
     // Fabric: (attributes->>'fabric') GROUP BY value
@@ -87,18 +144,20 @@ async function buildFacets(): Promise<CatalogFacets> {
         .groupBy(products.stockStatus)
     ),
 
-    // Tags: JOIN product_tags → tags → slug, GROUP BY slug
+    // Tags: JOIN product_tags → tags, keeping display metadata for filter groups.
     withRetry(() =>
       db
         .select({
           tagSlug: tags.slug,
+          tagName: tags.name,
+          tagCategory: tags.category,
           count: sql<number>`cast(count(*) as integer)`.as("count"),
         })
         .from(products)
         .innerJoin(productTags, eq(productTags.productId, products.id))
         .innerJoin(tags, eq(productTags.tagId, tags.id))
         .where(publishedFilter)
-        .groupBy(tags.slug)
+        .groupBy(tags.slug, tags.name, tags.category)
     ),
   ]);
 
@@ -118,11 +177,18 @@ async function buildFacets(): Promise<CatalogFacets> {
   }
 
   const tagsMap: Record<string, number> = {};
+  const tagDetails: CatalogFacets["tagDetails"] = {};
   for (const row of tagRows) {
-    if (row.tagSlug) tagsMap[row.tagSlug] = row.count;
+    if (row.tagSlug) {
+      tagsMap[row.tagSlug] = row.count;
+      tagDetails[row.tagSlug] = {
+        category: row.tagCategory ?? "",
+        name: row.tagName ?? row.tagSlug,
+      };
+    }
   }
 
-  return { fabric, type, availability, tags: tagsMap };
+  return { fabric, type, availability, tags: tagsMap, tagDetails };
 }
 
 // ── Main adapter ──────────────────────────────────────────────────────────────
@@ -130,10 +196,32 @@ async function buildFacets(): Promise<CatalogFacets> {
 export function createPostgresCatalogSearch(): CatalogSearchPort {
   return {
     async searchProducts(filters: CatalogSearchFilters) {
-      const { query, type, fabric, priceMin, priceMax, availability, tags: tagSlugs } = filters;
+      const {
+        collectionSlug,
+        facetsOnly = false,
+        query,
+        type,
+        fabric,
+        limit,
+        offset = 0,
+        priceMin,
+        priceMax,
+        sort = DEFAULT_PRODUCT_SORT,
+        availability,
+        tags: tagSlugs,
+      } = filters;
+      const collectionProductIds = await buildScopedCollectionIds(collectionSlug);
+
+      if (collectionProductIds && collectionProductIds.length === 0) {
+        return { products: [], facets: emptyFacets(), totalDocs: 0 };
+      }
 
       // Build WHERE clauses — all ANDed.
       const whereClauses = [eq(products.status, "published" as const)];
+
+      if (collectionProductIds) {
+        whereClauses.push(inArray(products.id, collectionProductIds));
+      }
 
       // P6-03: Free-text search via ILIKE (case-insensitive substring match).
       //
@@ -230,22 +318,45 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         ? whereClauses[0]
         : and(...whereClauses);
 
-      // Fetch matching product rows (single db.select() call)
-      const rows = await withRetry(() =>
-        db
+      if (facetsOnly) {
+        const facets = await buildFacets(collectionProductIds);
+        return { products: [], facets, totalDocs: 0 };
+      }
+
+      const rowsPromise = withRetry(() => {
+        const query = db
           .select()
           .from(products)
           .where(whereClause)
-          .orderBy(sql`${products.createdAt} DESC`)
-      );
+          .offset(offset)
+          .orderBy(...getProductSortOrder(sort));
 
-      // Hydrate with relations (collections, images, tags) — 2-3 db.select() calls
+        return typeof limit === "number" ? query.limit(limit) : query;
+      });
+
+      const countPromise =
+        typeof limit === "number"
+          ? withRetry(() =>
+              db.select({ total: count() }).from(products).where(whereClause)
+            )
+          : Promise.resolve([{ total: 0 }]);
+      const facetsPromise = buildFacets(collectionProductIds);
+
+      const [rows, [countResult], facets] = await Promise.all([
+        rowsPromise,
+        countPromise,
+        facetsPromise,
+      ]);
+
+      // Hydrate with relations only for the visible page, not every match.
       const hydratedProducts = await hydrateProductsQuery(rows);
 
-      // Build facets (4 parallel db.select() calls)
-      const facets = await buildFacets();
-
-      return { products: hydratedProducts, facets };
+      return {
+        products: hydratedProducts,
+        facets,
+        totalDocs:
+          typeof limit === "number" ? (countResult?.total ?? 0) : rows.length,
+      };
     },
   };
 }
