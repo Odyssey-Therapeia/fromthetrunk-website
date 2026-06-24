@@ -8,7 +8,7 @@ import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 
 const SLIDE_DURATION_MS = 8500;
 const SLIDE_TRANSITION_MS = 1600;
-const HERO_GOLD = "#C18D39";
+const HERO_GOLD = "#B39152";
 
 // TEMP (debugging): flip back to true to restore auto-advance.
 const AUTOPLAY_ENABLED = true;
@@ -53,14 +53,14 @@ const slides: Slide[] = [
     ],
     description: "Handcrafted pieces for women who lead with confidence.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(7.5rem,16vh,10rem)] md:justify-start md:pb-0",
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0",
   },
   {
     image: "/hero/4.png",
     mobileImage: "/hero/mobile_2.png",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
-    mobileImagePosition: "center top",
+    mobileImagePosition: "center 80%",
     eyebrow: "HERITAGE IN MOTION",
     headline: [{ text: "TIMELESS", accent: true }, { text: " by design." }],
     mobileHeadline: [
@@ -69,14 +69,15 @@ const slides: Slide[] = [
     ],
     description:
       "Created to be cherished today, tomorrow, and for generations.",
-    mobileCopyClassName: "justify-start pt-[clamp(3rem,7vh,5rem)] md:pt-16",
+    mobileCopyClassName:
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
     image: "/hero/5.png",
     mobileImage: "/hero/mobile_3.png",
     imagePosition: "center center",
     tabletImagePosition: "56% center",
-    mobileImagePosition: "center top",
+    mobileImagePosition: "center 80%",
     eyebrow: "The Final statement",
     headline: [
       { text: "Beautiful " },
@@ -88,14 +89,15 @@ const slides: Slide[] = [
       [{ text: "YOU", accent: true }, { text: "." }],
     ],
     description: "Every weave becomes a story when you wear it.",
-    mobileCopyClassName: "justify-start pt-[clamp(3rem,7vh,5rem)] md:pt-16",
+    mobileCopyClassName:
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
     image: "/hero/6.png",
     mobileImage: "/hero/mobile_4.png",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
-    mobileImagePosition: "center top",
+    mobileImagePosition: "center 80%",
     eyebrow: "Curated Drop",
     headline: [
       { text: "FROM THE " },
@@ -116,7 +118,7 @@ const slides: Slide[] = [
     headlineClassName:
       "md:!text-[clamp(2.45rem,4.7vw,4.35rem)] lg:!text-[clamp(3.2rem,5.15vw,6.35rem)]",
     mobileCopyClassName:
-      "justify-start pt-[clamp(2.75rem,6vh,4.25rem)] md:pt-16",
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
     mobileHeadlineClassName: "!text-[clamp(2.65rem,11vw,4rem)] !leading-[0.92]",
   },
 ];
@@ -190,8 +192,8 @@ function HeroCopy({
       <span
         className={
           isMobile
-            ? "mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#C18D39] via-[#C18D39]/70 to-transparent"
-            : "mb-6 mt-4 block h-px w-32 bg-linear-to-r from-[#C18D39] via-[#C18D39]/70 to-transparent"
+            ? "mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
+            : "mb-6 mt-4 block h-px w-32 bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
         }
         aria-hidden="true"
       />
@@ -295,7 +297,7 @@ export function HeroSection(props: HeroSectionProps) {
   return (
     <section
       id="home-hero"
-      className="relative h-[calc(100svh-9.125rem)] min-h-136 overflow-hidden text-white md:h-[min(calc(100svh-6.625rem),60vw)] md:min-h-144 lg:h-[min(calc(100svh-6.625rem),56.25vw)] lg:min-h-152 xl:min-h-160 2xl:min-h-168h-[clamp(2rem,1.6rem+1.7vw,3.25rem)]"
+      className="relative h-[calc(100svh-9.125rem)] min-h-120 overflow-hidden text-white md:h-[min(calc(100svh-6.625rem),60vw)] md:min-h-144 lg:h-[min(calc(100svh-6.625rem),56.25vw)] lg:min-h-152 xl:min-h-160 2xl:min-h-168"
     >
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -355,7 +357,7 @@ export function HeroSection(props: HeroSectionProps) {
           previousSlide();
         }}
         aria-label="Previous slide"
-        className="absolute left-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#aa8657] hover:bg-[#3c0c0f]/80 hover:text-[#aa8657] md:left-8 md:top-auto md:bottom-10 md:translate-y-0"
+        className="absolute left-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/80 hover:text-[#B39152] md:left-8 md:top-auto md:bottom-10 md:translate-y-0"
       >
         <ChevronLeft
           className="h-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)] w-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)]"
@@ -370,7 +372,7 @@ export function HeroSection(props: HeroSectionProps) {
           nextSlide();
         }}
         aria-label="Next slide"
-        className="absolute right-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#aa8657] hover:bg-[#3c0c0f]/80 hover:text-[#aa8657] md:right-8 md:top-auto md:bottom-10 md:translate-y-0"
+        className="absolute right-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/80 hover:text-[#B39152] md:right-8 md:top-auto md:bottom-10 md:translate-y-0"
       >
         <ChevronRight
           className="h-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)] w-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)]"
@@ -426,7 +428,7 @@ export function HeroSection(props: HeroSectionProps) {
             className={[
               "h-0.75 rounded-full transition-all duration-500",
               activeImageIndex === index
-                ? "w-12 bg-[#C18D39]"
+                ? "w-12 bg-[#B39152]"
                 : "w-7 bg-white/35 hover:bg-white/60",
             ].join(" ")}
           />

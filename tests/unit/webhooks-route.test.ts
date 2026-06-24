@@ -353,7 +353,9 @@ describe("webhook payment.failed", () => {
         updateCalls.push({ table, setArg });
         const whereMock = vi.fn((whereArg: unknown) => {
           updateCalls[callIndex].whereArg = whereArg;
-          return Promise.resolve([]);
+          return Object.assign(Promise.resolve([]), {
+            returning: vi.fn().mockResolvedValue([]),
+          });
         });
         return { where: whereMock };
       });

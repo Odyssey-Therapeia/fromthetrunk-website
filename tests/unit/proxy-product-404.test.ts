@@ -14,35 +14,30 @@ vi.mock("@/db/queries/products", () => ({
 
 import { proxy } from "@/proxy";
 
-describe("proxy product detail 404 guard", () => {
+describe("proxy product detail pass-through", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
   });
 
-  it("returns a real 404 before product detail pages stream missing slugs", async () => {
+  it("lets the product detail page handle missing slugs without a proxy DB lookup", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/missing-saree")
     );
 
-    expect(response.status).toBe(404);
-    expect(response.headers.get("x-robots-tag")).toBe("noindex");
-    expect(productSlugExistsMock).toHaveBeenCalledWith("missing-saree", {
-      includeDrafts: false,
-    });
+    expect(response.status).toBe(200);
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 
-  it("allows existing product detail slugs through", async () => {
+  it("allows existing product detail slugs through without a proxy DB lookup", async () => {
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/published-saree")
     );
 
     expect(response.status).toBe(200);
-    expect(productSlugExistsMock).toHaveBeenCalledWith("published-saree", {
-      includeDrafts: false,
-    });
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 
   it("does not block draft preview product links before the page can read draft mode", async () => {
@@ -58,16 +53,14 @@ describe("proxy product detail 404 guard", () => {
     expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 
-  it("handles malformed slug encoding without throwing", async () => {
+  it("passes malformed slug encoding through without throwing", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/%E0%A4%A")
     );
 
-    expect(response.status).toBe(404);
-    expect(productSlugExistsMock).toHaveBeenCalledWith("", {
-      includeDrafts: false,
-    });
+    expect(response.status).toBe(200);
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 });

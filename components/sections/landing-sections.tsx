@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-type LandingImage = {
+export type LandingImage = {
   alt: string;
   src: string;
   title?: string;
@@ -19,15 +25,10 @@ export type LandingProductCard = {
   price: string;
 };
 
-type SocialCard = {
-  caption: string;
-  image: string;
-  label: string;
-};
-
 type LandingSectionsProps = {
   featuredProducts: LandingProductCard[];
   showIntroSeparator?: boolean;
+  socialSection: ReactNode;
   storyImages: LandingImage[];
 };
 
@@ -117,18 +118,28 @@ const testimonials = [
 const story =
   "From family trunks to modern wardrobes, every saree we choose carries a life before this one. We authenticate, restore, and style each piece with care, so its next chapter feels as meaningful as its first.";
 
-function PlayIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-6 w-6"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M8 5v14l11-7L8 5Z" />
-    </svg>
-  );
-}
+const storyChapters = [
+  {
+    label: "Provenance",
+    title: "It begins in a trunk.",
+    body: "Every saree arrives with a past - a wardrobe, a wedding, a journey, a woman who wore it before.",
+  },
+  {
+    label: "Restoration",
+    title: "We care before we curate.",
+    body: "Each piece is checked, refreshed, repaired where needed, and prepared with the attention old textiles deserve.",
+  },
+  {
+    label: "Styling",
+    title: "Then we style it for now.",
+    body: "The saree keeps its memory, but the look becomes current - easy to wear, photograph, and make your own.",
+  },
+  {
+    label: "Rewear",
+    title: "The next chapter is yours.",
+    body: "Not pre-owned. Re-storied. A piece of heritage continues its life with someone new.",
+  },
+];
 
 function ArrowIcon() {
   return (
@@ -225,29 +236,13 @@ function shouldBypassImageOptimizer(src: string) {
   );
 }
 
-function buildSocialCards(images: LandingImage[]): SocialCard[] {
-  const captions = [
-    ["RESTORATION", "Before the drape returns to the wardrobe."],
-    ["STYLING", "One saree, many ways to carry presence."],
-    ["PROVENANCE", "The detail that makes a piece remembered."],
-    ["NEW ARRIVAL", "A quiet statement from the trunk."],
-    ["CARE", "Pressed, checked, folded, and ready."],
-  ];
-
-  return fillImages(images).map((image, index) => ({
-    image: image.src,
-    label: captions[index]?.[0] ?? "SOCIAL",
-    caption: captions[index]?.[1] ?? "A restored saree finding its next story.",
-  }));
-}
-
 export function SectionSeparator() {
   return (
-    <div className="bg-[#F8F4EF] px-6">
+    <div className="bg-[#FDF7F1] px-6">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-5 py-3">
-        <div className="h-px flex-1 bg-linear-to-r from-transparent via-[#3C0C0F]/20 to-[#3C0C0F]/8" />
-        <div className="h-2 w-2 rounded-full bg-[#AA8657]" />
-        <div className="h-px flex-1 bg-linear-to-l from-transparent via-[#3C0C0F]/20 to-[#3C0C0F]/8" />
+        <div className="h-px flex-1 bg-linear-to-r from-transparent via-[#141D46]/28 to-[#141D46]/10" />
+        <div className="h-2 w-2 rounded-full bg-[#141D46]" />
+        <div className="h-px flex-1 bg-linear-to-l from-transparent via-[#141D46]/28 to-[#141D46]/10" />
       </div>
     </div>
   );
@@ -257,55 +252,174 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
   const storyImages = fillImages(images);
   const { ref, visibleText } = useTypewriter(story);
   const [activeImage, setActiveImage] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const activeStoryImage = storyImages[activeImage] ?? storyImages[0];
+  const activeChapter =
+    storyChapters[activeImage % storyChapters.length] ?? storyChapters[0];
+  const isTyping = visibleText.length < story.length;
 
   useEffect(() => {
+    if (isPaused || storyImages.length <= 1) return;
+
     const timer = window.setInterval(() => {
       setActiveImage((current) => (current + 1) % storyImages.length);
-    }, 3800);
+    }, 4200);
 
     return () => window.clearInterval(timer);
-  }, [storyImages.length]);
+  }, [isPaused, storyImages.length]);
+
+  if (!activeStoryImage || !activeChapter) return null;
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 18;
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 18;
+
+    event.currentTarget.style.setProperty("--story-x", `${x}px`);
+    event.currentTarget.style.setProperty("--story-y", `${y}px`);
+  };
+
+  const resetPointer = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.style.setProperty("--story-x", "0px");
+    event.currentTarget.style.setProperty("--story-y", "0px");
+  };
 
   return (
-    <section id="our-story" className="bg-[#F8F4EF] px-6 py-20 md:py-28">
+    <section
+      id="our-story"
+      className="relative overflow-hidden bg-[#FDF7F1] px-6 py-20 md:py-28"
+    >
+      <div
+        className="pointer-events-none absolute left-1/2 top-10 hidden h-[calc(100%-5rem)] w-px -translate-x-1/2 bg-linear-to-b from-transparent via-[#B39152]/25 to-transparent lg:block"
+        aria-hidden="true"
+      />
+
       <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
-        <div ref={ref}>
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.34em] text-[#7A5430]">
-            Our Story
-          </p>
-          <h2 className="max-w-xl font-serif text-[clamp(2.7rem,5vw,6rem)] leading-[0.95] text-[#3C0C0F]">
+        <div ref={ref} className="relative z-10">
+          <div className="mb-6 inline-flex items-center gap-3">
+            <span className="h-px w-10 bg-[#B39152]" aria-hidden="true" />
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+              Our Story
+            </p>
+          </div>
+
+          <h2 className="max-w-xl font-serif text-[clamp(2.7rem,5vw,6rem)] leading-[0.95] text-[#141D46]">
             A next story to every saree.
           </h2>
-          <p className="mt-8 min-h-40 max-w-xl text-[clamp(1rem,1.2vw,1.2rem)] leading-8 text-[#3C0C0F]/75">
+
+          <p className="mt-8 min-h-40 max-w-xl text-[clamp(1rem,1.2vw,1.2rem)] leading-8 text-[#141D46]/58">
             {visibleText}
-            <span className="ml-1 inline-block translate-y-1 text-[#AA8657]">
-              |
-            </span>
+            {isTyping ? (
+              <span className="ml-1 inline-block translate-y-1 animate-pulse text-[#B39152]">
+                |
+              </span>
+            ) : null}
           </p>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {storyChapters.map((chapter, index) => {
+              const isActive = activeImage % storyChapters.length === index;
+              const nextImageIndex = index % storyImages.length;
+
+              return (
+                <button
+                  key={chapter.label}
+                  type="button"
+                  onClick={() => setActiveImage(nextImageIndex)}
+                  className={[
+                    "group rounded-2xl border p-4 text-left transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]",
+                    isActive
+                      ? "border-[#B39152]/70 bg-[#141D46] text-[#FDF7F1] shadow-[0_16px_40px_rgba(20,29,70,0.16)]"
+                      : "border-[#601D1C]/10 bg-[#FFFCF8]/70 text-[#141D46] hover:-translate-y-0.5 hover:border-[#B39152]/55 hover:bg-[#FFFCF8]",
+                  ].join(" ")}
+                  aria-pressed={isActive}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#B39152]">
+                    {chapter.label}
+                  </span>
+
+                  <span className="mt-2 block font-serif text-xl leading-tight">
+                    {chapter.title}
+                  </span>
+
+                  <span
+                    className={[
+                      "mt-2 block text-xs leading-5",
+                      isActive ? "text-[#FDF7F1]/70" : "text-[#141D46]/55",
+                    ].join(" ")}
+                  >
+                    {chapter.body}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/collection"
+              className="inline-flex rounded-full bg-[#141D46] px-5 py-3 text-sm font-medium text-[#FDF7F1] shadow-[0_12px_28px_rgba(20,29,70,0.16)] transition hover:bg-[#0E0D0E]"
+            >
+              Explore re-storied pieces
+            </Link>
+
+            <Link
+              href="/our-story"
+              className="inline-flex rounded-full border border-[#B39152]/55 px-5 py-3 text-sm font-medium text-[#601D1C] transition hover:bg-[#B39152]/10"
+            >
+              Read the full story
+            </Link>
+          </div>
         </div>
 
-        <div className="relative h-130 overflow-hidden rounded-[1.5rem] bg-[#3C0C0F] shadow-2xl shadow-[#3C0C0F]/20 md:h-160">
-          {storyImages.map((image, index) => (
-            <Image
-              key={`${image.src}-${index}`}
-              src={image.src}
-              alt={image.alt}
-              fill
-              sizes="(max-width: 1024px) 100vw, 52vw"
-              unoptimized={shouldBypassImageOptimizer(image.src)}
-              className={`object-cover transition-opacity duration-1000 ${
-                activeImage === index ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
-          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/15 to-transparent" />
-          <div className="absolute bottom-8 left-8 right-8">
+        <div
+          className="ftt-story-frame relative h-[32rem] overflow-hidden rounded-[1.5rem] bg-[#601D1C] shadow-2xl shadow-[#601D1C]/20 md:h-[40rem]"
+          data-paused={isPaused ? "true" : undefined}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={(event) => {
+            resetPointer(event);
+            setIsPaused(false);
+          }}
+          onMouseEnter={() => setIsPaused(true)}
+          onFocus={() => setIsPaused(true)}
+          onBlur={() => setIsPaused(false)}
+        >
+          <Image
+            key={`${activeStoryImage.src}-${activeImage}`}
+            src={activeStoryImage.src}
+            alt={activeStoryImage.alt}
+            fill
+            sizes="(max-width: 1024px) 100vw, 52vw"
+            unoptimized={shouldBypassImageOptimizer(activeStoryImage.src)}
+            className="ftt-story-image object-cover"
+            priority
+          />
+
+          <div className="absolute inset-0 bg-linear-to-t from-[#0E0D0E]/78 via-[#0E0D0E]/18 to-transparent" />
+
+          <div className="absolute left-5 top-5 z-10 flex items-center gap-2 rounded-full border border-white/20 bg-[#FDF7F1]/90 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#601D1C] shadow-sm backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#B39152]" />
+            Chapter {String(activeImage + 1).padStart(2, "0")}
+          </div>
+
+          <div className="absolute right-5 top-5 z-10 rounded-full border border-[#B39152]/40 bg-[#141D46]/75 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#FDF7F1] backdrop-blur">
+            {activeChapter.label}
+          </div>
+
+          <div className="absolute bottom-6 left-6 right-6 z-10 sm:bottom-8 sm:left-8 sm:right-8">
             <p className="text-xs uppercase tracking-[0.3em] text-white/65">
               From The Trunk
             </p>
-            <h3 className="mt-2 font-serif text-3xl text-white md:text-4xl">
-              {storyImages[activeImage]?.title ?? "Curated with care"}
+
+            <h3 className="mt-2 max-w-xl font-serif text-3xl leading-tight text-white md:text-4xl">
+              {activeStoryImage.title ?? activeChapter.title}
             </h3>
+
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/72">
+              {activeChapter.body}
+            </p>
+
             <div className="mt-6 flex gap-2">
               {storyImages.map((image, index) => (
                 <button
@@ -313,70 +427,17 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
                   type="button"
                   onClick={() => setActiveImage(index)}
                   aria-label={`Show story image ${index + 1}`}
-                  className={`h-0.75 rounded-full transition-all ${
-                    activeImage === index
-                      ? "w-12 bg-[#AA8657]"
-                      : "w-7 bg-white/40"
-                  }`}
-                />
+                  className="ftt-story-progress relative h-1 overflow-hidden rounded-full bg-white/30 transition-all"
+                  data-active={activeImage === index ? "true" : undefined}
+                  style={{
+                    width: activeImage === index ? "3rem" : "1.75rem",
+                  }}
+                >
+                  <span className="absolute inset-0 origin-left rounded-full bg-[#B39152]" />
+                </button>
               ))}
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function SocialSection({ images }: { images: LandingImage[] }) {
-  const reels = buildSocialCards(images);
-
-  return (
-    <section className="bg-[#F8F4EF] px-6 py-20 md:py-28">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#7A5430]">
-              Social
-            </p>
-            <h2 className="font-serif text-[clamp(2.8rem,5vw,6rem)] leading-none text-[#3C0C0F]">
-              @fromthetrunk
-            </h2>
-          </div>
-          <p className="max-w-md text-base leading-7 text-[#3C0C0F]/70">
-            Reels from our styling table, restoration notes, new arrivals, and
-            the women giving old-world sarees a new life.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-5">
-          {reels.map((reel) => (
-            <article
-              key={`${reel.image}-${reel.label}`}
-              className="group relative h-[clamp(16rem,70vw,25rem)] overflow-hidden rounded-xl bg-[#3C0C0F] sm:h-102.5 sm:rounded-4xl md:h-112.5"
-            >
-              <Image
-                src={reel.image}
-                alt={reel.caption}
-                fill
-                sizes="(max-width: 1024px) 50vw, 20vw"
-                unoptimized={shouldBypassImageOptimizer(reel.image)}
-                className="object-cover transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/15 to-transparent" />
-              <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/45 bg-white/15 text-white backdrop-blur-md transition duration-300 group-hover:scale-110 group-hover:bg-[#AA8657] sm:h-14 sm:w-14">
-                <PlayIcon />
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 sm:bottom-6 sm:left-6 sm:right-6">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#AA8657] sm:text-[11px] sm:tracking-[0.24em]">
-                  {reel.label}
-                </p>
-                <h3 className="mt-1 font-serif text-sm leading-snug text-white sm:mt-2 sm:text-2xl sm:leading-tight">
-                  {reel.caption}
-                </h3>
-              </div>
-            </article>
-          ))}
         </div>
       </div>
     </section>
@@ -388,69 +449,202 @@ export function FeaturedProductsSection({
 }: {
   products: LandingProductCard[];
 }) {
-  const productCards = fillProducts(products);
+  const productCards = fillProducts(products).slice(0, 6);
+  const heroProduct = productCards[0];
+  const supportingProducts = productCards.slice(1);
+
+  if (!heroProduct) return null;
 
   return (
-    <section className="bg-[#F8F4EF] px-5 py-16 sm:px-6 md:py-22">
+    <section className="bg-[#FDF7F1] px-5 py-16 sm:px-6 md:py-22">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+        <div className="mb-10 grid gap-6 border-b border-[#601D1C]/10 pb-8 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)] md:items-end">
           <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#7A5430]">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
               Featured Products
             </p>
-            <h2 className="font-serif text-[clamp(2.45rem,4.7vw,5.4rem)] leading-none text-[#3C0C0F]">
+            <h2 className="max-w-4xl font-serif text-5xl leading-none text-[#601D1C] sm:text-6xl lg:text-7xl">
               New arrivals from the trunk.
             </h2>
           </div>
-          <p className="max-w-md text-base leading-7 text-[#3C0C0F]/70">
-            Six handpicked sarees selected for craft, condition, provenance, and
-            quiet distinction.
-          </p>
+
+          <div className="space-y-5 md:text-right">
+            <p className="text-base leading-7 text-[#601D1C]/70 md:ml-auto md:max-w-md">
+              Six handpicked sarees selected for craft, condition, provenance,
+              and quiet distinction.
+            </p>
+
+            <Link
+              href="/collection"
+              className="inline-flex rounded-full border border-[#601D1C]/35 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition hover:border-[#B39152] hover:text-[#B39152]"
+            >
+              View all pieces
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-3 gap-y-8 min-[520px]:grid-cols-2 min-[520px]:gap-x-5 min-[520px]:gap-y-10 lg:grid-cols-3 2xl:grid-cols-4">
-          {productCards.map((product) => (
-            <article key={`${product.name}-${product.href}`} className="group">
-              <Link href={product.href} className="block">
-                <div className="relative aspect-4/5 overflow-hidden rounded-lg bg-[#3C0C0F]/10">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
-                    unoptimized={shouldBypassImageOptimizer(product.image)}
-                    className="object-cover transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute left-2 top-2 rounded-full bg-[#F8F4EF]/90 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-[#3C0C0F] min-[520px]:left-3 min-[520px]:top-3 min-[520px]:px-3 min-[520px]:py-1.5 min-[520px]:text-[10px] min-[520px]:tracking-[0.16em]">
-                    One of one
-                  </div>
-                </div>
-                <div className="mt-3 min-[520px]:mt-4">
-                  <h3 className="font-serif text-lg leading-tight text-[#3C0C0F] min-[520px]:text-[clamp(1.55rem,2.1vw,2.25rem)]">
-                    {product.name}
-                  </h3>
-                  <p className="mt-1.5 text-xs text-[#3C0C0F]/60 min-[520px]:mt-2 min-[520px]:text-sm">
-                    {product.detail}
-                  </p>
-                  <p className="mt-1 text-xs text-[#7A5430] min-[520px]:text-sm">
-                    {product.condition}
-                  </p>
-                  <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[#3C0C0F]/10 pt-2.5 min-[520px]:mt-3 min-[520px]:gap-3 min-[520px]:pt-3">
-                    <p className="text-sm font-semibold text-[#3C0C0F] min-[520px]:text-base">
-                      {product.price}
-                    </p>
-                    <span className="hidden items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#3C0C0F] transition group-hover:text-[#AA8657] min-[520px]:inline-flex">
-                      View Piece
-                      <ArrowIcon />
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            </article>
-          ))}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.45fr)] lg:items-start">
+          <FeaturedProductTile product={heroProduct} index={0} variant="hero" />
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 min-[520px]:gap-x-5 min-[520px]:gap-y-10 xl:grid-cols-3">
+            {supportingProducts.map((product, index) => {
+              const isLastWide =
+                supportingProducts.length === 5 &&
+                index === supportingProducts.length - 1;
+
+              return (
+                <FeaturedProductTile
+                  key={`${product.name}-${product.href}`}
+                  product={product}
+                  index={index + 1}
+                  variant={isLastWide ? "wide" : "regular"}
+                  className={isLastWide ? "xl:col-span-2" : undefined}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+type FeaturedProductTileVariant = "hero" | "regular" | "wide";
+
+function FeaturedProductTile({
+  product,
+  index,
+  variant = "regular",
+  className = "",
+}: {
+  product: LandingProductCard;
+  index: number;
+  variant?: FeaturedProductTileVariant;
+  className?: string;
+}) {
+  const isHero = variant === "hero";
+  const isWide = variant === "wide";
+
+  return (
+    <article
+      className={[
+        "group",
+        isHero
+          ? "rounded-[1.75rem] border border-[#601D1C]/12 bg-[#FDF7F1] p-2 shadow-[0_18px_50px_rgba(96,29,28,0.10)]"
+          : "rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(179,145,82,0.95),rgba(96,29,28,0.22)_42%,rgba(20,29,70,0.32))] p-px shadow-[0_10px_28px_rgba(96,29,28,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(96,29,28,0.12)]",
+        className,
+      ].join(" ")}
+    >
+      <Link
+        href={product.href}
+        className={[
+          "block h-full",
+          !isHero ? "rounded-[1.3rem] bg-[#FDF7F1]/92 p-2" : "",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "relative overflow-hidden bg-[#601D1C]/10",
+            isHero
+              ? "aspect-[4/5] rounded-[1.45rem]"
+              : isWide
+                ? "aspect-4/5 rounded-lg xl:aspect-[8/5]"
+                : "aspect-4/5 rounded-lg",
+          ].join(" ")}
+        >
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            sizes={
+              isHero
+                ? "(max-width: 1024px) 100vw, 42vw"
+                : "(max-width: 1024px) 50vw, (max-width: 1536px) 25vw, 18vw"
+            }
+            unoptimized={shouldBypassImageOptimizer(product.image)}
+            className="object-cover transition duration-700 group-hover:scale-105"
+          />
+
+          <div
+            className={[
+              "absolute left-2 top-2 rounded-full bg-[#FDF7F1]/90 font-semibold uppercase text-[#601D1C] shadow-sm backdrop-blur",
+              isHero
+                ? "px-4 py-2 text-[10px] tracking-[0.18em] min-[520px]:left-4 min-[520px]:top-4"
+                : "px-2 py-1 text-[8px] tracking-[0.14em] min-[520px]:left-3 min-[520px]:top-3 min-[520px]:px-3 min-[520px]:py-1.5 min-[520px]:text-[10px] min-[520px]:tracking-[0.16em]",
+            ].join(" ")}
+          >
+            One of one
+          </div>
+
+          {isHero ? (
+            <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-[#601D1C]/92 via-[#601D1C]/58 to-transparent p-5 pt-20 min-[520px]:p-7 min-[520px]:pt-24">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+                Spotlight piece
+              </p>
+
+              <h3 className="max-w-xl font-serif text-4xl leading-none text-[#FDF7F1] min-[520px]:text-5xl lg:text-6xl">
+                {product.name}
+              </h3>
+
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#FDF7F1]/78">
+                {product.detail}
+              </p>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[#FDF7F1]/18 pt-4">
+                <div>
+                  <p className="text-xs text-[#B39152]">
+                    {product.condition}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-[#FDF7F1]">
+                    {product.price}
+                  </p>
+                </div>
+
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#FDF7F1]/35 px-4 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition group-hover:border-[#B39152] group-hover:text-[#B39152]">
+                  View Piece
+                  <ArrowIcon />
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {!isHero ? (
+          <div className="mt-3 min-[520px]:mt-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#B39152] min-[520px]:text-[10px]">
+                Drop {String(index + 1).padStart(2, "0")}
+              </p>
+
+              <span className="hidden h-px flex-1 bg-[#601D1C]/10 min-[520px]:block" />
+            </div>
+
+            <h3 className="font-serif text-lg leading-tight text-[#601D1C] min-[520px]:text-2xl">
+              {product.name}
+            </h3>
+
+            <p className="mt-1.5 text-xs text-[#601D1C]/60 min-[520px]:mt-2 min-[520px]:text-sm">
+              {product.detail}
+            </p>
+
+            <p className="mt-1 text-xs text-[#B39152] min-[520px]:text-sm">
+              {product.condition}
+            </p>
+
+            <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[#601D1C]/10 pt-2.5 min-[520px]:mt-3 min-[520px]:gap-3 min-[520px]:pt-3">
+              <p className="text-sm font-semibold text-[#601D1C] min-[520px]:text-base">
+                {product.price}
+              </p>
+
+              <span className="hidden items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition group-hover:text-[#B39152] min-[520px]:inline-flex">
+                View Piece
+                <ArrowIcon />
+              </span>
+            </div>
+          </div>
+        ) : null}
+      </Link>
+    </article>
   );
 }
 
@@ -460,13 +654,13 @@ export function TestimonialsSection() {
   return (
     <section
       id="testimonials"
-      className="overflow-hidden bg-[#3C0C0F] py-20 md:py-28"
+      className="overflow-hidden bg-[#FDF7F1] py-20 md:py-28"
     >
       <div className="mx-auto mb-12 max-w-7xl px-6">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#AA8657]">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
           Testimonials
         </p>
-        <h2 className="max-w-3xl font-serif text-[clamp(2.8rem,5vw,6rem)] leading-none text-white">
+        <h2 className="max-w-3xl font-serif text-[clamp(2.8rem,5vw,6rem)] leading-none text-[#141D46]">
           Worn again, remembered forever.
         </h2>
       </div>
@@ -475,13 +669,13 @@ export function TestimonialsSection() {
         {duplicated.map((review, index) => (
           <article
             key={`${review.name}-${index}`}
-            className="w-82.5 shrink-0 rounded-4xlrounded-4xl border border-white/10 bg-white/6 p-7 text-white backdrop-blur-md md:w-107.5"
+            className="w-82.5 shrink-0 rounded-4xl border border-[#B39152]/20 bg-[#141D46] p-7 text-white shadow-[0_18px_50px_rgba(20,29,70,0.14)] backdrop-blur-md md:w-107.5"
           >
             <p className="font-serif text-2xl leading-tight text-white/92 md:text-3xl">
               &ldquo;{review.text}&rdquo;
             </p>
             <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#AA8657]">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#B39152]">
                 {review.name}
               </p>
               <p className="text-sm text-white/50">Verified note</p>
@@ -497,17 +691,17 @@ export function ConnectWithUsSection() {
   return (
     <section
       id="connect"
-      className="bg-[#F8F4EF] px-4 py-16 sm:px-6 sm:py-20 md:py-28"
+      className="bg-[#FDF7F1] px-4 py-16 sm:px-6 sm:py-20 md:py-28"
     >
-      <div className="mx-auto grid max-w-7xl gap-8 rounded-[1.5rem] bg-[#3C0C0F] p-5 text-white sm:gap-12 sm:p-6 md:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:p-16">
+      <div className="mx-auto grid max-w-7xl gap-8 rounded-[1.5rem] bg-[#FDF7F1] p-5 text-white shadow-[0_22px_60px_rgba(20,29,70,0.16)] sm:gap-12 sm:p-6 md:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:p-16">
         <div className="min-w-0">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#AA8657] sm:mb-5">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152] sm:mb-5">
             Connect With Us
           </p>
-          <h2 className="font-serif text-[clamp(2.25rem,8vw,3rem)] leading-[1.05] sm:text-[clamp(2.8rem,5vw,6rem)] sm:leading-none">
+          <h2 className="font-serif text-[#141D46] text-[clamp(2.25rem,8vw,3rem)] leading-[1.05] sm:text-[clamp(2.8rem,5vw,6rem)] sm:leading-none">
             Looking for a saree with a story?
           </h2>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/72 sm:mt-7 sm:text-lg sm:leading-8">
+          <p className="mt-5 max-w-xl text-[#141D46] leading-7  sm:mt-7 sm:text-lg sm:leading-8">
             Tell us what you are dressing for. We will help you discover a
             restored piece that feels personal, considered, and entirely yours.
           </p>
@@ -530,12 +724,12 @@ export function ConnectWithUsSection() {
               <a
                 key={label}
                 href={href}
-                className="min-w-0 rounded-2xl border border-white/12 bg-white/6 p-4 transition hover:border-[#AA8657] hover:bg-white/10 sm:p-5"
+                className="group min-w-0 rounded-2xl border border-[#FDF7F1]/12 bg-[linear-gradient(135deg,#141D46_0%,#11183C_100%)] p-4 text-[#FDF7F1] shadow-[inset_0_0_0_1px_rgba(253,247,241,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/80 hover:bg-[linear-gradient(135deg,#601D1C_0%,#141D46_62%,#0E0D0E_100%)] hover:shadow-[0_18px_36px_rgba(20,29,70,0.22),inset_0_0_0_1px_rgba(179,145,82,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] sm:p-5"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#AA8657]">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152] transition group-hover:text-[#E5C983]">
                   {label}
                 </p>
-                <p className="mt-1.5 wrap-break-word font-serif text-xl sm:mt-2 sm:text-2xl">
+                <p className="mt-1.5 wrap-break-word font-serif text-xl text-[#FDF7F1] transition group-hover:text-white sm:mt-2 sm:text-2xl">
                   {title}
                 </p>
               </a>
@@ -543,40 +737,40 @@ export function ConnectWithUsSection() {
           </div>
         </div>
 
-        <form className="min-w-0 rounded-4xl bg-[#F8F4EF] p-5 text-[#3C0C0F] sm:p-6 md:p-8">
+        <form className="min-w-0 rounded-4xl bg-[#FDF7F1] p-5 text-[#141D46] sm:p-6 md:p-8">
           <div className="grid gap-4 sm:gap-5">
             <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#3C0C0F]/60">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
                 Name
               </span>
               <input
-                className="w-full rounded-full border border-[#3C0C0F]/15 bg-white px-4 py-3.5 outline-none transition focus:border-[#AA8657] sm:px-5 sm:py-4"
+                className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="Your name"
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#3C0C0F]/60">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
                 Email
               </span>
               <input
                 type="email"
-                className="w-full rounded-full border border-[#3C0C0F]/15 bg-white px-4 py-3.5 outline-none transition focus:border-[#AA8657] sm:px-5 sm:py-4"
+                className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="you@example.com"
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#3C0C0F]/60">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
                 Message
               </span>
               <textarea
                 rows={5}
-                className="w-full resize-none rounded-3xl border border-[#3C0C0F]/15 bg-white px-4 py-3.5 outline-none transition focus:border-[#AA8657] sm:px-5 sm:py-4"
+                className="w-full resize-none rounded-3xl border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="Tell us what you are looking for..."
               />
             </label>
             <button
               type="button"
-              className="mt-2 rounded-full bg-[#3C0C0F] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#AA8657] transition hover:bg-[#280609] sm:py-4"
+              className="mt-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] sm:py-4"
             >
               Send Message
             </button>
@@ -590,6 +784,7 @@ export function ConnectWithUsSection() {
 export function LandingSections({
   featuredProducts,
   showIntroSeparator = true,
+  socialSection,
   storyImages,
 }: LandingSectionsProps) {
   return (
@@ -597,7 +792,7 @@ export function LandingSections({
       {showIntroSeparator ? <SectionSeparator /> : null}
       <OurStorySection images={storyImages} />
       <SectionSeparator />
-      <SocialSection images={storyImages} />
+      {socialSection}
       <SectionSeparator />
       <FeaturedProductsSection products={featuredProducts} />
       <SectionSeparator />

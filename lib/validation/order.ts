@@ -4,6 +4,7 @@ export const orderItemSchema = z
   .object({
     productId: z.string().min(1),
     quantity: z.number().int().min(1).max(50),
+    reservationToken: z.string().min(1).optional(),
   });
 
 export const shippingAddressSchema = z

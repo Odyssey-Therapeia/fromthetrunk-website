@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import logoMark from "@/logos/image 8 [Vectorized].png";
 import type { FooterSection } from "@/components/layout/nav-data";
 
 // Default footer sections (fallback when no managed menu is configured).
@@ -16,17 +15,23 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
   {
     title: "Customer Care",
     links: [
-      { href: "/shipping-policy", label: "Shipping" },
-      { href: "/packing", label: "Packing" },
-      { href: "/return-policy", label: "Returns & Refunds" },
-      { href: "/how-it-works", label: "Authentication" },
+      { href: "/policies/shipping-delivery-policy", label: "Shipping" },
+      { href: "/policies/return-refund-policy", label: "Returns & Refunds" },
+      {
+        href: "/policies/authentication-condition-policy",
+        label: "Authentication",
+      },
+      { href: "/policies/care-packaging-policy", label: "Care & Packaging" },
+      { href: "/policies/sell-with-us-policy", label: "Sell With Us" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { href: "/privacy-policy", label: "Privacy Policy" },
-      { href: "/terms-of-service", label: "Terms of Service" },
+      { href: "/policies/privacy-policy", label: "Privacy Policy" },
+      { href: "/policies/terms-of-service", label: "Terms of Service" },
+      { href: "/policies/grievance-redressal", label: "Grievance Redressal" },
+      { href: "/policies", label: "All Policies" },
     ],
   },
 ];
@@ -70,12 +75,12 @@ export function SiteFooter({
   footerSections?: FooterSection[];
 }) {
   return (
-    <footer className="bg-[#3C0C0F] text-white">
+    <footer className="bg-[radial-gradient(circle_at_12%_0%,rgba(179,145,82,0.16),transparent_32%),linear-gradient(135deg,#141D46_0%,#0E0D0E_100%)] text-white">
       <div className="mx-auto grid w-full max-w-7xl gap-12 px-6 py-16 md:grid-cols-[1.4fr_2fr]">
         <div className="space-y-4">
-          <div className="inline-flex rounded-2xl bg-[#F8F4EF] px-4 py-3">
+          <div className="inline-flex rounded-2xl bg-[#FDF7F1] px-4 py-3">
             <Image
-              src={logoMark}
+              src="/logo-vectorized.png"
               alt="From the Trunk"
               width={140}
               height={56}
@@ -99,7 +104,7 @@ export function SiteFooter({
               href="https://www.instagram.com/from.thetrunk/"
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-xs uppercase tracking-[0.2em] text-white/62 transition hover:border-[#AA8657] hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-xs uppercase tracking-[0.2em] text-white/62 transition hover:border-[#B39152] hover:text-white"
               aria-label="Follow From the Trunk on Instagram"
             >
               <InstagramIcon />
@@ -109,7 +114,7 @@ export function SiteFooter({
               href="https://wa.me/919731910202"
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-xs uppercase tracking-[0.2em] text-white/62 transition hover:border-[#AA8657] hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-xs uppercase tracking-[0.2em] text-white/62 transition hover:border-[#B39152] hover:text-white"
               aria-label="Chat with From the Trunk on WhatsApp"
             >
               <ChatIcon />
@@ -121,7 +126,7 @@ export function SiteFooter({
         <div className="grid gap-8 sm:grid-cols-3">
           {footerSections.map((section) => (
             <div key={section.title} className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#AA8657]">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#B39152]">
                 {section.title}
               </p>
               <ul className="space-y-2 text-sm text-white/62">

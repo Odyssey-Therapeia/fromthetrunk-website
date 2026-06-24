@@ -14,6 +14,8 @@ import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts"
 import { getCollectionProductIds } from "@/db/queries/collections";
 import { collections, orders, products } from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
+import { verifyReservationToken } from "@/lib/cart/reservation-token";
+import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { GST_RATE } from "@/lib/config/order-pricing";
 import { isInventoryV2 } from "@/lib/config/flags";
 import { createOrderAccessToken } from "@/lib/orders/order-access-token";
@@ -107,12 +109,19 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const rateLimited = await rateLimitResponse(c.req.raw, "payment:create", {
         limit: 5,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;
 
       const body = c.req.valid("json");
       const productIds = Array.from(new Set(body.items.map((item) => item.productId)));
+      const reservationTokenByProductId = new Map(
+        body.items.map((item) => [
+          item.productId,
+          verifyReservationToken(item.reservationToken),
+        ]),
+      );
       const productRows = await db
         .select()
         .from(products)
@@ -120,6 +129,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       const productById = new Map(productRows.map((product) => [product.id, product]));
       const now = new Date();
+      const validReservationTokens = new Map<string, Date>();
       for (const productId of productIds) {
         const product = productById.get(productId);
         if (!product) {
@@ -144,10 +154,19 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           );
         }
 
-        if (
+        const isActiveReserved =
           product.stockStatus === "reserved" &&
-          (!product.reservedUntil || product.reservedUntil > now)
-        ) {
+          (!product.reservedUntil || product.reservedUntil > now);
+        const reservationToken = reservationTokenByProductId.get(productId);
+        const hasMatchingReservationToken =
+          reservationToken != null &&
+          reservationToken.productId === productId &&
+          reservationToken.reservedUntil > now &&
+          product.reservedUntil != null &&
+          Math.abs(product.reservedUntil.getTime() - reservationToken.reservedUntil.getTime()) <
+            1000;
+
+        if (isActiveReserved && !hasMatchingReservationToken) {
           return c.json(
             {
               code: "ITEM_RESERVED",
@@ -156,6 +175,10 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             },
             409
           );
+        }
+
+        if (isActiveReserved && reservationToken) {
+          validReservationTokens.set(productId, reservationToken.reservedUntil);
         }
       }
 
@@ -403,11 +426,19 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
                 eq(products.stockStatus, "reserved"),
                 isNotNull(products.reservedUntil),
                 lt(products.reservedUntil, now)
+              ),
+              ...Array.from(validReservationTokens.entries()).map(
+                ([productId, reservedUntil]) =>
+                  and(
+                    eq(products.id, productId),
+                    eq(products.stockStatus, "reserved"),
+                    eq(products.reservedUntil, reservedUntil),
+                  ),
               )
             )
           )
         )
-        .returning({ id: products.id });
+        .returning({ id: products.id, slug: products.slug });
 
       if (reservedRows.length !== productIds.length) {
         const reservedProductIds = reservedRows.map((row) => row.id);
@@ -420,6 +451,8 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
               updatedAt: new Date(),
             })
             .where(inArray(products.id, reservedProductIds));
+
+          revalidateProductsCache(reservedRows.map((row) => row.slug));
         }
 
         // Dual-write: release any reservations rows we inserted in the v2 path
@@ -449,6 +482,8 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
+      revalidateProductsCache(reservedRows.map((row) => row.slug));
+
       let paymentLink: RazorpayPaymentLinkResponse;
       try {
         paymentLink = await createRazorpayPaymentLink({
@@ -476,6 +511,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             updatedAt: new Date(),
           })
           .where(inArray(products.id, productIds));
+        revalidateProductsCache(productRows.map((product) => product.slug));
 
         // Dual-write: release reservation rows on Razorpay failure
         if (isInventoryV2()) {

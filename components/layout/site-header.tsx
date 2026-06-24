@@ -18,14 +18,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useHasMounted } from "@/lib/hooks/use-has-mounted";
-import logoMark from "@/logos/image 8 [Vectorized].png";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
   { href: "/collection?tags=top-pick", label: "Top Pick" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
-  { href: "/#our-story", label: "Our Story" },
+  { href: "/founders", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
 ];
 
@@ -106,14 +105,14 @@ export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-[#F8F4EF]/95 backdrop-blur">
+    <header className="sticky top-0 z-50 bg-[#FDF7F1]/95 backdrop-blur">
       <AnnouncementBar />
-      <div className="border-b border-[#3C0C0F]/10">
+      <div className="border-b border-[#601D1C]/10">
         <div className="flex h-16 w-full items-stretch justify-between gap-4 px-5 md:px-8 lg:px-10 xl:px-14">
           <div className="flex min-w-0 flex-1 items-center gap-8 xl:gap-10">
             <Link href="/" className="flex h-full shrink-0 items-center">
               <Image
-                src={logoMark}
+                src="/logo-vectorized.png"
                 alt="From the Trunk"
                 width={136}
                 height={64}
@@ -128,8 +127,8 @@ export function SiteHeader() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`whitespace-nowrap text-[15px] tracking-[0.035em] text-[#3C0C0F]/82 transition hover:text-[#3C0C0F] ${
-                    link.strong ? "font-bold text-[#3C0C0F]" : "font-semibold"
+                  className={`whitespace-nowrap text-[15px] tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C] ${
+                    link.strong ? "font-bold text-[#601D1C]" : "font-semibold"
                   }`}
                 >
                   {link.label}
@@ -138,19 +137,19 @@ export function SiteHeader() {
               <div className="group relative">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#3C0C0F]/82 transition hover:text-[#3C0C0F]"
+                  className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
                 >
                   Shop By
-                  <span className="text-[#AA8657]" aria-hidden="true">
+                  <span className="text-[#B39152]" aria-hidden="true">
                     ⌄
                   </span>
                 </button>
-                <div className="invisible absolute left-1/2 top-full z-50 mt-4 w-48 -translate-x-1/2 rounded-xl border border-[#3C0C0F]/10 bg-[#F8F4EF] p-2 opacity-0 shadow-xl shadow-[#3C0C0F]/10 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                <div className="invisible absolute left-1/2 top-full z-50 mt-4 w-48 -translate-x-1/2 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 opacity-0 shadow-xl shadow-[#601D1C]/10 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                   {SHOP_BY_ITEMS.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#3C0C0F]/75 transition hover:bg-[#3C0C0F] hover:text-[#AA8657]"
+                      className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#601D1C]/75 transition hover:bg-[#601D1C] hover:text-[#B39152]"
                     >
                       {item.label}
                     </Link>
@@ -161,7 +160,7 @@ export function SiteHeader() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#3C0C0F]/82 transition hover:text-[#3C0C0F]"
+                  className="whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
                 >
                   {link.label}
                 </Link>
@@ -169,14 +168,14 @@ export function SiteHeader() {
             </nav>
           </div>
 
-          <div className="ml-auto flex h-full shrink-0 items-center justify-end gap-1.5 text-[#3C0C0F]">
+          <div className="ml-auto flex h-full shrink-0 items-center justify-end gap-1.5 text-[#601D1C]">
             <SearchBar />
 
             <Button
               asChild
               variant="ghost"
               size="icon"
-              className="relative rounded-full hover:bg-[#3C0C0F]/8 hover:text-[#3C0C0F]"
+              className="relative rounded-full hover:bg-[#601D1C]/8 hover:text-[#601D1C]"
             >
               <Link
                 href={session ? "/account/profile" : "/account/sign-in"}
@@ -184,7 +183,7 @@ export function SiteHeader() {
               >
                 <AccountIcon />
                 {session && (
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#AA8657]" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#B39152]" />
                 )}
               </Link>
             </Button>
@@ -193,7 +192,7 @@ export function SiteHeader() {
               asChild
               variant="ghost"
               size="icon"
-              className="relative rounded-full hover:bg-[#3C0C0F]/8 hover:text-[#3C0C0F]"
+              className="relative rounded-full hover:bg-[#601D1C]/8 hover:text-[#601D1C]"
             >
               <Link href="/account/wishlist" aria-label="Liked products">
                 <HeartIcon />
@@ -215,7 +214,7 @@ export function SiteHeader() {
                       <MenuIcon />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent className="bg-[#F8F4EF]">
+                  <SheetContent className="bg-[#FDF7F1]">
                     <SheetTitle className="sr-only">
                       Mobile navigation
                     </SheetTitle>
@@ -233,14 +232,14 @@ export function SiteHeader() {
                         }}
                         className="relative"
                       >
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3C0C0F]/50">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#601D1C]/50">
                           <SearchIcon />
                         </span>
                         <Input
                           value={mobileSearch}
                           onChange={(e) => setMobileSearch(e.target.value)}
                           placeholder="Search sarees..."
-                          className="border-[#3C0C0F]/15 bg-white pl-9"
+                          className="border-[#601D1C]/15 bg-[#FDF7F1] pl-9"
                           aria-label="Search products"
                         />
                       </form>
@@ -250,13 +249,13 @@ export function SiteHeader() {
                           key={link.href}
                           href={link.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`text-lg text-[#3C0C0F] ${link.strong ? "font-bold" : "font-medium"}`}
+                          className={`text-lg text-[#601D1C] ${link.strong ? "font-bold" : "font-medium"}`}
                         >
                           {link.label}
                         </Link>
                       ))}
-                      <div className="grid gap-3 border-y border-[#3C0C0F]/10 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#AA8657]">
+                      <div className="grid gap-3 border-y border-[#601D1C]/10 py-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
                           Shop By
                         </p>
                         {SHOP_BY_ITEMS.map((item) => (
@@ -264,7 +263,7 @@ export function SiteHeader() {
                             key={item.href}
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className="text-lg font-medium text-[#3C0C0F]"
+                            className="text-lg font-medium text-[#601D1C]"
                           >
                             {item.label}
                           </Link>
@@ -275,7 +274,7 @@ export function SiteHeader() {
                           key={link.href}
                           href={link.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium text-[#3C0C0F]"
+                          className="text-lg font-medium text-[#601D1C]"
                         >
                           {link.label}
                         </Link>
@@ -283,7 +282,7 @@ export function SiteHeader() {
                       <Link
                         href={session ? "/account/profile" : "/account/sign-in"}
                         onClick={() => setMobileMenuOpen(false)}
-                        className="text-lg font-medium text-[#3C0C0F]"
+                        className="text-lg font-medium text-[#601D1C]"
                       >
                         {session ? "Account" : "Sign In"}
                       </Link>

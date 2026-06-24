@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-import { productSlugExists } from "@/db/queries/products";
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
 
 /**
@@ -10,16 +9,16 @@ import { resolveRedirect } from "@/lib/content/redirect-resolver";
  * 1. Route protection — redirect unauthenticated users from protected paths
  * 2. Security — additional runtime security checks
  * 3. P3-09: Managed redirects — consult the redirects table for any path
- *    not handled by the product-404 or auth checks above.
+ *    not handled by auth checks above.
  *
  * Renamed from middleware.ts to proxy.ts for Next.js 16 convention.
  * See: https://nextjs.org/docs/messages/middleware-to-proxy
  *
  * CRITICAL: the redirect consultation is ADDITIVE.
- * The product-404 guard and auth-protection logic are unchanged.
+ * The auth-protection logic is unchanged.
  * Redirect paths excluded from consultation:
  *   - /api/* (Hono API routes — never redirect)
- *   - /collection/:slug (product 404 guard runs instead)
+ *   - /collection/:slug (PDP route handles product 404)
  *   - /account/* (auth protection runs instead)
  *   - Next.js internals (_next/*)
  */
@@ -31,27 +30,44 @@ const protectedPaths = [
   "/account/wishlist",
 ];
 
+const PUBLIC_FILE =
+  /\.(?:png|jpg|jpeg|webp|gif|svg|avif|ico|css|js|map|txt|xml|json|woff2?|ttf|otf|mp4|webm|mov|m4v|pdf)$/i;
+
+const publicAssetPrefixes = [
+  "/dev-uploads/",
+  "/media/",
+  "/banner/",
+  "/category/",
+  "/hero/",
+  "/logos/",
+  "/fonts/",
+  "/videos/",
+];
+
+const publicAssetPaths = new Set([
+  "/apple-icon.svg",
+  "/apple-touch-icon.png",
+  "/favicon.ico",
+  "/icon-192.png",
+  "/icon.svg",
+  "/manifest.json",
+  "/robots.txt",
+  "/sitemap.xml",
+]);
+
 const isProtected = (pathname: string) =>
   protectedPaths.some((prefix) => pathname.startsWith(prefix));
 
-const isDraftPreviewRequest = (request: NextRequest) =>
-  request.cookies.has("__prerender_bypass") ||
-  request.cookies.has("__next_preview_data");
-
-const getProductDetailSlug = (pathname: string) => {
-  const match = pathname.match(/^\/collection\/([^/]+)\/?$/);
-  if (!match) return null;
-
-  try {
-    return decodeURIComponent(match[1] ?? "");
-  } catch {
-    return "";
-  }
-};
+const isPublicAssetPath = (pathname: string): boolean =>
+  pathname.startsWith("/_next/") ||
+  pathname.startsWith("/.well-known/") ||
+  publicAssetPaths.has(pathname) ||
+  publicAssetPrefixes.some((prefix) => pathname.startsWith(prefix)) ||
+  PUBLIC_FILE.test(pathname);
 
 /**
  * Paths excluded from redirect consultation.
- * These are handled by dedicated logic above (product 404, auth) or must
+ * These are handled by dedicated logic above (auth) or must
  * never be intercepted (API routes, Next.js internals).
  *
  * MONEY PATH GUARD: /checkout/* and /cart/* are explicitly excluded so that
@@ -60,9 +76,10 @@ const getProductDetailSlug = (pathname: string) => {
  * through to the Next.js route handler unchanged.
  */
 const isExcludedFromRedirectCheck = (pathname: string): boolean =>
-  pathname.startsWith("/_next/") ||
+  isPublicAssetPath(pathname) ||
   pathname.startsWith("/api/") ||
   pathname.startsWith("/account/") ||
+  pathname === "/collection" ||
   pathname.startsWith("/collection/") ||
   pathname.startsWith("/checkout") ||
   pathname.startsWith("/cart");
@@ -70,20 +87,9 @@ const isExcludedFromRedirectCheck = (pathname: string): boolean =>
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
-  const productSlug = getProductDetailSlug(pathname);
 
-  if (
-    productSlug !== null &&
-    !isDraftPreviewRequest(request) &&
-    !(await productSlugExists(productSlug, { includeDrafts: false }))
-  ) {
-    return new NextResponse("Product not found.", {
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "x-robots-tag": "noindex",
-      },
-      status: 404,
-    });
+  if (isPublicAssetPath(pathname)) {
+    return response;
   }
 
   // ─── Route Protection ───────────────────────────────────────────
@@ -127,7 +133,8 @@ export const config = {
     "/account/wishlist/:path*",
     "/collection/:slug",
     // P3-09: broad matcher for managed redirects on all non-internal paths.
-    // _next/* and /api/* are excluded inside the proxy function itself.
-    "/((?!_next/|api/|favicon.ico|manifest.json|apple-touch-icon.png|logos/).*)",
+    // Keep static/media assets out of the proxy entirely so they cannot be
+    // normalized, redirected, or delayed by redirect/auth/database logic.
+    "/((?!_next/static|_next/image|_next/webpack-hmr|__nextjs|\\.well-known/|api/|dev-uploads/|media/|banner/|category/|hero/|logos/|fonts/|videos/|favicon.ico|manifest.json|robots.txt|sitemap.xml|icon.svg|apple-icon.svg|icon-192.png|apple-touch-icon.png|.*\\.(?:png|jpg|jpeg|webp|gif|svg|avif|ico|css|js|map|txt|xml|json|woff2?|ttf|otf|mp4|webm|mov|m4v|pdf)$).*)",
   ],
 };

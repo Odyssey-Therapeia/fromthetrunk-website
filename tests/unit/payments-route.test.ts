@@ -96,6 +96,7 @@ vi.mock("@/lib/http/rate-limit", () => ({
 // ---------------------------------------------------------------------------
 
 import { registerPaymentRoutes } from "@/api/hono/routes/payments";
+import { createReservationToken } from "@/lib/cart/reservation-token";
 import { createRouteHarness } from "../helpers/route-harness";
 
 // ---------------------------------------------------------------------------
@@ -289,6 +290,51 @@ describe("payments route — create-order", () => {
 
     expect(createOrderMock).not.toHaveBeenCalled();
     expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
+  });
+
+  it("create-order accepts a matching signed reservation token for an active hold", async () => {
+    const reservedUntil = new Date(Date.now() + 30 * 60 * 1000);
+    const product = makeProduct({ stockStatus: "reserved", reservedUntil });
+    const reservationToken = createReservationToken({
+      productId: product.id,
+      reservedUntil,
+    });
+
+    const productSelectChain = makeSelectChain([product]);
+    const pendingCountSelectChain = makeSelectChain([{ c: 0 }]);
+
+    dbSelectMock
+      .mockReturnValueOnce(productSelectChain)
+      .mockReturnValueOnce(pendingCountSelectChain);
+
+    const reserveUpdateChain = makeUpdateChain([{ id: product.id, slug: "silk-saree" }]);
+    const orderUpdateChain = makeUpdateChain([]);
+
+    dbUpdateMock
+      .mockReturnValueOnce(reserveUpdateChain)
+      .mockReturnValueOnce(orderUpdateChain);
+
+    createRazorpayPaymentLinkMock.mockResolvedValue({
+      id: "plink_token_test",
+      short_url: "https://rzp.io/l/token-test",
+    });
+
+    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+    const baseBody = validBody();
+    const body = {
+      ...baseBody,
+      items: baseBody.items.map((item) => ({ ...item, reservationToken })),
+    };
+
+    const response = await request("/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(200);
+    expect(createOrderMock).toHaveBeenCalledTimes(1);
+    expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
   });
 
   // -------------------------------------------------------------------------

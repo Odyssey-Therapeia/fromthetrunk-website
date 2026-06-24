@@ -1,8 +1,11 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { cors } from "hono/cors";
 
 import { authMiddleware } from "@/api/hono/middleware/auth";
+import {
+  sameOriginCors,
+  sameOriginMutationGuard,
+} from "@/api/hono/middleware/same-origin";
 import { registerAddressRoutes } from "@/api/hono/routes/addresses";
 import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard";
 import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
@@ -36,7 +39,8 @@ import { onUncaughtError } from "@/lib/http/on-uncaught-error";
 
 const app = new OpenAPIHono<HonoBindings>().basePath("/api/v2");
 
-app.use("*", cors());
+app.use("*", sameOriginCors);
+app.use("*", sameOriginMutationGuard);
 app.use("*", authMiddleware);
 
 app.doc("/openapi.json", {

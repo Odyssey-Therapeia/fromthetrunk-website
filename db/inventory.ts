@@ -1,10 +1,10 @@
 /**
- * P2-05: Inventory v2 compat layer.
+ * Inventory compatibility helpers.
  *
- * All existing UI/feed code continues to read stockStatus directly from the
- * products table (unchanged). This pure helper makes stockStatus derivable from
- * the new quantity_available + active-reservations-count columns so that the two
- * representations stay consistent and can be cross-validated.
+ * The products row remains the canonical public source while checkout still
+ * claims one-of-one pieces through an atomic products.stock_status update. The
+ * quantity_available + reservations helpers are kept for compatibility checks
+ * until the v2 reservation service becomes the only write authority.
  *
  * No database I/O — intentionally pure so it can be unit-tested without mocks.
  */
@@ -18,16 +18,40 @@ export interface InventoryState {
   activeReservationsCount: number;
 }
 
+export interface ProductRowStockState {
+  reservedUntil: Date | null;
+  stockStatus: StockStatus;
+}
+
 /**
- * Derive the canonical stockStatus value from inventory v2 state.
+ * Resolve public availability from the canonical product row.
+ *
+ * An expired reservation is treated as available for reads; cleanup jobs still
+ * clear the row later. A reserved row with no expiry is conservatively reserved.
+ */
+export function resolveProductRowStockStatus(
+  { reservedUntil, stockStatus }: ProductRowStockState,
+  now = new Date(),
+): StockStatus {
+  if (stockStatus === "sold") return "sold";
+  if (stockStatus === "reserved") {
+    if (!reservedUntil || reservedUntil > now) return "reserved";
+    return "available";
+  }
+  return "available";
+}
+
+/**
+ * Derive a stockStatus value from inventory v2 state.
  *
  * Rules (one-of-one model):
  *   - qty = 0                      → "sold"  (physically gone, reservations irrelevant)
  *   - qty >= 1 and reservations > 0 → "reserved"  (someone holds it)
  *   - qty >= 1 and reservations = 0 → "available"
  *
- * This function is the bridge between the new (quantity + reservations) world
- * and the existing stockStatus enum that all read paths consume.
+ * This function is not the public source of truth while products.stock_status
+ * remains the checkout/PDP authority; use resolveProductRowStockStatus() for
+ * current storefront reads.
  */
 export function deriveStockStatus({
   quantityAvailable,

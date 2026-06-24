@@ -6,9 +6,11 @@ type ElectricMode = "electric" | "polling";
 type UseElectricShapeRowsOptions<T> = {
   enabled?: boolean;
   fallbackFetch: () => Promise<T[]>;
+  immediateFallbackFetch?: boolean;
   initialRows?: T[];
   mapRows: (rows: unknown[]) => T[];
   pollIntervalMs?: number;
+  pollWhenHidden?: boolean;
   shapeParams?: Record<string, string | string[]>;
   table: string;
 };
@@ -19,9 +21,11 @@ const shapeServiceUrl =
 export const useElectricShapeRows = <T>({
   enabled = true,
   fallbackFetch,
+  immediateFallbackFetch = true,
   initialRows = [],
   mapRows,
   pollIntervalMs = 12_000,
+  pollWhenHidden = true,
   shapeParams = {},
   table,
 }: UseElectricShapeRowsOptions<T>) => {
@@ -36,8 +40,15 @@ export const useElectricShapeRows = <T>({
     let cancelled = false;
     let interval: NodeJS.Timeout | null = null;
     let unsubscribe: null | (() => void) = null;
+    let removeVisibilityListener: null | (() => void) = null;
+
+    const canPollNow = () =>
+      pollWhenHidden ||
+      typeof document === "undefined" ||
+      document.visibilityState === "visible";
 
     const runFallbackFetch = async () => {
+      if (!canPollNow()) return;
       try {
         const fallbackRows = await fallbackFetch();
         if (!cancelled) {
@@ -52,10 +63,23 @@ export const useElectricShapeRows = <T>({
       if (!cancelled) {
         setMode("polling");
       }
-      await runFallbackFetch();
+      if (immediateFallbackFetch) {
+        await runFallbackFetch();
+      }
       interval = setInterval(() => {
         void runFallbackFetch();
       }, pollIntervalMs);
+      if (!pollWhenHidden && typeof document !== "undefined") {
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === "visible") {
+            void runFallbackFetch();
+          }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        removeVisibilityListener = () => {
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+      }
     };
 
     if (!shapeServiceUrl) {
@@ -63,6 +87,7 @@ export const useElectricShapeRows = <T>({
       return () => {
         cancelled = true;
         if (interval) clearInterval(interval);
+        removeVisibilityListener?.();
       };
     }
 
@@ -101,9 +126,19 @@ export const useElectricShapeRows = <T>({
     return () => {
       cancelled = true;
       if (interval) clearInterval(interval);
+      removeVisibilityListener?.();
       unsubscribe?.();
     };
-  }, [enabled, fallbackFetch, mapRows, pollIntervalMs, shapeParams, table]);
+  }, [
+    enabled,
+    fallbackFetch,
+    immediateFallbackFetch,
+    mapRows,
+    pollIntervalMs,
+    pollWhenHidden,
+    shapeParams,
+    table,
+  ]);
 
   return {
     mode,
