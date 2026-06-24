@@ -14,6 +14,7 @@ import {
   getRateLimiter,
   isDurableRateLimiterConfigured,
 } from "@/lib/ports/rate-limiter";
+import { timeAsync, type TimingSink } from "@/lib/perf/server-timing";
 
 export interface RateLimitOptions {
   /** Maximum number of requests in the window. */
@@ -73,7 +74,8 @@ export function getRateLimitKey(request: Request, prefix: string): string {
 export async function rateLimitResponse(
   request: Request,
   prefix: string,
-  options: RateLimitOptions
+  options: RateLimitOptions,
+  instrumentation: { timingSink?: TimingSink } = {},
 ): Promise<Response | null> {
   const requestHost = new URL(request.url).hostname;
   const isLoopbackRequest =
@@ -103,7 +105,11 @@ export async function rateLimitResponse(
   }
 
   const key = getRateLimitKey(request, prefix);
-  const result = await checkRateLimit(key, options);
+  const result = await timeAsync(
+    instrumentation.timingSink,
+    isDurableRateLimiterConfigured() ? "redis-rate-limit" : "memory-rate-limit",
+    () => checkRateLimit(key, options),
+  );
 
   if (!result.success) {
     return new Response(

@@ -2,6 +2,7 @@ import { cors } from "hono/cors";
 import type { MiddlewareHandler } from "hono";
 
 import type { HonoBindings } from "@/api/hono/types";
+import { roundDuration } from "@/lib/perf/server-timing";
 
 const MUTATION_METHODS = new Set(["DELETE", "PATCH", "POST", "PUT"]);
 const SAME_SITE_FETCH_VALUES = new Set(["none", "same-origin", "same-site"]);
@@ -68,6 +69,8 @@ export const sameOriginCors = cors({
   exposeHeaders: [
     "Retry-After",
     "Server-Timing",
+    "X-FTT-Product-Cache",
+    "X-FTT-Related-Cache",
     "X-RateLimit-Remaining",
     "X-Request-Id",
   ],
@@ -82,7 +85,17 @@ export const sameOriginMutationGuard: MiddlewareHandler<HonoBindings> = async (
   c,
   next,
 ) => {
+  const timings = c.get("perfTimings");
+  const startedAt = performance.now();
+  const pushTiming = () => {
+    timings?.push({
+      durationMs: roundDuration(performance.now() - startedAt),
+      name: "same-origin-middleware",
+    });
+  };
+
   if (!MUTATION_METHODS.has(c.req.method.toUpperCase())) {
+    pushTiming();
     await next();
     return;
   }
@@ -109,5 +122,6 @@ export const sameOriginMutationGuard: MiddlewareHandler<HonoBindings> = async (
     );
   }
 
+  pushTiming();
   await next();
 };

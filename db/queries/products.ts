@@ -30,6 +30,7 @@ import {
   type ProductSortOption,
 } from "@/lib/products/sort";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
+import { timeAsync, type TimingSink } from "@/lib/perf/server-timing";
 import { slugify } from "@/lib/utils";
 
 type CollectionRecord = InferSelectModel<typeof collections>;
@@ -93,6 +94,7 @@ const getProductSortOrder = (sort: ProductSortOption): SQL<unknown>[] => {
 /** @internal exported for use by the postgres-catalog-search adapter (P4-04) */
 export const hydrateProducts = async (
   rows: ProductRecord[],
+  timingSink?: TimingSink,
 ): Promise<ProductWithRelations[]> => {
   if (rows.length === 0) return [];
 
@@ -107,30 +109,36 @@ export const hydrateProducts = async (
 
   const [collectionRows, imageRows, tagRows] = await withRetry(() =>
     Promise.all([
-      collectionIds.length > 0
-        ? db
-            .select()
-            .from(collections)
-            .where(inArray(collections.id, collectionIds))
-        : Promise.resolve([] as CollectionRecord[]),
-      db
-        .select({
-          productId: productImages.productId,
-          sortOrder: productImages.sortOrder,
-          media: mediaAssets,
-        })
-        .from(productImages)
-        .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
-        .where(inArray(productImages.productId, productIds))
-        .orderBy(asc(productImages.sortOrder)),
-      db
-        .select({
-          productId: productTags.productId,
-          tag: tags,
-        })
-        .from(productTags)
-        .innerJoin(tags, eq(productTags.tagId, tags.id))
-        .where(inArray(productTags.productId, productIds)),
+      timeAsync(timingSink, "hydrate-collection", () =>
+        collectionIds.length > 0
+          ? db
+              .select()
+              .from(collections)
+              .where(inArray(collections.id, collectionIds))
+          : Promise.resolve([] as CollectionRecord[]),
+      ),
+      timeAsync(timingSink, "hydrate-images", () =>
+        db
+          .select({
+            productId: productImages.productId,
+            sortOrder: productImages.sortOrder,
+            media: mediaAssets,
+          })
+          .from(productImages)
+          .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
+          .where(inArray(productImages.productId, productIds))
+          .orderBy(asc(productImages.sortOrder)),
+      ),
+      timeAsync(timingSink, "hydrate-tags", () =>
+        db
+          .select({
+            productId: productTags.productId,
+            tag: tags,
+          })
+          .from(productTags)
+          .innerJoin(tags, eq(productTags.tagId, tags.id))
+          .where(inArray(productTags.productId, productIds)),
+      ),
     ]),
   );
 
@@ -241,6 +249,7 @@ export const getProduct = async (
 export const getProductBySlug = async (
   slug: string,
   options: Pick<ListProductsOptions, "includeDrafts"> = {},
+  timingSink?: TimingSink,
 ): Promise<null | ProductWithRelations> => {
   const candidates = [...new Set([slug, slugify(slug)])];
 
@@ -249,11 +258,11 @@ export const getProductBySlug = async (
       eq(products.slug, candidate),
       ...(options.includeDrafts ? [] : [eq(products.status, "published")]),
     ]);
-    const [row] = await withRetry(() =>
-      db.select().from(products).where(whereClause).limit(1),
+    const [row] = await timeAsync(timingSink, "db-product-query", () =>
+      withRetry(() => db.select().from(products).where(whereClause).limit(1)),
     );
     if (row) {
-      const [hydrated] = await hydrateProducts([row]);
+      const [hydrated] = await hydrateProducts([row], timingSink);
       return hydrated ?? null;
     }
   }
@@ -262,27 +271,30 @@ export const getProductBySlug = async (
 
 export const getPublicProductStockBySlug = async (
   slug: string,
+  timingSink?: TimingSink,
 ): Promise<null | PublicProductStock> => {
   const candidates = [...new Set([slug, slugify(slug)])];
 
   for (const candidate of candidates) {
-    const [row] = await withRetry(() =>
-      db
-        .select({
-          id: products.id,
-          reservedUntil: products.reservedUntil,
-          slug: products.slug,
-          stockStatus: products.stockStatus,
-          updatedAt: products.updatedAt,
-        })
-        .from(products)
-        .where(
-          buildWhere([
-            eq(products.slug, candidate),
-            eq(products.status, "published"),
-          ]),
-        )
-        .limit(1),
+    const [row] = await timeAsync(timingSink, "db-stock-query", () =>
+      withRetry(() =>
+        db
+          .select({
+            id: products.id,
+            reservedUntil: products.reservedUntil,
+            slug: products.slug,
+            stockStatus: products.stockStatus,
+            updatedAt: products.updatedAt,
+          })
+          .from(products)
+          .where(
+            buildWhere([
+              eq(products.slug, candidate),
+              eq(products.status, "published"),
+            ]),
+          )
+          .limit(1),
+      ),
     );
     if (row) return row;
   }

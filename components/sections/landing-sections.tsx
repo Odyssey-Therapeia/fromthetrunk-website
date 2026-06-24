@@ -365,7 +365,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
             </Link>
 
             <Link
-              href="/our-story"
+              href="/founders"
               className="inline-flex rounded-full border border-[#B39152]/55 px-5 py-3 text-sm font-medium text-[#601D1C] transition hover:bg-[#B39152]/10"
             >
               Read the full story
@@ -393,7 +393,6 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
             sizes="(max-width: 1024px) 100vw, 52vw"
             unoptimized={shouldBypassImageOptimizer(activeStoryImage.src)}
             className="ftt-story-image object-cover"
-            priority
           />
 
           <div className="absolute inset-0 bg-linear-to-t from-[#0E0D0E]/78 via-[#0E0D0E]/18 to-transparent" />

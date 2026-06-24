@@ -30,6 +30,11 @@ import { onUncaughtError } from "@/lib/http/on-uncaught-error";
 
 const app = new OpenAPIHono<HonoBindings>().basePath("/api/v2");
 
+app.use("*", async (c, next) => {
+  c.set("perfStartedAt", performance.now());
+  c.set("perfTimings", []);
+  await next();
+});
 app.use("*", sameOriginCors);
 app.use("*", sameOriginMutationGuard);
 app.use("*", authMiddleware);

@@ -397,6 +397,7 @@ function FeaturedPick({
   return (
     <Link
       href={`/collection/${product.slug}`}
+      prefetch={false}
       className="group flex items-center gap-4 rounded-2xl border border-[#E7DDD4] bg-[#FDF7F1] p-3 transition hover:-translate-y-0.5 hover:border-[#B39152]/60 hover:shadow-[0_12px_32px_rgba(20,29,70,0.10)]"
     >
       <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-[#601D1C]/10">

@@ -71,7 +71,6 @@ export function SocialReelCarousel({
                 card={card}
                 handle={username}
                 linkTabIndex={position === 0 ? 0 : -1}
-                priority={position === 0}
                 showHandle={position === 0 || position === -1}
                 className={cn(
                   "h-full w-full rounded-[1.65rem] border border-[#FDF7F1]/30 shadow-[0_28px_75px_rgba(96,29,28,0.16)] sm:rounded-[1.9rem]",

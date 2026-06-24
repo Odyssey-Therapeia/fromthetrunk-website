@@ -199,6 +199,7 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
       const {
         collectionSlug,
         facetsOnly = false,
+        includeFacets = true,
         query,
         type,
         fabric,
@@ -340,7 +341,9 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
               db.select({ total: count() }).from(products).where(whereClause)
             )
           : Promise.resolve([{ total: 0 }]);
-      const facetsPromise = buildFacets(collectionProductIds);
+      const facetsPromise = includeFacets
+        ? buildFacets(collectionProductIds)
+        : Promise.resolve(emptyFacets());
 
       const [rows, [countResult], facets] = await Promise.all([
         rowsPromise,

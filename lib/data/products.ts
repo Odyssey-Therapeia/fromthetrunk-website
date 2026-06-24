@@ -19,6 +19,12 @@ import {
   type ProductSortOption,
 } from "@/lib/products/sort";
 import { PRODUCTS_CACHE_TAG, productCacheTag } from "@/lib/cache/product-cache";
+import {
+  probePublicProductCache,
+  probePublicProductsListCache,
+  type CacheProbeStatus,
+} from "@/lib/cache/product-cache-probe";
+import type { TimingSink } from "@/lib/perf/server-timing";
 import type { Product } from "@/types/domain";
 
 type QueryOptions = {
@@ -28,9 +34,13 @@ type QueryOptions = {
   sort?: ProductSortOption;
 };
 
-const getPublicProductBySlugPersistent = (slug: string) =>
+const getPublicProductBySlugPersistent = (
+  slug: string,
+  timingSink?: TimingSink,
+) =>
   unstable_cache(
-    async () => getProductBySlugQuery(slug, { includeDrafts: false }),
+    async () =>
+      getProductBySlugQuery(slug, { includeDrafts: false }, timingSink),
     ["public-product-by-slug", slug],
     {
       revalidate: 300,
@@ -45,6 +55,15 @@ const getProductBySlugCached = cache(async (slug: string, includeDrafts: boolean
 
   return getPublicProductBySlugPersistent(slug);
 });
+
+export const getTimedPublicProductBySlug = (
+  slug: string,
+  timingSink?: TimingSink,
+) => getPublicProductBySlugPersistent(slug, timingSink);
+
+export const probeTimedPublicProductCache = (
+  slug: string,
+): CacheProbeStatus => probePublicProductCache(slug);
 
 const getPublicProductsPersistent = (
   limit: number,
@@ -65,6 +84,19 @@ const getPublicProductsPersistent = (
       tags: [PRODUCTS_CACHE_TAG],
     },
   )();
+
+export const probeTimedPublicProductsListCache = ({
+  limit,
+  offset,
+  sort,
+}: {
+  limit: number;
+  offset: number;
+  sort: ProductSortOption;
+}): CacheProbeStatus =>
+  probePublicProductsListCache(
+    ["public-products", String(limit), String(offset), sort].join(":"),
+  );
 
 export const getGlobals = async (slug: string, options: QueryOptions = {}) => {
   void options;

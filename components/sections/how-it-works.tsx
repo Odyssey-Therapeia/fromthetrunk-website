@@ -55,6 +55,7 @@ export function HowItWorks({ products }: HowItWorksProps) {
                   src={image}
                   alt={`${step.title} saree detail`}
                   fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
                   className="object-cover opacity-70 transition duration-700 group-hover:scale-105"
                 />
               )}

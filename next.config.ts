@@ -89,6 +89,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // "Our Story" now lives on the founders page.
+      {
+        source: "/our-story",
+        destination: "/founders",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

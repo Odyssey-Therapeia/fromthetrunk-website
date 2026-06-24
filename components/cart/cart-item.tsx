@@ -29,6 +29,7 @@ export function CartItem({ item, className }: CartItemProps) {
       <div className="flex gap-3">
         <Link
           href={href}
+          prefetch={false}
           className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#601D1C]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152]"
           aria-label={`View ${item.name}`}
         >
@@ -52,6 +53,7 @@ export function CartItem({ item, className }: CartItemProps) {
             <div className="min-w-0">
               <Link
                 href={href}
+                prefetch={false}
                 className="line-clamp-2 font-serif text-lg leading-tight text-[#141D46] underline-offset-4 hover:underline"
               >
                 {item.name}

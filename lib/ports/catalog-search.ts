@@ -54,6 +54,11 @@ export type CatalogSearchFilters = {
   sort?: ProductSortOption;
   /** When true, skip product fetch/hydration and return only facet counts. */
   facetsOnly?: boolean;
+  /**
+   * When false, skip facet GROUP BY queries and return empty facet maps.
+   * Use this when a caller fetches cached facets separately.
+   */
+  includeFacets?: boolean;
 };
 
 // ── Facet output ─────────────────────────────────────────────────────────────

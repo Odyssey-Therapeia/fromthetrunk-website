@@ -67,7 +67,7 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
       primaryCtaLabel: "Explore the Collection",
       primaryCtaHref: "/collection",
       secondaryCtaLabel: "Read the Story",
-      secondaryCtaHref: "/our-story",
+      secondaryCtaHref: "/founders",
       infoCardEyebrow: "New Arrivals",
       infoCardTitle: "Curated designer sarees from the 1980s-2000s.",
       infoCardBody: "Limited drops every fortnight. Reserve your piece early.",

@@ -84,12 +84,26 @@ const isExcludedFromRedirectCheck = (pathname: string): boolean =>
   pathname.startsWith("/checkout") ||
   pathname.startsWith("/cart");
 
+const roundDuration = (durationMs: number) => Math.round(durationMs * 10) / 10;
+
+const withProxyTiming = <T extends NextResponse>(
+  response: T,
+  startedAt: number,
+) => {
+  response.headers.append(
+    "Server-Timing",
+    `proxy;dur=${roundDuration(performance.now() - startedAt)}`,
+  );
+  return response;
+};
+
 export async function proxy(request: NextRequest) {
+  const startedAt = performance.now();
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
   if (isPublicAssetPath(pathname)) {
-    return response;
+    return withProxyTiming(response, startedAt);
   }
 
   // ─── Route Protection ───────────────────────────────────────────
@@ -102,7 +116,7 @@ export async function proxy(request: NextRequest) {
     if (!token) {
       const signInUrl = new URL("/account/sign-in", request.url);
       signInUrl.searchParams.set("callbackUrl", request.url);
-      return NextResponse.redirect(signInUrl);
+      return withProxyTiming(NextResponse.redirect(signInUrl), startedAt);
     }
   }
 
@@ -113,7 +127,10 @@ export async function proxy(request: NextRequest) {
     const redirect = await resolveRedirect(pathname);
     if (redirect) {
       const destination = new URL(redirect.toPath, request.url);
-      return NextResponse.redirect(destination, { status: redirect.status });
+      return withProxyTiming(
+        NextResponse.redirect(destination, { status: redirect.status }),
+        startedAt,
+      );
     }
   }
 
@@ -121,7 +138,7 @@ export async function proxy(request: NextRequest) {
   // Razorpay webhooks need to bypass auth but the signature is
   // verified in the route handler itself.
 
-  return response;
+  return withProxyTiming(response, startedAt);
 }
 
 export const config = {
