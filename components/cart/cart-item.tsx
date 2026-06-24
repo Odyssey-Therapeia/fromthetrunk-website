@@ -1,93 +1,57 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
-import { type CartItem as CartItemType, useCartStore } from "@/lib/store/cart-store";
-import { cn } from "@/lib/utils";
+import { CartItem as CartItemType, useCartStore } from "@/lib/store/cart-store";
 
 interface CartItemProps {
   item: CartItemType;
-  className?: string;
 }
 
-export function CartItem({ item, className }: CartItemProps) {
+export function CartItem({ item }: CartItemProps) {
   const removeItem = useCartStore((state) => state.removeItem);
-  const quantity = item.quantity > 0 ? item.quantity : 1;
-  const href = item.slug ? `/collection/${item.slug}` : "/collection";
 
   return (
-    <article
-      className={cn(
-        "group relative overflow-hidden rounded-[1.35rem] border border-[#E7DDD4] bg-[#FFFCF8] p-3 shadow-[0_10px_30px_rgba(20,29,70,0.07)] transition hover:border-[#B39152]/55 hover:shadow-[0_16px_38px_rgba(20,29,70,0.10)]",
-        className,
-      )}
-    >
-      <div className="flex gap-3">
-        <Link
-          href={href}
-          className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#601D1C]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152]"
-          aria-label={`View ${item.name}`}
-        >
-          {item.image ? (
-            <Image
-              src={item.image}
-              alt={item.name}
-              fill
-              sizes="96px"
-              className="object-cover transition duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6B625B]">
-              FTT
-            </div>
-          )}
-        </Link>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href={href}
-                className="line-clamp-2 font-serif text-lg leading-tight text-[#141D46] underline-offset-4 hover:underline"
-              >
-                {item.name}
-              </Link>
-
-              <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.22em] text-[#6B625B]">
-                {item.detailsFabric ?? "One of a kind"}
-              </p>
-
-              <p className="mt-2 text-sm font-semibold text-[#141D46]">
-                {formatCurrency(item.price * quantity)}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                removeItem(item.id);
-                toast(`${item.name} removed from your bag`);
-              }}
-              aria-label={`Remove ${item.name} from bag`}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] transition hover:border-[#601D1C]/45 hover:bg-[#601D1C]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152]"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+    <div className="flex gap-4 border-b border-border/60 pb-4">
+      <div className="relative h-24 w-20 overflow-hidden rounded-2xl bg-muted">
+        {item.image ? (
+          <Image src={item.image} alt={item.name} fill className="object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            No image
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#E7DDD4] pt-3">
-            <span className="rounded-full bg-[#B39152]/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#141D46]">
-              Verified piece
-            </span>
-
-            <span className="text-xs text-[#6B625B]">Ready for checkout</span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-serif text-base text-foreground">{item.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(item.price)}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-trunk-gold">
+              One of a kind
+            </p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            onClick={() => {
+              removeItem(item.id);
+              toast(`${item.name} removed from your bag`);
+            }}
+            aria-label={`Remove ${item.name}`}
+            title={`Remove ${item.name}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-    </article>
+    </div>
   );
 }

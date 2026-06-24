@@ -7,18 +7,13 @@ const listProductsMock = vi.hoisted(() => vi.fn());
 const getProductBySlugMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/products", () => ({
-  bulkSetProductTags: vi.fn(),
   createProduct: vi.fn(),
   deleteProduct: vi.fn(),
-  deriveQuantityAvailable: vi.fn(),
   duplicateProduct: vi.fn(),
   getProduct: vi.fn(),
   getProductBySlug: getProductBySlugMock,
-  getProductsByIds: vi.fn(),
-  getPublicProductStockBySlug: vi.fn(),
   listProducts: listProductsMock,
   updateProduct: vi.fn(),
-  updateProductsBatch: vi.fn(),
 }));
 
 vi.mock("@/lib/ai/embeddings", () => ({
@@ -57,35 +52,10 @@ const productRoutes = () => {
 
 const sampleProduct = {
   id: "product-1",
-  artisanId: null,
-  attributes: {},
-  collectionId: null,
-  createdAt: new Date("2026-06-20T07:00:00.000Z"),
-  detailsCondition: null,
-  detailsDesigner: null,
-  detailsFabric: null,
-  detailsLength: null,
-  detailsWidth: null,
-  featured: false,
   images: [],
-  metadata: null,
   name: "Published Saree",
-  originalPricePaise: null,
-  pricePaise: 1200000,
-  quantityAvailable: 1,
-  reservedUntil: null,
   slug: "published-saree",
-  soldAt: null,
   status: "published",
-  stockStatus: "available",
-  storyEra: null,
-  storyNarrative: null,
-  storyProvenance: null,
-  storyTitle: "Published story",
-  typeId: null,
-  updatedAt: new Date("2026-06-24T07:00:00.000Z"),
-  collection: null,
-  tags: [],
 };
 
 describe("public product API draft visibility", () => {

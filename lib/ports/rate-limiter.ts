@@ -56,12 +56,6 @@ export function getRateLimiter(): RateLimiterPort {
   return _instance;
 }
 
-export function isDurableRateLimiterConfigured(): boolean {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
-  );
-}
-
 /**
  * Reset the cached singleton (test helper — do NOT call in production code).
  */

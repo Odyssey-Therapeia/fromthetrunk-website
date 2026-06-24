@@ -29,7 +29,6 @@ import {
   DEFAULT_PRODUCT_SORT,
   type ProductSortOption,
 } from "@/lib/products/sort";
-import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { slugify } from "@/lib/utils";
 
 type CollectionRecord = InferSelectModel<typeof collections>;
@@ -45,11 +44,6 @@ export type ProductWithRelations = ProductRecord & {
   }>;
   tags: TagRecord[];
 };
-
-export type PublicProductStock = Pick<
-  ProductRecord,
-  "id" | "reservedUntil" | "slug" | "stockStatus" | "updatedAt"
->;
 
 export type ListProductsOptions = {
   includeDrafts?: boolean;
@@ -257,36 +251,6 @@ export const getProductBySlug = async (
       return hydrated ?? null;
     }
   }
-  return null;
-};
-
-export const getPublicProductStockBySlug = async (
-  slug: string,
-): Promise<null | PublicProductStock> => {
-  const candidates = [...new Set([slug, slugify(slug)])];
-
-  for (const candidate of candidates) {
-    const [row] = await withRetry(() =>
-      db
-        .select({
-          id: products.id,
-          reservedUntil: products.reservedUntil,
-          slug: products.slug,
-          stockStatus: products.stockStatus,
-          updatedAt: products.updatedAt,
-        })
-        .from(products)
-        .where(
-          buildWhere([
-            eq(products.slug, candidate),
-            eq(products.status, "published"),
-          ]),
-        )
-        .limit(1),
-    );
-    if (row) return row;
-  }
-
   return null;
 };
 
@@ -776,7 +740,7 @@ export const restockProduct = async (
 ): Promise<"restocked" | "skipped" | "not_found"> => {
   // Read the current stock status first (conditional restock)
   const [product] = await db
-    .select({ id: products.id, slug: products.slug, stockStatus: products.stockStatus })
+    .select({ id: products.id, stockStatus: products.stockStatus })
     .from(products)
     .where(eq(products.id, productId))
     .limit(1);
@@ -821,7 +785,6 @@ export const restockProduct = async (
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
-  revalidateProductsCache([product.slug]);
 
   return "restocked";
 };

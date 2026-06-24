@@ -10,16 +10,10 @@
  */
 
 import type { ProductWithRelations } from "@/db/queries/products";
-import type { ProductSortOption } from "@/lib/products/sort";
 
 // ── Filter input ─────────────────────────────────────────────────────────────
 
 export type CatalogSearchFilters = {
-  /**
-   * Collection slug. When present, search must be restricted to the same
-   * manual + smart + legacy membership union used by collection render paths.
-   */
-  collectionSlug?: string;
   /**
    * P6-03: Free-text search term.
    * Matched case-insensitively (ILIKE) against:
@@ -46,14 +40,6 @@ export type CatalogSearchFilters = {
   availability?: boolean;
   /** Tag slugs — products must belong to ALL provided tags (AND). */
   tags?: string[];
-  /** Maximum product rows to hydrate and return. */
-  limit?: number;
-  /** Product offset for paged catalog views. */
-  offset?: number;
-  /** SQL-backed product sort for paged catalog views. */
-  sort?: ProductSortOption;
-  /** When true, skip product fetch/hydration and return only facet counts. */
-  facetsOnly?: boolean;
 };
 
 // ── Facet output ─────────────────────────────────────────────────────────────
@@ -61,8 +47,8 @@ export type CatalogSearchFilters = {
 /**
  * Facet counts per dimension.
  * Each entry maps a dimension value to the number of PUBLISHED products
- * matching that value. Counts are static for the active collection scope when
- * one is provided, not narrowed by the other active filters.
+ * matching that value (across the full unfiltered catalog, not the current
+ * result set — static counts for UI filters).
  */
 export type CatalogFacets = {
   /** Fabric attribute values → count. */
@@ -73,8 +59,6 @@ export type CatalogFacets = {
   availability: Record<string, number>;
   /** Tag slugs → count. */
   tags: Record<string, number>;
-  /** Tag slug → display metadata for grouping storefront filters. */
-  tagDetails: Record<string, { category: string; name: string }>;
 };
 
 // ── Port interface ────────────────────────────────────────────────────────────
@@ -82,11 +66,7 @@ export type CatalogFacets = {
 export interface CatalogSearchPort {
   searchProducts(
     filters: CatalogSearchFilters
-  ): Promise<{
-    products: ProductWithRelations[];
-    facets: CatalogFacets;
-    totalDocs: number;
-  }>;
+  ): Promise<{ products: ProductWithRelations[]; facets: CatalogFacets }>;
 }
 
 // ── Factory ──────────────────────────────────────────────────────────────────
@@ -121,9 +101,5 @@ export function _resetCatalogSearchInstance(): void {
  */
 export const searchProducts = (
   filters: CatalogSearchFilters
-): Promise<{
-  products: ProductWithRelations[];
-  facets: CatalogFacets;
-  totalDocs: number;
-}> =>
+): Promise<{ products: ProductWithRelations[]; facets: CatalogFacets }> =>
   getCatalogSearch().searchProducts(filters);

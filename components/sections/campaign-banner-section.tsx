@@ -41,9 +41,9 @@ export function CampaignBannerSection() {
   }, []);
 
   return (
-    <section className="bg-[#FDF7F1] px-5 py-14 sm:px-8 md:py-20 lg:px-10">
+    <section className="bg-[#F8F4EF] px-5 py-14 sm:px-8 md:py-20 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="relative aspect-2500/1768 w-full overflow-hidden rounded-lg bg-[#0E0D0E] shadow-[0_28px_90px_rgba(96,29,28,0.2)]">
+        <div className="relative aspect-2500/1768 w-full overflow-hidden rounded-lg bg-[#120405] shadow-[0_28px_90px_rgba(60,12,15,0.2)]">
           {campaignBanners.map((banner, index) => (
             <div
               key={banner.image}

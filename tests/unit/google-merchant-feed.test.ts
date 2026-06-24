@@ -849,20 +849,20 @@ describe("Inventory V2 availability — mutation-proven (FTT_FEATURE_INVENTORY_V
     });
   }
 
-  it("MUTATION-PROVEN: expired product-row reservation → in_stock", async () => {
+  it("MUTATION-PROVEN: expired reservation — raw=reserved, qty=1, activeCount=0 → in_stock", async () => {
     vi.stubEnv("FTT_FEATURE_INVENTORY_V2", "true");
     delete process.env.FEEDS_PUBLIC_TOKEN;
 
-    // Product row is the canonical feed/PDP source during inventory-v2 migration.
-    // A reserved row whose hold expired is available for public reads.
+    // Product has stale raw stockStatus="reserved" but the reservation has expired
+    // (quantityAvailable=1, activeReservationsCount=0)
     const reservedButExpired = mkProduct({
       id: "prod-uuid-v2-reserved",
-      reservedUntil: new Date("2026-01-01T00:00:00.000Z"),
       slug: "reserved-but-expired",
       stockStatus: "reserved",
       quantityAvailable: 1,
     });
 
+    // No active reservation rows → the batch query returns []
     setupDbForProductsWithReservations([reservedButExpired], []);
 
     const app = (await import("@/api/hono/app")).default;
@@ -876,22 +876,23 @@ describe("Inventory V2 availability — mutation-proven (FTT_FEATURE_INVENTORY_V
     const parsed = parseFeedXml(xml);
     expect(parsed.items).toHaveLength(1);
 
-    // MUST be in_stock: resolveProductRowStockStatus() treats expired holds as available.
+    // MUST be in_stock: deriveStockStatus({qty=1, activeCount=0}) = "available" → "in_stock"
+    // A route that reads the raw column would emit "out_of_stock" here — the test FAILS.
     expect(parsed.items[0]["g:availability"]?.[0]).toBe("in_stock");
   });
 
-  it("MUTATION-PROVEN: active product-row reservation → out_of_stock", async () => {
+  it("MUTATION-PROVEN: active reservation — raw=reserved, qty=1, activeCount=1 → out_of_stock", async () => {
     vi.stubEnv("FTT_FEATURE_INVENTORY_V2", "true");
     delete process.env.FEEDS_PUBLIC_TOKEN;
 
     const reservedActive = mkProduct({
       id: "prod-uuid-v2-active",
-      reservedUntil: new Date("2999-01-01T00:00:00.000Z"),
       slug: "reserved-active",
       stockStatus: "reserved",
       quantityAvailable: 1,
     });
 
+    // One active reservation row → the batch query returns count=1 for this product
     setupDbForProductsWithReservations([reservedActive], [
       { productId: "prod-uuid-v2-active", total: 1 },
     ]);
@@ -907,7 +908,7 @@ describe("Inventory V2 availability — mutation-proven (FTT_FEATURE_INVENTORY_V
     const parsed = parseFeedXml(xml);
     expect(parsed.items).toHaveLength(1);
 
-    // MUST be out_of_stock: active product-row reservation holds the item.
+    // MUST be out_of_stock: deriveStockStatus({qty=1, activeCount=1}) = "reserved" → "out_of_stock"
     expect(parsed.items[0]["g:availability"]?.[0]).toBe("out_of_stock");
   });
 

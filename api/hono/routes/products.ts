@@ -1,5 +1,4 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import type { Context } from "hono";
 
 import {
   errorSchema,
@@ -17,7 +16,6 @@ import {
 } from "@/api/hono/schemas/products";
 import { requireAdmin } from "@/api/hono/middleware/auth";
 import type { HonoBindings } from "@/api/hono/types";
-import { resolveProductRowStockStatus } from "@/db/inventory";
 import { refreshProductEmbedding } from "@/lib/ai/embeddings";
 import { recommendProducts } from "@/lib/ai/recommendations";
 import { suggestTagIds } from "@/lib/ai/tag-suggestions";
@@ -28,10 +26,8 @@ import {
   duplicateProduct,
   getProduct,
   getProductBySlug,
-  getPublicProductStockBySlug,
   getProductsByIds,
   listProducts,
-  type ProductWithRelations,
   updateProduct,
   updateProductsBatch,
   bulkSetProductTags,
@@ -41,87 +37,6 @@ import {
   bulkRemoveProductsFromCollection,
 } from "@/db/queries/collections";
 import { isInventoryV2 } from "@/lib/config/flags";
-import { revalidateProductsCache } from "@/lib/cache/product-cache";
-import { rateLimitResponse } from "@/lib/http/rate-limit";
-import { createLogger } from "@/lib/log";
-
-const productRouteLog = createLogger("products:api");
-
-const getRequestId = (request: Request) =>
-  request.headers.get("x-request-id") ?? crypto.randomUUID();
-
-type TimingEntry = {
-  durationMs: number;
-  name: string;
-};
-
-const roundDuration = (durationMs: number) =>
-  Math.round(durationMs * 10) / 10;
-
-const timeAsync = async <T>(
-  timings: TimingEntry[],
-  name: string,
-  fn: () => Promise<T>,
-) => {
-  const startedAt = performance.now();
-  try {
-    return await fn();
-  } finally {
-    timings.push({
-      durationMs: roundDuration(performance.now() - startedAt),
-      name,
-    });
-  }
-};
-
-const timeSync = <T>(timings: TimingEntry[], name: string, fn: () => T) => {
-  const startedAt = performance.now();
-  try {
-    return fn();
-  } finally {
-    timings.push({
-      durationMs: roundDuration(performance.now() - startedAt),
-      name,
-    });
-  }
-};
-
-const setPublicReadHeaders = (
-  c: Context<HonoBindings>,
-  {
-    cacheControl,
-    requestId,
-    route,
-    startedAt,
-    status,
-    timings = [],
-  }: {
-    cacheControl: string;
-    requestId: string;
-    route: string;
-    startedAt: number;
-    status: number;
-    timings?: TimingEntry[];
-  },
-) => {
-  const durationMs = roundDuration(performance.now() - startedAt);
-  c.header("Cache-Control", cacheControl);
-  c.header(
-    "Server-Timing",
-    [
-      `app;dur=${durationMs}`,
-      ...timings.map((entry) => `${entry.name};dur=${entry.durationMs}`),
-    ].join(", "),
-  );
-  c.header("X-Request-Id", requestId);
-
-  productRouteLog.debug("public product read", {
-    durationMs,
-    requestId,
-    route,
-    status,
-  });
-};
 
 /** Escape a CSV cell per RFC 4180. */
 const escapeCsvCell = (value: unknown): string => {
@@ -164,50 +79,6 @@ const canIncludeDrafts = (
   if (!requested) return false;
   return !(requireAdmin(c) instanceof Response);
 };
-
-export const serializePublicProduct = (product: ProductWithRelations) => ({
-  id: product.id,
-  name: product.name,
-  slug: product.slug,
-  pricePaise: product.pricePaise,
-  originalPricePaise: product.originalPricePaise,
-  featured: product.featured,
-  status: product.status,
-  stockStatus: resolveProductRowStockStatus({
-    reservedUntil: product.reservedUntil,
-    stockStatus: product.stockStatus,
-  }),
-  storyTitle: product.storyTitle,
-  storyNarrative: product.storyNarrative,
-  storyProvenance: product.storyProvenance,
-  storyEra: product.storyEra,
-  detailsFabric: product.detailsFabric,
-  detailsLength: product.detailsLength,
-  detailsWidth: product.detailsWidth,
-  detailsCondition: product.detailsCondition,
-  detailsDesigner: product.detailsDesigner,
-  collection: product.collection
-    ? {
-        description: product.collection.description,
-        name: product.collection.name,
-        slug: product.collection.slug,
-      }
-    : null,
-  images: product.images.map((image) => ({
-    alt: image.media.alt,
-    filename: image.media.filename,
-    height: image.media.height,
-    sortOrder: image.sortOrder,
-    url: image.media.url,
-    width: image.media.width,
-  })),
-  tags: product.tags.map((tag) => ({
-    name: tag.name,
-    slug: tag.slug,
-  })),
-  createdAt: product.createdAt.toISOString(),
-  updatedAt: product.updatedAt.toISOString(),
-});
 
 export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
   // Lightweight admin-only product lookup by ID (for agent panel auto-anchor)
@@ -463,81 +334,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
     createRoute({
       method: "get",
-      path: "/{slug}/stock",
-      request: {
-        params: slugParamSchema,
-      },
-      responses: {
-        200: { description: "Product stock by slug" },
-        404: {
-          content: { "application/json": { schema: errorSchema } },
-          description: "Product not found",
-        },
-      },
-      tags: ["Products"],
-    }),
-    async (c) => {
-      const startedAt = performance.now();
-      const timings: TimingEntry[] = [];
-      const requestId = getRequestId(c.req.raw);
-      const rateLimited = await timeAsync(timings, "rate", () =>
-        rateLimitResponse(c.req.raw, "products:stock", {
-          limit: 240,
-          windowSeconds: 60,
-        }),
-      );
-      if (rateLimited) return rateLimited;
-
-      const params = c.req.valid("param");
-      const stock = await timeAsync(timings, "db", () =>
-        getPublicProductStockBySlug(params.slug),
-      );
-      if (!stock) {
-        setPublicReadHeaders(c, {
-          cacheControl: "public, max-age=30, stale-while-revalidate=60",
-          requestId,
-          route: "products.stock",
-          startedAt,
-          status: 404,
-          timings,
-        });
-        return c.json(
-          {
-            code: "PRODUCT_NOT_FOUND",
-            message: "Product not found.",
-          },
-          404,
-        );
-      }
-
-      const stockStatus = resolveProductRowStockStatus({
-        reservedUntil: stock.reservedUntil,
-        stockStatus: stock.stockStatus,
-      });
-
-      const payload = timeSync(timings, "serialize", () => ({
-        id: stock.id,
-        reservedUntil: stock.reservedUntil?.toISOString() ?? null,
-        slug: stock.slug,
-        stockStatus,
-        updatedAt: stock.updatedAt.toISOString(),
-      }));
-
-      setPublicReadHeaders(c, {
-        cacheControl: "public, max-age=5, stale-while-revalidate=30",
-        requestId,
-        route: "products.stock",
-        startedAt,
-        status: 200,
-        timings,
-      });
-      return c.json(payload, 200);
-    },
-  );
-
-  app.openapi(
-    createRoute({
-      method: "get",
       path: "/{slug}",
       request: {
         params: slugParamSchema,
@@ -552,33 +348,12 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Products"],
     }),
     async (c) => {
-      const startedAt = performance.now();
-      const timings: TimingEntry[] = [];
-      const requestId = getRequestId(c.req.raw);
-      const rateLimited = await timeAsync(timings, "rate", () =>
-        rateLimitResponse(c.req.raw, "products:detail", {
-          limit: 120,
-          windowSeconds: 60,
-        }),
-      );
-      if (rateLimited) return rateLimited;
-
       const params = c.req.valid("param");
 
-      const product = await timeAsync(timings, "product", () =>
-        getProductBySlug(params.slug, {
-          includeDrafts: false,
-        }),
-      );
+      const product = await getProductBySlug(params.slug, {
+        includeDrafts: false,
+      });
       if (!product) {
-        setPublicReadHeaders(c, {
-          cacheControl: "public, max-age=30, stale-while-revalidate=60",
-          requestId,
-          route: "products.detail",
-          startedAt,
-          status: 404,
-          timings,
-        });
         return c.json(
           {
             code: "PRODUCT_NOT_FOUND",
@@ -588,19 +363,7 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      const payload = timeSync(timings, "serialize", () =>
-        serializePublicProduct(product),
-      );
-
-      setPublicReadHeaders(c, {
-        cacheControl: "public, max-age=60, stale-while-revalidate=300",
-        requestId,
-        route: "products.detail",
-        startedAt,
-        status: 200,
-        timings,
-      });
-      return c.json(payload, 200);
+      return c.json(product, 200);
     },
   );
 
@@ -633,7 +396,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         soldAt: parseDate(body.soldAt),
         tagIds: body.tagIds ?? [],
       });
-      revalidateProductsCache([created.slug]);
       void refreshProductEmbedding(created.id).catch(() => undefined);
       return c.json(created, 201);
     },
@@ -672,7 +434,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       }
 
       void refreshProductEmbedding(duplicated.id).catch(() => undefined);
-      revalidateProductsCache([duplicated.slug]);
 
       return c.json(duplicated, 201);
     },
@@ -743,7 +504,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       }
       if (updated) {
         void refreshProductEmbedding(updated.id).catch(() => undefined);
-        revalidateProductsCache([existing.slug, updated.slug]);
       }
       return c.json(updated, 200);
     },
@@ -770,17 +530,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (adminOrResponse instanceof Response) return adminOrResponse;
 
       const params = c.req.valid("param");
-      const existing = await getProduct(params.id);
-      if (!existing) {
-        return c.json(
-          {
-            code: "PRODUCT_NOT_FOUND",
-            message: "Product not found.",
-          },
-          404,
-        );
-      }
-
       const deleted = await deleteProduct(params.id);
       if (!deleted) {
         return c.json(
@@ -792,7 +541,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      revalidateProductsCache([existing.slug]);
       return c.json({ success: true }, 200);
     },
   );
@@ -895,13 +643,6 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
         updated += result.updated;
         failed += result.failed;
         errors.push(...result.errors);
-      }
-
-      if (updated > 0) {
-        const changedProducts = await getProductsByIds(productIds, {
-          includeDrafts: true,
-        });
-        revalidateProductsCache(changedProducts.map((product) => product.slug));
       }
 
       return c.json({ updated, failed, errors }, 200);

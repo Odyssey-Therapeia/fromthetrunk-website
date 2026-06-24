@@ -13,7 +13,6 @@ import {
   type EmailOrder,
 } from "@/lib/email/templates";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
-import { revalidateProductsCache } from "@/lib/cache/product-cache";
 
 type CompletePaidOrderInput = {
   orderId: string;
@@ -114,7 +113,7 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
     .filter((id): id is string => Boolean(id));
 
   if (productIds.length > 0) {
-    const soldRows = await db
+    await db
       .update(products)
       .set({
         reservedUntil: null,
@@ -124,10 +123,7 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
         quantityAvailable: 0,
         updatedAt: new Date(),
       })
-      .where(inArray(products.id, productIds))
-      .returning({ slug: products.slug });
-    const soldProducts = soldRows ?? [];
-    revalidateProductsCache(soldProducts.map((product) => product.slug));
+      .where(inArray(products.id, productIds));
 
     // Dual-write: release reservation rows now that the order is paid
     await releaseReservationsByOrder(input.orderId);

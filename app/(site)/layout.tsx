@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Cormorant_Garamond, Jost } from "next/font/google";
+import { Cormorant_Garamond, Inter } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -11,10 +11,8 @@ import { SiteFooterServer } from "@/components/layout/site-footer-server";
 import { SiteHeaderServer } from "@/components/layout/site-header-server";
 import { ThemeStyler } from "@/components/layout/theme-styler";
 import { Providers } from "@/components/providers";
-import { SiteWidgets } from "@/components/widgets/site-widgets";
 import { organizationJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { getSiteOrigin } from "@/lib/config/site";
-import { getLatestReel } from "@/lib/social/latest-reel";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -23,9 +21,8 @@ const serif = Cormorant_Garamond({
   display: "swap",
 });
 
-const sans = Jost({
+const sans = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -68,9 +65,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const latestReel = await getLatestReel();
-
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
@@ -105,7 +100,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             {children}
           </main>
           <SiteFooterServer />
-          <SiteWidgets latestReel={latestReel} />
         </Providers>
         <Analytics />
         <SpeedInsights />

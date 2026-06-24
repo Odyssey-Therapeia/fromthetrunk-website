@@ -3,7 +3,6 @@ import { z } from "@hono/zod-openapi";
 export const orderItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().min(1).max(50),
-  reservationToken: z.string().min(1).optional(),
 });
 
 export const shippingAddressSchema = z

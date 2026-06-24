@@ -9,10 +9,8 @@ import { HeroSection } from "@/components/sections/hero-section";
 import { HomeIntroGate } from "@/components/sections/home-intro-gate";
 import {
   LandingSections,
-  SectionSeparator,
   type LandingProductCard,
 } from "@/components/sections/landing-sections";
-import { SocialSection } from "@/components/sections/social-section";
 import { isBlocksHomepage } from "@/lib/config/flags";
 import {
   getFeaturedProducts,
@@ -130,21 +128,17 @@ export default async function Home() {
         "Ready for its next story",
       ][index] ?? "Curated with care",
   }));
-  const socialSection = await SocialSection({ images: storyImages });
 
   return (
     <HomeIntroGate>
-      <div className="bg-[#FDF7F1]">
+      <div className="bg-[#F8F4EF]">
         <HeroSection content={heroContent} />
         <FloatingReviewTab />
         <FabricCategorySection />
-        <SectionSeparator />
         <CampaignBannerSection />
-        <SectionSeparator />
         <LandingSections
           featuredProducts={landingProducts}
           showIntroSeparator={false}
-          socialSection={socialSection}
           storyImages={storyImages}
         />
       </div>
