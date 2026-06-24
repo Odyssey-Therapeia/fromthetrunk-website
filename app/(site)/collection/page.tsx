@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+
+import { FilterLink } from "@/components/collection/filter-link";
+import { MobileFilterDisclosure } from "@/components/collection/mobile-filter-disclosure";
 import { draftMode } from "next/headers";
 
 import { CollectionPageSizeSelect } from "@/components/product/collection-page-size-select";
@@ -632,12 +635,12 @@ export default async function CollectionPage({
         </div>
 
         {hasAnyFilter ? (
-          <Link
+          <FilterLink
             href="/collection"
             className="rounded-full border border-[var(--ftt-border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--ftt-burgundy)] transition hover:border-[var(--ftt-burgundy)]/40 hover:bg-[var(--ftt-burgundy)]/5"
           >
             Reset
-          </Link>
+          </FilterLink>
         ) : null}
       </div>
 
@@ -841,20 +844,9 @@ export default async function CollectionPage({
         <section className="sticky top-[6.75rem] z-30 rounded-[1.35rem] border border-[var(--ftt-border)] bg-[var(--ftt-card)]/94 p-3 shadow-[0_12px_35px_rgba(20,29,70,0.10)] backdrop-blur-xl lg:rounded-[1.5rem]">
           <div className="grid min-w-0 gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
             <div className="flex min-w-0 items-center gap-3">
-              <details className="group lg:hidden">
-                <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full bg-[var(--ftt-royal-navy)] px-4 text-sm font-medium text-[var(--ftt-ivory)] [&::-webkit-details-marker]:hidden">
-                  Filter
-                  {appliedFilterCount > 0 ? (
-                    <span className="rounded-full bg-[var(--ftt-gold)] px-2 py-0.5 text-xs text-[var(--ftt-midnight)]">
-                      {appliedFilterCount}
-                    </span>
-                  ) : null}
-                </summary>
-
-                <div className="fixed inset-x-3 top-24 z-50 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-[1.5rem] border border-[var(--ftt-border)] bg-[var(--ftt-card)] p-4 shadow-[0_28px_80px_rgba(14,13,14,0.25)]">
-                  {renderFilterPanel()}
-                </div>
-              </details>
+              <MobileFilterDisclosure activeCount={appliedFilterCount}>
+                {renderFilterPanel()}
+              </MobileFilterDisclosure>
 
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.26em] text-[var(--ftt-gold)]">
@@ -870,14 +862,14 @@ export default async function CollectionPage({
               <div className="flex max-w-full gap-2 overflow-x-auto pb-0.5">
               {appliedFilters.length > 0 ? (
                 appliedFilters.map((filter) => (
-                  <Link
+                  <FilterLink
                     key={`${filter.kind}-${filter.label}`}
                     href={filter.href}
                     className="inline-flex h-9 max-w-full shrink-0 items-center rounded-full border border-[var(--ftt-gold)]/40 bg-[var(--ftt-gold)]/10 px-3 text-xs font-medium text-[var(--ftt-royal-navy)] transition hover:bg-[var(--ftt-gold)]/18"
                   >
                     <span className="max-w-[14rem] truncate">{filter.label}</span>
                     <span className="ml-2 text-[var(--ftt-burgundy)]">x</span>
-                  </Link>
+                  </FilterLink>
                 ))
               ) : (
                 <span className="inline-flex h-9 max-w-full items-center rounded-full border border-[var(--ftt-border)] bg-white/60 px-3 text-xs leading-tight text-[var(--ftt-muted)]">
@@ -889,12 +881,12 @@ export default async function CollectionPage({
 
             <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
               {hasAnyFilter ? (
-                <Link
+                <FilterLink
                   href="/collection"
                   className="inline-flex h-10 shrink-0 items-center rounded-full border border-[#601D1C]/30 bg-[#601D1C]/8 px-4 text-xs font-semibold text-[#601D1C] transition hover:bg-[#601D1C] hover:text-[#FDF7F1]"
                 >
                   Clear all
-                </Link>
+                </FilterLink>
               ) : null}
 
               <CollectionPageSizeSelect
@@ -904,7 +896,7 @@ export default async function CollectionPage({
               />
 
               {PRODUCT_SORT_OPTIONS.map((option) => (
-                <Link
+                <FilterLink
                   key={option.value}
                   href={buildUrl({ sort: option.value, page: 1 })}
                   className={cn(
@@ -915,7 +907,7 @@ export default async function CollectionPage({
                   )}
                 >
                   {shortSortLabels[option.value]}
-                </Link>
+                </FilterLink>
               ))}
             </div>
           </div>
@@ -955,12 +947,12 @@ export default async function CollectionPage({
                   Reset the filters or return shortly for the next trunk edit.
                 </p>
 
-                <Link
+                <FilterLink
                   href="/collection"
                   className="mt-6 inline-flex rounded-full bg-[var(--ftt-royal-navy)] px-6 py-3 text-sm font-medium text-[var(--ftt-ivory)] transition hover:bg-[var(--ftt-midnight)]"
                 >
                   Reset filters
-                </Link>
+                </FilterLink>
               </div>
             ) : (
               <>
@@ -1074,7 +1066,7 @@ function FilterPill({
   className?: string;
 }) {
   return (
-    <Link
+    <FilterLink
       href={href}
       className={cn(
         "group inline-flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",
@@ -1097,6 +1089,6 @@ function FilterPill({
         ) : null}
       </span>
       <span className="min-w-0">{children}</span>
-    </Link>
+    </FilterLink>
   );
 }
