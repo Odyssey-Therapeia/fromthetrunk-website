@@ -1,11 +1,15 @@
 import { revalidateTag } from "next/cache";
 
+import { clearProductCacheProbe } from "@/lib/cache/product-cache-probe";
+
 export const PRODUCTS_CACHE_TAG = "products";
 
 export const productCacheTag = (slug: string) =>
   `product:${slug.trim().toLowerCase()}`;
 
 export const revalidateProductsCache = (slugs: Array<null | string | undefined> = []) => {
+  clearProductCacheProbe(slugs);
+
   try {
     revalidateTag(PRODUCTS_CACHE_TAG, "max");
   } catch {

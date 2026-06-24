@@ -27,7 +27,6 @@ import {
   deriveQuantityAvailable,
   duplicateProduct,
   getProduct,
-  getProductBySlug,
   getPublicProductStockBySlug,
   getProductsByIds,
   listProducts,
@@ -42,49 +41,24 @@ import {
 } from "@/db/queries/collections";
 import { isInventoryV2 } from "@/lib/config/flags";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
+import {
+  getTimedPublicProductBySlug,
+  probeTimedPublicProductCache,
+} from "@/lib/data/products";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { createLogger } from "@/lib/log";
+import {
+  formatServerTiming,
+  roundDuration,
+  timeAsync,
+  timeSync,
+  type TimingEntry,
+} from "@/lib/perf/server-timing";
 
 const productRouteLog = createLogger("products:api");
 
 const getRequestId = (request: Request) =>
   request.headers.get("x-request-id") ?? crypto.randomUUID();
-
-type TimingEntry = {
-  durationMs: number;
-  name: string;
-};
-
-const roundDuration = (durationMs: number) =>
-  Math.round(durationMs * 10) / 10;
-
-const timeAsync = async <T>(
-  timings: TimingEntry[],
-  name: string,
-  fn: () => Promise<T>,
-) => {
-  const startedAt = performance.now();
-  try {
-    return await fn();
-  } finally {
-    timings.push({
-      durationMs: roundDuration(performance.now() - startedAt),
-      name,
-    });
-  }
-};
-
-const timeSync = <T>(timings: TimingEntry[], name: string, fn: () => T) => {
-  const startedAt = performance.now();
-  try {
-    return fn();
-  } finally {
-    timings.push({
-      durationMs: roundDuration(performance.now() - startedAt),
-      name,
-    });
-  }
-};
 
 const setPublicReadHeaders = (
   c: Context<HonoBindings>,
@@ -105,14 +79,12 @@ const setPublicReadHeaders = (
   },
 ) => {
   const durationMs = roundDuration(performance.now() - startedAt);
+  const routeTotal = {
+    durationMs,
+    name: "route-total",
+  };
   c.header("Cache-Control", cacheControl);
-  c.header(
-    "Server-Timing",
-    [
-      `app;dur=${durationMs}`,
-      ...timings.map((entry) => `${entry.name};dur=${entry.durationMs}`),
-    ].join(", "),
-  );
+  c.header("Server-Timing", formatServerTiming([routeTotal, ...timings]));
   c.header("X-Request-Id", requestId);
 
   productRouteLog.debug("public product read", {
@@ -477,10 +449,10 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Products"],
     }),
     async (c) => {
-      const startedAt = performance.now();
-      const timings: TimingEntry[] = [];
+      const startedAt = c.get("perfStartedAt") ?? performance.now();
+      const timings = c.get("perfTimings") ?? [];
       const requestId = getRequestId(c.req.raw);
-      const rateLimited = await timeAsync(timings, "rate", () =>
+      const rateLimited = await timeAsync(timings, "rate-limit", () =>
         rateLimitResponse(c.req.raw, "products:stock", {
           limit: 240,
           windowSeconds: 60,
@@ -489,8 +461,9 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (rateLimited) return rateLimited;
 
       const params = c.req.valid("param");
-      const stock = await timeAsync(timings, "db", () =>
-        getPublicProductStockBySlug(params.slug),
+      const stock = await getPublicProductStockBySlug(
+        params.slug,
+        (entry) => timings.push(entry),
       );
       if (!stock) {
         setPublicReadHeaders(c, {
@@ -552,10 +525,10 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Products"],
     }),
     async (c) => {
-      const startedAt = performance.now();
-      const timings: TimingEntry[] = [];
+      const startedAt = c.get("perfStartedAt") ?? performance.now();
+      const timings = c.get("perfTimings") ?? [];
       const requestId = getRequestId(c.req.raw);
-      const rateLimited = await timeAsync(timings, "rate", () =>
+      const rateLimited = await timeAsync(timings, "rate-limit", () =>
         rateLimitResponse(c.req.raw, "products:detail", {
           limit: 120,
           windowSeconds: 60,
@@ -564,11 +537,18 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (rateLimited) return rateLimited;
 
       const params = c.req.valid("param");
+      const productCacheStatus = probeTimedPublicProductCache(params.slug);
+      c.header("X-FTT-Product-Cache", productCacheStatus);
+      c.header("X-FTT-Related-Cache", "N/A");
 
-      const product = await timeAsync(timings, "product", () =>
-        getProductBySlug(params.slug, {
-          includeDrafts: false,
-        }),
+      const product = await timeAsync(
+        timings,
+        "product-cache",
+        () =>
+          getTimedPublicProductBySlug(params.slug, (entry) =>
+            timings.push(entry),
+          ),
+        productCacheStatus,
       );
       if (!product) {
         setPublicReadHeaders(c, {
