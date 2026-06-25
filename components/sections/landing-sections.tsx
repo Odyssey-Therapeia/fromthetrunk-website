@@ -707,7 +707,7 @@ export function ConnectWithUsSection() {
 
           <div className="mt-7 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
             {[
-              ["Styling", "Book a consult", "/styling-consult"],
+              ["Explore", "Browse the collection", "/collection"],
               [
                 "Instagram",
                 "@from.thetrunk",

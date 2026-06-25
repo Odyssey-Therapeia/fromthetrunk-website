@@ -81,7 +81,7 @@ export const SHIPPING_TIERS = {
   standard: parseNumberEnv(
     "NEXT_PUBLIC_FTT_SHIPPING_STANDARD",
     process.env.NEXT_PUBLIC_FTT_SHIPPING_STANDARD,
-    500,
+    150,
     {
       allowZero: false,
     }
@@ -89,7 +89,7 @@ export const SHIPPING_TIERS = {
   express: parseNumberEnv(
     "NEXT_PUBLIC_FTT_SHIPPING_EXPRESS",
     process.env.NEXT_PUBLIC_FTT_SHIPPING_EXPRESS,
-    1200,
+    600,
     {
       allowZero: false,
     }

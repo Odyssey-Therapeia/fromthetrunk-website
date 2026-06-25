@@ -28,6 +28,7 @@ import {
 import { type CheckoutStep, STEP_COPY } from "@/lib/checkout/steps";
 import { useCheckoutPayment } from "@/lib/checkout/use-checkout-payment";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { cn } from "@/lib/utils";
 import type { Address, Product } from "@/types/domain";
 
 import { BillingStep } from "./billing-step";
@@ -85,6 +86,7 @@ export function CheckoutPageClient({
   const [includeGiftMessage, setIncludeGiftMessage] = useState(false);
   const [giftMessage, setGiftMessage] = useState("");
   const [giftFrom, setGiftFrom] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const { data: savedAddresses } = useQuery({
     queryKey: ["checkout-addresses"],
@@ -108,6 +110,18 @@ export function CheckoutPageClient({
     setShippingAddress(seed);
     setBillingAddress(seed);
     setGiftFrom((prev) => prev || sessionName);
+  }
+
+  // Auto-fill the saved default address (name, phone, full address) once the
+  // address book loads, so a returning customer never re-enters their details.
+  const [addressSeeded, setAddressSeeded] = useState(false);
+  if (savedAddresses && savedAddresses.length > 0 && !addressSeeded) {
+    setAddressSeeded(true);
+    const preferred =
+      savedAddresses.find((address) => address.isDefault) ?? savedAddresses[0];
+    setShippingAddress((prev) =>
+      savedAddressToForm(preferred, prev.email || sessionEmail),
+    );
   }
 
   // ── Discount (server-authoritative; client only displays the amount) ──────
@@ -272,6 +286,12 @@ export function CheckoutPageClient({
 
   const handlePay = async () => {
     if (!hasItems) return;
+    if (!agreedToTerms) {
+      toast.error(
+        "Please confirm you have read and agree to the Terms & Policies.",
+      );
+      return;
+    }
 
     const shipErrors = validateAddressForm(shippingAddress);
     if (hasErrors(shipErrors)) {
@@ -439,12 +459,69 @@ export function CheckoutPageClient({
                     }
                     giftFrom={isGift ? giftFrom.trim() : ""}
                   />
+
+                  <div className="rounded-3xl border border-ftt-border bg-ftt-card p-5 text-sm shadow-[var(--ftt-soft-shadow)]">
+                    <p className="font-serif text-base text-ftt-navy">
+                      Returns & one-of-one pieces
+                    </p>
+                    <p className="mt-2 leading-6 text-ftt-burgundy/70">
+                      Returns are accepted only within{" "}
+                      <span className="font-semibold text-ftt-navy">
+                        7 days of delivery
+                      </span>{" "}
+                      and must be initiated by you. As every saree is pre-loved
+                      and one-of-one, please review our{" "}
+                      <Link
+                        href="/policies/return-refund-policy"
+                        className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                      >
+                        Return Policy
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/policies/terms-of-service"
+                        className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                      >
+                        Terms &amp; Conditions
+                      </Link>{" "}
+                      before placing your order.
+                    </p>
+
+                    <label className="mt-4 flex cursor-pointer items-start gap-3 text-ftt-burgundy/80">
+                      <Checkbox
+                        checked={agreedToTerms}
+                        onCheckedChange={(value) =>
+                          setAgreedToTerms(value === true)
+                        }
+                        className={cn(saveCheckbox, "mt-0.5")}
+                        aria-label="Agree to Terms and Policies"
+                      />
+                      <span>
+                        I have read and agree to the{" "}
+                        <Link
+                          href="/policies/terms-of-service"
+                          className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                        >
+                          Terms &amp; Conditions
+                        </Link>{" "}
+                        and{" "}
+                        <Link
+                          href="/policies"
+                          className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                        >
+                          Policies
+                        </Link>{" "}
+                        of From the Trunk.
+                      </span>
+                    </label>
+                  </div>
+
                   <CheckoutStepActions
                     secondaryLabel="Back to packaging"
                     onSecondary={() => setCurrentStep("packaging")}
                     primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
                     onPrimary={handlePay}
-                    disabledPrimary={!hasItems || isSubmitting}
+                    disabledPrimary={!hasItems || isSubmitting || !agreedToTerms}
                   />
                 </>
               ) : null}

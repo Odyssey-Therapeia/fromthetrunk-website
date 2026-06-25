@@ -99,12 +99,16 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
     return emptyFacets();
   }
 
+  // Hide sold + actively-reserved pieces from the public catalog. A reservation
+  // whose hold has expired (reservedUntil in the past) counts as available again.
+  const stockVisible = sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`;
   const publishedFilter = productIds
     ? and(
         eq(products.status, "published" as const),
         inArray(products.id, productIds),
+        stockVisible,
       )
-    : eq(products.status, "published" as const);
+    : and(eq(products.status, "published" as const), stockVisible);
 
   const [fabricRows, typeRows, availabilityRows, tagRows] = await Promise.all([
     // Fabric: (attributes->>'fabric') GROUP BY value
@@ -218,7 +222,11 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
       }
 
       // Build WHERE clauses — all ANDed.
-      const whereClauses = [eq(products.status, "published" as const)];
+      const whereClauses = [
+        eq(products.status, "published" as const),
+        // Public catalog hides sold + actively-reserved pieces (expired holds show).
+        sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`,
+      ];
 
       if (collectionProductIds) {
         whereClauses.push(inArray(products.id, collectionProductIds));

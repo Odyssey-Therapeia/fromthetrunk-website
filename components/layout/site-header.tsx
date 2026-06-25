@@ -33,6 +33,11 @@ const SHOP_BY_ITEMS = [
   { href: "/collection?tags=occasion", label: "Occasion" },
 ];
 
+const ABOUT_ITEMS = [
+  { href: "/founders", label: "Founders" },
+  { href: "/our-story", label: "Our Story" },
+];
+
 function MenuIcon() {
   return (
     <svg
@@ -156,15 +161,40 @@ export function SiteHeader() {
                   ))}
                 </div>
               </div>
-              {NAV_ITEMS.slice(2).map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {NAV_ITEMS.slice(2).map((link) =>
+                link.label === "About Us" ? (
+                  <div key={link.href} className="group relative">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
+                    >
+                      About Us
+                      <span className="text-[#B39152]" aria-hidden="true">
+                        ⌄
+                      </span>
+                    </button>
+                    <div className="invisible absolute left-1/2 top-full z-50 mt-4 w-48 -translate-x-1/2 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 opacity-0 shadow-xl shadow-[#601D1C]/10 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                      {ABOUT_ITEMS.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#601D1C]/75 transition hover:bg-[#601D1C] hover:text-[#B39152]"
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
+                  >
+                    {link.label}
+                  </Link>
+                ),
+              )}
             </nav>
           </div>
 
@@ -269,16 +299,37 @@ export function SiteHeader() {
                           </Link>
                         ))}
                       </div>
-                      {NAV_ITEMS.slice(2).map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium text-[#601D1C]"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
+                      {NAV_ITEMS.slice(2).map((link) =>
+                        link.label === "About Us" ? (
+                          <div
+                            key={link.href}
+                            className="grid gap-3 border-y border-[#601D1C]/10 py-4"
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+                              About Us
+                            </p>
+                            {ABOUT_ITEMS.map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-lg font-medium text-[#601D1C]"
+                              >
+                                {item.label}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-lg font-medium text-[#601D1C]"
+                          >
+                            {link.label}
+                          </Link>
+                        ),
+                      )}
                       <Link
                         href={session ? "/account/profile" : "/account/sign-in"}
                         onClick={() => setMobileMenuOpen(false)}

@@ -215,8 +215,8 @@ function HeroCopy({
         <p
           className={
             isMobile
-              ? "mt-5 w-full max-w-[min(84vw,24rem)] font-sans text-[clamp(1rem,3.75vw,1.22rem)] leading-[1.55] text-white/86"
-              : "mt-6 w-auto max-w-[clamp(18rem,34vw,30rem)] text-[clamp(0.95rem,1vw,1.25rem)] leading-[1.65] text-white/84 lg:max-w-[clamp(22rem,36vw,36rem)]"
+              ? "mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88"
+              : "mt-6 w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
           }
         >
           {slide.description}
