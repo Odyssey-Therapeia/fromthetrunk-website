@@ -130,7 +130,7 @@ export default function OrderDetailPage() {
             <div key={index} className="flex items-center justify-between text-sm">
               <div>
                 <p className="font-medium text-foreground">{item.name}</p>
-                <p className="text-xs text-muted-foreground">Qty: {item.quantity}, one of a kind</p>
+                <p className="text-xs text-muted-foreground">Qty: {item.quantity}, unique</p>
               </div>
               <p className="font-semibold text-foreground">
                 {formatCurrency((item.pricePaise * item.quantity) / 100)}

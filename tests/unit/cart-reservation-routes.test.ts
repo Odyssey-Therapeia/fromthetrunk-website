@@ -40,7 +40,11 @@ vi.mock("@/lib/http/rate-limit", () => ({
 }));
 
 import { registerCartRoutes } from "@/api/hono/routes/cart";
-import { createReservationToken } from "@/lib/cart/reservation-token";
+import { CART_RESERVATION_MINUTES } from "@/lib/cart/reservation-policy";
+import {
+  createReservationToken,
+  verifyReservationToken,
+} from "@/lib/cart/reservation-token";
 import { createRouteHarness } from "../helpers/route-harness";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
@@ -101,9 +105,54 @@ describe("cart reservation routes", () => {
     expect(response.status).toBe(200);
     expect(payload.reserved).toBe(true);
     expect(payload.reservationToken).toEqual(expect.any(String));
+    expect(
+      new Date(payload.reservedUntil).getTime() - Date.now(),
+    ).toBeGreaterThan((CART_RESERVATION_MINUTES - 1) * 60 * 1000);
+    expect(
+      new Date(payload.reservedUntil).getTime() - Date.now(),
+    ).toBeLessThanOrEqual((CART_RESERVATION_MINUTES + 1) * 60 * 1000);
+    expect(verifyReservationToken(payload.reservationToken)).toEqual(
+      expect.objectContaining({
+        productId: PRODUCT_ID,
+        quantity: 1,
+      }),
+    );
     expect(updateChain.set).toHaveBeenCalledWith(
       expect.objectContaining({ stockStatus: "reserved" }),
     );
+  });
+
+  it("accepts existing clients that send quantity 1 with reserve requests", async () => {
+    const updateChain = makeUpdateChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
+    dbUpdateMock.mockReturnValueOnce(updateChain.root);
+
+    const response = await route()(
+      "/reserve",
+      {
+        method: "POST",
+        ...jsonBody({ productId: PRODUCT_ID, quantity: 1 }),
+      },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.reserved).toBe(true);
+    expect(updateChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ stockStatus: "reserved" }),
+    );
+  });
+
+  it("rejects reserve quantity above 1 for one-of-one inventory", async () => {
+    const response = await route()(
+      "/reserve",
+      {
+        method: "POST",
+        ...jsonBody({ productId: PRODUCT_ID, quantity: 2 }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
   it("returns 409 for a sold product", async () => {
@@ -128,7 +177,7 @@ describe("cart reservation routes", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(409);
-    expect(payload.code).toBe("ITEM_SOLD");
+    expect(payload.code).toBe("PRODUCT_SOLD");
   });
 
   it("allows exactly one winner across concurrent reserve attempts", async () => {
@@ -161,6 +210,8 @@ describe("cart reservation routes", () => {
 
     expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
     expect(responses.filter((response) => response.status === 409)).toHaveLength(19);
+    const conflictPayload = await responses.find((response) => response.status === 409)!.json();
+    expect(conflictPayload.code).toBe("PRODUCT_RESERVED");
   });
 
   it("releases an active reservation only with the matching token", async () => {

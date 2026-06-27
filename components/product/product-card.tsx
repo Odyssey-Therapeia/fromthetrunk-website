@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { formatCurrency } from "@/lib/formatters";
+import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { cn } from "@/lib/utils";
 import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
@@ -42,6 +43,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const inCart = hasMounted && hasHydrated && hasCartItem;
   const isSold = stockStatus === "sold";
   const isReserved = stockStatus === "reserved";
+  const trackProductCardClick = () => {
+    trackWebsiteMetric("product_card_click", {
+      pricePaise: product.pricePaise,
+      productId: product.id,
+      slug: product.slug,
+      source: "product_card",
+      stockStatus,
+    });
+  };
 
   return (
     <article
@@ -60,6 +70,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           prefetch={false}
           className="block"
           aria-label={`View ${product.name}`}
+          onClick={trackProductCardClick}
         >
           <div className="relative aspect-3/4 @sm:aspect-4/5 overflow-hidden">
             {primaryImage ? (
@@ -115,15 +126,16 @@ export function ProductCard({ product, className }: ProductCardProps) {
           href={`/collection/${product.slug}`}
           prefetch={false}
           className="block min-w-0 flex-1 space-y-1 @sm:space-y-1.5"
+          onClick={trackProductCardClick}
         >
           <div className="flex items-start justify-between gap-1.5">
             <div className="min-w-0">
-              <h3 className="line-clamp-2 font-serif text-[13px] leading-tight @sm:text-base @md:text-lg text-foreground">
+              <h3 className="line-clamp-2 max-w-full break-words font-serif text-[15px] font-semibold leading-[1.08] text-[#141D46] @sm:text-lg @md:text-xl">
                 {product.name}
               </h3>
-              <p className="mt-0.5 truncate text-[10px] @sm:text-xs uppercase tracking-[0.12em] @sm:tracking-[0.2em] text-muted-foreground">
+              <p className="mt-1 line-clamp-1 max-w-full break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-[#601D1C]/72 @sm:text-xs @sm:tracking-[0.18em]">
                 <span>{product.detailsFabric ?? "Heirloom"}</span>
-                <span className="hidden @sm:inline">, one of a kind</span>
+                <span className="hidden @sm:inline">, unique</span>
               </p>
             </div>
             <ArrowUpRight className="mt-0.5 hidden @sm:block h-5 w-5 shrink-0 text-muted-foreground transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -131,16 +143,16 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <div className="flex items-center gap-1 @sm:gap-2">
             <span
               className={cn(
-                "text-xs @sm:text-sm font-semibold",
+                "text-[15px] font-bold leading-none @sm:text-base",
                 isSold
                   ? "text-muted-foreground line-through"
-                  : "text-foreground",
+                  : "text-[#141D46]",
               )}
             >
               {formatCurrency(product.pricePaise / 100)}
             </span>
             {product.originalPricePaise && !isSold && (
-              <span className="text-[10px] @sm:text-xs text-muted-foreground line-through">
+              <span className="text-[11px] text-[#601D1C]/45 line-through @sm:text-xs">
                 {formatCurrency(product.originalPricePaise / 100)}
               </span>
             )}

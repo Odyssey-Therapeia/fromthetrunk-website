@@ -173,7 +173,7 @@ export function CheckoutAddressForm({
           <div className="flex flex-col gap-2">
             <span className={labelClass}>State</span>
             <Select
-              value={INDIA_STATES.includes(value.state) ? value.state : undefined}
+              value={INDIA_STATES.includes(value.state) ? value.state : ""}
               onValueChange={(state) => onChange({ ...value, state })}
               disabled={disabled}
             >

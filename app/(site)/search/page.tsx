@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { TrackPageView } from "@/components/analytics/track-page-view";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { searchProducts } from "@/lib/ports/catalog-search";
@@ -32,6 +33,18 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-16">
+      {query.length >= 2 ? (
+        <TrackPageView
+          eventKey={`search_performed:${query.toLowerCase()}`}
+          type="search_performed"
+          payload={{
+            query: query.toLowerCase(),
+            rawQuery: query,
+            resultCount: results.length,
+            source: "search_page",
+          }}
+        />
+      ) : null}
       <ScrollReveal className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Search Results

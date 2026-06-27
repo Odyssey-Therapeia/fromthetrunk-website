@@ -12,6 +12,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { restockNotifyRequests, wishlistItems } from "@/db/schema";
+import { timedRows } from "@/lib/perf/timed";
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
@@ -20,10 +21,12 @@ import { restockNotifyRequests, wishlistItems } from "@/db/schema";
  * Auth-scoped: WHERE user_id = :userId.
  */
 export async function listWishlistProductIds(userId: string): Promise<string[]> {
-  const rows = await db
-    .select({ productId: wishlistItems.productId })
-    .from(wishlistItems)
-    .where(eq(wishlistItems.userId, userId));
+  const rows = await timedRows("wishlist.productIds", () =>
+    db
+      .select({ productId: wishlistItems.productId })
+      .from(wishlistItems)
+      .where(eq(wishlistItems.userId, userId)),
+  );
 
   return rows.map((row) => row.productId);
 }
@@ -66,9 +69,10 @@ export async function mergeGuestWishlist(
   userId: string,
   guestProductIds: string[]
 ): Promise<void> {
-  if (guestProductIds.length === 0) return;
+  const uniqueProductIds = Array.from(new Set(guestProductIds));
+  if (uniqueProductIds.length === 0) return;
 
-  const values = guestProductIds.map((productId) => ({ userId, productId }));
+  const values = uniqueProductIds.map((productId) => ({ userId, productId }));
   await db.insert(wishlistItems).values(values).onConflictDoNothing();
 }
 

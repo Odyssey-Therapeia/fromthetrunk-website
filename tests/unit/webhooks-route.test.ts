@@ -289,6 +289,61 @@ describe("webhook payment_link.paid", () => {
     );
   });
 
+  it("accepts duplicate webhook replay while completePaidOrder stays idempotent", async () => {
+    const bareOrder = makeBareOrder({ razorpayOrderId: RAZORPAY_PL_ID });
+    wireSelectToReturn([bareOrder]);
+    getOrderMock.mockResolvedValue(makeOrder({ razorpayOrderId: RAZORPAY_PL_ID }));
+    completePaidOrderMock
+      .mockResolvedValueOnce({
+        alreadyPaid: false,
+        emailsSent: true,
+        order: makeOrder({ razorpayOrderId: RAZORPAY_PL_ID }),
+      })
+      .mockResolvedValueOnce({
+        alreadyPaid: true,
+        emailsSent: false,
+        order: makeOrder({
+          paymentStatus: "paid",
+          razorpayOrderId: RAZORPAY_PL_ID,
+          status: "confirmed",
+        }),
+      });
+
+    const app = createWebhookApp();
+    const payload = {
+      event: "payment_link.paid",
+      payload: {
+        payment: {
+          entity: {
+            id: PAYMENT_ID,
+            method: "upi",
+          },
+        },
+        payment_link: {
+          entity: {
+            id: RAZORPAY_PL_ID,
+            short_url: "https://rzp.io/l/test",
+          },
+        },
+      },
+    };
+
+    const firstResponse = await postWebhook(app, payload);
+    const secondResponse = await postWebhook(app, payload);
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(completePaidOrderMock).toHaveBeenCalledTimes(2);
+    expect(completePaidOrderMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        orderId: ORDER_ID,
+        paymentId: PAYMENT_ID,
+        source: "Razorpay payment link webhook",
+      })
+    );
+  });
+
   it("does NOT call completePaidOrder when payment or paymentLink entity ids are missing", async () => {
     wireSelectToReturn([]);
 

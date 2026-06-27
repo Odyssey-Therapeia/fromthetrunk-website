@@ -26,9 +26,9 @@ export function AccountAuthFrame({
 
   return (
     <section className="bg-ftt-ivory px-4 py-8 sm:px-6 lg:py-12">
-      <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] border border-ftt-border bg-ftt-card shadow-[0_24px_80px_rgba(20,29,70,0.13)] lg:min-h-[680px] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-ftt-border bg-ftt-card shadow-[0_24px_80px_rgba(20,29,70,0.13)] xl:min-h-[680px] xl:grid-cols-[70fr_30fr]">
         <div className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
-          <div className="ftt-account-reveal w-full max-w-md">
+          <div className="ftt-account-reveal w-full max-w-xl">
             <p className="text-center text-[11px] font-semibold uppercase tracking-[0.38em] text-ftt-gold">
               {eyebrow}
             </p>
@@ -45,7 +45,7 @@ export function AccountAuthFrame({
           </div>
         </div>
 
-        <div className="relative min-h-[420px] overflow-hidden bg-ftt-navy p-6 text-ftt-ivory sm:p-8 lg:min-h-full lg:p-10">
+        <div className="relative hidden min-h-[420px] overflow-hidden bg-ftt-navy p-6 text-ftt-ivory sm:p-8 lg:min-h-full lg:p-10 xl:block">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_15%,rgba(179,145,82,0.22),transparent_24%),linear-gradient(135deg,#141D46_0%,#10183B_58%,#601D1C_155%)]" />
           <div className="absolute inset-6 rounded-[1.5rem] border border-ftt-gold/18" />
           <div className="absolute -right-16 -top-16 size-64 rounded-full border border-ftt-gold/18" />

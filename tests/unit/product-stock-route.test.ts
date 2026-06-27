@@ -44,6 +44,10 @@ vi.mock("@/lib/http/rate-limit", () => ({
   rateLimitResponse: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/lib/data/products", () => ({
+  getTimedPublicProductBySlug: getProductBySlugMock,
+}));
+
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { createRouteHarness } from "../helpers/route-harness";
 
@@ -141,7 +145,7 @@ describe("GET /products/:slug/stock", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("max-age=5");
-    expect(response.headers.get("server-timing")).toMatch(/^app;dur=/);
+    expect(response.headers.get("server-timing")).toMatch(/^route-total;dur=/);
     expect(payload).toEqual({
       id: stockRow.id,
       reservedUntil: null,

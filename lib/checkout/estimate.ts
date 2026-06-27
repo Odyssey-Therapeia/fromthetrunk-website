@@ -19,6 +19,7 @@
  */
 
 import {
+  ENABLE_FREE_SHIPPING,
   GST_RATE,
   SHIPPING_TIERS,
   type ShippingMethod,
@@ -77,5 +78,5 @@ export function isFreeShipping(
   subtotalForShipping: number,
   tiers: ShippingTiers = SHIPPING_TIERS,
 ): boolean {
-  return subtotalForShipping >= tiers.freeThreshold;
+  return ENABLE_FREE_SHIPPING && subtotalForShipping >= tiers.freeThreshold;
 }

@@ -4,7 +4,7 @@
  * Scope: tests/unit/payments-route.test.ts
  * Cases covered:
  *   1. create-order happy path
- *   2. create-order reserved conflict (ITEM_RESERVED / 409)
+ *   2. create-order reserved conflict (PRODUCT_RESERVED / 409)
  *   3. create-order AMOUNT_TOO_LOW (400)
  *   4. callback signature valid -> redirects with payment=paid
  *   5. callback signature invalid (tampered) -> redirects with payment=review
@@ -36,6 +36,7 @@ const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
 
 // lib/orders/complete-paid-order mock
 const completePaidOrderMock = vi.hoisted(() => vi.fn());
+const emitAnalyticsEventMock = vi.hoisted(() => vi.fn());
 
 // lib/payments/razorpay mocks
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
@@ -67,6 +68,10 @@ vi.mock("@/db/queries/users", () => ({
 
 vi.mock("@/lib/orders/complete-paid-order", () => ({
   completePaidOrder: completePaidOrderMock,
+}));
+
+vi.mock("@/lib/analytics/emit", () => ({
+  emitAnalyticsEvent: emitAnalyticsEventMock,
 }));
 
 vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
@@ -132,6 +137,12 @@ const makeOrder = (overrides: Partial<{ id: string; razorpayOrderId: string | nu
   ...overrides,
 });
 
+const AUTH_USER = {
+  email: "customer@example.com",
+  id: "11111111-1111-4111-8111-111111111111",
+  role: "customer",
+};
+
 /** Valid create-order request body. */
 const validBody = () => ({
   items: [{ productId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", quantity: 1 }],
@@ -193,6 +204,7 @@ describe("payments route — create-order", () => {
     addOrderEventMock.mockReset();
     getOrCreateCheckoutCustomerMock.mockReset();
     completePaidOrderMock.mockReset();
+    emitAnalyticsEventMock.mockReset();
     createRazorpayPaymentLinkMock.mockReset();
     verifyPaymentLinkSignatureMock.mockReset();
     verifyPaymentSignatureMock.mockReset();
@@ -214,6 +226,20 @@ describe("payments route — create-order", () => {
   // -------------------------------------------------------------------------
   // Case 1: Happy path
   // -------------------------------------------------------------------------
+  it("create-order returns 401 without an authenticated session", async () => {
+    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+
+    const response = await request("/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody()),
+    });
+
+    expect(response.status).toBe(401);
+    expect(createOrderMock).not.toHaveBeenCalled();
+    expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
+  });
+
   it("create-order happy path returns orderId, paymentLinkUrl, and razorpayKeyId", async () => {
     const product = makeProduct();
     const order = makeOrder();
@@ -237,7 +263,7 @@ describe("payments route — create-order", () => {
       short_url: "https://rzp.io/l/test123",
     });
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -258,14 +284,20 @@ describe("payments route — create-order", () => {
     expect(typeof json.orderAccessToken).toBe("string");
     expect((json.orderAccessToken as string).length).toBeGreaterThan(0);
 
-    expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
-    expect(createOrderMock).toHaveBeenCalledTimes(1);
-  });
+	    expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
+	    expect(createOrderMock).toHaveBeenCalledTimes(1);
+	    expect(createOrderMock).toHaveBeenCalledWith(
+	      expect.objectContaining({
+	        shippingEmail: "buyer@example.com",
+	        userId: AUTH_USER.id,
+	      })
+	    );
+	  });
 
   // -------------------------------------------------------------------------
-  // Case 2: Reserved conflict — ITEM_RESERVED / 409
+  // Case 2: Reserved conflict — PRODUCT_RESERVED / 409
   // -------------------------------------------------------------------------
-  it("create-order returns ITEM_RESERVED (409) when item is reserved by another buyer", async () => {
+  it("create-order returns PRODUCT_RESERVED (409) when item is reserved by another buyer", async () => {
     const reservedUntil = new Date(Date.now() + 30 * 60 * 1000);
     const product = makeProduct({ stockStatus: "reserved", reservedUntil });
 
@@ -276,7 +308,7 @@ describe("payments route — create-order", () => {
       .mockReturnValueOnce(productSelectChain)
       .mockReturnValueOnce(pendingCountSelectChain);
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -286,7 +318,7 @@ describe("payments route — create-order", () => {
 
     expect(response.status).toBe(409);
     const json = await response.json() as Record<string, unknown>;
-    expect(json.code).toBe("ITEM_RESERVED");
+    expect(json.code).toBe("PRODUCT_RESERVED");
 
     expect(createOrderMock).not.toHaveBeenCalled();
     expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
@@ -319,7 +351,7 @@ describe("payments route — create-order", () => {
       short_url: "https://rzp.io/l/token-test",
     });
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
     const baseBody = validBody();
     const body = {
       ...baseBody,
@@ -334,6 +366,163 @@ describe("payments route — create-order", () => {
 
     expect(response.status).toBe(200);
     expect(createOrderMock).toHaveBeenCalledTimes(1);
+    expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("create-order returns RESERVATION_EXPIRED for an expired reservation token", async () => {
+    const product = makeProduct();
+    const reservationToken = createReservationToken({
+      productId: product.id,
+      reservedUntil: new Date(Date.now() - 60_000),
+    });
+
+    const productSelectChain = makeSelectChain([product]);
+    dbSelectMock.mockReturnValueOnce(productSelectChain);
+
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+    const baseBody = validBody();
+    const body = {
+      ...baseBody,
+      items: baseBody.items.map((item) => ({ ...item, reservationToken })),
+    };
+
+    const response = await request("/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(409);
+    expect(json.code).toBe("RESERVATION_EXPIRED");
+    expect(createOrderMock).not.toHaveBeenCalled();
+    expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
+  });
+
+  it("create-order returns RESERVATION_CONFLICT for a mismatched active reservation token", async () => {
+    const reservedUntil = new Date(Date.now() + 30 * 60 * 1000);
+    const product = makeProduct({ stockStatus: "reserved", reservedUntil });
+    const reservationToken = createReservationToken({
+      productId: product.id,
+      reservedUntil: new Date(reservedUntil.getTime() + 5_000),
+    });
+
+    const productSelectChain = makeSelectChain([product]);
+    dbSelectMock.mockReturnValueOnce(productSelectChain);
+
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+    const baseBody = validBody();
+    const body = {
+      ...baseBody,
+      items: baseBody.items.map((item) => ({ ...item, reservationToken })),
+    };
+
+    const response = await request("/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(409);
+    expect(json.code).toBe("RESERVATION_CONFLICT");
+    expect(createOrderMock).not.toHaveBeenCalled();
+    expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
+  });
+
+  it("create-order returns PRODUCT_RESERVED if the final atomic inventory claim loses a race", async () => {
+    const product = makeProduct();
+    const order = makeOrder();
+
+    const productSelectChain = makeSelectChain([product]);
+    const pendingCountSelectChain = makeSelectChain([{ c: 0 }]);
+
+    dbSelectMock
+      .mockReturnValueOnce(productSelectChain)
+      .mockReturnValueOnce(pendingCountSelectChain);
+
+    const reserveUpdateChain = makeUpdateChain([]);
+    const failOrderUpdateChain = makeUpdateChain([]);
+    dbUpdateMock
+      .mockReturnValueOnce(reserveUpdateChain)
+      .mockReturnValueOnce(failOrderUpdateChain);
+    createOrderMock.mockResolvedValue(order);
+
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+
+    const response = await request("/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody()),
+    });
+    const json = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(409);
+    expect(json.code).toBe("PRODUCT_RESERVED");
+    expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
+  });
+
+  it("allows only one winner when two users create-order for the same product", async () => {
+    const product = makeProduct();
+    const firstOrder = makeOrder({ id: "11111111-1111-4111-8111-111111111111" });
+    const secondOrder = makeOrder({ id: "22222222-2222-4222-8222-222222222222" });
+
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([product]))
+      .mockReturnValueOnce(makeSelectChain([product]))
+      .mockReturnValueOnce(makeSelectChain([{ c: 0 }]))
+      .mockReturnValueOnce(makeSelectChain([{ c: 0 }]));
+
+    const firstReserveUpdateChain = makeUpdateChain([{ id: product.id, slug: "silk-saree" }]);
+    const secondReserveUpdateChain = makeUpdateChain([]);
+    const secondOrderFailedUpdateChain = makeUpdateChain([]);
+    const firstOrderPaymentLinkUpdateChain = makeUpdateChain([]);
+
+    dbUpdateMock
+      .mockReturnValueOnce(firstReserveUpdateChain)
+      .mockReturnValueOnce(secondReserveUpdateChain)
+      .mockReturnValueOnce(secondOrderFailedUpdateChain)
+      .mockReturnValueOnce(firstOrderPaymentLinkUpdateChain);
+
+    createOrderMock
+      .mockResolvedValueOnce(firstOrder)
+      .mockResolvedValueOnce(secondOrder);
+    createRazorpayPaymentLinkMock.mockResolvedValue({
+      id: "plink_winner",
+      short_url: "https://rzp.io/l/winner",
+    });
+
+    const firstBuyer = createRouteHarness({
+      authUser: AUTH_USER,
+      register: registerPaymentRoutes,
+    });
+    const secondBuyer = createRouteHarness({
+      authUser: {
+        ...AUTH_USER,
+        email: "other@example.com",
+        id: "99999999-9999-4999-8999-999999999999",
+      },
+      register: registerPaymentRoutes,
+    });
+
+    const [firstResponse, secondResponse] = await Promise.all([
+      firstBuyer.request("/create-order", {
+        body: JSON.stringify(validBody()),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }),
+      secondBuyer.request("/create-order", {
+        body: JSON.stringify(validBody()),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }),
+    ]);
+
+    const statuses = [firstResponse.status, secondResponse.status].sort();
+    expect(statuses).toEqual([200, 409]);
+    const conflictJson = (await (firstResponse.status === 409 ? firstResponse : secondResponse).json()) as Record<string, unknown>;
+    expect(conflictJson.code).toBe("PRODUCT_RESERVED");
+    expect(createOrderMock).toHaveBeenCalledTimes(2);
     expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
   });
 
@@ -357,7 +546,7 @@ describe("payments route — create-order", () => {
         .mockReturnValueOnce(productSelectChain)
         .mockReturnValueOnce(pendingCountSelectChain);
 
-      const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	      const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
       const response = await request("/create-order", {
         method: "POST",
@@ -456,6 +645,41 @@ describe("payments route — payment-link/callback", () => {
         source: "Razorpay payment link callback",
       })
     );
+  });
+
+  it("callback replay redirects paid while completePaidOrder handles the loser idempotently", async () => {
+    getOrderMock.mockResolvedValue(validOrder());
+    verifyPaymentLinkSignatureMock.mockReturnValue(true);
+    completePaidOrderMock
+      .mockResolvedValueOnce({
+        alreadyPaid: false,
+        emailsSent: true,
+        order: validOrder(),
+      })
+      .mockResolvedValueOnce({
+        alreadyPaid: true,
+        emailsSent: false,
+        order: { ...validOrder(), status: "confirmed" },
+      });
+
+    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+
+    const firstResponse = await request(
+      `/payment-link/callback?${callbackParams()}`,
+      { method: "GET" }
+    );
+    const secondResponse = await request(
+      `/payment-link/callback?${callbackParams()}`,
+      { method: "GET" }
+    );
+
+    for (const response of [firstResponse, secondResponse]) {
+      expect(response.status).toBe(302);
+      const redirectUrl = new URL(response.headers.get("location") ?? "");
+      expect(redirectUrl.searchParams.get("payment")).toBe("paid");
+    }
+
+    expect(completePaidOrderMock).toHaveBeenCalledTimes(2);
   });
 
   // -------------------------------------------------------------------------

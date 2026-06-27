@@ -120,7 +120,7 @@ export default function ProfilePage() {
             Your saved contact details.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-ftt-burgundy/60">
-            Keep your name, phone, and verified email ready so every one-of-one
+            Keep your name, phone, and verified email ready so every unique
             checkout stays quick and accurate.
           </p>
         </div>

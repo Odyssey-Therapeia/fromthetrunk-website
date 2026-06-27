@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { trackWebsiteMetric } from "@/lib/analytics/client";
+import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
 import { useCartStore } from "@/lib/store/cart-store";
@@ -61,13 +63,14 @@ export function AddToCartButton({ product, initialStatus }: AddToCartButtonProps
         body: JSON.stringify({ productId: product.id, quantity: 1 }),
       });
       const payload = (await response.json().catch(() => null)) as {
+        code?: string;
         message?: string;
         reservationToken?: string;
         reservedUntil?: string;
       } | null;
 
       if (!response.ok) {
-        toast.error(payload?.message ?? "This piece is no longer available.");
+        toast.error(getAvailabilityErrorMessage(payload?.code, payload?.message));
         return;
       }
 
@@ -80,6 +83,13 @@ export function AddToCartButton({ product, initialStatus }: AddToCartButtonProps
         detailsFabric: product.detailsFabric ?? null,
         reservationToken: payload?.reservationToken ?? null,
         reservedUntil: payload?.reservedUntil ?? null,
+      });
+      trackWebsiteMetric("add_to_cart", {
+        pricePaise: product.pricePaise,
+        productId: product.id,
+        slug: product.slug,
+        source: "pdp",
+        stockStatus,
       });
       setAdded(true);
       toast.success(`${product.name} added to your bag`);

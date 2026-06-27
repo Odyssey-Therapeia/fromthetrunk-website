@@ -1,3 +1,5 @@
+import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 type CheckoutStepActionsProps = {
@@ -6,6 +8,7 @@ type CheckoutStepActionsProps = {
   secondaryLabel?: string;
   onSecondary?: () => void;
   disabledPrimary?: boolean;
+  primaryLoading?: boolean;
 };
 
 /** The back / continue control row shared by every checkout step. */
@@ -15,6 +18,7 @@ export function CheckoutStepActions({
   secondaryLabel,
   onSecondary,
   disabledPrimary,
+  primaryLoading = false,
 }: CheckoutStepActionsProps) {
   return (
     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -32,9 +36,12 @@ export function CheckoutStepActions({
       <Button
         type="button"
         onClick={onPrimary}
-        disabled={disabledPrimary}
+        disabled={disabledPrimary || primaryLoading}
         className="rounded-full bg-ftt-navy px-7 text-ftt-ivory hover:bg-ftt-midnight"
       >
+        {primaryLoading ? (
+          <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+        ) : null}
         {primaryLabel}
       </Button>
     </div>

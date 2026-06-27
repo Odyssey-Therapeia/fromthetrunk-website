@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const isStandaloneBuild = process.env.BUILD_STANDALONE === "true";
 
+const cspReportOnly = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://images.unsplash.com https://plus.unsplash.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com https://www.google-analytics.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com",
+  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+  "worker-src 'self' blob:",
+  "report-uri /api/csp-report",
+].join("; ");
+
 const nextConfig: NextConfig = {
   ...(isStandaloneBuild ? { output: "standalone" as const } : {}),
   // Dev-only: allow the LAN "Network" URL host to reach dev resources (HMR, etc.).
@@ -75,6 +91,10 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: cspReportOnly,
+          },
         ],
       },
       // Allow Razorpay to frame the checkout modal
@@ -91,11 +111,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // "Our Story" now lives on the founders page.
+      // The founders page was renamed to "Our Team". Keep old links working.
+      // Temporary (307) while still iterating — make permanent before launch.
       {
-        source: "/our-story",
-        destination: "/founders",
-        permanent: true,
+        source: "/founders",
+        destination: "/our-team",
+        permanent: false,
       },
     ];
   },

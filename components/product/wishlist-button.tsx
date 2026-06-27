@@ -6,9 +6,16 @@ import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { OtpAuthPanel } from "@/components/account/otp-auth-panel";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useGuestWishlistStore } from "@/lib/store/wishlist-store";
 
 interface WishlistButtonProps {
   productId: string;
@@ -30,11 +37,9 @@ export function WishlistButton({
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [optimisticWished, setOptimisticWished] = useState<boolean | null>(null);
-
-  // Guest store (localStorage-backed).
-  // Merge-on-login is handled by WishlistMergeOnLogin (Providers-level) — no per-button effect needed.
-  const guestHas = useGuestWishlistStore((s) => s.has);
-  const guestToggle = useGuestWishlistStore((s) => s.toggle);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
 
   // Account-backed wishlist (only when logged in).
   // Key ["wishlist","ids"] — returns string[].
@@ -52,16 +57,16 @@ export function WishlistButton({
     optimisticWished ??
     (session?.user?.id
       ? (wishlist ?? []).some((item) => item === productId)
-      : guestHas(productId));
+      : false);
 
   // ── Account mutations ──────────────────────────────────────────────────────
 
   const addMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (targetProductId: string) => {
       const res = await fetch("/api/v2/wishlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
+        body: JSON.stringify({ productId: targetProductId }),
       });
       if (!res.ok) throw new Error("Failed to add");
       return res.json();
@@ -69,7 +74,7 @@ export function WishlistButton({
     onMutate: () => setOptimisticWished(true),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-      toast.success(`${productName} saved to wishlist`);
+      toast.success("Saved to your trunk");
     },
     onError: () => {
       setOptimisticWished(null);
@@ -111,35 +116,93 @@ export function WishlistButton({
       if (isInWishlist) {
         removeMutation.mutate();
       } else {
-        addMutation.mutate();
+        addMutation.mutate(productId);
       }
     } else {
-      // Guest path: persist to localStorage.
-      guestToggle(productId);
-      if (!isInWishlist) {
-        toast.success(`${productName} saved to wishlist`);
-      } else {
-        toast(`${productName} removed from wishlist`);
-      }
+      setPendingProductId(productId);
+      setAuthMode("sign-in");
+      setAuthOpen(true);
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    if (!pendingProductId) return;
+
+    try {
+      await addMutation.mutateAsync(pendingProductId);
+      await queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      setAuthOpen(false);
+    } catch {
+      setPendingProductId(null);
+    }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setAuthOpen(open);
+    if (!open) {
+      setPendingProductId(null);
+      setAuthMode("sign-in");
     }
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className={cn(
-        "rounded-full transition",
-        isInWishlist ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-red-400",
-        className
-      )}
-      disabled={isPending}
-      onClick={handleClick}
-      aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
-    >
-      <Heart
-        className={cn("h-5 w-5 transition", isInWishlist && "fill-current")}
-      />
-    </Button>
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          "rounded-full transition",
+          isInWishlist ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-red-400",
+          className
+        )}
+        disabled={isPending}
+        onClick={handleClick}
+        aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
+      >
+        <Heart
+          className={cn("h-5 w-5 transition", isInWishlist && "fill-current")}
+        />
+      </Button>
+
+      <Dialog open={authOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-h-[92vh] w-[calc(100%-2rem)] overflow-y-auto rounded-[1.75rem] border-ftt-border bg-ftt-ivory p-5 shadow-[0_24px_80px_rgba(20,29,70,0.18)] sm:max-w-xl sm:p-6">
+          <DialogHeader className="pr-7 text-left">
+            <DialogTitle className="font-serif text-3xl leading-tight text-ftt-navy">
+              Save this piece to your trunk
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-ftt-burgundy/65">
+              Log in or create an account to keep this one-of-one piece saved.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-2 rounded-full border border-ftt-border bg-ftt-card p-1">
+            {(["sign-in", "sign-up"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAuthMode(mode)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-semibold transition",
+                  authMode === mode
+                    ? "bg-ftt-navy text-ftt-ivory shadow-[0_8px_18px_rgba(20,29,70,0.16)]"
+                    : "text-ftt-burgundy/65 hover:bg-ftt-gold/10 hover:text-ftt-navy",
+                )}
+              >
+                {mode === "sign-in" ? "Sign in" : "Create account"}
+              </button>
+            ))}
+          </div>
+
+          <OtpAuthPanel
+            key={authMode}
+            mode={authMode}
+            context="wishlist"
+            compact
+            onCancel={() => handleDialogOpenChange(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

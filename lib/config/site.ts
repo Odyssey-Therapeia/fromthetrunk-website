@@ -7,6 +7,17 @@ export function getSiteOrigin(): string {
   return "https://www.fromthetrunk.shop";  // dev/test default (the actual canonical)
 }
 
+export function getPublicAssetOrigin(): string {
+  const origin = getSiteOrigin();
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+    return origin;
+  }
+
+  return (
+    process.env.NEXTAUTH_URL ?? "https://www.fromthetrunk.shop"
+  ).replace(/\/$/, "");
+}
+
 /** Digits-only WhatsApp number (country code + number, no "+"). */
 export const WHATSAPP_NUMBER = (
   process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919731910202"

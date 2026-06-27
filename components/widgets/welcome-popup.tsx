@@ -188,8 +188,8 @@ export function WelcomePopup() {
                 Grand Launch Week
               </p>
               <p className="mx-auto m-0 mb-[22px] max-w-[30ch] font-serif text-[16px] leading-[1.45] text-[#2A1714]">
-                A <b className="font-semibold">complimentary styling consult</b>{" "}
-                with every order.
+                Limited <b className="font-semibold">fortnightly drops</b> —
+                reserve your piece early.
               </p>
 
               <button

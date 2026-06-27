@@ -40,7 +40,7 @@ export default function LocationMap({
     : INDIA_CENTER;
 
   return (
-    <div className="h-56 w-full overflow-hidden rounded-2xl border border-ftt-border">
+    <div className="relative z-0 h-56 w-full overflow-hidden rounded-2xl border border-ftt-border [isolation:isolate]">
       <MapContainer
         center={center}
         zoom={position ? 14 : 4}

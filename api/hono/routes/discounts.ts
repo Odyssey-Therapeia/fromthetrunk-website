@@ -22,10 +22,13 @@ import { collections } from "@/db/schema";
 import { applyDiscountToPaise, validateDiscountCode } from "@/lib/discounts/validate";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 
+const MAX_DISCOUNT_PREVIEW_ITEMS = 100;
+const MAX_DISCOUNT_PREVIEW_SUBTOTAL_PAISE = 100_000_000;
+
 const validateDiscountRequestSchema = z.object({
   code: z.string().trim().min(1).max(64),
-  subtotalPaise: z.number().int().min(0),
-  itemProductIds: z.array(z.string()).default([]),
+  subtotalPaise: z.number().int().min(0).max(MAX_DISCOUNT_PREVIEW_SUBTOTAL_PAISE),
+  itemProductIds: z.array(z.string().uuid()).max(MAX_DISCOUNT_PREVIEW_ITEMS).default([]),
 });
 
 export const registerDiscountRoutes = (app: OpenAPIHono<HonoBindings>) => {

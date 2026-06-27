@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
-
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
@@ -11,7 +9,7 @@ export const metadata: Metadata = {
 export default function TermsOfServicePage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-10 px-6 py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
@@ -21,7 +19,7 @@ export default function TermsOfServicePage() {
         <p className="text-sm text-muted-foreground">
           Last updated: February 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
@@ -37,7 +35,7 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">2. Products</h2>
           <p>
-            All sarees listed on From the Trunk are pre-loved, one-of-a-kind
+            All sarees listed on From the Trunk are pre-loved, unique
             pieces. Product descriptions, images, and provenance details are
             provided to the best of our knowledge. Minor variations from
             descriptions are inherent to vintage and pre-loved items.

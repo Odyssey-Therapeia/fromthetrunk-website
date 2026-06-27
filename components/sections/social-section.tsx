@@ -83,7 +83,7 @@ export async function SocialSection({ images }: { images: LandingImage[] }) {
       <div className="mx-auto max-w-7xl">
         <div className="grid min-w-0 gap-12 lg:grid-cols-[0.34fr_minmax(0,0.66fr)] lg:items-center">
           <div className="relative z-10 min-w-0">
-            <div className="mb-6 inline-flex rounded-full border border-[#B39152]/35 bg-[#FFFCF8] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#B39152] shadow-[0_10px_28px_rgba(96,29,28,0.06)]">
+            <div className="mb-6 inline-flex rounded-full border border-[#B39152]/35 bg-[#FFFCF8] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#74531B] shadow-[0_10px_28px_rgba(96,29,28,0.06)]">
               Social dispatch
             </div>
 
@@ -106,7 +106,7 @@ export async function SocialSection({ images }: { images: LandingImage[] }) {
                 Follow @{username}
               </Link>
 
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#74531B]">
                 Live notes, not a catalogue
               </span>
             </div>

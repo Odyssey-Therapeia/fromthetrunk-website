@@ -39,6 +39,9 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
   error: 3,
 };
 
+const REDACTED = "[redacted]";
+const REDACTED_SQL_PARAMS = "[redacted-sql-params]";
+
 function getMinLevel(): LogLevel {
   const raw = process.env.LOG_LEVEL?.toLowerCase();
   if (raw === "debug" || raw === "info" || raw === "warn" || raw === "error") {
@@ -51,20 +54,100 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-function serializeValue(value: unknown): unknown {
+function normalizeKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
+function isSensitiveLogKey(key: string): boolean {
+  const normalized = normalizeKey(key);
+  return (
+    normalized === "authorization" ||
+    normalized === "cookie" ||
+    normalized === "setcookie" ||
+    normalized === "params" ||
+    normalized === "body" ||
+    normalized === "requestbody" ||
+    normalized === "rawbody" ||
+    normalized === "email" ||
+    normalized.endsWith("email") ||
+    normalized === "phone" ||
+    normalized.endsWith("phone") ||
+    normalized === "address" ||
+    normalized.includes("addressline") ||
+    normalized === "line1" ||
+    normalized === "line2" ||
+    normalized === "postalcode" ||
+    normalized === "postcode" ||
+    normalized === "otp" ||
+    normalized.endsWith("otp") ||
+    normalized.includes("challengetoken") ||
+    normalized.includes("loginticket") ||
+    normalized.includes("registrationtoken") ||
+    normalized.includes("razorpay") ||
+    normalized.includes("apikey") ||
+    normalized.includes("apisecret") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.endsWith("token")
+  );
+}
+
+function redactString(value: string): string {
+  return value
+    .replace(/params:\s*[\s\S]*$/i, `params: ${REDACTED_SQL_PARAMS}`)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/\+?[1-9][\d\s().-]{7,}\d/g, "[redacted-phone]")
+    .replace(
+      /(authorization|cookie|otp|challengeToken|loginTicket|registrationToken|razorpay[^:=\s]*|api[_-]?secret|secret|password)\s*[:=]\s*["']?[^"',\s}]+/gi,
+      "$1=[redacted]"
+    );
+}
+
+export function redactErrorForLog(error: Error): Error {
+  const redacted = new Error(redactString(error.message));
+  redacted.name = error.name;
+  if (error.stack) redacted.stack = redactString(error.stack);
+  return redacted;
+}
+
+export function redactForLog(value: unknown, key = "", seen = new WeakSet<object>()): unknown {
+  if (key && isSensitiveLogKey(key)) return REDACTED;
+
   if (value instanceof Error) {
     return {
-      message: value.message,
+      message: redactString(value.message),
       name: value.name,
-      stack: value.stack,
+      stack: value.stack ? redactString(value.stack) : undefined,
     };
   }
-  return value;
+  if (typeof value === "string") return redactString(value);
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value)) return "[circular]";
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactForLog(item, "", seen));
+  }
+
+  const redacted: Record<string, unknown> = {};
+  for (const [entryKey, entryValue] of Object.entries(value)) {
+    redacted[entryKey] = redactForLog(entryValue, entryKey, seen);
+  }
+  return redacted;
+}
+
+function serializeValue(value: unknown): unknown {
+  return redactForLog(value);
+}
+
+function toLogMeta(meta?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!meta) return undefined;
+  return redactForLog(meta) as Record<string, unknown>;
 }
 
 function toSafeJson(obj: Record<string, unknown>): string {
   try {
-    return JSON.stringify(obj, (_key, value: unknown) => serializeValue(value));
+    return JSON.stringify(redactForLog(obj), (_key, value: unknown) => serializeValue(value));
   } catch {
     // Fallback for circular references or other non-serializable values
     try {
@@ -72,7 +155,7 @@ function toSafeJson(obj: Record<string, unknown>): string {
       for (const [k, v] of Object.entries(obj)) {
         try {
           JSON.stringify(v);
-          safe[k] = v instanceof Error ? serializeValue(v) : v;
+          safe[k] = serializeValue(v);
         } catch {
           safe[k] = "[unserializable]";
         }
@@ -89,7 +172,7 @@ function writeJson(level: LogLevel, namespace: string, msg: string, meta?: Recor
     level,
     namespace,
     msg,
-    ...meta,
+    ...toLogMeta(meta),
     time: new Date().toISOString(),
   };
   process.stdout.write(toSafeJson(entry) + "\n");
@@ -97,8 +180,9 @@ function writeJson(level: LogLevel, namespace: string, msg: string, meta?: Recor
 
 function writeHuman(level: LogLevel, namespace: string, msg: string, meta?: Record<string, unknown>): void {
   const prefix = `[${level.toUpperCase()}] [${namespace}]`;
-  const metaPart = meta && Object.keys(meta).length > 0
-    ? ` ${JSON.stringify(meta, (_key, value: unknown) => serializeValue(value))}`
+  const safeMeta = toLogMeta(meta);
+  const metaPart = safeMeta && Object.keys(safeMeta).length > 0
+    ? ` ${JSON.stringify(safeMeta, (_key, value: unknown) => serializeValue(value))}`
     : "";
   process.stdout.write(`${prefix} ${msg}${metaPart}\n`);
 }
@@ -139,11 +223,15 @@ export function createLogger(namespace: string): Logger {
       log("error", namespace, msg, meta);
       // P6-07: forward to error-tracker port (env-gated, never throws).
       // Extract the first Error object from meta if present (typically meta.err).
-      try {
-        const tracker = getErrorTracker();
-        const errValue = meta?.err instanceof Error ? meta.err : undefined;
-        tracker.capture(errValue ?? new Error(msg), { namespace, msg, ...meta });
-      } catch {
+	      try {
+	        const tracker = getErrorTracker();
+	        const errValue = meta?.err instanceof Error ? meta.err : undefined;
+	        tracker.capture(errValue ? redactErrorForLog(errValue) : new Error(redactString(msg)), {
+	          namespace,
+	          msg: redactString(msg),
+	          ...toLogMeta(meta),
+	        });
+	      } catch {
         // Never throw from the logging path
       }
     },

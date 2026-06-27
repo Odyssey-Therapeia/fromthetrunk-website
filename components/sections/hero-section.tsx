@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useUiHaptics } from "@/lib/haptics/use-ui-haptics";
@@ -36,8 +37,8 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    image: "/hero/3.png",
-    mobileImage: "/hero/mobile_1.png",
+    image: "/hero/3-lcp.webp",
+    mobileImage: "/hero/mobile_1-lcp.webp",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
     mobileImagePosition: "center 80%",
@@ -215,8 +216,8 @@ function HeroCopy({
         <p
           className={
             isMobile
-              ? "mt-5 w-full max-w-[min(84vw,24rem)] font-sans text-[clamp(1rem,3.75vw,1.22rem)] leading-[1.55] text-white/86"
-              : "mt-6 w-auto max-w-[clamp(18rem,34vw,30rem)] text-[clamp(0.95rem,1vw,1.25rem)] leading-[1.65] text-white/84 lg:max-w-[clamp(22rem,36vw,36rem)]"
+              ? "mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88"
+              : "mt-6 w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
           }
         >
           {slide.description}
@@ -305,48 +306,80 @@ export function HeroSection(props: HeroSectionProps) {
             key={`${slide.image}-tablet`}
             aria-hidden={activeImageIndex !== index}
             className={[
-              "absolute inset-0 hidden bg-cover opacity-0 transition-opacity ease-in-out md:block lg:hidden",
+              "absolute inset-0 hidden opacity-0 transition-opacity ease-in-out md:block lg:hidden",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
-            style={{
-              backgroundImage: `url("${slide.image}")`,
-              backgroundPosition:
-                slide.tabletImagePosition ??
-                slide.imagePosition ??
-                "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          />
+            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+          >
+            {activeImageIndex === index ? (
+              <Image
+                src={slide.image}
+                alt=""
+                fill
+                loading="lazy"
+                sizes="(min-width: 768px) and (max-width: 1023px) 100vw, 0vw"
+                className="object-cover"
+                style={{
+                  objectPosition:
+                  slide.tabletImagePosition ??
+                  slide.imagePosition ??
+                  "center center",
+                }}
+              />
+            ) : null}
+          </div>
         ))}
         {slides.map((slide, index) => (
           <div
             key={slide.image}
             aria-hidden={activeImageIndex !== index}
             className={[
-              "absolute inset-0 hidden bg-cover opacity-0 transition-opacity ease-in-out lg:block",
+              "absolute inset-0 hidden opacity-0 transition-opacity ease-in-out lg:block",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
-            style={{
-              backgroundImage: `url("${slide.image}")`,
-              backgroundPosition: slide.imagePosition ?? "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          />
+            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+          >
+            {activeImageIndex === index ? (
+              <Image
+                src={slide.image}
+                alt=""
+                fill
+                loading="lazy"
+                sizes="(min-width: 1024px) 100vw, 0vw"
+                className="object-cover"
+                style={{
+                  objectPosition: slide.imagePosition ?? "center center",
+                }}
+              />
+            ) : null}
+          </div>
         ))}
         {slides.map((slide, index) => (
           <div
             key={`${slide.image}-mobile`}
             aria-hidden={activeImageIndex !== index}
             className={[
-              "absolute inset-0 bg-cover bg-center opacity-0 transition-opacity ease-in-out md:hidden",
+              "absolute inset-0 opacity-0 transition-opacity ease-in-out md:hidden",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
-            style={{
-              backgroundImage: `url("${slide.mobileImage}")`,
-              backgroundPosition: slide.mobileImagePosition ?? "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          />
+            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+          >
+            {activeImageIndex === index ? (
+              <Image
+                src={slide.mobileImage}
+                alt=""
+                fill
+                priority={index === 0}
+                fetchPriority={index === 0 ? "high" : "auto"}
+                loading={index === 0 ? undefined : "lazy"}
+                sizes="(max-width: 767px) 100vw, 0vw"
+                className="object-cover"
+                style={{
+                  objectPosition: slide.mobileImagePosition ?? "center center",
+                }}
+              />
+            ) : null}
+          </div>
         ))}
       </div>
 

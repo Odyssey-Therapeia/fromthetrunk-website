@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
+import { TrackPageView } from "@/components/analytics/track-page-view";
 import { FilterLink } from "@/components/collection/filter-link";
 import { MobileFilterDisclosure } from "@/components/collection/mobile-filter-disclosure";
 
@@ -36,16 +38,18 @@ export const metadata: Metadata = {
 
 const COLLECTION_BANNER_IMAGES = [
   {
-    src: "/banner/collection_banner.png",
+    src: "/banner/collection_banner-mobile.webp",
     alt: "From the Trunk collection banner",
   },
   {
-    src: "/banner/collection-banner2.png",
+    src: "/banner/collection-banner2-mobile.webp",
     alt: "From the Trunk collection banner alternate edit",
   },
 ] as const;
 const DEFAULT_ITEMS_PER_PAGE = 10;
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50] as const;
+const MAX_COLLECTION_PAGE = 10;
+const MAX_VISIBLE_PRODUCTS = 100;
 
 const shortSortLabels: Record<ProductSortOption, string> = {
   latest: "Newest",
@@ -177,32 +181,21 @@ const TAG_FILTER_GROUPS = [
   },
 ] as const;
 
+type CollectionSearchParams = {
+  availability?: string;
+  collection?: string | string[];
+  fabric?: string | string[];
+  page?: string;
+  perPage?: string | string[];
+  priceMax?: string;
+  priceMin?: string;
+  sort?: string | string[];
+  tags?: string | string[];
+  type?: string | string[];
+};
+
 type CollectionPageProps = {
-  searchParams:
-    | Promise<{
-        collection?: string | string[];
-        page?: string;
-        sort?: string | string[];
-        type?: string | string[];
-        fabric?: string | string[];
-        priceMin?: string;
-        priceMax?: string;
-        availability?: string;
-        perPage?: string | string[];
-        tags?: string | string[];
-      }>
-    | {
-        collection?: string | string[];
-        page?: string;
-        sort?: string | string[];
-        type?: string | string[];
-        fabric?: string | string[];
-        priceMin?: string;
-        priceMax?: string;
-        availability?: string;
-        perPage?: string | string[];
-        tags?: string | string[];
-      };
+  searchParams?: Promise<CollectionSearchParams>;
 };
 
 type BuildUrlPatch = {
@@ -218,6 +211,12 @@ type BuildUrlPatch = {
   tags?: string[] | null;
 };
 
+type FilterMetricEvent = {
+  filterLabel: string;
+  filterType: string;
+  filterValue: string;
+};
+
 const firstStr = (v: string | string[] | undefined): string | undefined =>
   Array.isArray(v) ? v[0] : v;
 
@@ -228,7 +227,8 @@ const toArray = (v: string | string[] | undefined): string[] => {
 
 const safePage = (value: string | undefined): number => {
   const parsed = Number.parseInt(value ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.min(parsed, MAX_COLLECTION_PAGE);
 };
 
 const parseOptionalInt = (value: string | undefined): number | undefined => {
@@ -301,7 +301,7 @@ const getPriceRangeLabel = (
 };
 
 const buildPerfRequestId = (
-  params: Awaited<CollectionPageProps["searchParams"]> | undefined,
+  params: CollectionSearchParams | undefined,
 ) => {
   const entries = Object.entries(params ?? {}).sort(([a], [b]) =>
     a.localeCompare(b),
@@ -333,7 +333,10 @@ export default async function CollectionPage({
   const activeSort = parseProductSort(resolvedSearchParams?.sort);
   const currentPage = safePage(resolvedSearchParams?.page);
   const activeItemsPerPage = parseItemsPerPage(resolvedSearchParams?.perPage);
-  const visibleLimit = currentPage * activeItemsPerPage;
+  const visibleLimit = Math.min(
+    currentPage * activeItemsPerPage,
+    MAX_VISIBLE_PRODUCTS,
+  );
 
   const activeType = firstStr(resolvedSearchParams?.type);
   const activeFabric = firstStr(resolvedSearchParams?.fabric);
@@ -434,7 +437,8 @@ export default async function CollectionPage({
     facets = cachedFacets;
   }
 
-  const hasMoreProducts = items.length < totalDocs;
+  const hasMoreProducts =
+    items.length < totalDocs && visibleLimit < MAX_VISIBLE_PRODUCTS;
   const collectionCount = collections.length;
   const activeCollectionLabel = activeCollection?.name ?? "All pieces";
   const filterDescription =
@@ -596,6 +600,59 @@ export default async function CollectionPage({
     });
   }
 
+  const appliedFilterEvents: FilterMetricEvent[] = [
+    activeCollectionSlug
+      ? {
+          filterLabel: activeCollectionLabel,
+          filterType: "collection",
+          filterValue: activeCollectionSlug,
+        }
+      : null,
+    activeType
+      ? {
+          filterLabel: humanizeFilterValue(activeType),
+          filterType: "type",
+          filterValue: activeType,
+        }
+      : null,
+    activeFabric
+      ? {
+          filterLabel: humanizeFilterValue(activeFabric),
+          filterType: "fabric",
+          filterValue: activeFabric,
+        }
+      : null,
+    typeof activePriceMin === "number" || typeof activePriceMax === "number"
+      ? {
+          filterLabel: getPriceRangeLabel(activePriceMin, activePriceMax),
+          filterType: "price_range",
+          filterValue: `${activePriceMin ?? "min"}-${activePriceMax ?? "max"}`,
+        }
+      : null,
+    activeAvailability
+      ? {
+          filterLabel: "In stock",
+          filterType: "availability",
+          filterValue: "available",
+        }
+      : null,
+    ...activeTags.map((tag) => {
+      const details = facets.tagDetails[tag];
+      return {
+        filterLabel: details?.name ?? humanizeFilterValue(tag),
+        filterType: "tag",
+        filterValue: tag,
+      };
+    }),
+    activeSort !== DEFAULT_PRODUCT_SORT
+      ? {
+          filterLabel: shortSortLabels[activeSort],
+          filterType: "sort",
+          filterValue: activeSort,
+        }
+      : null,
+  ].filter((event): event is FilterMetricEvent => Boolean(event));
+
   const appliedFilterCount = appliedFilters.filter(
     (filter) => filter.kind !== "sort",
   ).length;
@@ -619,7 +676,7 @@ export default async function CollectionPage({
               active={isActive}
             >
               {option.label}
-              <span className="ml-1 opacity-60">({option.count})</span>
+              <span className="ml-1 text-[#5F564D]">({option.count})</span>
             </FilterPill>
           );
         })}
@@ -630,7 +687,7 @@ export default async function CollectionPage({
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-[var(--ftt-gold)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-[#74531B]">
             Refine the trunk
           </p>
           <h2 className="mt-1 font-serif text-2xl leading-none text-[var(--ftt-royal-navy)]">
@@ -683,7 +740,7 @@ export default async function CollectionPage({
               active={activeType === type}
             >
               {humanizeFilterValue(type)}
-              <span className="ml-1 opacity-60">({count})</span>
+              <span className="ml-1 text-[#5F564D]">({count})</span>
             </FilterPill>
           ))}
         </FilterSection>
@@ -701,7 +758,7 @@ export default async function CollectionPage({
               active={activeFabric === fabric}
             >
               {humanizeFilterValue(fabric)}
-              <span className="ml-1 opacity-60">({count})</span>
+              <span className="ml-1 text-[#5F564D]">({count})</span>
             </FilterPill>
           ))}
         </FilterSection>
@@ -738,7 +795,7 @@ export default async function CollectionPage({
         >
           In stock
           {availableCount > 0 ? (
-            <span className="ml-1 opacity-60">({availableCount})</span>
+            <span className="ml-1 text-[#5F564D]">({availableCount})</span>
           ) : null}
         </FilterPill>
       </FilterSection>
@@ -771,6 +828,44 @@ export default async function CollectionPage({
 
   return (
     <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
+      <TrackPageView
+        eventKey={`collection_view:${activeCollectionSlug ?? "all"}:${currentPage}:${activeSort}:${activeType ?? "all"}:${activeFabric ?? "all"}:${activePriceMin ?? "min-any"}:${activePriceMax ?? "max-any"}:${activeAvailability ? "available" : "any"}:${activeTags.slice().sort().join(",")}`}
+        type="collection_view"
+        payload={{
+          collectionSlug: activeCollectionSlug ?? null,
+          filters: {
+            availability: activeAvailability,
+            fabric: activeFabric ?? null,
+            priceMax: activePriceMax ?? null,
+            priceMin: activePriceMin ?? null,
+            tags: activeTags,
+            type: activeType ?? null,
+          },
+          page: currentPage,
+          resultCount: items.length,
+          sort: activeSort,
+          source: "collection_page",
+          totalDocs,
+        }}
+      />
+      {appliedFilterEvents.map((filter) => (
+        <TrackPageView
+          key={`filter_applied:${filter.filterType}:${filter.filterValue}`}
+          eventKey={`filter_applied:${filter.filterType}:${filter.filterValue}`}
+          type="filter_applied"
+          payload={{
+            collectionSlug: activeCollectionSlug ?? null,
+            filterLabel: filter.filterLabel,
+            filterType: filter.filterType,
+            filterValue: filter.filterValue,
+            page: currentPage,
+            resultCount: items.length,
+            sort: activeSort,
+            source: "collection_page",
+            totalDocs,
+          }}
+        />
+      ))}
       <div className="mx-auto w-full max-w-[1720px] space-y-4 px-3 py-3 sm:px-5 md:px-6 lg:px-8 lg:py-6">
         <section className="overflow-hidden rounded-[1.5rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_50px_rgba(20,29,70,0.13)] md:grid md:min-h-[340px] md:grid-cols-[0.48fr_0.52fr] lg:min-h-[460px] lg:grid-cols-[0.46fr_0.54fr] lg:rounded-[1.75rem] xl:min-h-[500px]">
           <div
@@ -812,7 +907,19 @@ export default async function CollectionPage({
           </div>
 
           <div className="relative min-h-[300px] overflow-hidden bg-[#141D46] sm:min-h-[340px] md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
-            <CollectionHeroCarousel images={COLLECTION_BANNER_IMAGES} />
+            <Image
+              src={COLLECTION_BANNER_IMAGES[0].src}
+              alt={COLLECTION_BANNER_IMAGES[0].alt}
+              fill
+              priority
+              fetchPriority="high"
+              sizes="(max-width: 1024px) 100vw, 52vw"
+              className="object-contain object-top"
+            />
+            <CollectionHeroCarousel
+              images={COLLECTION_BANNER_IMAGES}
+              prioritizeFirst={false}
+            />
           </div>
         </section>
 
@@ -853,7 +960,7 @@ export default async function CollectionPage({
               </MobileFilterDisclosure>
 
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.26em] text-[var(--ftt-gold)]">
+                <p className="text-[10px] font-medium uppercase tracking-[0.26em] text-[#74531B]">
                   Showing
                 </p>
                 <p className="text-sm font-medium text-[var(--ftt-royal-navy)]">
@@ -928,7 +1035,7 @@ export default async function CollectionPage({
           <div className="space-y-6 lg:pr-2">
             <div className="flex flex-col gap-3 border-b border-[var(--ftt-border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-[var(--ftt-gold)]">
+                <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-[#74531B]">
                   Current edit
                 </p>
                 <h2 className="mt-1 font-serif text-3xl text-[var(--ftt-royal-navy)]">
@@ -1030,7 +1137,7 @@ function CollectionRailCard({
           : "border-[var(--ftt-border)]",
       )}
     >
-      <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[var(--ftt-gold)]">
+      <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[#74531B]">
         {eyebrow}
       </p>
       <h3 className="mt-5 line-clamp-2 font-serif text-2xl leading-none text-[var(--ftt-royal-navy)]">

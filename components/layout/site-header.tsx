@@ -3,11 +3,14 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { ConnectDialog } from "@/components/layout/connect-dialog";
+import { NavDropdown } from "@/components/layout/nav-dropdown";
+import { NavLink, NavUnderline } from "@/components/layout/nav-link";
 import { SearchBar } from "@/components/layout/search-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +27,7 @@ const NAV_ITEMS = [
   { href: "/collection?tags=top-pick", label: "Top Pick" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
-  { href: "/founders", label: "About Us" },
+  { href: "/our-team", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
 ];
 
@@ -33,14 +36,19 @@ const SHOP_BY_ITEMS = [
   { href: "/collection?tags=occasion", label: "Occasion" },
 ];
 
+const ABOUT_ITEMS = [
+  { href: "/our-team", label: "Our Team" },
+  { href: "/our-story", label: "Our Story" },
+];
+
 function MenuIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-7 w-7"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2.2"
       aria-hidden="true"
     >
       <path d="M4 7h16" />
@@ -57,7 +65,7 @@ function SearchIcon() {
       className="h-4 w-4"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2.2"
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="7" />
@@ -70,10 +78,10 @@ function AccountIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-7 w-7"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="2.1"
       aria-hidden="true"
     >
       <circle cx="12" cy="8" r="3.25" />
@@ -86,10 +94,10 @@ function HeartIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-7 w-7"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="2.1"
       aria-hidden="true"
     >
       <path d="M19.5 5.8c-1.8-1.8-4.7-1.6-6.4.4L12 7.5l-1.1-1.3c-1.7-2-4.6-2.2-6.4-.4-1.9 1.9-1.9 5 0 6.9L12 20l7.5-7.3c1.9-1.9 1.9-5 0-6.9Z" />
@@ -103,68 +111,78 @@ export function SiteHeader() {
   const hasMounted = useHasMounted();
   const [mobileSearch, setMobileSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  // Active-page detection for the nav underline indicator.
+  const pathname = usePathname();
+  const isCollectionActive =
+    pathname === "/collection" || pathname.startsWith("/collection/");
+  const isFaqsActive = pathname.startsWith("/faqs");
+  const isAboutActive =
+    pathname.startsWith("/our-team") || pathname.startsWith("/our-story");
+  const linkActive = (label: string) =>
+    label === "Collection"
+      ? isCollectionActive
+      : label === "FAQ & Policies"
+        ? isFaqsActive
+        : false;
 
   return (
     <header className="sticky top-0 z-50 bg-[#FDF7F1]/95 backdrop-blur">
       <AnnouncementBar />
       <div className="border-b border-[#601D1C]/10">
-        <div className="flex h-16 w-full items-stretch justify-between gap-4 px-5 md:px-8 lg:px-10 xl:px-14">
+        <div className="flex h-18 w-full items-stretch justify-between gap-4 px-5 md:px-8 lg:px-10 xl:px-14">
           <div className="flex min-w-0 flex-1 items-center gap-8 xl:gap-10">
             <Link href="/" className="flex h-full shrink-0 items-center">
               <Image
-                src="/logo-vectorized.png"
+                src="/logo.png"
                 alt="From the Trunk"
-                width={136}
-                height={64}
-                className="h-[3.85rem] w-auto object-contain"
-                priority
+                width={180}
+                height={100}
+                className="h-[4.25rem] w-auto object-contain"
+                sizes="180px"
               />
               <span className="sr-only">From the Trunk</span>
             </Link>
 
-            <nav className="hidden min-w-0 flex-1 items-center justify-start gap-5 lg:flex xl:gap-7">
+            <nav className="hidden min-w-0 flex-1 items-center justify-start gap-5 xl:flex 2xl:gap-7">
               {NAV_ITEMS.slice(0, 2).map((link) => (
-                <Link
+                <NavLink
                   key={link.href}
                   href={link.href}
-                  className={`whitespace-nowrap text-[15px] tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C] ${
-                    link.strong ? "font-bold text-[#601D1C]" : "font-semibold"
-                  }`}
-                >
-                  {link.label}
-                </Link>
+                  label={link.label}
+                  strong={link.strong}
+                  active={linkActive(link.label)}
+                />
               ))}
-              <div className="group relative">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
-                >
-                  Shop By
-                  <span className="text-[#B39152]" aria-hidden="true">
-                    ⌄
-                  </span>
-                </button>
-                <div className="invisible absolute left-1/2 top-full z-50 mt-4 w-48 -translate-x-1/2 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 opacity-0 shadow-xl shadow-[#601D1C]/10 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                  {SHOP_BY_ITEMS.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#601D1C]/75 transition hover:bg-[#601D1C] hover:text-[#B39152]"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              {NAV_ITEMS.slice(2).map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition hover:text-[#601D1C]"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <NavDropdown label="Shop By" items={SHOP_BY_ITEMS} />
+              {NAV_ITEMS.slice(2).map((link) =>
+                link.label === "About Us" ? (
+                  <NavDropdown
+                    key={link.href}
+                    label="About Us"
+                    items={ABOUT_ITEMS}
+                    active={isAboutActive}
+                  />
+                ) : link.label === "Connect With Us" ? (
+                  <button
+                    key={link.href}
+                    type="button"
+                    onClick={() => setConnectOpen(true)}
+                    className="group/nav relative whitespace-nowrap text-[15px] font-semibold tracking-[0.035em] text-[#601D1C]/82 transition-colors hover:text-[#601D1C] 2xl:text-[16px]"
+                  >
+                    Connect With Us
+                    <NavUnderline active={false} />
+                  </button>
+                ) : (
+                  <NavLink
+                    key={link.href}
+                    href={link.href}
+                    label={link.label}
+                    active={linkActive(link.label)}
+                  />
+                ),
+              )}
             </nav>
           </div>
 
@@ -208,7 +226,7 @@ export function SiteHeader() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="lg:hidden"
+                      className="xl:hidden"
                       aria-label="Open menu"
                     >
                       <MenuIcon />
@@ -269,16 +287,49 @@ export function SiteHeader() {
                           </Link>
                         ))}
                       </div>
-                      {NAV_ITEMS.slice(2).map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="text-lg font-medium text-[#601D1C]"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
+                      {NAV_ITEMS.slice(2).map((link) =>
+                        link.label === "About Us" ? (
+                          <div
+                            key={link.href}
+                            className="grid gap-3 border-y border-[#601D1C]/10 py-4"
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+                              About Us
+                            </p>
+                            {ABOUT_ITEMS.map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-lg font-medium text-[#601D1C]"
+                              >
+                                {item.label}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : link.label === "Connect With Us" ? (
+                          <button
+                            key={link.href}
+                            type="button"
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              setConnectOpen(true);
+                            }}
+                            className="text-left text-lg font-medium text-[#601D1C]"
+                          >
+                            Connect With Us
+                          </button>
+                        ) : (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-lg font-medium text-[#601D1C]"
+                          >
+                            {link.label}
+                          </Link>
+                        ),
+                      )}
                       <Link
                         href={session ? "/account/profile" : "/account/sign-in"}
                         onClick={() => setMobileMenuOpen(false)}
@@ -304,7 +355,7 @@ export function SiteHeader() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden"
+                  className="xl:hidden"
                   aria-label="Open menu"
                   disabled
                 >
@@ -315,6 +366,8 @@ export function SiteHeader() {
           </div>
         </div>
       </div>
+
+      <ConnectDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </header>
   );
 }

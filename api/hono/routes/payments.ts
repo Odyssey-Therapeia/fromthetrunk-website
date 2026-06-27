@@ -9,7 +9,6 @@ import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { addOrderEvent, createOrder, getOrder } from "@/db/queries/orders";
 import { insertReservation, releaseReservationsByProducts } from "@/db/queries/reservations";
-import { getOrCreateCheckoutCustomer } from "@/db/queries/users";
 import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
 import { getCollectionProductIds } from "@/db/queries/collections";
 import { collections, orders, products } from "@/db/schema";
@@ -33,18 +32,41 @@ import {
   verifyPaymentLinkSignature,
   verifyPaymentSignature,
 } from "@/lib/payments/razorpay";
+import { timed, timedRows } from "@/lib/perf/timed";
 
 const logCreateOrder = createLogger("payments:create-order");
 const logPaymentLinkCallback = createLogger("payments:payment-link-callback");
 
+const availabilityErrorMessages = {
+  PRODUCT_RESERVED: "This piece has just been reserved.",
+  PRODUCT_SOLD: "This saree has found its next home.",
+  RESERVATION_CONFLICT: "This piece has just been reserved.",
+  RESERVATION_EXPIRED: "Your reservation expired. Please add it again if still available.",
+} as const;
+
+type AvailabilityErrorCode = keyof typeof availabilityErrorMessages;
+
+const availabilityError = (
+  code: AvailabilityErrorCode,
+  productId: string,
+  productName?: string
+) => ({
+  code,
+  details: {
+    productId,
+    ...(productName ? { productName } : {}),
+  },
+  message: availabilityErrorMessages[code],
+});
+
 const paymentLinkCallbackSchema = z.object({
   orderId: z.string().uuid().optional(),
-  razorpay_payment_id: z.string().optional(),
-  razorpay_payment_link_id: z.string().optional(),
-  razorpay_payment_link_reference_id: z.string().optional(),
-  razorpay_payment_link_status: z.string().optional(),
-  razorpay_signature: z.string().optional(),
-});
+  razorpay_payment_id: z.string().trim().min(1).max(128).optional(),
+  razorpay_payment_link_id: z.string().trim().min(1).max(128).optional(),
+  razorpay_payment_link_reference_id: z.string().trim().min(1).max(128).optional(),
+  razorpay_payment_link_status: z.string().trim().min(1).max(64).optional(),
+  razorpay_signature: z.string().trim().min(1).max(256).optional(),
+}).strict();
 
 const getRequestOrigin = (url: string) => new URL(url).origin;
 
@@ -105,12 +127,15 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         },
       },
       tags: ["Payments"],
-    }),
-    async (c) => {
-      const rateLimited = await rateLimitResponse(c.req.raw, "payment:create", {
-        limit: 5,
-        requireDurable: true,
-        windowSeconds: 60,
+	    }),
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+
+	      const rateLimited = await rateLimitResponse(c.req.raw, `payment:create:${authUserOrResponse.id}`, {
+	        limit: 5,
+	        requireDurable: true,
+	        windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;
 
@@ -122,10 +147,12 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           verifyReservationToken(item.reservationToken),
         ]),
       );
-      const productRows = await db
-        .select()
-        .from(products)
-        .where(and(inArray(products.id, productIds), eq(products.status, "published")));
+      const productRows = await timedRows("payments.createOrder.products", () =>
+        db
+          .select()
+          .from(products)
+          .where(and(inArray(products.id, productIds), eq(products.status, "published"))),
+      );
 
       const productById = new Map(productRows.map((product) => [product.id, product]));
       const now = new Date();
@@ -144,20 +171,30 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         }
 
         if (product.stockStatus === "sold") {
+          return c.json(availabilityError("PRODUCT_SOLD", productId, product.name), 409);
+        }
+
+        const reservationToken = reservationTokenByProductId.get(productId);
+        if (reservationToken && reservationToken.reservedUntil <= now) {
           return c.json(
-            {
-              code: "ITEM_SOLD",
-              details: { productId },
-              message: `${product.name} has been sold.`,
-            },
+            availabilityError("RESERVATION_EXPIRED", productId, product.name),
+            409
+          );
+        }
+
+        const isReserved = product.stockStatus === "reserved";
+        const reservationExpired =
+          isReserved &&
+          (!product.reservedUntil || product.reservedUntil <= now);
+        if (reservationExpired) {
+          return c.json(
+            availabilityError("RESERVATION_EXPIRED", productId, product.name),
             409
           );
         }
 
         const isActiveReserved =
-          product.stockStatus === "reserved" &&
-          (!product.reservedUntil || product.reservedUntil > now);
-        const reservationToken = reservationTokenByProductId.get(productId);
+          isReserved && product.reservedUntil != null && product.reservedUntil > now;
         const hasMatchingReservationToken =
           reservationToken != null &&
           reservationToken.productId === productId &&
@@ -166,13 +203,16 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           Math.abs(product.reservedUntil.getTime() - reservationToken.reservedUntil.getTime()) <
             1000;
 
+        if (isActiveReserved && !reservationToken) {
+          return c.json(
+            availabilityError("PRODUCT_RESERVED", productId, product.name),
+            409
+          );
+        }
+
         if (isActiveReserved && !hasMatchingReservationToken) {
           return c.json(
-            {
-              code: "ITEM_RESERVED",
-              details: { productId },
-              message: `${product.name} is reserved by another buyer.`,
-            },
+            availabilityError("RESERVATION_CONFLICT", productId, product.name),
             409
           );
         }
@@ -284,19 +324,21 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const shippingName = body.shippingAddress.name;
       const emailLower = body.shippingAddress.email.toLowerCase();
 
-      // Cap check: max 3 live pending payment links per email.
-      // Race window exists; durable limiting is P2-06.
-      const linkExpiryMs = RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000;
-      const pendingCount = await db
-        .select({ c: count() })
-        .from(orders)
-        .where(
-          and(
-            eq(orders.shippingEmail, emailLower),
-            eq(orders.paymentStatus, "pending"),
-            gt(orders.createdAt, new Date(Date.now() - linkExpiryMs))
-          )
-        );
+	      // Cap check: max 3 live pending payment links per authenticated customer.
+	      // Race window exists; durable limiting is P2-06.
+	      const linkExpiryMs = RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000;
+	      const pendingCount = await timedRows("payments.createOrder.pendingCount", () =>
+	        db
+          .select({ c: count() })
+          .from(orders)
+	          .where(
+	            and(
+	              eq(orders.userId, authUserOrResponse.id),
+	              eq(orders.paymentStatus, "pending"),
+	              gt(orders.createdAt, new Date(Date.now() - linkExpiryMs))
+	            )
+          ),
+	      );
       if ((pendingCount[0]?.c ?? 0) >= 3) {
         return c.json(
           {
@@ -307,13 +349,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      const customer = await getOrCreateCheckoutCustomer({
-        email: emailLower,
-        name: shippingName,
-        phone: body.shippingAddress.phone,
-      });
-
-      const order = await createOrder({
+	      const order = await timed("payments.createOrder.createOrder", () => createOrder({
         items: normalizedItems,
         paymentGateway: "razorpay",
         paymentStatus: "pending",
@@ -334,12 +370,15 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         taxAmountPaise,
         taxRate: String(GST_RATE),
         totalPaise,
-        userId: customer?.id ?? null,
+	        userId: authUserOrResponse.id,
         // P6-02: Persist discount association so completePaidOrder can
         // increment usageCount atomically on payment confirmation.
         discountId: validatedDiscount?.id ?? null,
         discountCode: validatedDiscount?.code ?? null,
-      });
+        isGift: body.isGift ?? false,
+        giftFrom: body.isGift ? body.giftFrom?.trim() || null : null,
+        giftMessage: body.isGift ? body.giftMessage?.trim() || null : null,
+      }));
 
       // Fire-and-forget: order_created event — emitted immediately after order is persisted.
       // emitAnalyticsEvent() never throws; errors are caught + logged inside.
@@ -394,10 +433,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
                 .set({ paymentStatus: "failed", updatedAt: new Date() })
                 .where(eq(orders.id, order.id));
               return c.json(
-                {
-                  code: "ITEM_UNAVAILABLE",
-                  message: "One or more pieces in your bag are no longer available.",
-                },
+                availabilityError("PRODUCT_RESERVED", productId),
                 409
               );
             }
@@ -474,10 +510,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         });
 
         return c.json(
-          {
-            code: "ITEM_UNAVAILABLE",
-            message: "One or more pieces in your bag are no longer available.",
-          },
+          availabilityError("PRODUCT_RESERVED", productIds[0] ?? "unknown"),
           409
         );
       }
@@ -496,10 +529,10 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           },
           description: toPaymentDescription(order.id, normalizedItems),
           expireBy: reservedUntil,
-          notes: {
-            orderId: order.id,
-            ...(customer?.id != null ? { userId: customer.id } : {}),
-          },
+	          notes: {
+	            orderId: order.id,
+	            userId: authUserOrResponse.id,
+	          },
           referenceId: getRazorpayPaymentLinkReferenceId(order.id),
         });
       } catch (error) {

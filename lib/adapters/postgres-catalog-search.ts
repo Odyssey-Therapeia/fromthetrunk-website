@@ -60,6 +60,7 @@ import {
 import type { CatalogFacets, CatalogSearchFilters, CatalogSearchPort } from "@/lib/ports/catalog-search";
 import { DEFAULT_PRODUCT_SORT } from "@/lib/products/sort";
 import type { ProductSortOption } from "@/lib/products/sort";
+import { timed, timedRows } from "@/lib/perf/timed";
 
 // ── Facet helpers ─────────────────────────────────────────────────────────────
 
@@ -99,16 +100,20 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
     return emptyFacets();
   }
 
+  // Hide sold + actively-reserved pieces from the public catalog. A reservation
+  // whose hold has expired (reservedUntil in the past) counts as available again.
+  const stockVisible = sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`;
   const publishedFilter = productIds
     ? and(
         eq(products.status, "published" as const),
         inArray(products.id, productIds),
+        stockVisible,
       )
-    : eq(products.status, "published" as const);
+    : and(eq(products.status, "published" as const), stockVisible);
 
   const [fabricRows, typeRows, availabilityRows, tagRows] = await Promise.all([
     // Fabric: (attributes->>'fabric') GROUP BY value
-    withRetry(() =>
+    timedRows("catalog.facets.fabric", () => withRetry(() =>
       db
         .select({
           fabric: sql<string>`(${products.attributes}->>'fabric')`.as("fabric"),
@@ -117,10 +122,10 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
         .from(products)
         .where(publishedFilter)
         .groupBy(sql`(${products.attributes}->>'fabric')`)
-    ),
+    )),
 
     // Type: LEFT JOIN productTypes → slug, GROUP BY slug
-    withRetry(() =>
+    timedRows("catalog.facets.type", () => withRetry(() =>
       db
         .select({
           typeSlug: productTypes.slug,
@@ -130,10 +135,10 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
         .leftJoin(productTypes, eq(products.typeId, productTypes.id))
         .where(publishedFilter)
         .groupBy(productTypes.slug)
-    ),
+    )),
 
     // Availability: stock_status GROUP BY
-    withRetry(() =>
+    timedRows("catalog.facets.availability", () => withRetry(() =>
       db
         .select({
           stockStatus: products.stockStatus,
@@ -142,10 +147,10 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
         .from(products)
         .where(publishedFilter)
         .groupBy(products.stockStatus)
-    ),
+    )),
 
     // Tags: JOIN product_tags → tags, keeping display metadata for filter groups.
-    withRetry(() =>
+    timedRows("catalog.facets.tags", () => withRetry(() =>
       db
         .select({
           tagSlug: tags.slug,
@@ -158,7 +163,7 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
         .innerJoin(tags, eq(productTags.tagId, tags.id))
         .where(publishedFilter)
         .groupBy(tags.slug, tags.name, tags.category)
-    ),
+    )),
   ]);
 
   const fabric: Record<string, number> = {};
@@ -211,14 +216,21 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         availability,
         tags: tagSlugs,
       } = filters;
-      const collectionProductIds = await buildScopedCollectionIds(collectionSlug);
+      const collectionProductIds = await timed(
+        "catalog.scope.collectionIds",
+        () => buildScopedCollectionIds(collectionSlug),
+      );
 
       if (collectionProductIds && collectionProductIds.length === 0) {
         return { products: [], facets: emptyFacets(), totalDocs: 0 };
       }
 
       // Build WHERE clauses — all ANDed.
-      const whereClauses = [eq(products.status, "published" as const)];
+      const whereClauses = [
+        eq(products.status, "published" as const),
+        // Public catalog hides sold + actively-reserved pieces (expired holds show).
+        sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`,
+      ];
 
       if (collectionProductIds) {
         whereClauses.push(inArray(products.id, collectionProductIds));
@@ -320,11 +332,13 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         : and(...whereClauses);
 
       if (facetsOnly) {
-        const facets = await buildFacets(collectionProductIds);
+        const facets = await timed("catalog.facets", () =>
+          buildFacets(collectionProductIds),
+        );
         return { products: [], facets, totalDocs: 0 };
       }
 
-      const rowsPromise = withRetry(() => {
+      const rowsPromise = timedRows("catalog.products.rows", () => withRetry(() => {
         const query = db
           .select()
           .from(products)
@@ -333,16 +347,16 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
           .orderBy(...getProductSortOrder(sort));
 
         return typeof limit === "number" ? query.limit(limit) : query;
-      });
+      }));
 
       const countPromise =
         typeof limit === "number"
-          ? withRetry(() =>
+          ? timedRows("catalog.products.count", () => withRetry(() =>
               db.select({ total: count() }).from(products).where(whereClause)
-            )
+            ))
           : Promise.resolve([{ total: 0 }]);
       const facetsPromise = includeFacets
-        ? buildFacets(collectionProductIds)
+        ? timed("catalog.facets", () => buildFacets(collectionProductIds))
         : Promise.resolve(emptyFacets());
 
       const [rows, [countResult], facets] = await Promise.all([
@@ -352,7 +366,9 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
       ]);
 
       // Hydrate with relations only for the visible page, not every match.
-      const hydratedProducts = await hydrateProductsQuery(rows);
+      const hydratedProducts = await timedRows("catalog.products.hydrate", () =>
+        hydrateProductsQuery(rows),
+      );
 
       return {
         products: hydratedProducts,

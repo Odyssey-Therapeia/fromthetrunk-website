@@ -18,16 +18,21 @@
 
 import crypto from "crypto";
 
+import { getTokenSecret } from "@/lib/security/token-secrets";
+
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-/** Resolves the signing secret — dedicated var preferred, falls back to NEXTAUTH_SECRET. */
+/** Resolves the signing secret. Production requires PREVIEW_TOKEN_SECRET. */
 function getPreviewSecret(): string | undefined {
-  return (
-    process.env.CMS_PREVIEW_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.PAYLOAD_SECRET ||
-    process.env.ADMIN_API_SECRET
-  );
+  return getTokenSecret("PREVIEW_TOKEN_SECRET", {
+    devFallbackEnvNames: [
+      "CMS_PREVIEW_SECRET",
+      "NEXTAUTH_SECRET",
+      "PAYLOAD_SECRET",
+      "ADMIN_API_SECRET",
+    ],
+    purpose: "CMS preview tokens",
+  });
 }
 
 /**
@@ -41,7 +46,7 @@ export function createPreviewToken(slug: string, expiresAt?: number): string {
   const secret = getPreviewSecret();
   if (!secret) {
     throw new Error(
-      "Preview token secret is not configured. Set NEXTAUTH_SECRET."
+      "Preview token secret is not configured. Set PREVIEW_TOKEN_SECRET."
     );
   }
 

@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { draftMode } from "next/headers";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getGlobals } from "@/lib/data/products";
 
-// Use force-dynamic since Payload CMS requires a database connection.
-// In production with Vercel, ISR can be enabled per-route using
-// revalidate config once the database is always available at build time.
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "How It Works",
@@ -18,8 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default async function HowItWorksPage() {
-  const { isEnabled: includeDrafts } = await draftMode();
-  const howItWorksPage = await getGlobals("howItWorksPage", { includeDrafts });
+  const howItWorksPage = await getGlobals("howItWorksPage", {
+    includeDrafts: false,
+  });
   const textOrFallback = (value: unknown, fallback: string) =>
     typeof value === "string" && value.trim().length > 0 ? value : fallback;
   const steps = [
@@ -63,7 +59,7 @@ export default async function HowItWorksPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-12 px-6 py-16">
-      <ScrollReveal className="space-y-3">
+      <div className="space-y-3">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           {textOrFallback(howItWorksPage?.eyebrow, "How It Works")}
         </p>
@@ -76,7 +72,7 @@ export default async function HowItWorksPage() {
             "Have a pre-loved saree you\u2019re ready to part with? We\u2019d love to give it a new life. Each piece will be thoughtfully curated, and you will be compensated fairly based on its value and condition."
           )}
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="space-y-6">
         {steps.map((step, index) => (

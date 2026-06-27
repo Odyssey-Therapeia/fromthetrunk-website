@@ -8,7 +8,7 @@ export function AnnouncementBar() {
         <span className="hidden @sm:inline" aria-hidden="true">
           •
         </span>
-        <span>Complimentary styling consult</span>
+        <span>Authenticated pre-loved sarees</span>
         <Link
           href="/collection"
           className="font-semibold text-[#FDF7F1] underline decoration-[#FDF7F1]/70 underline-offset-4 transition hover:text-[#B39152]"

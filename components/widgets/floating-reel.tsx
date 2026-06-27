@@ -47,6 +47,7 @@ export function FloatingReel({ reel }: { reel: LatestReel }) {
               muted={muted}
               loop
               playsInline
+              preload="none"
               className="size-full object-cover"
             />
 

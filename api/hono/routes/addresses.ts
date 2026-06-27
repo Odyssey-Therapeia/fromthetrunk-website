@@ -8,6 +8,22 @@ import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { requireFirstRow } from "@/db/results";
 import { addresses, users } from "@/db/schema";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
+import { timed } from "@/lib/perf/timed";
+
+const addressClientColumns = {
+  city: addresses.city,
+  country: addresses.country,
+  id: addresses.id,
+  isDefault: addresses.isDefault,
+  label: addresses.label,
+  line1: addresses.line1,
+  line2: addresses.line2,
+  name: addresses.name,
+  phone: addresses.phone,
+  postalCode: addresses.postalCode,
+  state: addresses.state,
+};
 
 export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
@@ -23,12 +39,14 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const authUserOrResponse = requireAuth(c);
       if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const rows = await db
-        .select()
-        .from(addresses)
-        .where(eq(addresses.userId, authUserOrResponse.id))
-        .orderBy(desc(addresses.createdAt))
-        .limit(100);
+      const rows = await timed("addresses.list.query", () =>
+        db
+          .select(addressClientColumns)
+          .from(addresses)
+          .where(eq(addresses.userId, authUserOrResponse.id))
+          .orderBy(desc(addresses.createdAt))
+          .limit(100)
+      );
 
       return c.json(rows, 200);
     }
@@ -51,11 +69,22 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Addresses"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `addresses:create:${authUserOrResponse.id}`,
+	        {
+	          limit: 20,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
 
       const address = requireFirstRow(
         await db
@@ -64,7 +93,7 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
             ...body,
             userId: authUserOrResponse.id,
           })
-          .returning(),
+          .returning(addressClientColumns),
         "Failed to create address."
       );
 
@@ -119,11 +148,22 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Addresses"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const { id } = c.req.valid("param");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `addresses:update:${authUserOrResponse.id}`,
+	        {
+	          limit: 30,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const { id } = c.req.valid("param");
       const body = c.req.valid("json");
 
       const [existing] = await db
@@ -147,7 +187,7 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
           updatedAt: new Date(),
         })
         .where(and(eq(addresses.id, id), eq(addresses.userId, authUserOrResponse.id)))
-        .returning();
+        .returning(addressClientColumns);
 
       if (!updated) {
         return c.json({ code: "ADDRESS_NOT_FOUND", message: "Address not found." }, 404);
@@ -198,11 +238,22 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Addresses"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const { id } = c.req.valid("param");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `addresses:delete:${authUserOrResponse.id}`,
+	        {
+	          limit: 20,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const { id } = c.req.valid("param");
 
       const deleted = await db
         .delete(addresses)

@@ -23,6 +23,7 @@ describe("authMiddleware", () => {
         cookie: "next-auth.session-token=test-token",
       },
     });
+    const get = vi.fn().mockReturnValue([]);
     const set = vi.fn();
     const next: MiddlewareNext = vi.fn().mockResolvedValue(undefined);
 
@@ -35,6 +36,7 @@ describe("authMiddleware", () => {
     await authMiddleware(
       {
         req: { raw: rawRequest },
+        get,
         set,
       } as unknown as MiddlewareContext,
       next
@@ -54,6 +56,7 @@ describe("authMiddleware", () => {
 
   it("stores null when the request is anonymous", async () => {
     const rawRequest = new Request("http://localhost/api/v2/products/rose-dust-tussar-saree");
+    const get = vi.fn().mockReturnValue([]);
     const set = vi.fn();
     const next: MiddlewareNext = vi.fn().mockResolvedValue(undefined);
 
@@ -62,6 +65,7 @@ describe("authMiddleware", () => {
     await authMiddleware(
       {
         req: { raw: rawRequest },
+        get,
         set,
       } as unknown as MiddlewareContext,
       next

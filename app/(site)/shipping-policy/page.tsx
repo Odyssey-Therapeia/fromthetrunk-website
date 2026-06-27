@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
 export default function ShippingPolicyPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
@@ -24,7 +23,7 @@ export default function ShippingPolicyPage() {
         <p className="text-sm text-muted-foreground">
           Last updated: April 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
@@ -69,8 +68,7 @@ export default function ShippingPolicyPage() {
             </table>
           </div>
           <p className="text-xs text-trunk-gold">
-            Free shipping on all orders above{" "}
-            {formatCurrency(SHIPPING_TIERS.freeThreshold)}.
+            All orders are dispatched via Shiprocket.
           </p>
         </section>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import { DEFAULT_WHATSAPP_MESSAGE, whatsappLink } from "@/lib/config/site";
 
@@ -24,15 +25,18 @@ function WhatsAppGlyph() {
  */
 export function FloatingWhatsApp() {
   const reduceMotion = useReducedMotion();
+  const pathname = usePathname();
   const constraintsRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const [showBubble, setShowBubble] = useState(false);
+  const suppressAutoBubble = pathname === "/founders" || pathname === "/our-team";
 
   useEffect(() => {
+    if (suppressAutoBubble) return;
     if (sessionStorage.getItem(BUBBLE_DISMISSED_KEY)) return;
     const timer = window.setTimeout(() => setShowBubble(true), 2500);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [suppressAutoBubble]);
 
   const dismissBubble = () => {
     setShowBubble(false);
@@ -65,7 +69,7 @@ export function FloatingWhatsApp() {
         }}
         className="pointer-events-auto absolute bottom-24 right-5 flex touch-none cursor-grab flex-col items-end gap-3 active:cursor-grabbing sm:bottom-6"
       >
-        {showBubble ? (
+        {showBubble && !suppressAutoBubble ? (
           <motion.div
             initial={{ opacity: 0, y: 8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -76,14 +80,14 @@ export function FloatingWhatsApp() {
               type="button"
               onClick={dismissBubble}
               aria-label="Dismiss message"
-              className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy/60 transition hover:text-ftt-burgundy"
+              className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy transition hover:text-ftt-burgundy"
             >
               <X className="size-3" />
             </button>
             <p className="font-serif text-base leading-tight text-ftt-navy">
               Hey, I&apos;m here to help 👋
             </p>
-            <p className="mt-0.5 text-xs text-ftt-burgundy/65">
+            <p className="mt-0.5 text-xs text-ftt-burgundy">
               Chat with us on WhatsApp.
             </p>
           </motion.div>

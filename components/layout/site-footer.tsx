@@ -8,7 +8,7 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
     title: "Explore",
     links: [
       { href: "/collection", label: "The Collection" },
-      { href: "/founders", label: "Our Story" },
+      { href: "/our-team", label: "Our Story" },
       { href: "/how-it-works", label: "How It Works" },
     ],
   },

@@ -90,7 +90,7 @@ export function SearchBar() {
         onClick={handleOpen}
         aria-label="Search products"
       >
-        <Search className="h-5 w-5" />
+        <Search className="h-7 w-7" strokeWidth={2.4} />
       </Button>
     );
   }

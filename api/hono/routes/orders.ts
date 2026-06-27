@@ -6,7 +6,7 @@ import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import { createOrderSchema } from "@/api/hono/schemas/orders";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
-import { createOrder, getOrder, listOrders } from "@/db/queries/orders";
+import { createOrder, getOrder, listOrderSummaries } from "@/db/queries/orders";
 import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
 import { getCollectionProductIds } from "@/db/queries/collections";
 import { collections, products } from "@/db/schema";
@@ -29,8 +29,16 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
       const status = c.req.query("status");
+      const rawLimit = Number.parseInt(c.req.query("limit") ?? "", 10);
+      const rawOffset = Number.parseInt(c.req.query("offset") ?? "", 10);
+      const limit = Number.isFinite(rawLimit)
+        ? Math.min(Math.max(rawLimit, 1), 100)
+        : 50;
+      const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
       const isAdmin = authUserOrResponse.role === "admin";
-      const orders = await listOrders({
+      const orders = await listOrderSummaries({
+        limit,
+        offset,
         status:
           status === "confirmed" ||
           status === "delivered" ||
@@ -160,9 +168,9 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
         if (product.stockStatus === "sold") {
           return c.json(
             {
-              code: "ITEM_SOLD",
+              code: "PRODUCT_SOLD",
               details: { productId },
-              message: "This item has been sold.",
+              message: "This saree has found its next home.",
             },
             409
           );

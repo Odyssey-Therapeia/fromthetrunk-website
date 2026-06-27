@@ -17,9 +17,10 @@ const fetchWishlist = async (): Promise<Product[]> => {
   const wishlistIds = (await wishlistResponse.json()) as string[];
   if (wishlistIds.length === 0) return [];
 
-  const productsResponse = await fetch(
-    "/api/v2/products?includeDrafts=true&limit=500",
-  );
+  const params = new URLSearchParams({
+    ids: wishlistIds.join(","),
+  });
+  const productsResponse = await fetch(`/api/v2/products?${params.toString()}`);
   if (!productsResponse.ok) return [];
   const products = (await productsResponse.json()) as Product[];
   const productById = new Map(products.map((product) => [product.id, product]));
@@ -66,7 +67,7 @@ export default function WishlistPage() {
               Pieces you are thinking about.
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-ftt-burgundy/60">
-              Save a saree while you decide. Every piece is one-of-one, so this
+              Save a saree while you decide. Every piece is unique, so this
               is a quiet place to compare what still feels like yours.
             </p>
           </div>

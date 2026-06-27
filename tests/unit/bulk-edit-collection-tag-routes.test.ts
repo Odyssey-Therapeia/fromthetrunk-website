@@ -66,6 +66,10 @@ vi.mock("@/lib/config/flags", () => ({
   isInventoryV2: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/data/products", () => ({
+  getTimedPublicProductBySlug: vi.fn(),
+}));
+
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { createRouteHarness } from "../helpers/route-harness";
 

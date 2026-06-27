@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
 
 import { rawSql, withRetry } from "@/db";
 import { getPublicProductStockBySlug } from "@/db/queries/products";
@@ -14,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_SLUG = "powder-blue-georgette-saree";
 
-const isDebugAllowed = (request: Request) => {
+const isDebugAllowed = async (request: Request) => {
   const debugToken = process.env.FTT_DEBUG_TOKEN;
   const isProductionBuild = process.env.NODE_ENV === "production";
 
@@ -22,11 +24,19 @@ const isDebugAllowed = (request: Request) => {
     return true;
   }
 
-  if (process.env.FTT_ENABLE_DEBUG_ENDPOINTS !== "true" || !debugToken) {
+  if (process.env.FTT_ENABLE_DEBUG_ENDPOINTS !== "true") {
     return false;
   }
 
-  return verifyBearerSecret(request.headers.get("authorization"), debugToken);
+  if (debugToken && verifyBearerSecret(request.headers.get("authorization"), debugToken)) {
+    return true;
+  }
+
+  const token = await getToken({
+    req: request as unknown as NextRequest,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  return token?.role === "admin";
 };
 
 const databaseUrlShape = () => {
@@ -47,7 +57,7 @@ const databaseUrlShape = () => {
 };
 
 export async function GET(request: Request) {
-  if (!isDebugAllowed(request)) {
+  if (!(await isDebugAllowed(request))) {
     return new NextResponse(null, { status: 404 });
   }
 

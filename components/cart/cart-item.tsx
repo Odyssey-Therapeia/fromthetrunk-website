@@ -18,6 +18,7 @@ export function CartItem({ item, className }: CartItemProps) {
   const removeItem = useCartStore((state) => state.removeItem);
   const quantity = item.quantity > 0 ? item.quantity : 1;
   const href = item.slug ? `/collection/${item.slug}` : "/collection";
+  const reservedUntilLabel = formatReservationExpiry(item.reservedUntil);
 
   return (
     <article
@@ -60,7 +61,7 @@ export function CartItem({ item, className }: CartItemProps) {
               </Link>
 
               <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.22em] text-[#6B625B]">
-                {item.detailsFabric ?? "One of a kind"}
+                {item.detailsFabric ?? "Unique"}
               </p>
 
               <p className="mt-2 text-sm font-semibold text-[#141D46]">
@@ -83,13 +84,26 @@ export function CartItem({ item, className }: CartItemProps) {
 
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#E7DDD4] pt-3">
             <span className="rounded-full bg-[#B39152]/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#141D46]">
-              Verified piece
+              Reserved for you
             </span>
 
-            <span className="text-xs text-[#6B625B]">Ready for checkout</span>
+            <span className="text-right text-xs text-[#6B625B]">
+              {reservedUntilLabel ?? "Ready for checkout"}
+            </span>
           </div>
         </div>
       </div>
     </article>
   );
+}
+
+function formatReservationExpiry(value: null | string | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return `Held until ${new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
 }

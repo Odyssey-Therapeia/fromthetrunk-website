@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const STATIC_PAGES = [
   { title: "Home", path: "/" },
   { title: "Collection", path: "/collection" },
-  { title: "Our Story", path: "/founders" },
+  { title: "Our Story", path: "/our-team" },
   { title: "How It Works", path: "/how-it-works" },
   { title: "FAQs", path: "/faqs" },
   { title: "Return Policy", path: "/return-policy" },
@@ -45,7 +45,7 @@ export async function GET(): Promise<Response> {
     "",
     "> From the Trunk is a curated marketplace for authenticated, pre-loved luxury",
     "> sarees — each piece carries provenance, history, and a story.",
-    "> We specialise in one-of-one preloved pieces from renowned Indian weaving traditions.",
+    "> We specialise in unique preloved pieces from renowned Indian weaving traditions.",
     "",
     "## Key pages",
     "",

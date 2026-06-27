@@ -29,6 +29,7 @@ const addOrderEventMock = vi.hoisted(() => vi.fn());
 const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
 
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
+const emitAnalyticsEventMock = vi.hoisted(() => vi.fn());
 
 // ── module mocks ─────────────────────────────────────────────────────────────
 vi.mock("@/db", () => ({
@@ -58,6 +59,10 @@ vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
 
 vi.mock("@/lib/http/rate-limit", () => ({
   rateLimitResponse: () => null,
+}));
+
+vi.mock("@/lib/analytics/emit", () => ({
+  emitAnalyticsEvent: emitAnalyticsEventMock,
 }));
 
 // ── imports (after mocks) ──────────────────────────────────────────────────
@@ -117,18 +122,20 @@ const makeUpdateChain = (resolvedValue: unknown[] = []) => {
   return { set: setMock, where: whereMock, returning: returningMock };
 };
 
-// Expected locked (flag OFF / exclusive) numbers — pre-P2-04 inline math.
-const OFF_SHIPPING = 500 * 100; // 50000 (standard, below threshold)
+// Expected locked (flag OFF / exclusive) numbers — current config defaults.
+const OFF_SHIPPING = 250 * 100; // 25000 (standard, below threshold; free shipping disabled)
 const OFF_TAX = Math.round(SUBTOTAL_PAISE * GST_RATE); // 180000
-const OFF_TOTAL = SUBTOTAL_PAISE + OFF_SHIPPING + OFF_TAX; // 1730000
+const OFF_TOTAL = SUBTOTAL_PAISE + OFF_SHIPPING + OFF_TAX; // 1705000
 
 // Expected (flag ON / inclusive) numbers — GST backed OUT, no GST on top.
 const ON_TAX = Math.round((SUBTOTAL_PAISE * GST_RATE) / (1 + GST_RATE)); // 160714
-const ON_TOTAL = SUBTOTAL_PAISE + OFF_SHIPPING; // 1550000
+const ON_TOTAL = SUBTOTAL_PAISE + OFF_SHIPPING; // 1525000
 
 const setGstFlag = (value: "true" | "false") => {
   vi.stubEnv("FTT_FEATURE_GST_INCLUSIVE", value);
 };
+
+const paymentAuthUser = { id: "user-1", email: "buyer@example.com", role: "customer" };
 
 // ── payments.create-order ─────────────────────────────────────────────────
 describe("create-order route — charged + persisted totals", () => {
@@ -172,7 +179,10 @@ describe("create-order route — charged + persisted totals", () => {
     setGstFlag("false");
     wireDbChains();
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({
+	      authUser: paymentAuthUser,
+	      register: registerPaymentRoutes,
+	    });
     const response = await request("/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -183,7 +193,7 @@ describe("create-order route — charged + persisted totals", () => {
     const json = (await response.json()) as Record<string, unknown>;
 
     // Customer is CHARGED the locked total (Razorpay amount + response amount).
-    expect(json.amountPaise).toBe(OFF_TOTAL); // 1730000
+    expect(json.amountPaise).toBe(OFF_TOTAL); // 1695000
     expect(json.amount).toBe(OFF_TOTAL);
     expect(createRazorpayPaymentLinkMock).toHaveBeenCalledTimes(1);
     expect(createRazorpayPaymentLinkMock.mock.calls[0][0].amountPaise).toBe(OFF_TOTAL);
@@ -191,17 +201,21 @@ describe("create-order route — charged + persisted totals", () => {
     // The order PERSISTS the same locked breakdown.
     const persisted = createOrderMock.mock.calls[0][0] as Record<string, unknown>;
     expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE); // 1500000
-    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING); // 50000
-    expect(persisted.taxAmountPaise).toBe(OFF_TAX); // 180000
-    expect(persisted.totalPaise).toBe(OFF_TOTAL); // 1730000
-    expect(persisted.taxRate).toBe(String(GST_RATE));
-  });
+    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING); // 15000
+	    expect(persisted.taxAmountPaise).toBe(OFF_TAX); // 180000
+	    expect(persisted.totalPaise).toBe(OFF_TOTAL); // 1695000
+	    expect(persisted.taxRate).toBe(String(GST_RATE));
+	    expect(persisted.userId).toBe(paymentAuthUser.id);
+	  });
 
   it("flag ON — charges the inclusive total (GST backed out, none added on top)", async () => {
     setGstFlag("true");
     wireDbChains();
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({
+	      authUser: paymentAuthUser,
+	      register: registerPaymentRoutes,
+	    });
     const response = await request("/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -221,7 +235,7 @@ describe("create-order route — charged + persisted totals", () => {
     expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE);
     expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING);
     expect(persisted.taxAmountPaise).toBe(ON_TAX); // 160714, backed out
-    expect(persisted.totalPaise).toBe(ON_TOTAL); // 1550000
+    expect(persisted.totalPaise).toBe(ON_TOTAL); // 1515000
   });
 });
 
@@ -267,9 +281,9 @@ describe("orders POST route — persisted totals", () => {
 
     const persisted = createOrderMock.mock.calls[0][0] as Record<string, unknown>;
     expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE); // 1500000
-    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING); // 50000
+    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING); // 15000
     expect(persisted.taxAmountPaise).toBe(OFF_TAX); // 180000
-    expect(persisted.totalPaise).toBe(OFF_TOTAL); // 1730000
+    expect(persisted.totalPaise).toBe(OFF_TOTAL); // 1695000
     expect(persisted.taxRate).toBe(String(GST_RATE));
   });
 
@@ -290,6 +304,6 @@ describe("orders POST route — persisted totals", () => {
     expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE);
     expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING);
     expect(persisted.taxAmountPaise).toBe(ON_TAX); // 160714
-    expect(persisted.totalPaise).toBe(ON_TOTAL); // 1550000
+    expect(persisted.totalPaise).toBe(ON_TOTAL); // 1515000
   });
 });

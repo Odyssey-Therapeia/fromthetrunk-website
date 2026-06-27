@@ -99,7 +99,7 @@ export default function OrdersPage() {
             <div className="hidden rounded-[1.5rem] bg-ftt-navy p-5 text-ftt-ivory md:block">
               <ShoppingBag className="size-6 text-ftt-gold" />
               <p className="mt-12 font-serif text-3xl leading-tight">
-                One-of-one pieces, packed with care.
+                Unique pieces, packed with care.
               </p>
             </div>
           </div>

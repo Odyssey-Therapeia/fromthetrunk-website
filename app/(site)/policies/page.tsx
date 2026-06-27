@@ -15,7 +15,7 @@ const PROMISES = [
     body: "For significant misdescription, the wrong item, or an undisclosed major defect.",
   },
   {
-    title: "One-of-one clarity",
+    title: "Unique clarity",
     body: "Pre-loved condition and provenance are documented before every piece is listed.",
   },
   {
@@ -48,7 +48,7 @@ export default function PoliciesPage() {
                 The small print, written with care.
               </h1>
               <p className="mt-6 max-w-xl text-sm leading-7 text-ftt-ivory/75 sm:text-base">
-                Everything you need to know before bringing a one-of-one saree
+                Everything you need to know before bringing a unique saree
                 home — privacy, returns, shipping, authentication, care, and
                 customer support.
               </p>

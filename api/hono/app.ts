@@ -7,11 +7,17 @@ import {
   sameOriginMutationGuard,
 } from "@/api/hono/middleware/same-origin";
 import { registerAddressRoutes } from "@/api/hono/routes/addresses";
+import { registerAuthOtpRoutes } from "@/api/hono/routes/auth-otp";
 import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard";
 import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
 import { registerAdminOrderRoutes } from "@/api/hono/routes/admin-orders";
 import { registerAdminDiscountRoutes } from "@/api/hono/routes/admin-discounts";
+import {
+  registerAdminContactSubmissionRoutes,
+  registerContactRoutes,
+} from "@/api/hono/routes/contact";
 import { registerDiscountRoutes } from "@/api/hono/routes/discounts";
+import { registerEventsRoutes } from "@/api/hono/routes/events";
 import { registerNavigationRoutes } from "@/api/hono/routes/navigation";
 import { registerPagesRoutes } from "@/api/hono/routes/pages";
 import { registerRedirectsRoutes } from "@/api/hono/routes/redirects";
@@ -28,6 +34,10 @@ import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { registerProductTypeRoutes } from "@/api/hono/routes/product-types";
 import { registerSearchRoutes } from "@/api/hono/routes/search";
+import {
+  registerAdminSiteFeedbackRoutes,
+  registerSiteFeedbackRoutes,
+} from "@/api/hono/routes/site-feedback";
 import { registerUserRoutes } from "@/api/hono/routes/users";
 import { registerWishlistRoutes } from "@/api/hono/routes/wishlist";
 import { registerWebhookRoutes } from "@/api/hono/routes/webhooks";
@@ -35,6 +45,7 @@ import { registerFeedsRoutes } from "@/api/hono/routes/feeds";
 import { registerHealthRoutes } from "@/api/hono/routes/health";
 import { registerTagRoutes } from "@/api/hono/routes/tags";
 import type { HonoBindings } from "@/api/hono/types";
+import { shouldExposeApiDocs } from "@/lib/http/api-docs-policy";
 import { onUncaughtError } from "@/lib/http/on-uncaught-error";
 
 const app = new OpenAPIHono<HonoBindings>().basePath("/api/v2");
@@ -48,15 +59,17 @@ app.use("*", sameOriginCors);
 app.use("*", sameOriginMutationGuard);
 app.use("*", authMiddleware);
 
-app.doc("/openapi.json", {
-  info: {
-    title: "FTT API v2",
-    version: "1.0.0",
-  },
-  openapi: "3.1.0",
-});
+if (shouldExposeApiDocs()) {
+  app.doc("/openapi.json", {
+    info: {
+      title: "FTT API v2",
+      version: "1.0.0",
+    },
+    openapi: "3.1.0",
+  });
 
-app.get("/docs", swaggerUI({ url: "/api/v2/openapi.json" }));
+  app.get("/docs", swaggerUI({ url: "/api/v2/openapi.json" }));
+}
 
 const productsApp = new OpenAPIHono<HonoBindings>();
 registerProductRoutes(productsApp);
@@ -82,6 +95,10 @@ const usersApp = new OpenAPIHono<HonoBindings>();
 registerUserRoutes(usersApp);
 app.route("/users", usersApp);
 
+const authOtpApp = new OpenAPIHono<HonoBindings>();
+registerAuthOtpRoutes(authOtpApp);
+app.route("/auth/otp", authOtpApp);
+
 const addressesApp = new OpenAPIHono<HonoBindings>();
 registerAddressRoutes(addressesApp);
 app.route("/addresses", addressesApp);
@@ -90,6 +107,10 @@ const wishlistApp = new OpenAPIHono<HonoBindings>();
 registerWishlistRoutes(wishlistApp);
 app.route("/wishlist", wishlistApp);
 
+const eventsApp = new OpenAPIHono<HonoBindings>();
+registerEventsRoutes(eventsApp);
+app.route("/events", eventsApp);
+
 const mediaApp = new OpenAPIHono<HonoBindings>();
 registerMediaRoutes(mediaApp);
 app.route("/media", mediaApp);
@@ -97,6 +118,14 @@ app.route("/media", mediaApp);
 const newsletterApp = new OpenAPIHono<HonoBindings>();
 registerNewsletterRoutes(newsletterApp);
 app.route("/newsletter", newsletterApp);
+
+const contactApp = new OpenAPIHono<HonoBindings>();
+registerContactRoutes(contactApp);
+app.route("/contact", contactApp);
+
+const siteFeedbackApp = new OpenAPIHono<HonoBindings>();
+registerSiteFeedbackRoutes(siteFeedbackApp);
+app.route("/site-feedback", siteFeedbackApp);
 
 const searchApp = new OpenAPIHono<HonoBindings>();
 registerSearchRoutes(searchApp);
@@ -137,6 +166,14 @@ app.route("/admin/orders", adminOrdersApp);
 const adminDiscountsApp = new OpenAPIHono<HonoBindings>();
 registerAdminDiscountRoutes(adminDiscountsApp);
 app.route("/admin/discounts", adminDiscountsApp);
+
+const adminContactSubmissionsApp = new OpenAPIHono<HonoBindings>();
+registerAdminContactSubmissionRoutes(adminContactSubmissionsApp);
+app.route("/admin/contact-submissions", adminContactSubmissionsApp);
+
+const adminSiteFeedbackApp = new OpenAPIHono<HonoBindings>();
+registerAdminSiteFeedbackRoutes(adminSiteFeedbackApp);
+app.route("/admin/site-feedback", adminSiteFeedbackApp);
 
 const discountsApp = new OpenAPIHono<HonoBindings>();
 registerDiscountRoutes(discountsApp);
