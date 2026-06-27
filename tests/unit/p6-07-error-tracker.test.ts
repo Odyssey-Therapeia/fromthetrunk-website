@@ -92,10 +92,11 @@ describe("error-tracker port", () => {
     log.error("Something broke", { err });
     // The tracker is wired inside createLogger's error path
     expect(captureMock).toHaveBeenCalledTimes(1);
-    const [capturedErr] = captureMock.mock.calls[0] as [unknown, unknown];
-    // The tracker receives the actual Error object from meta.err
-    expect(capturedErr).toBe(err);
-  });
+	    const [capturedErr] = captureMock.mock.calls[0] as [unknown, unknown];
+	    expect(capturedErr).toBeInstanceOf(Error);
+	    expect(capturedErr).not.toBe(err);
+	    expect((capturedErr as Error).message).toBe("logger error");
+	  });
 
   // (3b) LOGGER WIRE: no-op when DSN absent (capture never called)
   it("tracker.capture() is NOT called from logger.error() when DSN absent", () => {
@@ -107,20 +108,18 @@ describe("error-tracker port", () => {
   });
 
   // (4) ONERROR WIRE: onUncaughtError calls the tracker
-  // Note: capture is called twice — once directly in onUncaughtError and once
-  // via log.error()'s internal tracker path. Both calls pass the real Error object.
-  it("tracker.capture() is called from onUncaughtError() when DSN set", () => {
+	  it("tracker.capture() is called from onUncaughtError() when DSN set", () => {
     vi.stubEnv("SENTRY_DSN", "https://fake@sentry.io/123");
     _resetTracker();
     const err = new Error("uncaught");
     const ctx = makeHonoContext();
     onUncaughtError(err, ctx as unknown as Parameters<typeof onUncaughtError>[1]);
-    // At minimum one call — the direct capture in onUncaughtError
-    expect(captureMock.mock.calls.length).toBeGreaterThanOrEqual(1);
-    // The FIRST call must pass the original Error as the first argument
-    const [capturedErr] = captureMock.mock.calls[0] as [unknown, unknown];
-    expect(capturedErr).toBe(err);
-  });
+	    expect(captureMock).toHaveBeenCalledTimes(1);
+	    const [capturedErr] = captureMock.mock.calls[0] as [unknown, unknown];
+	    expect(capturedErr).toBeInstanceOf(Error);
+	    expect(capturedErr).not.toBe(err);
+	    expect((capturedErr as Error).message).toBe("uncaught");
+	  });
 
   // (5) FIRE-AND-FORGET: throwing tracker does NOT throw from logger.error()
   it("a throwing tracker.capture() does not propagate from logger.error()", () => {

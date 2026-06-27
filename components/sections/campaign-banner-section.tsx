@@ -12,19 +12,19 @@ const BANNER_DURATION_MS = 3000;
 
 const campaignBanners: CampaignBanner[] = [
   {
-    image: "/banner/banner1.png",
+    image: "/banner/newbanner1.png",
     alt: "Grand Launch Edit, The Trunk Opens campaign banner",
   },
   {
-    image: "/banner/banner2.gif",
+    image: "/banner/newbanner2.png",
     alt: "New Arrivals, Newly Yours campaign banner",
   },
   {
-    image: "/banner/banner3.png",
+    image: "/banner/newbanner3.png",
     alt: "Provenance Promise, Every Weave Remembers campaign banner",
   },
   {
-    image: "/banner/banner4.png",
+    image: "/banner/newbanner4.png",
     alt: "Complimentary Styling, Find the Saree That Finds You campaign banner",
   },
 ];
@@ -41,9 +41,9 @@ export function CampaignBannerSection() {
   }, []);
 
   return (
-    <section className="bg-[#FDF7F1] px-5 py-14 sm:px-8 md:py-20 lg:px-10">
-      <div className="mx-auto max-w-7xl">
-        <div className="relative aspect-2500/1768 w-full overflow-hidden rounded-lg bg-[#0E0D0E] shadow-[0_28px_90px_rgba(96,29,28,0.2)]">
+    <section className="bg-[#FDF7F1] px-6 py-14 sm:px-10 md:py-20 lg:px-12 xl:px-16">
+      <div className="mx-auto max-w-[100rem]">
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-[#0E0D0E] shadow-[0_28px_90px_rgba(96,29,28,0.2)]">
           {campaignBanners.map((banner, index) => (
             <div
               key={banner.image}
@@ -56,8 +56,8 @@ export function CampaignBannerSection() {
                 src={banner.image}
                 alt={activeIndex === index ? banner.alt : ""}
                 fill
-                sizes="(max-width: 768px) calc(100vw - 2.5rem), (max-width: 1280px) calc(100vw - 5rem), 1280px"
-                unoptimized={banner.image.endsWith(".gif")}
+                sizes="(max-width: 768px) calc(100vw - 3rem), (max-width: 1280px) calc(100vw - 6rem), 1440px"
+                unoptimized={banner.image.endsWith(".gif") || banner.image.endsWith(".svg")}
                 className="object-cover"
               />
             </div>

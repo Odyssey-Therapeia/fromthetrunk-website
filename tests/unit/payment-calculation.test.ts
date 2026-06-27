@@ -1,14 +1,14 @@
 import crypto from "crypto";
 import { describe, expect, it } from "vitest";
 
-import { GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
+import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { calculateOrderTotals, verifyPaymentSignature } from "@/lib/payments/razorpay";
 
 // calculateOrderTotals now works entirely in PAISE — the unit the routes that
 // charge the customer actually carry. SHIPPING_TIERS values are rupee tiers, so
 // the paise equivalents are scaled by 100.
-const STANDARD_PAISE = SHIPPING_TIERS.standard * 100; // 500 INR -> 50000 paise
-const EXPRESS_PAISE = SHIPPING_TIERS.express * 100; // 1200 INR -> 120000 paise
+const STANDARD_PAISE = SHIPPING_TIERS.standard * 100;
+const EXPRESS_PAISE = SHIPPING_TIERS.express * 100;
 const FREE_THRESHOLD_PAISE = SHIPPING_TIERS.freeThreshold * 100; // 25000 INR -> 2500000 paise
 
 describe("calculateOrderTotals (flag OFF / exclusive — default)", () => {
@@ -26,18 +26,21 @@ describe("calculateOrderTotals (flag OFF / exclusive — default)", () => {
     );
   });
 
-  it("gives free shipping above threshold", () => {
+  it("free shipping above threshold only when ENABLE_FREE_SHIPPING", () => {
     const subtotalPaise = 3_000_000; // 30000 INR > threshold
     const result = calculateOrderTotals(subtotalPaise, "standard");
+    const expectedShipping = ENABLE_FREE_SHIPPING ? 0 : STANDARD_PAISE;
 
-    expect(result.shippingCostPaise).toBe(0);
-    expect(result.totalPaise).toBe(subtotalPaise + Math.round(subtotalPaise * GST_RATE));
+    expect(result.shippingCostPaise).toBe(expectedShipping);
+    expect(result.totalPaise).toBe(
+      subtotalPaise + expectedShipping + Math.round(subtotalPaise * GST_RATE),
+    );
   });
 
-  it("gives free shipping for express above threshold", () => {
+  it("free express shipping above threshold only when ENABLE_FREE_SHIPPING", () => {
     const result = calculateOrderTotals(3_000_000, "express");
 
-    expect(result.shippingCostPaise).toBe(0);
+    expect(result.shippingCostPaise).toBe(ENABLE_FREE_SHIPPING ? 0 : EXPRESS_PAISE);
   });
 
   it("calculates express shipping for small order", () => {
@@ -62,8 +65,8 @@ describe("calculateOrderTotals (flag OFF / exclusive — default)", () => {
   it("handles exact threshold amount", () => {
     const result = calculateOrderTotals(FREE_THRESHOLD_PAISE, "standard");
 
-    // At exactly the threshold, shipping should be free
-    expect(result.shippingCostPaise).toBe(0);
+    // At exactly the threshold, shipping is free only when free shipping is enabled.
+    expect(result.shippingCostPaise).toBe(ENABLE_FREE_SHIPPING ? 0 : STANDARD_PAISE);
   });
 });
 

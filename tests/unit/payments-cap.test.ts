@@ -100,7 +100,7 @@ function collectPrimitives(node: unknown, seen = new WeakSet<object>()): Array<s
 function createTestApp() {
   const app = new OpenAPIHono<HonoBindings>();
   app.use("*", async (c, next) => {
-    c.set("authUser", null);
+    c.set("authUser", AUTH_USER);
     await next();
   });
   registerPaymentRoutes(app);
@@ -108,6 +108,11 @@ function createTestApp() {
 }
 
 const PRODUCT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const AUTH_USER = {
+  email: "customer@example.com",
+  id: "11111111-1111-4111-8111-111111111111",
+  role: "customer",
+};
 
 // Minimal valid request body for the create-order endpoint
 const validBody = {
@@ -230,8 +235,7 @@ describe("payments create-order — pending-order cap", () => {
     expect(response.status).toBe(429);
     const body = await response.json();
     expect(body.code).toBe("TOO_MANY_PENDING_ORDERS");
-    // Must not have called getOrCreateCheckoutCustomer before rejecting
-    expect(getOrCreateCheckoutCustomerMock).not.toHaveBeenCalled();
+	    expect(createOrderMock).not.toHaveBeenCalled();
   });
 
   it("proceeds (no 429) when only 2 live pending orders exist", async () => {
@@ -246,14 +250,13 @@ describe("payments create-order — pending-order cap", () => {
 
     // Should succeed (200) — cap not reached
     expect(response.status).toBe(200);
-    // getOrCreateCheckoutCustomer should have been called (cap passed)
-    expect(getOrCreateCheckoutCustomerMock).toHaveBeenCalled();
-  });
+	    expect(createOrderMock).toHaveBeenCalledWith(
+	      expect.objectContaining({ userId: AUTH_USER.id })
+	    );
+	  });
 
-  it("mixed-case email still triggers cap (both normalize to same lowercase value)", async () => {
-    // Pending orders stored with lowercase 'buyer@example.com'
-    // Request sent with 'Buyer@example.com' — must still count
-    setupDbSelectChain(3);
+	  it("shipping email casing does not decide pending-order ownership", async () => {
+	    setupDbSelectChain(3);
 
     const app = createTestApp();
     const response = await app.request("/create-order", {
@@ -264,19 +267,17 @@ describe("payments create-order — pending-order cap", () => {
 
     expect(response.status).toBe(429);
     const body = await response.json();
-    expect(body.code).toBe("TOO_MANY_PENDING_ORDERS");
+	    expect(body.code).toBe("TOO_MANY_PENDING_ORDERS");
 
-    // Verify the db query was called with the lowercase email.
-    // dbWhereMock is called twice: first for the products lookup, then for the cap count.
-    // Walk the Drizzle AST from the second call (cap count query) and verify it
-    // contains the lowercased email — not the original mixed-case value.
-    expect(dbWhereMock).toHaveBeenCalledTimes(2);
-    const capQueryArg = dbWhereMock.mock.calls[1][0];
-    const primitives = collectPrimitives(capQueryArg);
-    const strings = primitives.filter((p): p is string => typeof p === "string");
-    expect(strings).toContain("buyer@example.com");
-    expect(strings).not.toContain("Buyer@example.com");
-  });
+	    // Verify the cap query is scoped by authenticated user id, not shipping email.
+	    expect(dbWhereMock).toHaveBeenCalledTimes(2);
+	    const capQueryArg = dbWhereMock.mock.calls[1][0];
+	    const primitives = collectPrimitives(capQueryArg);
+	    const strings = primitives.filter((p): p is string => typeof p === "string");
+	    expect(strings).toContain(AUTH_USER.id);
+	    expect(strings).not.toContain("buyer@example.com");
+	    expect(strings).not.toContain("Buyer@example.com");
+	  });
 
   it("old pending orders (older than link expiry) are NOT counted — no 429", async () => {
     // Simulate: 3 pending orders exist but they are older than RAZORPAY_PAYMENT_LINK_HOLD_MINUTES
@@ -293,7 +294,9 @@ describe("payments create-order — pending-order cap", () => {
 
     // Should succeed (200) — old orders are outside the time window
     expect(response.status).toBe(200);
-    expect(getOrCreateCheckoutCustomerMock).toHaveBeenCalled();
+	    expect(createOrderMock).toHaveBeenCalledWith(
+	      expect.objectContaining({ userId: AUTH_USER.id })
+	    );
 
     // Verify the cap count query's WHERE predicate includes a Date cutoff (time-bound clause).
     // This ensures gt(orders.createdAt, cutoffDate) is present — removing it would break the

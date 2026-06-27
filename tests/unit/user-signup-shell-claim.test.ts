@@ -116,8 +116,11 @@ describe("POST /sign-up — shell claim logic", () => {
       body: JSON.stringify(SIGN_UP_BODY),
     });
 
-    expect(response.status).toBe(201);
-    // bcrypt.hash must be called with the raw password and cost factor 12
+	    expect(response.status).toBe(201);
+	    const json = (await response.json()) as Record<string, unknown>;
+	    expect(json).not.toHaveProperty("passwordHash");
+	    expect(json).not.toHaveProperty("metadata");
+	    // bcrypt.hash must be called with the raw password and cost factor 12
     expect(hashMock).toHaveBeenCalledWith("SecurePass123", 12);
     expect(claimCheckoutShellMock).toHaveBeenCalledWith(
       "shell-user-id",
@@ -190,8 +193,11 @@ describe("POST /sign-up — shell claim logic", () => {
       body: JSON.stringify(SIGN_UP_BODY),
     });
 
-    expect(response.status).toBe(201);
-    // db.insert path taken
+	    expect(response.status).toBe(201);
+	    const json = (await response.json()) as Record<string, unknown>;
+	    expect(json).not.toHaveProperty("passwordHash");
+	    expect(json).not.toHaveProperty("metadata");
+	    // db.insert path taken
     expect(insertMock).toHaveBeenCalledTimes(1);
     // updateUser NOT called for a brand-new user
     expect(updateUserMock).not.toHaveBeenCalled();

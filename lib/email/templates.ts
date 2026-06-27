@@ -4,7 +4,7 @@
  */
 import { formatINR } from "@/db/money";
 import { isGstInclusive } from "@/lib/config/flags";
-import { getSiteOrigin } from "@/lib/config/site";
+import { getPublicAssetOrigin, getSiteOrigin } from "@/lib/config/site";
 
 export type EmailOrderItem = {
   name: string;
@@ -38,6 +38,7 @@ const brandStyles = {
   bg: "#f5f0e8",
   card: "#ffffff",
   primary: "#4b2626",
+  navy: "#141d46",
   gold: "#b8860b",
   text: "#2e2017",
   muted: "#6d5a4e",
@@ -52,6 +53,9 @@ const escapeHtml = (value: null | string | undefined) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+const publicAssetUrl = (path: string) =>
+  `${getPublicAssetOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
+
 const wrapper = (content: string) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -59,9 +63,7 @@ const wrapper = (content: string) => `
 <body style="margin:0;padding:0;background:${brandStyles.bg};font-family:'Georgia',serif;">
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;margin-bottom:24px;">
-      <h1 style="font-size:20px;color:${brandStyles.primary};letter-spacing:0.15em;text-transform:uppercase;margin:0;">
-        From the Trunk
-      </h1>
+      <img src="${escapeHtml(publicAssetUrl("/Ftt_logo_navbar.png"))}" width="132" alt="From the Trunk" style="display:block;width:132px;max-width:70%;height:auto;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
       <p style="font-size:12px;color:${brandStyles.muted};margin:4px 0 0;letter-spacing:0.1em;">
         Pre-loved luxury sarees with provenance
       </p>
@@ -124,7 +126,7 @@ export function orderConfirmationEmail(order: EmailOrder): {
     </div>
 
     <p style="font-size:14px;color:${brandStyles.muted};line-height:1.6;">
-      Thank you for your purchase. Your one-of-a-kind treasure is being prepared with care.
+      Thank you for your purchase. Your unique treasure is being prepared with care.
     </p>
 
     <table style="width:100%;border-collapse:collapse;margin:20px 0;">
@@ -159,7 +161,7 @@ export function orderConfirmationEmail(order: EmailOrder): {
   `;
 
   return {
-    subject: `Order Confirmed - #${orderId} | From the Trunk`,
+    subject: `Order details - #${orderId} | From the Trunk`,
     html: wrapper(content),
   };
 }
@@ -302,7 +304,7 @@ export function welcomeEmail(name: string): {
     </p>
     <p style="font-size:14px;color:${brandStyles.muted};line-height:1.6;">
       Thank you for joining our community. Each saree in our collection is a
-      one-of-a-kind piece with its own story: authenticated, restored, and
+      unique piece with its own story: authenticated, restored, and
       ready for a new chapter.
     </p>
     <p style="font-size:14px;color:${brandStyles.muted};line-height:1.6;">
@@ -318,6 +320,87 @@ export function welcomeEmail(name: string): {
 
   return {
     subject: "Welcome to From the Trunk",
+    html: wrapper(content),
+  };
+}
+
+export function contactAcknowledgementEmail(params: {
+  messagePreview?: null | string;
+  name: string;
+  supportEmail: string;
+}): { subject: string; html: string } {
+  const preview = params.messagePreview?.trim();
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:24px;color:${brandStyles.navy};margin:0 0 4px;">We received your request</h2>
+      <p style="font-size:14px;color:${brandStyles.muted};margin:0;">From the Trunk</p>
+    </div>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      Hello ${escapeHtml(params.name)},
+    </p>
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      Thank you for reaching out to From the Trunk. We&rsquo;ve received your
+      request, and our team/partner will contact you shortly.
+    </p>
+    ${
+      preview
+        ? `<div style="margin-top:18px;padding:16px;background:${brandStyles.bg};border-radius:12px;border:1px solid ${brandStyles.border};">
+            <p style="font-size:12px;color:${brandStyles.muted};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Your note</p>
+            <p style="font-size:13px;color:${brandStyles.text};line-height:1.7;margin:0;">${escapeHtml(preview)}</p>
+          </div>`
+        : ""
+    }
+    <p style="font-size:13px;color:${brandStyles.muted};line-height:1.7;margin-top:20px;">
+      For urgent help, contact us at ${escapeHtml(params.supportEmail)}.
+    </p>
+  `;
+
+  return {
+    subject: "We’ve received your request — From the Trunk",
+    html: wrapper(content),
+  };
+}
+
+export function contactInternalNotificationEmail(params: {
+  email: string;
+  message: string;
+  name: string;
+  pagePath?: null | string;
+  phone?: null | string;
+  submissionId: string;
+  topic?: null | string;
+}): { subject: string; html: string } {
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:22px;color:${brandStyles.text};margin:0 0 4px;">New Contact Request</h2>
+      <p style="font-size:13px;color:${brandStyles.muted};margin:0;">Submission ${escapeHtml(params.submissionId.slice(0, 8).toUpperCase())}</p>
+    </div>
+
+    <div style="margin:16px 0;padding:16px;background:${brandStyles.bg};border-radius:12px;">
+      <p style="font-size:12px;color:${brandStyles.muted};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Visitor</p>
+      <p style="font-size:14px;color:${brandStyles.text};line-height:1.7;margin:0;">
+        ${escapeHtml(params.name)}<br>
+        ${escapeHtml(params.email)}${params.phone ? `<br>${escapeHtml(params.phone)}` : ""}
+      </p>
+    </div>
+
+    <div style="margin:16px 0;padding:16px;background:${brandStyles.bg};border-radius:12px;">
+      <p style="font-size:12px;color:${brandStyles.muted};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Context</p>
+      <p style="font-size:14px;color:${brandStyles.text};line-height:1.7;margin:0;">
+        Topic: ${escapeHtml(params.topic ?? "General enquiry")}<br>
+        Page: ${escapeHtml(params.pagePath ?? "/")}
+      </p>
+    </div>
+
+    <div style="margin:16px 0;padding:16px;background:${brandStyles.bg};border-radius:12px;border:1px solid ${brandStyles.border};">
+      <p style="font-size:12px;color:${brandStyles.muted};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Message</p>
+      <p style="font-size:14px;color:${brandStyles.text};line-height:1.7;margin:0;white-space:pre-wrap;">${escapeHtml(params.message)}</p>
+    </div>
+  `;
+
+  return {
+    subject: `New contact request — ${params.name} | From the Trunk`,
     html: wrapper(content),
   };
 }
@@ -369,6 +452,51 @@ export function reservationExpiryReminderEmail(params: {
 
   return {
     subject: `Your reservation for ${params.itemName} has expired | From the Trunk`,
+    html: wrapper(content),
+  };
+}
+
+export function otpEmail(params: {
+  expiresInMinutes: number;
+  otp: string;
+  purpose: "checkout" | "sign_in" | "sign_up" | string;
+  supportEmail: string;
+}): { subject: string; html: string } {
+  const purposeLabel =
+    params.purpose === "sign_up"
+      ? "create your From the Trunk account"
+      : params.purpose === "checkout"
+        ? "continue checkout"
+        : "sign in to From the Trunk";
+
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:24px;color:${brandStyles.navy};margin:0 0 4px;">Your From the Trunk code</h2>
+      <p style="font-size:14px;color:${brandStyles.muted};margin:0;">Use this code to ${escapeHtml(purposeLabel)}.</p>
+    </div>
+
+    <div style="text-align:center;margin:28px 0;padding:22px;background:${brandStyles.bg};border:1px solid ${brandStyles.border};border-radius:14px;">
+      <div style="font-size:34px;line-height:1;letter-spacing:0.22em;color:${brandStyles.gold};font-weight:bold;font-family:Georgia,serif;">
+        ${escapeHtml(params.otp)}
+      </div>
+      <p style="font-size:12px;color:${brandStyles.muted};margin:12px 0 0;">
+        Expires in ${escapeHtml(String(params.expiresInMinutes))} minutes.
+      </p>
+    </div>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      Enter this code in the From the Trunk sign-in window. For your security,
+      do not share it with anyone.
+    </p>
+
+    <p style="font-size:13px;color:${brandStyles.primary};line-height:1.7;margin-top:20px;">
+      If you did not request this code, please ignore this email or contact
+      ${escapeHtml(params.supportEmail)}.
+    </p>
+  `;
+
+  return {
+    subject: "Your OTP from the Trunk",
     html: wrapper(content),
   };
 }

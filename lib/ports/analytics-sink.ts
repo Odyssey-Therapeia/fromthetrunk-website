@@ -14,7 +14,15 @@ export type AnalyticsEventType =
   | "content_published"
   | "wishlist_added"
   | "wishlist_removed"
-  | "restock_notify_requested";
+  | "restock_notify_requested"
+  | "collection_view"
+  | "product_card_click"
+  | "product_view"
+  | "add_to_cart"
+  | "cart_viewed"
+  | "checkout_started"
+  | "search_performed"
+  | "filter_applied";
 
 export type AnalyticsEvent = {
   /** Globally unique per logical event — stable across all adapter calls. */

@@ -2,7 +2,7 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 
 import { isGstInclusive } from "@/lib/config/flags";
-import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
+import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { applyDiscountToPaise, type ValidatedDiscount } from "@/lib/discounts/validate";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
@@ -188,7 +188,7 @@ export function toShippingCostPaise(
   shippingMethod: ShippingMethod = "standard"
 ): number {
   const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
-  if (subtotalPaise >= freeThresholdPaise) return 0;
+  if (ENABLE_FREE_SHIPPING && subtotalPaise >= freeThresholdPaise) return 0;
   return SHIPPING_TIERS[shippingMethod] * 100;
 }
 

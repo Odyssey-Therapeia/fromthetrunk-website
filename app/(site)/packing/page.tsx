@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
-
 export const metadata: Metadata = {
   title: "Packing",
   description:
@@ -12,7 +10,7 @@ export const metadata: Metadata = {
 export default function PackingPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Customer Care
         </p>
@@ -22,7 +20,7 @@ export default function PackingPage() {
         <p className="text-sm text-muted-foreground">
           Last updated: April 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">

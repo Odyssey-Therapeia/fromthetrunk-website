@@ -26,7 +26,7 @@ export function BrandStoryTeaser() {
             world where quality isn&apos;t just bought, it&apos;s preserved.
           </p>
           <Button asChild className="rounded-full px-8">
-            <Link href="/founders">Read the full story</Link>
+            <Link href="/our-team">Read the full story</Link>
           </Button>
         </ScrollReveal>
 

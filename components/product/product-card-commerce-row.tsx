@@ -8,7 +8,10 @@ import {
   type MouseEvent,
 } from "react";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
+import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
@@ -104,6 +107,11 @@ export function ProductCardCommerceRow({
     product.availability === false ||
     product.availableForSale === false ||
     product.inventoryCount === 0;
+  const analyticsStockStatus = isReserved
+    ? "reserved"
+    : isUnavailable
+      ? "sold"
+      : "available";
 
   const rating = normalizeRating(
     product.ratingAverage ??
@@ -211,6 +219,13 @@ export function ProductCardCommerceRow({
         reservationToken: reserveResult.reservation?.reservationToken ?? null,
         reservedUntil: reserveResult.reservation?.reservedUntil ?? null,
       });
+      trackWebsiteMetric("add_to_cart", {
+        pricePaise: product.pricePaise,
+        productId: product.id,
+        slug: product.slug,
+        source: "product_card",
+        stockStatus: analyticsStockStatus,
+      });
 
       dispatchCartUpdated(product.id, 1);
       const cartTarget = getCartTarget();
@@ -223,10 +238,15 @@ export function ProductCardCommerceRow({
       resetTimerRef.current = window.setTimeout(() => {
         setState("idle");
       }, ADDED_HOLD_MS);
-    } catch {
+    } catch (error) {
       sourceCard?.setAttribute("data-ftt-cart-border", "error");
       setState("error");
       setMotionLabel("Try again");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "This piece is no longer available.",
+      );
 
       resetTimerRef.current = window.setTimeout(() => {
         setState("idle");
@@ -275,7 +295,7 @@ export function ProductCardCommerceRow({
         className,
       )}
     >
-      <div className="min-w-0 shrink-0 text-xs font-medium text-[#6B625B]">
+      <div className="min-w-0 flex-1 text-xs font-medium text-[#141D46]">
         {rating !== null ? (
           <div className="flex items-center gap-1.5">
             <span className="text-[#B39152]" aria-hidden="true">
@@ -289,7 +309,9 @@ export function ProductCardCommerceRow({
             ) : null}
           </div>
         ) : (
-          <span className="text-[#6B625B]">New arrival</span>
+          <span className="inline-flex max-w-full items-center rounded-full border border-[#B39152]/35 bg-[#B39152]/12 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#601D1C] shadow-[0_8px_18px_rgba(179,145,82,0.14)] @sm:text-xs">
+            New arrival
+          </span>
         )}
       </div>
 
@@ -404,7 +426,13 @@ async function reserveProductIfNeeded(
   });
 
   if (!response.ok) {
-    throw new Error("Unable to add product to cart.");
+    const payload = (await response.json().catch(() => null)) as {
+      code?: string;
+      message?: string;
+    } | null;
+    throw new Error(
+      getAvailabilityErrorMessage(payload?.code, payload?.message),
+    );
   }
 
   return (await response.json()) as {

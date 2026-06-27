@@ -179,7 +179,7 @@ export function OurWhyExperience({ images }: OurWhyExperienceProps) {
                 variant="heroSecondary"
                 className="rounded-full px-7 py-6"
               >
-                <Link href="/founders">Read the Story</Link>
+                <Link href="/our-team">Read the Story</Link>
               </Button>
             </div>
           </div>

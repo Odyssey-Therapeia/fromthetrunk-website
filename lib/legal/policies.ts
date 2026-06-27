@@ -142,7 +142,7 @@ export const policies: LegalPolicy[] = [
     title: "Return, Refund & Exchange Policy",
     eyebrow: "Returns",
     description:
-      "How returns, refunds, exchanges, and one-of-one product concerns are handled.",
+      "How returns, refunds, exchanges, and unique product concerns are handled.",
     lastUpdated: "[DATE]",
     sections: [
       {
@@ -164,7 +164,7 @@ export const policies: LegalPolicy[] = [
         id: "not-eligible",
         title: "When a return is not eligible",
         body: [
-          "Because every piece is pre-loved and one-of-one, returns are not accepted for change of mind; slight colour variation due to screen, lighting, or photography differences; minor age-related marks already disclosed or consistent with pre-loved textiles; preference-based reasons such as weight, drape, feel, shade, or styling expectations; damage caused after delivery, wear, washing, dry cleaning, ironing, perfume, stains, folding, or storage; items returned without original tags, labels, authentication card, muslin wrap, or packaging where applicable; items that appear used, altered, damaged, or tampered with after delivery; or international orders, except where required by law or where FTT shipped the wrong/significantly misdescribed item.",
+          "Because every piece is pre-loved and unique, returns are not accepted for change of mind; slight colour variation due to screen, lighting, or photography differences; minor age-related marks already disclosed or consistent with pre-loved textiles; preference-based reasons such as weight, drape, feel, shade, or styling expectations; damage caused after delivery, wear, washing, dry cleaning, ironing, perfume, stains, folding, or storage; items returned without original tags, labels, authentication card, muslin wrap, or packaging where applicable; items that appear used, altered, damaged, or tampered with after delivery; or international orders, except where required by law or where FTT shipped the wrong/significantly misdescribed item.",
         ],
       },
       {
@@ -215,7 +215,7 @@ export const policies: LegalPolicy[] = [
         id: "exchanges",
         title: "Exchanges and store credit",
         body: [
-          "We generally do not offer exchanges because each saree is one-of-one. If a return is approved, you may place a fresh order for another available piece.",
+          "We generally do not offer exchanges because each saree is unique. If a return is approved, you may place a fresh order for another available piece.",
           "In some cases, FTT may offer store credit instead of a refund, but only with your agreement.",
         ],
       },
@@ -323,7 +323,7 @@ export const policies: LegalPolicy[] = [
         id: "about",
         title: "About FTT",
         body: [
-          "From the Trunk is a curated platform for authenticated, pre-loved luxury sarees. Each piece is one-of-one and may carry age, provenance, restoration, and condition characteristics.",
+          "From the Trunk is a curated platform for authenticated, pre-loved luxury sarees. Each piece is unique and may carry age, provenance, restoration, and condition characteristics.",
           "By accessing our website, creating an account, placing an order, submitting a saree, or using our services, you agree to these Terms of Service.",
         ],
       },
@@ -362,7 +362,7 @@ export const policies: LegalPolicy[] = [
         title: "Account, wishlist, and cart",
         body: [
           "You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.",
-          "Adding a product to wishlist or cart does not guarantee availability. A product is reserved only after the successful order/payment flow as applicable.",
+          "Adding a product to wishlist does not reserve it. Adding a one-of-one product to cart creates a time-limited hold; the order is confirmed only after successful payment and order confirmation.",
         ],
       },
       {
@@ -521,10 +521,10 @@ export const policies: LegalPolicy[] = [
         ],
       },
       {
-        id: "one-of-one-hold",
-        title: "One-of-one product hold",
+        id: "unique-hold",
+        title: "Unique product hold",
         body: [
-          "Because each saree is one-of-one, placing an order temporarily reserves that piece for you. Please complete payment only when you are sure about the purchase.",
+          "Because each saree is unique, placing an order temporarily reserves that piece for you. Please complete payment only when you are sure about the purchase.",
         ],
       },
       {

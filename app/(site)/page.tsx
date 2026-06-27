@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { draftMode } from "next/headers";
 
 import { CampaignBannerSection } from "@/components/sections/campaign-banner-section";
 import { FabricCategorySection } from "@/components/sections/fabric-category-section";
@@ -26,18 +25,18 @@ import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
 import type { Product } from "@/types/domain";
 import type { HomePageContent } from "@/types/site-content";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "From the Trunk | Pre-Loved Luxury Sarees with Provenance",
   description:
-    "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance, a story woven in silk, and careful restoration.",
+    "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance, a story woven in silk, and careful restoration.",
 };
 
 const homeCoverImage = "/media/home-cover.png";
 
 export default async function Home() {
-  const { isEnabled: includeDrafts } = await draftMode();
+  const includeDrafts = false;
 
   // ── FLAG ON: render homepage via the block-content engine ──────────────────
   // When FTT_FEATURE_BLOCKS_HOMEPAGE=true, the homepage is rendered by mapping

@@ -12,24 +12,38 @@ type CollectionHeroCarouselImage = {
 
 type CollectionHeroCarouselProps = {
   images: readonly CollectionHeroCarouselImage[];
+  prioritizeFirst?: boolean;
 };
 
 const CAROUSEL_INTERVAL_MS = 3000;
 
 export function CollectionHeroCarousel({
   images,
+  prioritizeFirst = true,
 }: CollectionHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [canMountInactiveSlides, setCanMountInactiveSlides] = useState(false);
 
   useEffect(() => {
     if (images.length <= 1) return;
+
+    const timer = window.setTimeout(() => {
+      setCanMountInactiveSlides(true);
+    }, CAROUSEL_INTERVAL_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [images.length]);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    if (!canMountInactiveSlides) return;
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % images.length);
     }, CAROUSEL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [images.length]);
+  }, [canMountInactiveSlides, images.length]);
 
   if (images.length === 0) return null;
 
@@ -37,6 +51,7 @@ export function CollectionHeroCarousel({
     <div className="absolute inset-x-0 top-0 bottom-8 overflow-hidden sm:bottom-10 lg:bottom-12">
       {images.map((image, index) => {
         const isActive = activeIndex === index;
+        const shouldMountImage = isActive || canMountInactiveSlides;
 
         return (
           <div
@@ -51,15 +66,18 @@ export function CollectionHeroCarousel({
                 : "translate-x-6 opacity-0",
             )}
           >
-            <Image
-              src={image.src}
-              alt={isActive ? image.alt : ""}
-              fill
-              loading={index === 0 ? "eager" : "lazy"}
-              fetchPriority={index === 0 ? "high" : "auto"}
-              sizes="(max-width: 1024px) 100vw, 52vw"
-              className="object-contain object-top"
-            />
+            {shouldMountImage ? (
+              <Image
+                src={image.src}
+                alt={isActive ? image.alt : ""}
+                fill
+                priority={prioritizeFirst && index === 0}
+                loading={index === 0 ? undefined : "lazy"}
+                fetchPriority={prioritizeFirst && index === 0 ? "high" : "auto"}
+                sizes="(max-width: 1024px) 100vw, 52vw"
+                className="object-contain object-top"
+              />
+            ) : null}
           </div>
         );
       })}

@@ -4,11 +4,13 @@ import {
   useEffect,
   useRef,
   useState,
+  type FormEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 export type LandingImage = {
   alt: string;
@@ -61,7 +63,7 @@ const fallbackProducts: LandingProductCard[] = [
   {
     name: "Maroon Silk Classic",
     detail: "Heritage silk with zari detail",
-    condition: "Gently restored, one of one",
+    condition: "Gently restored, unique",
     price: "Price on request",
     href: "/collection",
     image: "/hero/banner.png",
@@ -299,7 +301,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
         <div ref={ref} className="relative z-10">
           <div className="mb-6 inline-flex items-center gap-3">
             <span className="h-px w-10 bg-[#B39152]" aria-hidden="true" />
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B]">
               Our Story
             </p>
           </div>
@@ -311,7 +313,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
           <p className="mt-8 min-h-40 max-w-xl text-[clamp(1rem,1.2vw,1.2rem)] leading-8 text-[#141D46]/58">
             {visibleText}
             {isTyping ? (
-              <span className="ml-1 inline-block translate-y-1 animate-pulse text-[#B39152]">
+              <span className="ml-1 inline-block translate-y-1 animate-pulse text-[#74531B]">
                 |
               </span>
             ) : null}
@@ -335,7 +337,12 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
                   ].join(" ")}
                   aria-pressed={isActive}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#B39152]">
+                  <span
+                    className={[
+                      "text-[10px] font-semibold uppercase tracking-[0.26em]",
+                      isActive ? "text-[#F5DA8A]" : "text-[#5E4216]",
+                    ].join(" ")}
+                  >
                     {chapter.label}
                   </span>
 
@@ -346,7 +353,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
                   <span
                     className={[
                       "mt-2 block text-xs leading-5",
-                      isActive ? "text-[#FDF7F1]/70" : "text-[#141D46]/55",
+                      isActive ? "text-[#FDF7F1]" : "text-[#141D46]",
                     ].join(" ")}
                   >
                     {chapter.body}
@@ -365,7 +372,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
             </Link>
 
             <Link
-              href="/founders"
+              href="/our-team"
               className="inline-flex rounded-full border border-[#B39152]/55 px-5 py-3 text-sm font-medium text-[#601D1C] transition hover:bg-[#B39152]/10"
             >
               Read the full story
@@ -459,7 +466,7 @@ export function FeaturedProductsSection({
       <div className="mx-auto max-w-7xl">
         <div className="mb-10 grid gap-6 border-b border-[#601D1C]/10 pb-8 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)] md:items-end">
           <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B]">
               Featured Products
             </p>
             <h2 className="max-w-4xl font-serif text-5xl leading-none text-[#601D1C] sm:text-6xl lg:text-7xl">
@@ -572,7 +579,7 @@ function FeaturedProductTile({
                 : "px-2 py-1 text-[8px] tracking-[0.14em] min-[520px]:left-3 min-[520px]:top-3 min-[520px]:px-3 min-[520px]:py-1.5 min-[520px]:text-[10px] min-[520px]:tracking-[0.16em]",
             ].join(" ")}
           >
-            One of one
+            Unique
           </div>
 
           {isHero ? (
@@ -656,7 +663,7 @@ export function TestimonialsSection() {
       className="overflow-hidden bg-[#FDF7F1] py-20 md:py-28"
     >
       <div className="mx-auto mb-12 max-w-7xl px-6">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B]">
           Testimonials
         </p>
         <h2 className="max-w-3xl font-serif text-[clamp(2.8rem,5vw,6rem)] leading-none text-[#141D46]">
@@ -687,6 +694,52 @@ export function TestimonialsSection() {
 }
 
 export function ConnectWithUsSection() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState(""); // honeypot
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<"error" | "idle" | "success">("idle");
+  const startedAtRef = useRef(0);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setStatus("idle");
+
+    try {
+      const response = await fetch("/api/v2/contact/submit", {
+        body: JSON.stringify({
+          clientSubmissionId:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : undefined,
+          email,
+          message,
+          name,
+          pagePath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+          startedAt: startedAtRef.current || undefined,
+          website,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Contact submission failed.");
+
+      setName("");
+      setEmail("");
+      setMessage("");
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section
       id="connect"
@@ -694,7 +747,7 @@ export function ConnectWithUsSection() {
     >
       <div className="mx-auto grid max-w-7xl gap-8 rounded-[1.5rem] bg-[#FDF7F1] p-5 text-white shadow-[0_22px_60px_rgba(20,29,70,0.16)] sm:gap-12 sm:p-6 md:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:p-16">
         <div className="min-w-0">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152] sm:mb-5">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B] sm:mb-5">
             Connect With Us
           </p>
           <h2 className="font-serif text-[#141D46] text-[clamp(2.25rem,8vw,3rem)] leading-[1.05] sm:text-[clamp(2.8rem,5vw,6rem)] sm:leading-none">
@@ -736,13 +789,31 @@ export function ConnectWithUsSection() {
           </div>
         </div>
 
-        <form className="min-w-0 rounded-4xl bg-[#FDF7F1] p-5 text-[#141D46] sm:p-6 md:p-8">
+        <form
+          onFocusCapture={() => {
+            if (!startedAtRef.current) startedAtRef.current = Date.now();
+          }}
+          onSubmit={handleSubmit}
+          className="min-w-0 rounded-4xl bg-[#FDF7F1] p-5 text-[#141D46] sm:p-6 md:p-8"
+        >
           <div className="grid gap-4 sm:gap-5">
+            <input
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(event) => setWebsite(event.target.value)}
+              name="website"
+              className="hidden"
+              aria-hidden="true"
+            />
             <label className="grid gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
                 Name
               </span>
               <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
                 className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="Your name"
               />
@@ -753,6 +824,9 @@ export function ConnectWithUsSection() {
               </span>
               <input
                 type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
                 className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="you@example.com"
               />
@@ -763,15 +837,37 @@ export function ConnectWithUsSection() {
               </span>
               <textarea
                 rows={5}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                required
                 className="w-full resize-none rounded-3xl border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
                 placeholder="Tell us what you are looking for..."
               />
             </label>
+
+            <div aria-live="polite" className="min-h-5 text-sm leading-6">
+              {status === "success" ? (
+                <p className="text-[#141D46]">
+                  Thanks for reaching out — we&rsquo;ve received your request. Our
+                  team will contact you shortly.
+                </p>
+              ) : null}
+              {status === "error" ? (
+                <p className="text-[#601D1C]">
+                  We couldn&rsquo;t send this right now. Please try again.
+                </p>
+              ) : null}
+            </div>
+
             <button
-              type="button"
-              className="mt-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] sm:py-4"
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] disabled:cursor-not-allowed disabled:opacity-70 sm:py-4"
             >
-              Send Message
+              {isSubmitting ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : null}
+              {isSubmitting ? "Sending..." : "Send Message"}
             </button>
           </div>
         </form>

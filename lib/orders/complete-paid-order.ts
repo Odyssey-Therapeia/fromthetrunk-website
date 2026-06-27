@@ -124,9 +124,18 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
         quantityAvailable: 0,
         updatedAt: new Date(),
       })
-      .where(inArray(products.id, productIds))
+      .where(and(inArray(products.id, productIds), ne(products.stockStatus, "sold")))
       .returning({ slug: products.slug });
     const soldProducts = soldRows ?? [];
+    if (soldProducts.length !== productIds.length) {
+      await addOrderEvent(input.orderId, "Payment completion inventory conflict", "confirmed", {
+        code: "PRODUCT_SOLD",
+        requestedProductIds: productIds,
+        soldCount: soldProducts.length,
+      });
+      throw new Error("PRODUCT_SOLD");
+    }
+
     revalidateProductsCache(soldProducts.map((product) => product.slug));
 
     // Dual-write: release reservation rows now that the order is paid

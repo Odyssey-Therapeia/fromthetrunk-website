@@ -107,12 +107,12 @@ export function InstagramSocialCard({
         {card.videoUrl ? (
           <video
             ref={videoRef}
-            src={card.videoUrl}
+            src={videoActive ? card.videoUrl : undefined}
             poster={card.image}
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105",
               videoActive ? "opacity-100" : "opacity-0",

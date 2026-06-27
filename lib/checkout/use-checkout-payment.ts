@@ -8,8 +8,14 @@
  * the confirmation path back to the caller via `onPaid`.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+
+import {
+  getAvailabilityErrorMessage,
+  isAvailabilityErrorCode,
+  type AvailabilityErrorCode,
+} from "@/lib/cart/availability-errors";
 
 type CreatePaymentOrderResponse = {
   amount?: number;
@@ -72,6 +78,9 @@ export type CheckoutOrderPayload = {
   };
   shippingMethod: string;
   discountCode?: string;
+  isGift?: boolean;
+  giftFrom?: string;
+  giftMessage?: string;
 };
 
 type StartPaymentArgs = {
@@ -79,12 +88,47 @@ type StartPaymentArgs = {
   prefill: { name: string; email: string; contact: string };
   description: string;
   onPaid: (confirmationPath: string) => void;
+  onAvailabilityError?: (error: {
+    code: AvailabilityErrorCode;
+    productId?: string;
+    message: string;
+  }) => void;
 };
 
 const confirmationPath = (orderId: string, accessToken?: string) =>
   accessToken
     ? `/checkout/confirmation?orderId=${orderId}&key=${accessToken}`
     : `/checkout/confirmation?orderId=${orderId}`;
+
+const RAZORPAY_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+
+const loadRazorpayScript = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve();
+      return;
+    }
+
+    let script = document.querySelector<HTMLScriptElement>(
+      `script[src="${RAZORPAY_SCRIPT_SRC}"]`,
+    );
+
+    const handleLoad = () => resolve();
+    const handleError = () =>
+      reject(
+        new Error("Payment system could not load. Please refresh and try again."),
+      );
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = RAZORPAY_SCRIPT_SRC;
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    script.addEventListener("load", handleLoad, { once: true });
+    script.addEventListener("error", handleError, { once: true });
+  });
 
 export function useCheckoutPayment() {
   const [isPaymentScriptReady, setIsPaymentScriptReady] = useState(false);
@@ -94,52 +138,11 @@ export function useCheckoutPayment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (window.Razorpay) {
-      const readyTimer = window.setTimeout(() => setIsPaymentScriptReady(true), 0);
-      return () => window.clearTimeout(readyTimer);
-    }
-
-    const scriptSrc = "https://checkout.razorpay.com/v1/checkout.js";
-    let script = document.querySelector<HTMLScriptElement>(
-      `script[src="${scriptSrc}"]`,
-    );
-    const wasExistingScript = Boolean(script);
-
-    if (!script) {
-      script = document.createElement("script");
-      script.src = scriptSrc;
-      script.async = true;
-      document.body.appendChild(script);
-    }
-
-    const handleLoad = () => {
-      setPaymentScriptError(null);
-      setIsPaymentScriptReady(true);
-    };
-    const handleError = () => {
-      setIsPaymentScriptReady(false);
-      setPaymentScriptError(
-        "Payment system could not load. Please refresh and try again.",
-      );
-    };
-
-    script.addEventListener("load", handleLoad);
-    script.addEventListener("error", handleError);
-
-    return () => {
-      script.removeEventListener("load", handleLoad);
-      script.removeEventListener("error", handleError);
-      if (!wasExistingScript && script.parentElement) {
-        script.parentElement.removeChild(script);
-      }
-    };
-  }, []);
-
   const startPayment = async ({
     payload,
     prefill,
     description,
+    onAvailabilityError,
     onPaid,
   }: StartPaymentArgs) => {
     setIsSubmitting(true);
@@ -153,7 +156,24 @@ export function useCheckoutPayment() {
       });
 
       if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => null);
+        const errorData = (await createResponse.json().catch(() => null)) as {
+          code?: string;
+          details?: { productId?: string };
+          message?: string;
+        } | null;
+        if (isAvailabilityErrorCode(errorData?.code)) {
+          const message = getAvailabilityErrorMessage(
+            errorData?.code,
+            errorData?.message,
+          );
+          onAvailabilityError?.({
+            code: errorData.code,
+            message,
+            productId: errorData.details?.productId,
+          });
+          throw new Error(message);
+        }
+
         throw new Error(errorData?.message || "Unable to create order.");
       }
 
@@ -167,10 +187,20 @@ export function useCheckoutPayment() {
 
       // Fallback path: open the Razorpay modal in-page and verify the signature.
       if (paymentScriptError) throw new Error(paymentScriptError);
-      if (!isPaymentScriptReady || !window.Razorpay) {
-        throw new Error(
-          "Payment system is still loading. Please try again in a moment.",
-        );
+      if (!window.Razorpay) {
+        try {
+          await loadRazorpayScript();
+          setPaymentScriptError(null);
+          setIsPaymentScriptReady(true);
+        } catch (scriptError) {
+          const message =
+            scriptError instanceof Error
+              ? scriptError.message
+              : "Payment system could not load. Please refresh and try again.";
+          setIsPaymentScriptReady(false);
+          setPaymentScriptError(message);
+          throw new Error(message);
+        }
       }
 
       const razorpayKeyId =

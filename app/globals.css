@@ -874,6 +874,91 @@
   }
 }
 
+.ftt-founder-book {
+  margin: 0 auto;
+  filter: drop-shadow(0 28px 70px rgba(20, 29, 70, 0.18));
+}
+
+.ftt-book-page {
+  border-radius: 1.15rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(179, 145, 82, 0.24),
+    0 18px 50px rgba(20, 29, 70, 0.12);
+}
+
+.ftt-book-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(14, 13, 14, 0.05),
+    transparent 10%,
+    transparent 90%,
+    rgba(14, 13, 14, 0.06)
+  );
+  mix-blend-mode: multiply;
+}
+
+.ftt-book-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ftt-cover-glow-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ftt-cover-glow-button::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at 76% 26%,
+      rgba(179, 145, 82, 0.48),
+      transparent 36%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(179, 145, 82, 0.28),
+      rgba(253, 247, 241, 0.12)
+    );
+  opacity: 0.76;
+  filter: blur(10px);
+  animation: ftt-cover-cta-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes ftt-cover-cta-glow {
+  0%,
+  100% {
+    opacity: 0.56;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftt-founder-book,
+  .ftt-book-page,
+  .ftt-cover-glow-button,
+  .ftt-cover-glow-button::before {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}
+
 .ftt-account-reveal {
   animation: ftt-account-reveal 560ms cubic-bezier(0.2, 0.76, 0.18, 1) both;
 }

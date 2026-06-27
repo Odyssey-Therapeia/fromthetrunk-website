@@ -393,7 +393,7 @@ export const imageTextSplitEditorSchema: FormSchema = {
       meta: {
         type: "text",
         label: "CTA URL",
-        placeholder: "/founders",
+        placeholder: "/our-team",
         description: "Destination URL for the CTA.",
       },
     },

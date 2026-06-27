@@ -103,6 +103,7 @@ describe("createEmailVerificationToken / verifyEmailVerificationToken", () => {
 
 vi.mock("@/db/queries/orders", () => ({
   listOrders: vi.fn().mockResolvedValue([]),
+  listOrderSummaries: vi.fn().mockResolvedValue([]),
   getOrder: vi.fn().mockResolvedValue(null),
   createOrder: vi.fn(),
   updateOrderStatus: vi.fn(),
@@ -164,9 +165,9 @@ describe("GET /orders — auth gate", () => {
     expect(response.status).toBe(200);
   });
 
-  it("passes userId and userEmail to listOrders for a customer", async () => {
-    const { listOrders } = await import("@/db/queries/orders");
-    const mockListOrders = vi.mocked(listOrders);
+  it("passes userId and userEmail to listOrderSummaries for a customer", async () => {
+    const { listOrderSummaries } = await import("@/db/queries/orders");
+    const mockListOrders = vi.mocked(listOrderSummaries);
     mockListOrders.mockClear();
 
     const { createRouteHarness } = await import("../helpers/route-harness");
@@ -188,8 +189,8 @@ describe("GET /orders — auth gate", () => {
   });
 
   it("MUTATION-PROOF: admin call does NOT pass userId (sees all orders)", async () => {
-    const { listOrders } = await import("@/db/queries/orders");
-    const mockListOrders = vi.mocked(listOrders);
+    const { listOrderSummaries } = await import("@/db/queries/orders");
+    const mockListOrders = vi.mocked(listOrderSummaries);
     mockListOrders.mockClear();
 
     const { createRouteHarness } = await import("../helpers/route-harness");
@@ -591,6 +592,9 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
     refundedAt: null,
     refundId: null,
     refundedAmountPaise: null,
+    isGift: false,
+    giftFrom: null,
+    giftMessage: null,
     trackingNumber: null,
     trackingCarrier: null,
     internalNote: null,

@@ -1,16 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+
+const clampRating = (value: number) =>
+  Math.min(5, Math.max(1, Math.round(value * 10) / 10));
 
 export function FloatingReviewTab() {
   const [comment, setComment] = useState("");
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [rating, setRating] = useState(5);
+  const [submitError, setSubmitError] = useState(false);
+  const [website, setWebsite] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLSpanElement>(null);
+  const startedAtRef = useRef(0);
+  const ratingTrackProgress = ((rating - 1) / 4) * 100;
+
+  const updateRating = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    setRating(clampRating(value));
+  };
 
   useEffect(() => {
     const updateVisibility = () => {
@@ -56,8 +69,6 @@ export function FloatingReviewTab() {
     };
   }, [isOpen]);
 
-  const activeRating = hoverRating ?? rating;
-
   return (
     <>
       <span
@@ -71,6 +82,9 @@ export function FloatingReviewTab() {
         onClick={() => {
           setIsOpen(true);
           setIsSubmitted(false);
+          setSubmitError(false);
+          setWebsite("");
+          startedAtRef.current = Date.now();
         }}
         aria-hidden={!isVisible}
         aria-label="Open review form"
@@ -148,14 +162,56 @@ export function FloatingReviewTab() {
               </div>
             ) : (
               <form
-                onSubmit={(event) => {
+                onFocusCapture={() => {
+                  if (!startedAtRef.current) startedAtRef.current = Date.now();
+                }}
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  setComment("");
-                  setRating(5);
-                  setHoverRating(null);
-                  setIsSubmitted(true);
+                  if (isSubmitting) return;
+
+                  setIsSubmitting(true);
+                  setSubmitError(false);
+
+                  try {
+                    const response = await fetch("/api/v2/site-feedback/submit", {
+                      body: JSON.stringify({
+                        clientSubmissionId:
+                          typeof crypto !== "undefined" && "randomUUID" in crypto
+                            ? crypto.randomUUID()
+                            : undefined,
+                        comment,
+                        pagePath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                        rating,
+                        startedAt: startedAtRef.current || undefined,
+                        website,
+                      }),
+                      headers: { "Content-Type": "application/json" },
+                      method: "POST",
+                    });
+
+                    if (!response.ok) {
+                      throw new Error("Review submission failed.");
+                    }
+
+                    setComment("");
+                    setRating(5);
+                    setIsSubmitted(true);
+                  } catch {
+                    setSubmitError(true);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
                 }}
               >
+                <input
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(event) => setWebsite(event.target.value)}
+                  name="website"
+                  className="hidden"
+                  aria-hidden="true"
+                />
                 <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#B39152]">
                   Customer Review
                 </p>
@@ -171,31 +227,61 @@ export function FloatingReviewTab() {
                 </p>
 
                 <div className="mt-8 border-y border-[#601D1C]/10 py-6">
-                  <p className="text-sm font-semibold text-[#601D1C]">
+                  <p className="text-center text-sm font-semibold text-[#601D1C]">
                     Your rating
                   </p>
+
+                  {/* Centered stars with partial fill (e.g. 4.8 = 4 full + 80%). */}
                   <div
-                    className="mt-3 flex items-center gap-2"
-                    onMouseLeave={() => setHoverRating(null)}
+                    className="mt-4 flex items-center justify-center gap-1.5"
+                    aria-hidden="true"
                   >
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onMouseEnter={() => setHoverRating(star)}
-                        onFocus={() => setHoverRating(star)}
-                        onBlur={() => setHoverRating(null)}
-                        onClick={() => setRating(star)}
-                        aria-label={`Set rating to ${star} star${star > 1 ? "s" : ""}`}
-                        className={`text-4xl leading-none transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] ${
-                          star <= activeRating
-                            ? "text-[#B39152]"
-                            : "text-[#601D1C]/20"
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
+                    {[0, 1, 2, 3, 4].map((i) => {
+                      const fill = Math.max(0, Math.min(1, rating - i)) * 100;
+                      return (
+                        <span
+                          key={i}
+                          className="relative text-4xl leading-none text-[#601D1C]/20"
+                        >
+                          ★
+                          <span
+                            className="absolute inset-0 overflow-hidden text-[#B39152]"
+                            style={{ width: `${fill}%` }}
+                          >
+                            ★
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-3 text-center font-serif text-3xl leading-none text-[#601D1C]">
+                    {rating.toFixed(1)}
+                    <span className="text-lg text-[#601D1C]/45"> / 5</span>
+                  </p>
+
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    step={0.1}
+                    value={rating}
+                    onInput={(event) =>
+                      updateRating(event.currentTarget.valueAsNumber)
+                    }
+                    onChange={(event) =>
+                      updateRating(event.currentTarget.valueAsNumber)
+                    }
+                    aria-label="Rating"
+                    aria-valuetext={`${rating.toFixed(1)} out of 5`}
+                    className="mt-5 block h-3 w-full cursor-pointer appearance-none rounded-full border border-[#601D1C]/20 outline-none transition focus-visible:ring-2 focus-visible:ring-[#B39152]/35 [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:cursor-grab [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[#B39152] [&::-moz-range-thumb]:shadow-[0_5px_18px_rgba(96,29,28,0.22)] [&::-moz-range-thumb]:active:cursor-grabbing [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#B39152] [&::-webkit-slider-thumb]:shadow-[0_5px_18px_rgba(96,29,28,0.22)] [&::-webkit-slider-thumb]:active:cursor-grabbing"
+                    style={{
+                      background: `linear-gradient(to right, #B39152 0%, #B39152 ${ratingTrackProgress}%, #3A3A3A ${ratingTrackProgress}%, #3A3A3A 100%)`,
+                    }}
+                  />
+                  <div className="mt-1 flex justify-between text-[10px] font-semibold uppercase tracking-[0.22em] text-[#601D1C]/40">
+                    <span>1</span>
+                    <span>5</span>
                   </div>
                 </div>
 
@@ -214,13 +300,24 @@ export function FloatingReviewTab() {
                   placeholder="Write your review here..."
                   className="mt-3 w-full resize-none border border-[#601D1C]/15 bg-white/70 px-4 py-3 text-sm leading-6 text-[#601D1C] outline-none transition placeholder:text-[#601D1C]/35 focus:border-[#B39152] focus:ring-2 focus:ring-[#B39152]/25"
                 />
+                <div aria-live="polite" className="mt-3 min-h-5">
+                  {submitError ? (
+                    <p className="text-sm leading-6 text-[#601D1C]">
+                      We couldn’t save this right now. Please try again.
+                    </p>
+                  ) : null}
+                </div>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="submit"
-                    className="rounded-full border border-[#B39152] bg-[#601D1C] px-7 py-3 text-sm font-semibold text-[#B39152] transition hover:-translate-y-0.5 hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#B39152] bg-[#601D1C] px-7 py-3 text-sm font-semibold text-[#B39152] transition hover:-translate-y-0.5 hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Submit Review
+                    {isSubmitting ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : null}
+                    {isSubmitting ? "Saving..." : "Submit Review"}
                   </button>
                   <button
                     type="button"

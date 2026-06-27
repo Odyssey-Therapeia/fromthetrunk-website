@@ -12,6 +12,7 @@ const incrementDiscountUsageMock = vi.hoisted(() => vi.fn().mockResolvedValue(un
 
 // db.update chain: .set().where().returning()
 const returningMock = vi.hoisted(() => vi.fn());
+const productReturningMock = vi.hoisted(() => vi.fn());
 const whereMock = vi.hoisted(() => vi.fn());
 const setMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.hoisted(() => vi.fn());
@@ -28,7 +29,7 @@ vi.mock("@/db/queries/discounts", () => ({
 
 vi.mock("@/db/schema", () => ({
   orders: { id: "id", paymentStatus: "paymentStatus" },
-  products: { id: "id" },
+  products: { id: "id", slug: "slug", stockStatus: "stockStatus" },
   reservations: { id: "id", orderId: "orderId", productId: "productId" },
 }));
 
@@ -55,6 +56,10 @@ vi.mock("@/lib/email/recipients", () => ({
 vi.mock("@/lib/email/templates", () => ({
   orderConfirmationEmail: orderConfirmationEmailMock,
   orderPurchaseNotificationEmail: orderPurchaseNotificationEmailMock,
+}));
+
+vi.mock("@/lib/analytics/emit", () => ({
+  emitAnalyticsEvent: vi.fn(),
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -104,6 +109,7 @@ describe("completePaidOrder", () => {
     setMock.mockReset();
     whereMock.mockReset();
     returningMock.mockReset();
+    productReturningMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
@@ -111,12 +117,20 @@ describe("completePaidOrder", () => {
     orderConfirmationEmailMock.mockReset();
     orderPurchaseNotificationEmailMock.mockReset();
 
-    // Wire the db.update chain so both orders and products updates work.
-    // The chain: update(table).set(...).where(...) — and for orders: .returning(...)
-    // We attach .returning() to the where result so it's always available.
+    // Wire the db.update chain so order and product updates can return different rows.
     updateMock.mockReturnValue({ set: setMock });
-    setMock.mockReturnValue({ where: whereMock });
-    whereMock.mockReturnValue({ returning: returningMock });
+    setMock.mockImplementation((values: Record<string, unknown>) => {
+      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
+      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
+
+      return {
+        where: (...args: unknown[]) => {
+          whereMock(...args);
+          return { returning: activeReturningMock };
+        },
+      };
+    });
+    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
 
     // Set up email mocks
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
@@ -133,10 +147,6 @@ describe("completePaidOrder", () => {
       // First invocation: UPDATE returns [{ id }] → winner → sends emails
       // Second invocation: UPDATE returns [] → loser → returns alreadyPaid: true
 
-      // Track call count to differentiate first vs second invocation's orders UPDATE.
-      // In the new implementation the orders UPDATE is the FIRST db.update call per invocation.
-      // Each invocation: orders UPDATE → products UPDATE (winner only).
-      // We use a simple incrementing counter.
       let ordersUpdateCallCount = 0;
       returningMock.mockImplementation(() => {
         ordersUpdateCallCount++;
@@ -147,13 +157,6 @@ describe("completePaidOrder", () => {
         // Second invocation orders UPDATE — loser
         return Promise.resolve([]);
       });
-
-      // whereMock for products update (winner path) — must resolve without error
-      // The products update doesn't chain .returning(), it awaits whereMock's return directly.
-      // But whereMock already returns { returning: returningMock }. In the implementation,
-      // `await db.update(products).set(...).where(...)` awaits the where result.
-      // Since whereMock returns { returning: returningMock } (a plain object, not a Promise),
-      // awaiting it resolves to the object itself (no error). This is fine.
 
       // getOrder calls:
       // Call 1: existing check for first invocation (pending)
@@ -260,6 +263,28 @@ describe("completePaidOrder", () => {
       expect(ordersWhereCalls.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("Test 3: inventory race during payment completion", () => {
+    it("rejects with PRODUCT_SOLD and does not send emails when the product claim fails", async () => {
+      getOrderMock.mockResolvedValueOnce(PENDING_ORDER);
+      returningMock.mockResolvedValueOnce([{ id: "order-1" }]);
+      productReturningMock.mockResolvedValueOnce([]);
+
+      await expect(completePaidOrder(INPUT)).rejects.toThrow("PRODUCT_SOLD");
+
+      expect(addOrderEventMock).toHaveBeenCalledWith(
+        "order-1",
+        "Payment completion inventory conflict",
+        "confirmed",
+        expect.objectContaining({
+          code: "PRODUCT_SOLD",
+          requestedProductIds: ["prod-1"],
+          soldCount: 0,
+        })
+      );
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // ── P6-02: incrementDiscountUsage wiring — mutation-proof ────────────────────
@@ -312,6 +337,7 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
     setMock.mockReset();
     whereMock.mockReset();
     returningMock.mockReset();
+    productReturningMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
@@ -320,8 +346,18 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
     orderPurchaseNotificationEmailMock.mockReset();
 
     updateMock.mockReturnValue({ set: setMock });
-    setMock.mockReturnValue({ where: whereMock });
-    whereMock.mockReturnValue({ returning: returningMock });
+    setMock.mockImplementation((values: Record<string, unknown>) => {
+      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
+      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
+
+      return {
+        where: (...args: unknown[]) => {
+          whereMock(...args);
+          return { returning: activeReturningMock };
+        },
+      };
+    });
+    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
 
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
     orderConfirmationEmailMock.mockReturnValue({ subject: "Order confirmed", html: "<p>confirmed</p>" });

@@ -7,9 +7,11 @@ import {
   slugParamSchema,
 } from "@/api/hono/schemas/common";
 import {
+  ADMIN_PRODUCTS_MAX_LIMIT,
   bulkEditSchema,
   exportQuerySchema,
   listProductsQuerySchema,
+  PUBLIC_PRODUCTS_MAX_LIMIT,
   recommendationQuerySchema,
   productPatchSchema,
   productInputSchema,
@@ -238,11 +240,34 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const query = c.req.valid("query");
       const includeDrafts = canIncludeDrafts(c, Boolean(query.includeDrafts));
+      const maxLimit = includeDrafts
+        ? ADMIN_PRODUCTS_MAX_LIMIT
+        : PUBLIC_PRODUCTS_MAX_LIMIT;
+      const limit = Math.min(query.limit ?? PUBLIC_PRODUCTS_MAX_LIMIT, maxLimit);
+      const offset = query.offset ?? 0;
+
+      if (query.ids?.length) {
+        const products = await getProductsByIds(query.ids, { includeDrafts });
+        const ordered = query.ids
+          .map((id) => products.find((product) => product.id === id))
+          .filter((product): product is ProductWithRelations => Boolean(product));
+
+        if (!includeDrafts) {
+          return c.json(ordered.map(serializePublicProduct), 200);
+        }
+
+        return c.json(ordered, 200);
+      }
+
       const { rows: products } = await listProducts({
         includeDrafts,
-        limit: query.limit ?? 200,
-        offset: query.offset ?? 0,
+        limit,
+        offset,
       });
+      if (!includeDrafts) {
+        return c.json(products.map(serializePublicProduct), 200);
+      }
+
       const enriched = products.map((product) => ({
         ...product,
         coverImageFilename: product.images[0]?.media.filename ?? null,
@@ -731,14 +756,16 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
           reservedUntil: parseDate(body.reservedUntil),
           soldAt: parseDate(body.soldAt),
         });
-      } catch (error) {
-        console.error(
-          "[PATCH /products/:id] updateProduct failed:",
-          describeDbError(error),
-        );
-        console.error("[PATCH /products/:id] payload:", JSON.stringify(body));
-        throw error;
-      }
+	      } catch (error) {
+	        productRouteLog.error("Product update failed", {
+	          changedFields: Object.keys(body),
+	          err: error instanceof Error ? error : new Error(String(error)),
+	          productId: params.id,
+	          requestId: getRequestId(c.req.raw),
+	          summary: describeDbError(error),
+	        });
+	        throw error;
+	      }
       if (updated) {
         void refreshProductEmbedding(updated.id).catch(() => undefined);
         revalidateProductsCache([existing.slug, updated.slug]);

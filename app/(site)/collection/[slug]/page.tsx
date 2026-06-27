@@ -161,7 +161,7 @@ export default async function SareePage({ params }: ProductPageProps) {
                     Product Dossier
                   </p>
                   <p className="mt-1 text-xs text-[#141D46]/52">
-                    One-of-one circular saree
+                    Unique circular saree
                   </p>
                 </div>
                 <StockBadge stockStatus={effectiveStockStatus} />
@@ -233,7 +233,7 @@ export default async function SareePage({ params }: ProductPageProps) {
 
                 {effectiveStockStatus === "available" ? (
                   <p className="text-xs leading-5 text-[#141D46]/58">
-                    Adding this piece reserves the one-of-one saree in your bag.
+                    Adding this piece reserves the unique saree in your bag.
                     Final ownership is confirmed at checkout.
                   </p>
                 ) : (
@@ -317,7 +317,7 @@ export default async function SareePage({ params }: ProductPageProps) {
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:mt-0">
               <PromiseStat label="Authenticated" value="By hand" />
               <PromiseStat label="Condition" value={displayDetails.condition} />
-              <PromiseStat label="Ownership" value="One of one" />
+              <PromiseStat label="Ownership" value="Unique" />
             </div>
         </section>
 

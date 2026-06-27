@@ -31,6 +31,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const createMediaRecordMock = vi.hoisted(() => vi.fn());
 const sharpMock = vi.hoisted(() => {
   const instance = {
+    metadata: vi.fn().mockResolvedValue({ width: 1200, height: 1600 }),
     resize: vi.fn().mockReturnThis(),
     webp: vi.fn().mockReturnThis(),
     toBuffer: vi.fn().mockResolvedValue({
@@ -74,6 +75,7 @@ import { completeUploadSchema } from "@/api/hono/routes/media";
 // ---------------------------------------------------------------------------
 
 const ONE_MB = 1_024 * 1_024;
+const TRUSTED_BLOB_URL = "https://ftt.public.blob.vercel-storage.com/media/123-saree.jpg";
 
 /** Fake ArrayBuffer returned by the mocked fetch (simulates blob bytes). */
 const fakeArrayBuffer = Buffer.from("fake-image-bytes").buffer;
@@ -81,6 +83,10 @@ const fakeArrayBuffer = Buffer.from("fake-image-bytes").buffer;
 /** Create a fake fetch response with an ok status and ArrayBuffer body. */
 function makeFakeFetchResponse() {
   return {
+    headers: new Headers({
+      "content-length": String(ONE_MB),
+      "content-type": "image/jpeg",
+    }),
     ok: true,
     status: 200,
     statusText: "OK",
@@ -94,7 +100,8 @@ function makeInput(overrides: Partial<Parameters<typeof createMediaFromUpload>[0
     filename: "saree.jpg",
     mimeType: "image/jpeg",
     pathname: "media/123-saree.jpg",
-    url: "https://blob.example.com/media/123-saree.jpg",
+    size: 500_000,
+    url: TRUSTED_BLOB_URL,
     ...overrides,
   };
 }
@@ -109,7 +116,7 @@ describe("createMediaFromUpload — alt enforcement", () => {
       id: "uuid-123",
       alt: "A beautiful Banarasi saree with gold zari work",
       filename: "saree.jpg",
-      url: "https://blob.example.com/media/123-saree.jpg",
+      url: TRUSTED_BLOB_URL,
       key: "media/123-saree.jpg",
       mimeType: "image/jpeg",
       filesize: null,
@@ -173,7 +180,7 @@ describe("createMediaFromUpload — auto-compression for >=1MB uploads", () => {
       id: "uuid-456",
       alt: "Compressed saree image",
       filename: "large-saree.jpg",
-      url: "https://blob.example.com/media/456-large-saree.webp",
+      url: "https://ftt.public.blob.vercel-storage.com/media/456-large-saree.webp",
       key: "media/456-large-saree.webp",
       mimeType: "image/webp",
       filesize: 400_000,
@@ -185,7 +192,7 @@ describe("createMediaFromUpload — auto-compression for >=1MB uploads", () => {
       updatedAt: new Date(),
     });
     putMock.mockResolvedValue({
-      url: "https://blob.example.com/media/456-large-saree.webp",
+      url: "https://ftt.public.blob.vercel-storage.com/media/456-large-saree.webp",
       pathname: "media/456-large-saree.webp",
     });
     // Mock global fetch — the compression path calls fetch(input.url) to get
@@ -238,7 +245,10 @@ describe("createMediaFromUpload — auto-compression for >=1MB uploads", () => {
       makeInput({ alt: "Large file", size: 5 * ONE_MB })
     );
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledWith("https://blob.example.com/media/123-saree.jpg");
+    expect(fetchSpy.mock.calls[0]?.[0]?.toString()).toBe(TRUSTED_BLOB_URL);
+    expect(fetchSpy.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
 
     fetchSpy.mockClear();
 
@@ -258,9 +268,81 @@ describe("createMediaFromUpload — auto-compression for >=1MB uploads", () => {
         size: 5 * ONE_MB,
       })
     );
-    expect(sharpMock).toHaveBeenCalledTimes(1);
+    expect(sharpMock).toHaveBeenCalledTimes(2);
     const sharpInstance = sharpMock.mock.results[0]?.value;
     expect(sharpInstance?.webp).toHaveBeenCalled();
+  });
+});
+
+describe("createMediaFromUpload — SSRF and resource caps", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    createMediaRecordMock.mockClear();
+    sharpMock.mockClear();
+    createMediaRecordMock.mockResolvedValue({
+      id: "uuid-safe",
+      alt: "Safe saree image",
+      filename: "saree.jpg",
+      url: TRUSTED_BLOB_URL,
+      key: "media/123-saree.jpg",
+      mimeType: "image/jpeg",
+      filesize: 500_000,
+      width: null,
+      height: null,
+      blurDataUrl: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  it("rejects non-Blob URLs before fetch", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    await expect(
+      createMediaFromUpload(
+        makeInput({ url: "https://example.com/media/123-saree.jpg" }),
+      ),
+    ).rejects.toThrow(/trusted Vercel Blob/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects localhost/internal URLs before fetch", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    await expect(
+      createMediaFromUpload(
+        makeInput({ url: "https://localhost/media/123-saree.jpg" }),
+      ),
+    ).rejects.toThrow(/host is not allowed|trusted Vercel Blob/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized declared files", async () => {
+    await expect(
+      createMediaFromUpload(makeInput({ size: 13 * 1_024 * 1_024 })),
+    ).rejects.toThrow(/too large/i);
+    expect(createMediaRecordMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects wrong declared content type", async () => {
+    await expect(
+      createMediaFromUpload(
+        makeInput({
+          filename: "saree.txt",
+          mimeType: "text/plain",
+          pathname: "media/123-saree.txt",
+          url: "https://ftt.public.blob.vercel-storage.com/media/123-saree.txt",
+        }),
+      ),
+    ).rejects.toThrow(/content type/i);
+  });
+
+  it("handles slow fetch timeout safely", async () => {
+    vi.spyOn(global, "fetch").mockRejectedValueOnce(new DOMException("Timeout", "TimeoutError"));
+
+    await expect(
+      createMediaFromUpload(makeInput({ size: 2 * ONE_MB })),
+    ).rejects.toThrow();
+    expect(createMediaRecordMock).not.toHaveBeenCalled();
   });
 });
 
@@ -272,8 +354,10 @@ describe("completeUploadSchema — alt enforcement at Zod layer", () => {
   it("rejects a payload with no alt field", () => {
     const result = completeUploadSchema.safeParse({
       filename: "saree.jpg",
+      mimeType: "image/jpeg",
       pathname: "media/123-saree.jpg",
-      url: "https://blob.example.com/media/123-saree.jpg",
+      size: 500_000,
+      url: TRUSTED_BLOB_URL,
     });
     expect(result.success).toBe(false);
   });
@@ -282,8 +366,10 @@ describe("completeUploadSchema — alt enforcement at Zod layer", () => {
     const result = completeUploadSchema.safeParse({
       alt: "",
       filename: "saree.jpg",
+      mimeType: "image/jpeg",
       pathname: "media/123-saree.jpg",
-      url: "https://blob.example.com/media/123-saree.jpg",
+      size: 500_000,
+      url: TRUSTED_BLOB_URL,
     });
     expect(result.success).toBe(false);
   });
@@ -292,8 +378,10 @@ describe("completeUploadSchema — alt enforcement at Zod layer", () => {
     const result = completeUploadSchema.safeParse({
       alt: "Gold zari Kanjivaram saree",
       filename: "saree.jpg",
+      mimeType: "image/jpeg",
       pathname: "media/123-saree.jpg",
-      url: "https://blob.example.com/media/123-saree.jpg",
+      size: 500_000,
+      url: TRUSTED_BLOB_URL,
     });
     expect(result.success).toBe(true);
   });
@@ -302,8 +390,10 @@ describe("completeUploadSchema — alt enforcement at Zod layer", () => {
   it("mutation-proof: alt is required, not optional", () => {
     const withoutAlt = completeUploadSchema.safeParse({
       filename: "test.jpg",
+      mimeType: "image/jpeg",
       pathname: "media/test.jpg",
-      url: "https://blob.example.com/media/test.jpg",
+      size: 500_000,
+      url: "https://ftt.public.blob.vercel-storage.com/media/test.jpg",
     });
     expect(withoutAlt.success).toBe(false);
     if (!withoutAlt.success) {

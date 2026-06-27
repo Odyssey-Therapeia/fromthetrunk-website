@@ -15,13 +15,13 @@ export function EmptyCart({ featuredPicks }: EmptyCartProps) {
   return (
     <div className="space-y-12">
       <div className="mx-auto max-w-2xl rounded-3xl border border-dashed border-ftt-border bg-ftt-card p-10 text-center shadow-[var(--ftt-soft-shadow)] sm:p-12">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-ftt-gold">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#74531B]">
           Your bag is empty
         </p>
         <h2 className="mt-4 font-serif text-3xl text-ftt-navy">
           Add a treasure to continue
         </h2>
-        <p className="mt-4 text-sm leading-relaxed text-ftt-burgundy/65">
+        <p className="mt-4 text-sm leading-relaxed text-ftt-burgundy">
           Browse our curated collection of pre-loved luxury sarees and return
           here to complete your acquisition.
         </p>
@@ -41,7 +41,7 @@ export function EmptyCart({ featuredPicks }: EmptyCartProps) {
       {featuredPicks.length > 0 ? (
         <section className="space-y-8">
           <div className="space-y-2 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-ftt-gold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#74531B]">
               Featured picks
             </p>
             <h2 className="font-serif text-3xl text-ftt-navy">

@@ -7,10 +7,13 @@ import {
   sameOriginMutationGuard,
 } from "@/api/hono/middleware/same-origin";
 import { registerAddressRoutes } from "@/api/hono/routes/addresses";
+import { registerAuthOtpRoutes } from "@/api/hono/routes/auth-otp";
 import { registerCartRoutes } from "@/api/hono/routes/cart";
 import { registerCollectionRoutes } from "@/api/hono/routes/collections";
 import { registerConversationRoutes } from "@/api/hono/routes/conversations";
+import { registerContactRoutes } from "@/api/hono/routes/contact";
 import { registerDiscountRoutes } from "@/api/hono/routes/discounts";
+import { registerEventsRoutes } from "@/api/hono/routes/events";
 import { registerFeedsRoutes } from "@/api/hono/routes/feeds";
 import { registerGlobalRoutes } from "@/api/hono/routes/globals";
 import { registerHealthRoutes } from "@/api/hono/routes/health";
@@ -21,11 +24,13 @@ import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { registerProductTypeRoutes } from "@/api/hono/routes/product-types";
 import { registerSearchRoutes } from "@/api/hono/routes/search";
+import { registerSiteFeedbackRoutes } from "@/api/hono/routes/site-feedback";
 import { registerTagRoutes } from "@/api/hono/routes/tags";
 import { registerUserRoutes } from "@/api/hono/routes/users";
 import { registerWebhookRoutes } from "@/api/hono/routes/webhooks";
 import { registerWishlistRoutes } from "@/api/hono/routes/wishlist";
 import type { HonoBindings } from "@/api/hono/types";
+import { shouldExposeApiDocs } from "@/lib/http/api-docs-policy";
 import { onUncaughtError } from "@/lib/http/on-uncaught-error";
 
 const app = new OpenAPIHono<HonoBindings>().basePath("/api/v2");
@@ -39,15 +44,17 @@ app.use("*", sameOriginCors);
 app.use("*", sameOriginMutationGuard);
 app.use("*", authMiddleware);
 
-app.doc("/openapi.json", {
-  info: {
-    title: "FTT Website API v2",
-    version: "1.0.0",
-  },
-  openapi: "3.1.0",
-});
+if (shouldExposeApiDocs()) {
+  app.doc("/openapi.json", {
+    info: {
+      title: "FTT Website API v2",
+      version: "1.0.0",
+    },
+    openapi: "3.1.0",
+  });
 
-app.get("/docs", swaggerUI({ url: "/api/v2/openapi.json" }));
+  app.get("/docs", swaggerUI({ url: "/api/v2/openapi.json" }));
+}
 
 const productsApp = new OpenAPIHono<HonoBindings>();
 registerProductRoutes(productsApp);
@@ -73,6 +80,10 @@ const usersApp = new OpenAPIHono<HonoBindings>();
 registerUserRoutes(usersApp);
 app.route("/users", usersApp);
 
+const authOtpApp = new OpenAPIHono<HonoBindings>();
+registerAuthOtpRoutes(authOtpApp);
+app.route("/auth/otp", authOtpApp);
+
 const addressesApp = new OpenAPIHono<HonoBindings>();
 registerAddressRoutes(addressesApp);
 app.route("/addresses", addressesApp);
@@ -81,6 +92,10 @@ const wishlistApp = new OpenAPIHono<HonoBindings>();
 registerWishlistRoutes(wishlistApp);
 app.route("/wishlist", wishlistApp);
 
+const eventsApp = new OpenAPIHono<HonoBindings>();
+registerEventsRoutes(eventsApp);
+app.route("/events", eventsApp);
+
 const mediaApp = new OpenAPIHono<HonoBindings>();
 registerMediaRoutes(mediaApp);
 app.route("/media", mediaApp);
@@ -88,6 +103,14 @@ app.route("/media", mediaApp);
 const newsletterApp = new OpenAPIHono<HonoBindings>();
 registerNewsletterRoutes(newsletterApp);
 app.route("/newsletter", newsletterApp);
+
+const contactApp = new OpenAPIHono<HonoBindings>();
+registerContactRoutes(contactApp);
+app.route("/contact", contactApp);
+
+const siteFeedbackApp = new OpenAPIHono<HonoBindings>();
+registerSiteFeedbackRoutes(siteFeedbackApp);
+app.route("/site-feedback", siteFeedbackApp);
 
 const searchApp = new OpenAPIHono<HonoBindings>();
 registerSearchRoutes(searchApp);

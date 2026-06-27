@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -13,10 +14,9 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  Feather,
-  Heart,
+  ChevronLeft,
+  ChevronRight,
   Menu,
-  Sparkles,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,24 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+
+// Saree imagery used on the right side of the cover and every chapter spread.
+const FTT_LOGO = "/logo-vectorized.png";
+const COVER_BANNER = "/category/kanjiverram-lcp.webp";
+const COVER_CARD_IMAGE = "/category/silk-lcp.webp";
+const SAREE_IMAGES = [
+  "/category/Organza.JPG",
+  "/category/Chiffon.JPG",
+  "/category/georgette.jpg",
+  "/category/Cotton_Silk.JPG",
+  "/category/kanji_mix.JPG",
+  "/category/Kota_Cotton.jpg",
+];
+
+const sareeImageFor = (chapterNumber: string) => {
+  const index = (Number.parseInt(chapterNumber, 10) - 1) % SAREE_IMAGES.length;
+  return SAREE_IMAGES[(index + SAREE_IMAGES.length) % SAREE_IMAGES.length];
+};
 
 const storyChapters = [
   {
@@ -51,7 +69,7 @@ const storyChapters = [
     shortTitle: "Never just fabric",
     body: [
       "A saree is never just fabric. It holds the memory of a celebration, the weight of an heirloom, the colour of a moment that once meant everything. Left in the trunk, that story pauses. Worn again — by someone new — it begins all over again.",
-      "From the Trunk (FTT) is a curated home for pre-loved and vintage sarees — each one authenticated, gently restored, and documented with its own provenance. Kanjeevaram silk, soft georgette, heirloom chiffon: every piece is one of one.",
+      "From the Trunk (FTT) is a curated home for pre-loved and vintage sarees — each one authenticated, gently restored, and documented with its own provenance. Kanjeevaram silk, soft georgette, heirloom chiffon: every piece is unique.",
     ],
     marginNote:
       "Authentication, restoration, and provenance make the piece ready for its next chapter.",
@@ -97,7 +115,7 @@ const storyChapters = [
       "Buy used. Don’t buy and use.",
     ],
     marginNote:
-      "Circular fashion becomes emotional when the object already carries memory.",
+      "Some treasures deserve another chapter. Choose pre-loved over new.",
   },
   {
     number: "06",
@@ -361,6 +379,25 @@ export default function OurStoryPage() {
           </div>
 
           <div className="relative mx-auto max-w-6xl [perspective:2200px]">
+            <button
+              type="button"
+              onClick={goPrev}
+              disabled={pageIndex === 0}
+              aria-label="Previous page"
+              className="absolute left-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:left-2 xl:-left-6"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={pageIndex === totalPages - 1}
+              aria-label="Next page"
+              className="absolute right-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:right-2 xl:-right-6"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+
             <div
               className="pointer-events-none absolute inset-y-8 left-1/2 z-20 hidden w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-[#B39152]/30 to-transparent lg:block"
               aria-hidden="true"
@@ -442,19 +479,23 @@ function CoverPage({
 }) {
   return (
     <motion.article
-      initial={reduceMotion ? false : "hidden"}
+      initial={false}
       animate="show"
       exit={reduceMotion ? undefined : { opacity: 0, scale: 0.985, y: -16 }}
       variants={coverVariants}
       className="relative min-h-[42rem] overflow-hidden rounded-[2rem] border border-[#141D46]/15 bg-[#141D46] shadow-[0_30px_90px_rgba(20,29,70,0.22)]"
-      style={{
-        background:
-          "radial-gradient(circle at 20% 14%, rgba(179,145,82,.20), transparent 24%), radial-gradient(circle at 80% 86%, rgba(96,29,28,.55), transparent 28%), linear-gradient(135deg, #141D46 0%, #10183B 58%, #601D1C 150%)",
-      }}
     >
+      {/* Banner image background with a blue shade over it. */}
+      <Image
+        src={COVER_BANNER}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,29,70,0.94)_0%,rgba(16,24,59,0.88)_55%,rgba(96,29,28,0.82)_150%)]" />
       <div className="absolute inset-5 rounded-[1.6rem] border border-[#B39152]/18" />
-      <div className="absolute left-0 top-0 h-full w-10 bg-gradient-to-r from-[#0E0D0E]/40 to-transparent" />
-      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(253,247,241,.75)_1px,transparent_1px),linear-gradient(90deg,rgba(253,247,241,.75)_1px,transparent_1px)] [background-size:54px_54px]" />
 
       <div className="relative z-10 grid min-h-[42rem] gap-8 p-6 text-[#FDF7F1] sm:p-8 lg:grid-cols-[0.95fr_1.05fr] lg:p-10">
         <div className="flex flex-col justify-between">
@@ -494,8 +535,17 @@ function CoverPage({
 
         <motion.div
           variants={fadeUp}
-          className="relative grid min-h-[24rem] place-items-center overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#FDF7F1]/8 backdrop-blur"
+          className="relative grid min-h-[24rem] place-items-center overflow-hidden rounded-[1.5rem] border border-[#B39152]/22"
         >
+          {/* Saree image — no shade overlay. */}
+          <Image
+            src={COVER_CARD_IMAGE}
+            alt="A restored From the Trunk saree"
+            fill
+            sizes="(max-width: 1024px) 100vw, 45vw"
+            className="object-cover"
+          />
+
           <motion.div
             animate={
               reduceMotion
@@ -510,20 +560,19 @@ function CoverPage({
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="grid h-64 w-64 place-items-center rounded-full border border-[#B39152]/42 bg-[#141D46]/60 shadow-[0_22px_80px_rgba(0,0,0,.28)] sm:h-80 sm:w-80"
+            className="relative z-10 grid h-48 w-48 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1] shadow-[0_22px_80px_rgba(0,0,0,.32)] sm:h-60 sm:w-60"
           >
-            <div className="text-center">
-              <p className="font-serif text-7xl leading-none text-[#B39152] sm:text-8xl">
-                FTT
-              </p>
-              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.38em] text-[#FDF7F1]/60">
-                The second story
-              </p>
-            </div>
+            <Image
+              src={FTT_LOGO}
+              alt="From the Trunk"
+              width={220}
+              height={104}
+              className="h-auto w-28 object-contain sm:w-36"
+            />
           </motion.div>
 
-          <div className="absolute bottom-5 left-5 right-5 rounded-[1.25rem] border border-white/12 bg-[#0E0D0E]/28 p-4 backdrop-blur">
-            <p className="text-xs leading-6 text-[#FDF7F1]/72">
+          <div className="absolute bottom-5 left-5 right-5 z-10 rounded-[1.25rem] border border-white/12 bg-[#0E0D0E]/45 p-4 backdrop-blur">
+            <p className="text-xs leading-6 text-[#FDF7F1]/85">
               Swipe left, press the arrow key, or use “Next page” to turn the
               story.
             </p>
@@ -704,51 +753,49 @@ function StoryLeftPage({ chapter }: { chapter: StoryChapter }) {
 }
 
 function StoryRightPage({ chapter }: { chapter: StoryChapter }) {
-  const isSplit = "split" in chapter && chapter.split;
   const isPromise = "promise" in chapter && chapter.promise;
+  const sareeImage = sareeImageFor(chapter.number);
 
   return (
     <section className="relative overflow-hidden p-6 sm:p-8 lg:p-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(179,145,82,.16),transparent_28%),radial-gradient(circle_at_15%_85%,rgba(20,29,70,.08),transparent_32%)]" />
+      {/* Saree image sits behind the right-page content. */}
+      <Image
+        src={sareeImage}
+        alt=""
+        fill
+        sizes="(max-width: 1024px) 100vw, 36vw"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#FDF7F1]/72 via-[#FDF7F1]/86 to-[#FDF7F1]/94" />
 
-      <div className="relative z-10 flex min-h-full flex-col justify-between gap-8">
-        <div>
+      <div className="relative z-10 flex min-h-full flex-col justify-between gap-6">
+        <div className="space-y-5">
+          {/* Margin note — note only (no label), with the FTT logo mark. */}
           <div className="overflow-hidden rounded-[1.5rem] border border-[#E7DDD4] bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_18px_50px_rgba(20,29,70,0.14)]">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#B39152]">
-                  Margin note
-                </p>
-                <p className="mt-3 font-serif text-3xl leading-tight">
-                  {chapter.marginNote}
-                </p>
-              </div>
+              <p className="font-serif text-2xl leading-tight sm:text-3xl">
+                {chapter.marginNote}
+              </p>
 
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 text-[#B39152]">
-                {isPromise ? (
-                  <Heart className="h-5 w-5" />
-                ) : isSplit ? (
-                  <Feather className="h-5 w-5" />
-                ) : (
-                  <Sparkles className="h-5 w-5" />
-                )}
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#FDF7F1] p-2.5">
+                <Image
+                  src={FTT_LOGO}
+                  alt="From the Trunk"
+                  width={48}
+                  height={24}
+                  className="h-auto w-full object-contain"
+                />
               </div>
             </div>
           </div>
 
           {isPromise ? (
-            <div className="mt-5 grid gap-3">
+            <div className="grid gap-3">
               <PromiseMiniCard title="Honour" body="We treat every saree as memory, not inventory." />
               <PromiseMiniCard title="Preserve" body="We document condition, provenance, and craft with care." />
               <PromiseMiniCard title="Re-story" body="We help each saree begin again with someone new." />
             </div>
-          ) : (
-            <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-              <BookSignal label="Authenticated" />
-              <BookSignal label="Restored" />
-              <BookSignal label="One of one" />
-            </div>
-          )}
+          ) : null}
         </div>
 
         <div className="rounded-[1.5rem] border border-[#E7DDD4] bg-[#FDF7F1]/86 p-5">
@@ -765,24 +812,13 @@ function StoryRightPage({ chapter }: { chapter: StoryChapter }) {
             />
           </div>
 
-          <p className="mt-4 text-xs leading-6 text-[#601D1C]/58">
+          <p className="mt-4 text-base font-semibold leading-7 text-[#141D46]">
             The page turns, but the saree does not lose its past. It simply
             carries it forward.
           </p>
         </div>
       </div>
     </section>
-  );
-}
-
-function BookSignal({ label }: { label: string }) {
-  return (
-    <div className="rounded-[1.1rem] border border-[#E7DDD4] bg-[#FFFCF8] p-4">
-      <span className="h-2 w-2 rounded-full bg-[#B39152]" />
-      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#601D1C]/60">
-        {label}
-      </p>
-    </div>
   );
 }
 

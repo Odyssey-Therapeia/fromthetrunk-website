@@ -61,6 +61,7 @@ export const users = pgTable(
   (table) => ({
     emailUnique: uniqueIndex("users_email_unique").on(table.email),
     defaultAddressIdx: index("users_default_address_idx").on(table.defaultAddressId),
+    phoneIdx: index("users_phone_idx").on(table.phone),
   })
 );
 
@@ -86,6 +87,8 @@ export const addresses = pgTable(
   },
   (table) => ({
     userIdx: index("addresses_user_idx").on(table.userId),
+    userCreatedAtIdx: index("addresses_user_created_at_idx").on(table.userId, table.createdAt, table.id),
+    userDefaultIdx: index("addresses_user_default_idx").on(table.userId, table.isDefault),
   })
 );
 
@@ -208,6 +211,19 @@ export const products = pgTable(
     slugUnique: uniqueIndex("products_slug_unique").on(table.slug),
     collectionIdx: index("products_collection_idx").on(table.collectionId),
     statusCreatedAtIdx: index("products_status_created_at_idx").on(table.status, table.createdAt),
+    statusStockCreatedAtIdx: index("products_status_stock_created_at_idx").on(
+      table.status,
+      table.stockStatus,
+      table.createdAt,
+      table.id
+    ),
+    statusPriceIdx: index("products_status_price_idx").on(table.status, table.pricePaise, table.id),
+    collectionStatusCreatedAtIdx: index("products_collection_status_created_at_idx").on(
+      table.collectionId,
+      table.status,
+      table.createdAt,
+      table.id
+    ),
     statusIdx: index("products_status_idx").on(table.status),
     stockStatusIdx: index("products_stock_status_idx").on(table.stockStatus),
   })
@@ -295,6 +311,7 @@ export const productTags = pgTable(
     }),
     productIdx: index("product_tags_product_idx").on(table.productId),
     tagIdx: index("product_tags_tag_idx").on(table.tagId),
+    tagProductIdx: index("product_tags_tag_product_idx").on(table.tagId, table.productId),
   })
 );
 
@@ -407,6 +424,16 @@ export const orders = pgTable(
     refundId: text("refund_id"),
     refundedAmountPaise: integer("refunded_amount_paise"),
     /**
+     * Gift options captured at checkout (for fulfilment / the gift card).
+     * isGift: whether the order is sent as a gift.
+     * giftFrom: sender name for the gift card (nullable).
+     * giftMessage: personalised note for the gift card (nullable, optional).
+     * Requires migration: drizzle/0018_orders_gift.sql.
+     */
+    isGift: boolean("is_gift").notNull().default(false),
+    giftFrom: text("gift_from"),
+    giftMessage: text("gift_message"),
+    /**
      * P6-05: Shipment tracking.
      * trackingNumber: carrier tracking number set by admin after dispatch.
      * trackingCarrier: carrier name (e.g. "BlueDart", "DTDC", "India Post").
@@ -425,8 +452,24 @@ export const orders = pgTable(
   },
   (table) => ({
     userIdx: index("orders_user_idx").on(table.userId),
+    userCreatedAtIdx: index("orders_user_created_at_idx").on(table.userId, table.createdAt, table.id),
+    userPaymentCreatedAtIdx: index("orders_user_payment_created_at_idx").on(
+      table.userId,
+      table.paymentStatus,
+      table.createdAt,
+      table.id
+    ),
     statusIdx: index("orders_status_idx").on(table.status),
+    statusCreatedAtIdx: index("orders_status_created_at_idx").on(table.status, table.createdAt, table.id),
     paymentStatusIdx: index("orders_payment_status_idx").on(table.paymentStatus),
+    paymentStatusCreatedAtIdx: index("orders_payment_status_created_at_idx").on(
+      table.paymentStatus,
+      table.createdAt,
+      table.id
+    ),
+    razorpayOrderIdx: index("orders_razorpay_order_id_idx").on(table.razorpayOrderId),
+    paymentIdIdx: index("orders_payment_id_idx").on(table.paymentId),
+    shippingEmailLowerIdx: index("orders_shipping_email_lower_idx").on(sql`lower(${table.shippingEmail})`),
     subtotalNonNegative: check(
       "orders_subtotal_paise_non_negative",
       sql`${table.subtotalPaise} >= 0`
@@ -512,6 +555,85 @@ export const newsletterSubscribers = pgTable(
   })
 );
 
+export const contactSubmissions = pgTable(
+  "contact_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    topic: text("topic"),
+    message: text("message").notNull(),
+    source: text("source").notNull().default("connect_dialog"),
+    pagePath: text("page_path"),
+    status: text("status").notNull().default("new"),
+    acknowledgementEmailSentAt: timestamp("acknowledgement_email_sent_at", {
+      withTimezone: true,
+    }),
+    internalNotificationSentAt: timestamp("internal_notification_sent_at", {
+      withTimezone: true,
+    }),
+    ipHash: text("ip_hash"),
+    userAgentHash: text("user_agent_hash"),
+    messageHash: text("message_hash"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("contact_submissions_created_at_idx").on(table.createdAt),
+    emailCreatedAtIdx: index("contact_submissions_email_created_at_idx").on(
+      table.email,
+      table.createdAt,
+    ),
+    messageHashCreatedAtIdx: index("contact_submissions_message_hash_created_at_idx").on(
+      table.messageHash,
+      table.createdAt,
+    ),
+    statusCreatedAtIdx: index("contact_submissions_status_created_at_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const siteFeedbackSubmissions = pgTable(
+  "site_feedback_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rating: numeric("rating", {
+      mode: "number",
+      precision: 2,
+      scale: 1,
+    }).notNull(),
+    comment: text("comment").notNull(),
+    source: text("source").notNull().default("floating_review_tab"),
+    pagePath: text("page_path"),
+    status: text("status").notNull().default("new"),
+    ipHash: text("ip_hash"),
+    userAgentHash: text("user_agent_hash"),
+    commentHash: text("comment_hash"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    commentHashCreatedAtIdx: index("site_feedback_submissions_comment_hash_created_at_idx").on(
+      table.commentHash,
+      table.createdAt,
+    ),
+    createdAtIdx: index("site_feedback_submissions_created_at_idx").on(table.createdAt),
+    ratingCreatedAtIdx: index("site_feedback_submissions_rating_created_at_idx").on(
+      table.rating,
+      table.createdAt,
+    ),
+    statusCreatedAtIdx: index("site_feedback_submissions_status_created_at_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const authAccounts = pgTable(
   "auth_accounts",
   {
@@ -569,6 +691,85 @@ export const authVerificationTokens = pgTable(
       columns: [table.identifier, table.token],
       name: "auth_verification_tokens_pkey",
     }),
+  })
+);
+
+export const authOtpChallenges = pgTable(
+  "auth_otp_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    purpose: text("purpose").notNull(),
+    identifierType: text("identifier_type").notNull(),
+    identifierNormalized: text("identifier_normalized").notNull(),
+    deliveryEmail: text("delivery_email").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+	    otpHash: text("otp_hash").notNull(),
+	    challengeTokenHash: text("challenge_token_hash").notNull(),
+	    loginTicketHash: text("login_ticket_hash"),
+	    loginTicketExpiresAt: timestamp("login_ticket_expires_at", { withTimezone: true }),
+	    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    sendCount: integer("send_count").notNull().default(1),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    resendAvailableAt: timestamp("resend_available_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    requestIpHash: text("request_ip_hash"),
+    userAgentHash: text("user_agent_hash"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    activeIdx: index("auth_otp_challenges_active_idx")
+      .on(table.identifierNormalized, table.purpose, table.expiresAt)
+      .where(sql`${table.consumedAt} is null`),
+    challengeTokenUnique: uniqueIndex("auth_otp_challenges_challenge_token_hash_unique").on(
+      table.challengeTokenHash
+    ),
+    expiresAtIdx: index("auth_otp_challenges_expires_at_idx").on(table.expiresAt),
+    identifierPurposeCreatedIdx: index("auth_otp_challenges_identifier_purpose_created_idx").on(
+      table.identifierNormalized,
+      table.purpose,
+      table.createdAt
+    ),
+	    loginTicketUnique: uniqueIndex("auth_otp_challenges_login_ticket_hash_unique")
+	      .on(table.loginTicketHash)
+	      .where(sql`${table.loginTicketHash} is not null`),
+	    loginTicketExpiresAtIdx: index("auth_otp_challenges_login_ticket_expires_at_idx").on(
+	      table.loginTicketExpiresAt
+	    ),
+	    userIdx: index("auth_otp_challenges_user_idx").on(table.userId),
+  })
+);
+
+export const authSecurityEvents = pgTable(
+  "auth_security_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(),
+    identifierType: text("identifier_type"),
+    identifierNormalized: text("identifier_normalized"),
+    ipHash: text("ip_hash"),
+    userAgentHash: text("user_agent_hash"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    eventTypeCreatedIdx: index("auth_security_events_event_type_created_idx").on(
+      table.eventType,
+      table.createdAt
+    ),
+    identifierCreatedIdx: index("auth_security_events_identifier_created_idx").on(
+      table.identifierNormalized,
+      table.createdAt
+    ),
+    userIdx: index("auth_security_events_user_idx").on(table.userId),
+    userCreatedAtIdx: index("auth_security_events_user_created_at_idx").on(
+      table.userId,
+      table.createdAt
+    ),
   })
 );
 

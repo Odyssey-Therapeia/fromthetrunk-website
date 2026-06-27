@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AnimatePresence,
@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { CartItem } from "@/components/cart/cart-item";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { formatCurrency } from "@/lib/formatters";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 
@@ -36,8 +38,10 @@ export function CartDrawer() {
 
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
+  const removeItem = useCartStore((state) => state.removeItem);
   const { subtotal, totalItems } = getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
+  const lastAvailabilityCheckRef = useRef(0);
   const softEnterMotion: MotionProps = shouldReduceMotion
     ? {}
     : {
@@ -62,6 +66,67 @@ export function CartDrawer() {
       window.removeEventListener("ftt:cart-updated", handleCartUpdated);
     };
   }, []);
+
+  const recheckCartAvailability = useCallback(async () => {
+    if (!hasHydrated || items.length === 0) return;
+    lastAvailabilityCheckRef.current = Date.now();
+
+    for (const item of items) {
+      if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
+        toast.error(getAvailabilityErrorMessage("RESERVATION_EXPIRED"));
+        removeItem(item.id);
+        continue;
+      }
+
+      if (!item.slug) continue;
+
+      const response = await fetch(`/api/v2/products/${encodeURIComponent(item.slug)}/stock`, {
+        headers: { Accept: "application/json" },
+      }).catch(() => null);
+      if (!response?.ok) continue;
+
+      const stock = (await response.json().catch(() => null)) as {
+        reservedUntil?: null | string;
+        stockStatus?: "available" | "reserved" | "sold";
+      } | null;
+      if (!stock) continue;
+
+      if (stock.stockStatus === "sold") {
+        toast.error(getAvailabilityErrorMessage("PRODUCT_SOLD"));
+        removeItem(item.id);
+        continue;
+      }
+
+      const heldByAnotherBuyer =
+        stock.stockStatus === "reserved" &&
+        (!item.reservedUntil ||
+          !stock.reservedUntil ||
+          Math.abs(
+            new Date(stock.reservedUntil).getTime() -
+              new Date(item.reservedUntil).getTime(),
+          ) > 1000);
+      if (heldByAnotherBuyer) {
+        toast.error(getAvailabilityErrorMessage("PRODUCT_RESERVED"));
+        removeItem(item.id);
+      }
+    }
+  }, [hasHydrated, items, removeItem]);
+
+  useEffect(() => {
+    if (!open) return;
+    void recheckCartAvailability();
+  }, [open, recheckCartAvailability]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!open) return;
+      if (Date.now() - lastAvailabilityCheckRef.current < 60_000) return;
+      void recheckCartAvailability();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [open, recheckCartAvailability]);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -99,7 +164,7 @@ export function CartDrawer() {
           aria-label={`View cart${hasHydrated && totalItems > 0 ? `, ${totalItems} items` : ""}`}
           data-ftt-cart-target
         >
-          <ShoppingBag className="h-5 w-5" />
+          <ShoppingBag className="h-7 w-7" strokeWidth={2.4} />
           {hasHydrated && totalItems > 0 ? (
             <span
               data-ftt-cart-count
@@ -156,7 +221,7 @@ export function CartDrawer() {
           ) : items.length === 0 ? (
             <CartDrawerState
               title="Your bag is empty."
-              body="Explore the collection and add a one-of-one piece to begin."
+              body="Explore the collection and add a unique piece to begin."
               action={
                 <Button
                   asChild

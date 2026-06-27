@@ -4,8 +4,6 @@ import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { _resetRateLimiterInstance } from "@/lib/ports/rate-limiter";
 
 describe("rateLimitResponse durable production mode", () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-
   beforeEach(() => {
     _resetRateLimiterInstance();
     vi.unstubAllEnvs();
@@ -16,7 +14,6 @@ describe("rateLimitResponse durable production mode", () => {
   afterEach(() => {
     _resetRateLimiterInstance();
     vi.unstubAllEnvs();
-    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("fails closed in production when a mutation requires durable rate limiting", async () => {

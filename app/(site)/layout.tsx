@@ -14,7 +14,6 @@ import { Providers } from "@/components/providers";
 import { SiteWidgets } from "@/components/widgets/site-widgets";
 import { organizationJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { getSiteOrigin } from "@/lib/config/site";
-import { getLatestReel } from "@/lib/social/latest-reel";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
     template: "%s | From the Trunk",
   },
   description:
-    "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance and a story woven in silk.",
+    "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
   metadataBase: new URL(baseUrl),
   openGraph: {
     type: "website",
@@ -46,7 +45,7 @@ export const metadata: Metadata = {
     siteName: "From the Trunk",
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
-      "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance and a story woven in silk.",
+      "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
   },
   twitter: {
     card: "summary_large_image",
@@ -69,8 +68,6 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const latestReel = await getLatestReel();
-
   return (
     <html
       lang="en"
@@ -99,14 +96,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           Skip to main content
         </a>
+        <SiteHeaderServer />
         <Providers>
-          <SiteHeaderServer />
           <main id="main-content" className="min-h-[70vh]" role="main">
             {children}
           </main>
-          <SiteFooterServer />
-          <SiteWidgets latestReel={latestReel} />
         </Providers>
+        <SiteFooterServer />
+        <SiteWidgets />
         <Analytics />
         <SpeedInsights />
         {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (

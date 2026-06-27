@@ -145,7 +145,7 @@ export function FabricCategorySection() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 border-b border-[#601D1C]/10 pb-8">
           <div className="max-w-4xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B]">
               Shop By Fabric
             </p>
 
@@ -167,10 +167,10 @@ export function FabricCategorySection() {
               href={item.href}
               className="group shrink-0 rounded-full border border-[#601D1C]/16 bg-[#FFFCF8]/70 px-4 py-2 text-left shadow-[0_8px_22px_rgba(96,29,28,0.05)] transition hover:-translate-y-0.5 hover:border-[#B39152]/70 hover:bg-[#B39152]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]"
             >
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition group-hover:text-[#B39152]">
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition group-hover:text-[#74531B]">
                 {item.label}
               </span>
-              <span className="mt-0.5 block text-[11px] text-[#601D1C]/55">
+              <span className="mt-0.5 block text-[11px] text-[#601D1C]/72">
                 {item.note}
               </span>
             </Link>

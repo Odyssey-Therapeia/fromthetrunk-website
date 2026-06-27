@@ -4,6 +4,7 @@ import {
   normalizePhotonFeature,
   type GeoSuggestion,
 } from "@/lib/geo/photon";
+import { timed } from "@/lib/perf/timed";
 
 export const runtime = "nodejs";
 
@@ -40,19 +41,23 @@ export async function GET(request: NextRequest) {
   url.searchParams.set("lang", "en");
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-      next: { revalidate: 60 * 60 * 24 },
-      signal: AbortSignal.timeout(3500),
-    });
+    const response = await timed("geo.reverse.photonFetch", () =>
+      fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+        next: { revalidate: 60 * 60 * 24 },
+        signal: AbortSignal.timeout(3500),
+      })
+    );
 
     if (!response.ok) {
       return Response.json({ suggestion: null });
     }
 
-    const data = (await response.json()) as { features?: unknown };
+    const data = await timed("geo.reverse.parseJson", () =>
+      response.json() as Promise<{ features?: unknown }>
+    );
     const rawFeatures: unknown[] = Array.isArray(data.features)
       ? data.features
       : [];

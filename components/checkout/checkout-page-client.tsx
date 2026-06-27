@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { trackOncePerSession } from "@/lib/analytics/client";
+import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import {
   GST_RATE,
   type ShippingMethod,
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
 import type { Address, Product } from "@/types/domain";
 
 import { BillingStep } from "./billing-step";
+import { CheckoutAuthGate } from "./checkout-auth-gate";
 import { CheckoutAddressForm } from "./checkout-address-form";
 import { CheckoutProgress } from "./checkout-progress";
 import { CheckoutStepActions } from "./checkout-step-actions";
@@ -51,13 +54,30 @@ const fetchAddresses = async (): Promise<Address[]> => {
 const saveCheckbox =
   "border-ftt-navy data-[state=checked]:border-ftt-navy data-[state=checked]:bg-ftt-navy";
 
+const normalizeAddressPart = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+// Identity of an address for de-duplication: same street line, city, and PIN.
+const addressDedupeKey = (parts: {
+  line1?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+}) =>
+  [parts.line1, parts.city, parts.postalCode]
+    .map(normalizeAddressPart)
+    .join("|");
+
 export function CheckoutPageClient({
+  embedded = false,
   featuredPicks,
 }: {
+  embedded?: boolean;
   featuredPicks: Product[];
 }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const { data: session, status: sessionStatus } = useSession();
+  const isAuthenticated = Boolean(session?.user?.id);
 
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
@@ -69,6 +89,24 @@ export function CheckoutPageClient({
   const payment = useCheckoutPayment();
   const { isSubmitting, error } = payment;
 
+  useEffect(() => {
+    if (!hasItems) return;
+
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    const productIds = items.map((item) => item.id).sort();
+
+    trackOncePerSession(
+      `checkout_started:${productIds.join(",")}:${itemCount}`,
+      "checkout_started",
+      {
+        itemCount,
+        productIds,
+        source: "checkout_page",
+        subtotalPaise: Math.round(subtotal * 100),
+      },
+    );
+  }, [hasItems, items, subtotal]);
+
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
   const [shippingAddress, setShippingAddress] = useState<AddressForm>(() =>
     emptyAddress(session?.user?.email ?? ""),
@@ -79,20 +117,94 @@ export function CheckoutPageClient({
   );
   const [saveShippingAddress, setSaveShippingAddress] = useState(true);
   const [saveBillingAddress, setSaveBillingAddress] = useState(false);
+  const [saveLabelKind, setSaveLabelKind] = useState<
+    "Home" | "Office" | "Other"
+  >("Home");
+  const [customSaveLabel, setCustomSaveLabel] = useState("");
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("standard");
   const [shippingErrors, setShippingErrors] = useState<AddressFieldErrors>({});
   const [billingErrors, setBillingErrors] = useState<AddressFieldErrors>({});
+  // Gifting paused for launch — flip to true to bring the gift step back.
+  const ENABLE_GIFTING: boolean = false;
   const [isGift, setIsGift] = useState(false);
   const [includeGiftMessage, setIncludeGiftMessage] = useState(false);
   const [giftMessage, setGiftMessage] = useState("");
   const [giftFrom, setGiftFrom] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const { data: savedAddresses } = useQuery({
-    queryKey: ["checkout-addresses"],
+  const recheckCheckoutAvailability = useCallback(async () => {
+    if (!hasItems) return true;
+    let isStillAvailable = true;
+
+    for (const item of items) {
+      if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
+        toast.error(getAvailabilityErrorMessage("RESERVATION_EXPIRED"));
+        removeItem(item.id);
+        isStillAvailable = false;
+        continue;
+      }
+
+      if (!item.slug) continue;
+
+      const response = await fetch(`/api/v2/products/${encodeURIComponent(item.slug)}/stock`, {
+        headers: { Accept: "application/json" },
+      }).catch(() => null);
+      if (!response?.ok) continue;
+
+      const stock = (await response.json().catch(() => null)) as {
+        reservedUntil?: null | string;
+        stockStatus?: "available" | "reserved" | "sold";
+      } | null;
+      if (!stock) continue;
+
+      if (stock.stockStatus === "sold") {
+        toast.error(getAvailabilityErrorMessage("PRODUCT_SOLD"));
+        removeItem(item.id);
+        isStillAvailable = false;
+        continue;
+      }
+
+      const heldByAnotherBuyer =
+        stock.stockStatus === "reserved" &&
+        (!item.reservedUntil ||
+          !stock.reservedUntil ||
+          Math.abs(
+            new Date(stock.reservedUntil).getTime() -
+              new Date(item.reservedUntil).getTime(),
+          ) > 1000);
+      if (heldByAnotherBuyer) {
+        toast.error(getAvailabilityErrorMessage("PRODUCT_RESERVED"));
+        removeItem(item.id);
+        isStillAvailable = false;
+      }
+    }
+
+    return isStillAvailable;
+  }, [hasItems, items, removeItem]);
+
+  useEffect(() => {
+    void recheckCheckoutAvailability();
+  }, [recheckCheckoutAvailability]);
+
+  const addressesQuery = useQuery({
+    queryKey: ["addresses"],
     queryFn: fetchAddresses,
-    enabled: Boolean(session?.user?.id),
+    enabled: isAuthenticated,
   });
+  const savedAddresses = addressesQuery.data;
+
+  const authRefreshRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      authRefreshRef.current = false;
+      return;
+    }
+    if (authRefreshRef.current) return;
+
+    authRefreshRef.current = true;
+    void queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    void addressesQuery.refetch();
+  }, [addressesQuery, isAuthenticated, queryClient]);
 
   // Seed name + email from the account once the session loads (sessions resolve
   // after the first client render). Done during render with a guard — the
@@ -214,8 +326,21 @@ export function CheckoutPageClient({
   const savedShippingRef = useRef(false);
   const savedBillingRef = useRef(false);
 
+  // True when an identical address is already in the customer's address book,
+  // so we skip the save instead of creating a duplicate.
+  const isAddressAlreadySaved = (form: AddressForm) => {
+    const key = addressDedupeKey(form);
+    return (savedAddresses ?? []).some(
+      (address) => addressDedupeKey(address) === key,
+    );
+  };
+
   const saveShippingToAccount = async () => {
     if (!session?.user?.id || !saveShippingAddress || savedShippingRef.current) {
+      return;
+    }
+    if (isAddressAlreadySaved(shippingAddress)) {
+      savedShippingRef.current = true;
       return;
     }
     savedShippingRef.current = true;
@@ -225,7 +350,10 @@ export function CheckoutPageClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           toSavedAddressPayload(shippingAddress, {
-            label: "Delivery",
+            label:
+              saveLabelKind === "Other"
+                ? customSaveLabel.trim() || "Other"
+                : saveLabelKind,
             isDefault: true,
           }),
         ),
@@ -244,6 +372,10 @@ export function CheckoutPageClient({
       !saveBillingAddress ||
       savedBillingRef.current
     ) {
+      return;
+    }
+    if (isAddressAlreadySaved(billingAddress)) {
+      savedBillingRef.current = true;
       return;
     }
     savedBillingRef.current = true;
@@ -286,12 +418,19 @@ export function CheckoutPageClient({
 
   const handlePay = async () => {
     if (!hasItems) return;
+    if (!isAuthenticated) {
+      toast.error("Sign in or create an account to continue checkout.");
+      return;
+    }
     if (!agreedToTerms) {
       toast.error(
         "Please confirm you have read and agree to the Terms & Policies.",
       );
       return;
     }
+
+    const availabilityOk = await recheckCheckoutAvailability();
+    if (!availabilityOk) return;
 
     const shipErrors = validateAddressForm(shippingAddress);
     if (hasErrors(shipErrors)) {
@@ -323,6 +462,15 @@ export function CheckoutPageClient({
         shippingAddress: toOrderAddress(shippingAddress),
         shippingMethod,
         ...(discountApplied ? { discountCode: discountApplied.code } : {}),
+        ...(isGift
+          ? {
+              isGift: true,
+              ...(giftFrom.trim() ? { giftFrom: giftFrom.trim() } : {}),
+              ...(includeGiftMessage && giftMessage.trim()
+                ? { giftMessage: giftMessage.trim() }
+                : {}),
+            }
+          : {}),
       },
       prefill: {
         name: fullName(shippingAddress),
@@ -330,6 +478,12 @@ export function CheckoutPageClient({
         contact: shippingAddress.phone,
       },
       description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
+      onAvailabilityError: ({ code, productId, message }) => {
+        toast.error(getAvailabilityErrorMessage(code, message));
+        if (productId) {
+          removeItem(productId);
+        }
+      },
       onPaid: (path) => {
         clearCart();
         toast.success("Order placed successfully!");
@@ -338,15 +492,24 @@ export function CheckoutPageClient({
     });
   };
 
-  return (
-    <main className="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-12 lg:py-14">
-      <Link
-        href="/cart"
-        className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/65 transition hover:text-ftt-burgundy"
-      >
-        <ChevronLeft className="size-4" />
-        Back to cart
-      </Link>
+  const handleCheckoutAuthSuccess = async () => {
+    setCurrentStep("shipping");
+    await queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    await addressesQuery.refetch();
+    router.refresh();
+  };
+
+  const content = (
+    <>
+      {!embedded ? (
+        <Link
+          href="/cart"
+          className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-ftt-burgundy transition hover:text-ftt-burgundy"
+        >
+          <ChevronLeft className="size-4" />
+          Back to cart
+        </Link>
+      ) : null}
 
       {!hasHydrated ? (
         <div className="mt-8 rounded-3xl border border-ftt-border bg-ftt-card p-8 text-center text-sm text-ftt-burgundy/60 shadow-[var(--ftt-soft-shadow)]">
@@ -355,6 +518,41 @@ export function CheckoutPageClient({
       ) : !hasItems ? (
         <div className="mt-8">
           <EmptyCart featuredPicks={featuredPicks} />
+        </div>
+      ) : !isAuthenticated ? (
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-7 xl:col-span-8">
+            <CheckoutAuthGate
+              isCheckingSession={sessionStatus === "loading"}
+              onSuccess={handleCheckoutAuthSuccess}
+            />
+          </div>
+
+          <div className="lg:col-span-5 xl:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              <OrderSummary
+                items={items}
+                subtotal={subtotal}
+                shippingMethod={shippingMethod}
+                shippingCost={shippingCost}
+                taxAmount={taxAmount}
+                taxRateLabel={taxRateLabel}
+                total={total}
+                onRemoveItem={handleRemoveItem}
+                disabled={isSubmitting}
+                error={error}
+                discount={{
+                  code: discountCode,
+                  onCodeChange: setDiscountCode,
+                  applied: discountApplied,
+                  error: discountError,
+                  isValidating: isValidatingDiscount,
+                  onApply: () => void handleValidateDiscount(),
+                  onRemove: handleRemoveDiscount,
+                }}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
@@ -381,16 +579,51 @@ export function CheckoutPageClient({
                     disabled={isSubmitting}
                     withPlaceSearch
                   />
-                  <label className="flex cursor-pointer items-center gap-3 rounded-3xl border border-ftt-border bg-ftt-card p-4 text-sm text-ftt-burgundy/70">
-                    <Checkbox
-                      checked={saveShippingAddress}
-                      onCheckedChange={(value) =>
-                        setSaveShippingAddress(value === true)
-                      }
-                      className={saveCheckbox}
-                    />
-                    Save this address to my trunk
-                  </label>
+                  <div className="rounded-3xl border border-ftt-border bg-ftt-card p-4">
+                    <label className="flex cursor-pointer items-center gap-3 text-sm text-ftt-burgundy/70">
+                      <Checkbox
+                        checked={saveShippingAddress}
+                        onCheckedChange={(value) =>
+                          setSaveShippingAddress(value === true)
+                        }
+                        className={saveCheckbox}
+                      />
+                      Save this address to my trunk
+                    </label>
+                    {saveShippingAddress ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ftt-border/70 pt-3">
+                        <span className="text-xs font-medium text-ftt-burgundy/55">
+                          Save as
+                        </span>
+                        {(["Home", "Office", "Other"] as const).map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => setSaveLabelKind(kind)}
+                            className={cn(
+                              "rounded-full border px-4 py-1.5 text-xs font-semibold transition",
+                              saveLabelKind === kind
+                                ? "border-ftt-navy bg-ftt-navy text-ftt-ivory"
+                                : "border-ftt-border bg-ftt-ivory text-ftt-burgundy/70 hover:border-ftt-gold",
+                            )}
+                          >
+                            {kind}
+                          </button>
+                        ))}
+                        {saveLabelKind === "Other" ? (
+                          <input
+                            value={customSaveLabel}
+                            onChange={(event) =>
+                              setCustomSaveLabel(event.target.value)
+                            }
+                            placeholder="Name this address"
+                            maxLength={40}
+                            className="h-8 min-w-40 flex-1 rounded-full border border-ftt-border bg-ftt-ivory px-3.5 text-xs text-ftt-navy outline-none transition placeholder:text-ftt-burgundy/35 focus:border-ftt-gold focus:ring-2 focus:ring-ftt-gold/20"
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                   <CheckoutStepActions
                     primaryLabel="Continue to billing"
                     onPrimary={goToBilling}
@@ -426,17 +659,20 @@ export function CheckoutPageClient({
                     onChange={setShippingMethod}
                     effectiveSubtotal={effectiveSubtotal}
                   />
-                  <GiftOptions
-                    isGift={isGift}
-                    onGiftChange={setIsGift}
-                    includeMessage={includeGiftMessage}
-                    onIncludeMessageChange={setIncludeGiftMessage}
-                    giftMessage={giftMessage}
-                    onGiftMessageChange={setGiftMessage}
-                    senderName={giftFrom}
-                    onSenderNameChange={setGiftFrom}
-                    disabled={isSubmitting}
-                  />
+                  {/* Gift selection paused — kept intact; flip ENABLE_GIFTING to re-enable. */}
+                  {ENABLE_GIFTING ? (
+                    <GiftOptions
+                      isGift={isGift}
+                      onGiftChange={setIsGift}
+                      includeMessage={includeGiftMessage}
+                      onIncludeMessageChange={setIncludeGiftMessage}
+                      giftMessage={giftMessage}
+                      onGiftMessageChange={setGiftMessage}
+                      senderName={giftFrom}
+                      onSenderNameChange={setGiftFrom}
+                      disabled={isSubmitting}
+                    />
+                  ) : null}
                   <CheckoutStepActions
                     secondaryLabel="Back to billing"
                     onSecondary={() => setCurrentStep("billing")}
@@ -462,7 +698,7 @@ export function CheckoutPageClient({
 
                   <div className="rounded-3xl border border-ftt-border bg-ftt-card p-5 text-sm shadow-[var(--ftt-soft-shadow)]">
                     <p className="font-serif text-base text-ftt-navy">
-                      Returns & one-of-one pieces
+                      Returns & unique pieces
                     </p>
                     <p className="mt-2 leading-6 text-ftt-burgundy/70">
                       Returns are accepted only within{" "}
@@ -470,7 +706,7 @@ export function CheckoutPageClient({
                         7 days of delivery
                       </span>{" "}
                       and must be initiated by you. As every saree is pre-loved
-                      and one-of-one, please review our{" "}
+                      and unique, please review our{" "}
                       <Link
                         href="/policies/return-refund-policy"
                         className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
@@ -522,6 +758,7 @@ export function CheckoutPageClient({
                     primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
                     onPrimary={handlePay}
                     disabledPrimary={!hasItems || isSubmitting || !agreedToTerms}
+                    primaryLoading={isSubmitting}
                   />
                 </>
               ) : null}
@@ -555,6 +792,16 @@ export function CheckoutPageClient({
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-12 lg:py-14">
+      {content}
     </main>
   );
 }

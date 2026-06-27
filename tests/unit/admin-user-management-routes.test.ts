@@ -71,17 +71,19 @@ describe("admin user management routes", () => {
     expect(insertMock).not.toHaveBeenCalled();
   });
 
-  it("creates a new admin account with a hashed password", async () => {
+	  it("creates a new admin account with a hashed password", async () => {
     getUserByEmailMock.mockResolvedValue(null);
     hashMock.mockResolvedValue("new-admin-hash");
-    returningMock.mockResolvedValue([
-      {
-        email: "new-admin@example.com",
-        id: "22222222-2222-4222-8222-222222222222",
-        name: "New Admin",
-        role: "admin",
-      },
-    ]);
+	    returningMock.mockResolvedValue([
+	      {
+	        email: "new-admin@example.com",
+	        id: "22222222-2222-4222-8222-222222222222",
+	        metadata: { internal: true },
+	        name: "New Admin",
+	        passwordHash: "new-admin-hash",
+	        role: "admin",
+	      },
+	    ]);
 
     const { request } = createRouteHarness({
       register: registerUserRoutes,
@@ -98,8 +100,11 @@ describe("admin user management routes", () => {
       method: "POST",
     });
 
-    expect(response.status).toBe(201);
-    expect(hashMock).toHaveBeenCalledWith("AdminPass123", 12);
+	    expect(response.status).toBe(201);
+	    const json = (await response.json()) as Record<string, unknown>;
+	    expect(json).not.toHaveProperty("passwordHash");
+	    expect(json).not.toHaveProperty("metadata");
+	    expect(hashMock).toHaveBeenCalledWith("AdminPass123", 12);
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "new-admin@example.com",
@@ -108,7 +113,32 @@ describe("admin user management routes", () => {
         role: "admin",
       })
     );
-  });
+	  });
+
+	  it("admin user list response excludes passwordHash and metadata", async () => {
+	    listUsersMock.mockResolvedValue([
+	      {
+	        email: "admin@example.com",
+	        id: "55555555-5555-4555-8555-555555555555",
+	        metadata: { internal: true },
+	        name: "Admin",
+	        passwordHash: "stored-admin-hash",
+	        role: "admin",
+	      },
+	    ]);
+
+	    const { request } = createRouteHarness({
+	      register: registerUserRoutes,
+	      authUser: { email: "owner@example.com", id: "admin-1", role: "admin" },
+	    });
+
+	    const response = await request("/");
+
+	    expect(response.status).toBe(200);
+	    const json = (await response.json()) as Array<Record<string, unknown>>;
+	    expect(json[0]).not.toHaveProperty("passwordHash");
+	    expect(json[0]).not.toHaveProperty("metadata");
+	  });
 
   it("rejects resetting the password for a non-admin account", async () => {
     const customerId = "33333333-3333-4333-8333-333333333333";

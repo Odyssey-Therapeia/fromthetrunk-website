@@ -26,6 +26,10 @@ vi.mock("@/db/queries/users", () => ({
   updateUser: updateUserMock,
 }));
 
+vi.mock("@/lib/http/rate-limit", () => ({
+  rateLimitResponse: vi.fn().mockResolvedValue(null),
+}));
+
 import { registerUserRoutes } from "@/api/hono/routes/users";
 import type { HonoBindings } from "@/api/hono/types";
 
@@ -38,6 +42,79 @@ const createUsersApp = (authUser: null | { email?: null | string; id: string; ro
   registerUserRoutes(app);
   return app;
 };
+
+describe("user profile responses", () => {
+  beforeEach(() => {
+    compareMock.mockReset();
+    getUserByEmailMock.mockReset();
+    getUserByIdMock.mockReset();
+    hashMock.mockReset();
+    listUsersMock.mockReset();
+    updateUserMock.mockReset();
+  });
+
+  it("GET /me excludes passwordHash and metadata", async () => {
+    getUserByIdMock.mockResolvedValue({
+      createdAt: new Date(),
+      defaultAddress: null,
+      defaultAddressId: null,
+      email: "customer@example.com",
+      emailVerified: null,
+      id: "user-123",
+      image: null,
+      metadata: { authMethod: "password" },
+      name: "Customer",
+      passwordHash: "stored-hash",
+      phone: null,
+      role: "customer",
+      updatedAt: new Date(),
+    });
+
+    const response = await createUsersApp({
+      email: "customer@example.com",
+      id: "user-123",
+      role: "customer",
+    }).request("/me");
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(json).not.toHaveProperty("passwordHash");
+    expect(json).not.toHaveProperty("metadata");
+  });
+
+  it("PATCH /me excludes passwordHash and metadata", async () => {
+    updateUserMock.mockResolvedValue({
+      createdAt: new Date(),
+      defaultAddress: null,
+      defaultAddressId: null,
+      email: "customer@example.com",
+      emailVerified: null,
+      id: "user-123",
+      image: null,
+      metadata: { authMethod: "password" },
+      name: "Updated",
+      passwordHash: "stored-hash",
+      phone: null,
+      role: "customer",
+      updatedAt: new Date(),
+    });
+
+    const response = await createUsersApp({
+      email: "customer@example.com",
+      id: "user-123",
+      role: "customer",
+    }).request("/me", {
+      body: JSON.stringify({ name: "Updated" }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(json).not.toHaveProperty("passwordHash");
+    expect(json).not.toHaveProperty("metadata");
+  });
+});
 
 describe("PATCH /me/password", () => {
   beforeEach(() => {

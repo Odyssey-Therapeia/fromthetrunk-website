@@ -8,8 +8,8 @@
  *
  * Cases covered:
  *   (a) Valid discount code → total reflects server-computed discount amount.
- *   (b) Forged discountAmountPaise in the body is IGNORED — server total equals
- *       the no-forgery total (mutation-proof of the cardinal rule).
+ *   (b) Forged discountAmountPaise in the body is REJECTED before order creation
+ *       (mutation-proof of the cardinal rule).
  *   (c) Over-limit discount code → 400 DISCOUNT_INELIGIBLE.
  *   (d) Collection-scoped code on a mixed cart → only in-scope base is discounted.
  */
@@ -35,6 +35,7 @@ const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
 
 // lib/orders/complete-paid-order (not under test here)
 const completePaidOrderMock = vi.hoisted(() => vi.fn());
+const emitAnalyticsEventMock = vi.hoisted(() => vi.fn());
 
 // lib/payments/razorpay network boundary
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
@@ -78,6 +79,10 @@ vi.mock("@/lib/orders/complete-paid-order", () => ({
   completePaidOrder: completePaidOrderMock,
 }));
 
+vi.mock("@/lib/analytics/emit", () => ({
+  emitAnalyticsEvent: emitAnalyticsEventMock,
+}));
+
 vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
   // Keep the REAL calculateOrderTotals so discount math is authentic.
   const actual = await importOriginal<typeof import("@/lib/payments/razorpay")>();
@@ -117,6 +122,12 @@ const PRODUCT_A_PAISE = 500_000; // ₹5,000
 
 // Product B: 2000 INR (200_000 paise) — out-of-collection item for FIX (d)
 const PRODUCT_B_PAISE = 200_000; // ₹2,000
+
+const AUTH_USER = {
+  email: "customer@example.com",
+  id: "11111111-1111-4111-8111-111111111111",
+  role: "customer",
+};
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -255,7 +266,7 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       .mockReturnValueOnce(reserveChain)
       .mockReturnValueOnce(orderUpdateChain);
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -301,14 +312,12 @@ describe("payments route — discount: create-order (FIX #3)", () => {
     );
   });
 
-  // (b) Forged discountAmountPaise in the body is IGNORED by the server.
+  // (b) Forged discountAmountPaise in the body is REJECTED by the server.
   //
   // The cardinal rule: the client NEVER computes or sends a discount amount.
-  // The server ignores any attempt and uses only the server-validated code.
-  // This test sends a body with discountCode AND a forged amount field,
-  // then asserts the response total equals the server-computed total (not
-  // the forged one).
-  it("(b) forged discount amount in body is IGNORED — total equals server-computed no-forgery total", async () => {
+  // The strict createPaymentOrderSchema rejects attempts to submit monetary
+  // fields before an order row or Razorpay link can be created.
+  it("(b) forged discount amount in body is REJECTED before order creation", async () => {
     const productRow = makeProductRow(PRODUCT_ID_A, PRODUCT_A_PAISE);
     const discountRow = makeDiscountRow({ type: "percent", value: 10 });
 
@@ -323,11 +332,10 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       .mockReturnValueOnce(reserveChain)
       .mockReturnValueOnce(orderUpdateChain);
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     // Send forged extra fields that attempt to override the server-computed amount.
-    // The schema (createPaymentOrderSchema) should strip unknown fields;
-    // the server must never use client-provided monetary amounts.
+    // Strict request validation rejects unknown monetary fields.
     const bodyWithForgery = {
       ...makeBody({ discountCode: "SAVE10" }),
       // These forged fields attempt to inject a false discount amount
@@ -342,32 +350,9 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       body: JSON.stringify(bodyWithForgery),
     });
 
-    expect(response.status).toBe(200);
-    const json = await response.json() as Record<string, unknown>;
-
-    // Server total must equal the server-computed discounted total (10% off).
-    const expectedTotals = calculateOrderTotals(PRODUCT_A_PAISE, "standard", {
-      id: DISCOUNT_ID,
-      code: "SAVE10",
-      type: "percent",
-      value: 10,
-      minSubtotalPaise: 0,
-      collectionId: null,
-      startsAt: null,
-      endsAt: null,
-      usageLimit: null,
-      usageCount: 0,
-    });
-    expect(
-      json.amountPaise,
-      "amountPaise must equal the server-computed total — forged fields are ignored"
-    ).toBe(expectedTotals.totalPaise);
-
-    // Sanity check: the forged amount (1 paise) was not used.
-    expect((json.amountPaise as number)).not.toBe(1);
-    // And the undiscounted total was also not used (discount was applied).
-    const undiscountedTotals = calculateOrderTotals(PRODUCT_A_PAISE, "standard");
-    expect((json.amountPaise as number)).not.toBe(undiscountedTotals.totalPaise);
+    expect(response.status).toBe(400);
+    expect(createOrderMock).not.toHaveBeenCalled();
+    expect(createRazorpayPaymentLinkMock).not.toHaveBeenCalled();
   });
 
   // (c) Over-limit discount code → 400 DISCOUNT_INELIGIBLE
@@ -383,7 +368,7 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       // We add a guard so the test doesn't blow up if an unexpected query is made.
       .mockReturnValue(makeSelectChain([{ c: 0 }]));
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -411,7 +396,7 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       .mockReturnValueOnce(makeSelectChain([expiredDiscount]))
       .mockReturnValue(makeSelectChain([{ c: 0 }]));
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -462,7 +447,7 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       .mockReturnValueOnce(reserveChain)
       .mockReturnValueOnce(orderUpdateChain);
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",
@@ -534,7 +519,7 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       .mockReturnValueOnce(makeSelectChain([])) // discount not found
       .mockReturnValue(makeSelectChain([{ c: 0 }]));
 
-    const { request } = createRouteHarness({ register: registerPaymentRoutes });
+	    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
 
     const response = await request("/create-order", {
       method: "POST",

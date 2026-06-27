@@ -20,6 +20,20 @@ describe("Instagram link fix", () => {
   });
 });
 
+describe("Contact and review capture", () => {
+  const connectDialog = readSource("components/layout/connect-dialog.tsx");
+  const floatingReview = readSource("components/sections/floating-review-tab.tsx");
+
+  it("connect dialog submits to the contact API instead of mailto", () => {
+    expect(connectDialog).toContain("/api/v2/contact/submit");
+    expect(connectDialog).not.toContain("window.location.href = `mailto:");
+  });
+
+  it("floating review submits to the feedback API", () => {
+    expect(floatingReview).toContain("/api/v2/site-feedback/submit");
+  });
+});
+
 describe("WhatsApp link fix", () => {
   const footer = readSource("components/layout/site-footer.tsx");
 
@@ -59,26 +73,26 @@ describe("Light mode only", () => {
 describe("Brand content — Our Story page", () => {
   const ourStory = readSource("app/(site)/our-story/page.tsx");
 
-  it("uses 'Born in Bengaluru' hero title", () => {
-    expect(ourStory).toContain("Born in Bengaluru, rooted in heritage");
+  it("uses the current second-story hero title", () => {
+    expect(ourStory).toContain("Every saree deserves a second story.");
   });
 
-  it("contains the real trunk journey narrative", () => {
+  it("contains the current trunk journey narrative", () => {
     expect(ourStory).toContain(
-      "Why let beautiful sarees fade away in dark trunks?"
+      "From the Trunk (FTT) was born from a simple, heartfelt belief"
     );
   });
 
-  it("has the Sourcing card", () => {
-    expect(ourStory).toContain('"Sourcing"');
+  it("has the two-sided trunk story chapter", () => {
+    expect(ourStory).toContain("Two women, one trunk.");
   });
 
-  it("has the Quality Control card", () => {
-    expect(ourStory).toContain('"Quality Control"');
+  it("has the sustainability chapter", () => {
+    expect(ourStory).toContain("Every saree worn again is one less made new.");
   });
 
-  it("has the Eco-Restoration card", () => {
-    expect(ourStory).toContain('"Eco-Restoration"');
+  it("has the promise chapter", () => {
+    expect(ourStory).toContain("At From the Trunk, we don’t just collect sarees.");
   });
 
   it("no longer has the old generic card titles", () => {
@@ -138,40 +152,37 @@ describe("Product gallery UX fix", () => {
   const gallery = readSource("components/product/product-gallery.tsx");
   const productPage = readSource("app/(site)/collection/[slug]/page.tsx");
 
-  it("constrains image height on mobile with max-h-[44vh]", () => {
-    expect(gallery).toContain("max-h-[44vh]");
+  it("constrains image height on mobile with viewport-aware height", () => {
+    expect(gallery).toContain("h-[min(68vh,620px)]");
   });
 
-  it("uses a slightly larger height cap on small tablets", () => {
-    expect(gallery).toContain("sm:max-h-[50vh]");
+  it("uses a stable mobile minimum height", () => {
+    expect(gallery).toContain("min-h-[27rem]");
   });
 
-  it("removes height cap on desktop with lg:max-h-none", () => {
-    expect(gallery).toContain("lg:max-h-none");
+  it("uses the PDP panel height variable on larger screens", () => {
+    expect(gallery).toContain("md:min-h-[var(--pdp-panel-height)]");
   });
 
-  it("gallery container is sticky only on lg", () => {
-    expect(gallery).toContain("lg:sticky lg:top-28");
+  it("gallery container avoids mobile stickiness", () => {
+    expect(gallery).not.toContain("sticky top-");
   });
 
   it("thumbnails can scroll horizontally on small screens", () => {
     expect(gallery).toContain("overflow-x-auto");
   });
 
-  it("moves product details above the gallery on mobile", () => {
-    expect(productPage).toContain('className="order-2 lg:order-1"');
+  it("keeps product details beside the gallery in the responsive PDP grid", () => {
+    expect(productPage).toContain("md:grid-cols-[minmax(0,1fr)_minmax(300px,0.58fr)]");
     expect(productPage).toContain(
-      'className="order-1 flex flex-col gap-6 lg:order-2"'
+      "lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.58fr)]"
     );
   });
 
-  it("moves the purchase block ahead of narrative copy on mobile", () => {
-    expect(productPage).toContain(
-      'className="order-2 space-y-4 border-t border-border/60 pt-6 lg:order-3"'
-    );
-    expect(productPage).toContain(
-      'className="order-3 space-y-4 border-t border-border/60 pt-6 lg:order-2"'
-    );
+  it("keeps the purchase controls inside the product dossier panel", () => {
+    expect(productPage).toContain("<AddToCartButton");
+    expect(productPage).toContain("<WishlistButton");
+    expect(productPage).toContain("Product Dossier");
   });
 });
 
@@ -180,8 +191,9 @@ describe("Public storefront QA regressions", () => {
   const productPage = readSource("app/(site)/collection/[slug]/page.tsx");
   const siteHeader = readSource("components/layout/site-header.tsx");
 
-  it("collection filter chips are sourced only from collections with products", () => {
-    expect(collectionPage).toContain("onlyWithProducts: true");
+  it("collection filters are sourced from the visible collections query", () => {
+    expect(collectionPage).toContain("visibleCollectionsResult");
+    expect(collectionPage).toContain("collections.map");
   });
 
   it("missing product pages explicitly return notFound", () => {

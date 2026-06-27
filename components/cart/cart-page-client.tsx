@@ -1,14 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type MotionProps,
-} from "framer-motion";
 import {
   ArrowRight,
   LockKeyhole,
@@ -21,34 +15,80 @@ import {
 import { CartItem } from "@/components/cart/cart-item";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  trackOncePerSession,
+  trackWebsiteMetric,
+} from "@/lib/analytics/client";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 import type { Product } from "@/types/domain";
 
 interface CartPageClientProps {
+  embedded?: boolean;
   featuredPicks: Product[];
+  showHero?: boolean;
 }
 
-export function CartPageClient({ featuredPicks }: CartPageClientProps) {
+export function CartPageClient({
+  embedded = false,
+  featuredPicks,
+  showHero = true,
+}: CartPageClientProps) {
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
   const { subtotal, totalItems } = getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
-  const shouldReduceMotion = useReducedMotion();
-  const softEnterMotion: MotionProps = shouldReduceMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 12 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: 8 },
-        transition: { duration: 0.3, ease: "easeOut" },
-      };
+  const cartViewedTrackedRef = useRef(false);
+  const getCartAnalyticsPayload = useCallback(
+    (source: string) => {
+      const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+      const productIds = items.map((item) => item.id).sort();
 
-  return (
-    <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
-      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:py-12">
-        <section className="overflow-hidden rounded-[2rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_55px_rgba(20,29,70,0.16)] lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
+      return {
+        itemCount,
+        productIds,
+        source,
+        subtotalPaise: Math.round(subtotal * 100),
+      };
+    },
+    [items, subtotal],
+  );
+  const trackCartViewed = useCallback(() => {
+    if (!hasHydrated || items.length === 0 || cartViewedTrackedRef.current) {
+      return;
+    }
+
+    cartViewedTrackedRef.current = true;
+
+    trackWebsiteMetric("cart_viewed", getCartAnalyticsPayload("cart_page"));
+  }, [getCartAnalyticsPayload, hasHydrated, items.length]);
+
+  const trackCheckoutStarted = useCallback(() => {
+    if (!hasHydrated || items.length === 0) return;
+
+    const payload = getCartAnalyticsPayload("cart_checkout_click");
+
+    trackOncePerSession(
+      `checkout_started:${payload.productIds.join(",")}:${payload.itemCount}`,
+      "checkout_started",
+      payload,
+    );
+  }, [getCartAnalyticsPayload, hasHydrated, items.length]);
+
+  const handleCheckoutClick = useCallback(() => {
+    trackCartViewed();
+    trackCheckoutStarted();
+  }, [trackCartViewed, trackCheckoutStarted]);
+
+  useEffect(() => {
+    trackCartViewed();
+  }, [trackCartViewed]);
+
+  const content = (
+    <>
+        {showHero ? (
+          <section className="overflow-hidden rounded-[2rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_55px_rgba(20,29,70,0.16)] lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="bg-[linear-gradient(135deg,#141D46_0%,#10183B_62%,#601D1C_150%)] p-6 text-[#FDF7F1] sm:p-8 lg:p-10">
             <p className="text-[11px] font-semibold uppercase tracking-[0.38em] text-[#B39152]">
               Shopping Bag
@@ -77,7 +117,7 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
           <div className="border-t border-white/10 bg-[#FDF7F1] p-5 lg:border-l lg:border-t-0">
             <div className="flex h-full min-h-[260px] flex-col justify-between rounded-[1.5rem] border border-[#B39152]/35 bg-[#FFFCF8] p-5">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#B39152]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#74531B]">
                   Trunk assurance
                 </p>
                 <h2 className="mt-3 font-serif text-3xl leading-none text-[#141D46]">
@@ -101,13 +141,14 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
               </div>
             </div>
           </div>
-        </section>
+          </section>
+        ) : null}
 
         <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_19rem] md:items-start lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-5">
             <div className="flex flex-col gap-3 rounded-[1.5rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#74531B]">
                   Review
                 </p>
                 <h2 className="mt-1 font-serif text-3xl text-[#141D46]">
@@ -135,7 +176,7 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
               <>
                 <CartPageState
                   title="Your bag is empty."
-                  body="Begin with a one-of-one piece from the current collection."
+                  body="Begin with a unique piece from the current collection."
                   action={
                     <Button
                       asChild
@@ -149,7 +190,7 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
                 {featuredPicks.length > 0 ? (
                   <section className="rounded-[1.5rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5">
                     <div className="mb-5">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#B39152]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#74531B]">
                         Featured Picks
                       </p>
                       <h2 className="mt-1 font-serif text-3xl text-[#141D46]">
@@ -174,28 +215,11 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
               </>
             ) : (
               <div className="space-y-3">
-                <AnimatePresence initial={false}>
-                  {items.map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      {...(shouldReduceMotion
-                        ? {}
-                        : {
-                            initial: { opacity: 0, y: 10 },
-                            animate: { opacity: 1, y: 0 },
-                            exit: { opacity: 0, y: 8 },
-                            transition: {
-                              duration: 0.26,
-                              delay: index * 0.04,
-                              ease: "easeOut",
-                            },
-                          })}
-                    >
+                  {items.map((item) => (
+                    <div key={item.id}>
                       <CartItem item={item} />
-                    </motion.div>
+                    </div>
                   ))}
-                </AnimatePresence>
               </div>
             )}
           </div>
@@ -205,9 +229,20 @@ export function CartPageClient({ featuredPicks }: CartPageClientProps) {
             canCheckout={canCheckout}
             subtotal={subtotal}
             totalItems={totalItems}
-            motionProps={softEnterMotion}
+            onCheckoutClick={handleCheckoutClick}
           />
         </section>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
+      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:py-12">
+        {content}
       </div>
     </main>
   );
@@ -218,22 +253,21 @@ function OrderSummaryPanel({
   canCheckout,
   subtotal,
   totalItems,
-  motionProps,
+  onCheckoutClick,
 }: {
   hasHydrated: boolean;
   canCheckout: boolean;
   subtotal: number;
   totalItems: number;
-  motionProps: MotionProps;
+  onCheckoutClick: () => void;
 }) {
   return (
-    <motion.aside
-      {...motionProps}
+    <aside
       className="sticky top-24 rounded-[1.75rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 shadow-[0_18px_50px_rgba(20,29,70,0.10)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#B39152]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#74531B]">
             Summary
           </p>
           <h2 className="mt-1 font-serif text-3xl text-[#141D46]">
@@ -278,7 +312,7 @@ function OrderSummaryPanel({
           asChild
           className="mt-6 h-12 w-full rounded-full bg-[#141D46] text-[#FDF7F1] shadow-[0_14px_34px_rgba(20,29,70,0.18)] hover:bg-[#0E0D0E]"
         >
-          <Link href="/checkout">
+          <Link href="/checkout" onClick={onCheckoutClick}>
             Proceed to Checkout
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
@@ -311,7 +345,7 @@ function OrderSummaryPanel({
           Secure
         </SummaryPromise>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
 
@@ -417,7 +451,7 @@ function FeaturedPick({
       </div>
 
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#74531B]">
           Pick {String(index + 1).padStart(2, "0")}
         </p>
         <p className="mt-1 line-clamp-2 font-serif text-lg leading-tight text-[#141D46]">

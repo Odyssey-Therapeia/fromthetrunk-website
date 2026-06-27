@@ -2,6 +2,10 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 
 import {
   executeImportSchema,
+  MAX_CSV_COLUMNS,
+  MAX_CSV_FIELD_LENGTH,
+  MAX_CSV_FILE_BYTES,
+  MAX_CSV_ROWS,
   suggestMappingsSchema,
   validateRowsSchema,
 } from "@/api/hono/schemas/admin-import";
@@ -21,7 +25,7 @@ import type { FieldMapping, ImportPreviewRow } from "@/lib/ports/batch-import";
 // In-memory cache for parsed file data (keyed by fileId, TTL 30 min)
 const fileCache = new Map<
   string,
-  { rows: Record<string, string>[]; headers: string[]; expires: number }
+  { adminId: string; rows: Record<string, string>[]; headers: string[]; expires: number }
 >();
 
 function cleanExpiredCache() {
@@ -32,15 +36,27 @@ function cleanExpiredCache() {
 }
 
 /** Fetch a cache entry and purge it if expired, returning null on miss/expiry. */
-function getValidCachedFile(fileId: string) {
+function getValidCachedFile(fileId: string, adminId: string) {
   const entry = fileCache.get(fileId);
   if (!entry) return null;
   if (entry.expires < Date.now()) {
     fileCache.delete(fileId);
     return null;
   }
+  if (entry.adminId !== adminId) return null;
   return entry;
 }
+
+const findOversizedField = (rows: Record<string, string>[]) => {
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    for (const [field, value] of Object.entries(rows[rowIndex] ?? {})) {
+      if (value.length > MAX_CSV_FIELD_LENGTH) {
+        return { field, rowIndex };
+      }
+    }
+  }
+  return null;
+};
 
 export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
   // Parse uploaded file
@@ -61,8 +77,23 @@ export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "NO_FILE", message: "No file uploaded" }, 400);
       }
 
+      if (file.size > MAX_CSV_FILE_BYTES) {
+        return c.json(
+          { code: "CSV_TOO_LARGE", message: "CSV file is too large." },
+          400,
+        );
+      }
+
       const text = await file.text();
-      const parsed = parseCSV(text);
+      let parsed: ReturnType<typeof parseCSV>;
+      try {
+        parsed = parseCSV(text);
+      } catch {
+        return c.json(
+          { code: "CSV_MALFORMED", message: "CSV file could not be parsed." },
+          400,
+        );
+      }
 
       if (parsed.headers.length === 0) {
         return c.json(
@@ -71,9 +102,37 @@ export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
+      if (parsed.headers.length > MAX_CSV_COLUMNS) {
+        return c.json(
+          { code: "CSV_TOO_MANY_COLUMNS", message: "CSV has too many columns." },
+          400,
+        );
+      }
+
+      if (parsed.rows.length > MAX_CSV_ROWS) {
+        return c.json(
+          { code: "CSV_TOO_MANY_ROWS", message: "CSV has too many rows." },
+          400,
+        );
+      }
+
+      const oversizedField = findOversizedField(parsed.rows);
+      if (oversizedField) {
+        return c.json(
+          {
+            code: "CSV_FIELD_TOO_LONG",
+            message: "CSV contains a field that is too long.",
+            row: oversizedField.rowIndex,
+            field: oversizedField.field,
+          },
+          400,
+        );
+      }
+
       const fileId = crypto.randomUUID();
       cleanExpiredCache();
       fileCache.set(fileId, {
+        adminId: adminOrResponse.id,
         rows: parsed.rows,
         headers: parsed.headers,
         expires: Date.now() + 30 * 60 * 1000,
@@ -134,7 +193,7 @@ export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (adminOrResponse instanceof Response) return adminOrResponse;
 
       const { fileId, mappings } = c.req.valid("json");
-      const cached = getValidCachedFile(fileId);
+      const cached = getValidCachedFile(fileId, adminOrResponse.id);
       if (!cached) {
         return c.json(
           { code: "FILE_EXPIRED", message: "File data expired. Re-upload." },
@@ -177,7 +236,7 @@ export const registerAdminImportRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (adminOrResponse instanceof Response) return adminOrResponse;
 
       const { fileId, mappings } = c.req.valid("json");
-      const cached = getValidCachedFile(fileId);
+      const cached = getValidCachedFile(fileId, adminOrResponse.id);
       if (!cached) {
         return c.json(
           { code: "FILE_EXPIRED", message: "File data expired. Re-upload." },

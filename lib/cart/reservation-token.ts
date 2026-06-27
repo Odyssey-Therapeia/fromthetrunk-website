@@ -1,34 +1,38 @@
 import crypto from "crypto";
 
+import { getTokenSecret } from "@/lib/security/token-secrets";
+
 type ReservationTokenPayload = {
   productId: string;
+  quantity: 1;
+  reservationId?: string;
   reservedUntil: string;
   v: 1;
 };
 
 const getReservationTokenSecret = () =>
-  process.env.RESERVATION_TOKEN_SECRET ??
-  process.env.NEXTAUTH_SECRET ??
-  process.env.AUTH_SECRET ??
-  "";
+  getTokenSecret("RESERVATION_TOKEN_SECRET", {
+    purpose: "cart reservation tokens",
+  });
 
 const sign = (payloadPart: string, secret: string) =>
   crypto.createHmac("sha256", secret).update(payloadPart).digest("base64url");
 
 export const createReservationToken = ({
   productId,
+  reservationId,
   reservedUntil,
 }: {
   productId: string;
+  reservationId?: string | null;
   reservedUntil: Date;
 }) => {
   const secret = getReservationTokenSecret();
-  if (!secret) {
-    throw new Error("RESERVATION_TOKEN_SECRET_MISSING");
-  }
 
   const payload: ReservationTokenPayload = {
     productId,
+    quantity: 1,
+    ...(reservationId ? { reservationId } : {}),
     reservedUntil: reservedUntil.toISOString(),
     v: 1,
   };
@@ -39,8 +43,12 @@ export const createReservationToken = ({
 export const verifyReservationToken = (token: null | string | undefined) => {
   if (!token) return null;
 
-  const secret = getReservationTokenSecret();
-  if (!secret) return null;
+  let secret: string;
+  try {
+    secret = getReservationTokenSecret();
+  } catch {
+    return null;
+  }
 
   const [payloadPart, signaturePart] = token.split(".");
   if (!payloadPart || !signaturePart) return null;
@@ -58,6 +66,13 @@ export const verifyReservationToken = (token: null | string | undefined) => {
     ) as Partial<ReservationTokenPayload>;
 
     if (payload.v !== 1 || typeof payload.productId !== "string") return null;
+    if (payload.quantity !== 1 && payload.quantity !== undefined) return null;
+    if (
+      payload.reservationId !== undefined &&
+      typeof payload.reservationId !== "string"
+    ) {
+      return null;
+    }
     if (typeof payload.reservedUntil !== "string") return null;
 
     const reservedUntil = new Date(payload.reservedUntil);
@@ -65,6 +80,8 @@ export const verifyReservationToken = (token: null | string | undefined) => {
 
     return {
       productId: payload.productId,
+      quantity: 1 as const,
+      reservationId: payload.reservationId,
       reservedUntil,
     };
   } catch {

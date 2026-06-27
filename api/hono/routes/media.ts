@@ -4,20 +4,20 @@ import { requireAdmin } from "@/api/hono/middleware/auth";
 import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import { deleteMedia, listMedia } from "@/db/queries/media";
-import { createMediaFromUpload, generateUploadUrl } from "@/lib/media/blob-upload";
+import { createMediaFromUpload, generateUploadUrl, MAX_IMAGE_BYTES } from "@/lib/media/blob-upload";
 
 const uploadRequestSchema = z.object({
-  contentType: z.string().min(1),
-  filename: z.string().min(1),
+  contentType: z.string().trim().min(1).max(120),
+  filename: z.string().trim().min(1).max(180),
 });
 
 export const completeUploadSchema = z.object({
-  alt: z.string().min(1, "Alt text is required for accessibility"),
-  filename: z.string(),
-  mimeType: z.string().optional(),
-  pathname: z.string(),
-  size: z.number().int().optional(),
-  url: z.string().url(),
+  alt: z.string().trim().min(1, "Alt text is required for accessibility").max(180),
+  filename: z.string().trim().min(1).max(180),
+  mimeType: z.string().trim().min(1).max(120),
+  pathname: z.string().trim().min(1).max(512),
+  size: z.number().int().positive().max(MAX_IMAGE_BYTES),
+  url: z.string().trim().url().max(2048),
 });
 
 export const registerMediaRoutes = (app: OpenAPIHono<HonoBindings>) => {
@@ -89,7 +89,21 @@ export const registerMediaRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (adminOrResponse instanceof Response) return adminOrResponse;
 
       const body = c.req.valid("json");
-      const media = await createMediaFromUpload(body);
+      let media: Awaited<ReturnType<typeof createMediaFromUpload>>;
+      try {
+        media = await createMediaFromUpload(body);
+      } catch (error) {
+        if (error instanceof Error && error.name === "MediaUploadValidationError") {
+          return c.json(
+            {
+              code: "MEDIA_UPLOAD_REJECTED",
+              message: error.message,
+            },
+            400
+          );
+        }
+        throw error;
+      }
       return c.json(media, 201);
     }
   );

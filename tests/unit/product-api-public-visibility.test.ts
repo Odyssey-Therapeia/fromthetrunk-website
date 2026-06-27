@@ -5,6 +5,7 @@ import type { HonoBindings } from "@/api/hono/types";
 
 const listProductsMock = vi.hoisted(() => vi.fn());
 const getProductBySlugMock = vi.hoisted(() => vi.fn());
+const getProductsByIdsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/products", () => ({
   bulkSetProductTags: vi.fn(),
@@ -14,7 +15,7 @@ vi.mock("@/db/queries/products", () => ({
   duplicateProduct: vi.fn(),
   getProduct: vi.fn(),
   getProductBySlug: getProductBySlugMock,
-  getProductsByIds: vi.fn(),
+  getProductsByIds: getProductsByIdsMock,
   getPublicProductStockBySlug: vi.fn(),
   listProducts: listProductsMock,
   updateProduct: vi.fn(),
@@ -43,6 +44,10 @@ vi.mock("@/lib/config/flags", () => ({
   isInventoryV2: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/data/products", () => ({
+  getTimedPublicProductBySlug: getProductBySlugMock,
+}));
+
 import { registerProductRoutes } from "@/api/hono/routes/products";
 
 const productRoutes = () => {
@@ -56,7 +61,7 @@ const productRoutes = () => {
 };
 
 const sampleProduct = {
-  id: "product-1",
+  id: "11111111-1111-4111-8111-111111111111",
   artisanId: null,
   attributes: {},
   collectionId: null,
@@ -94,6 +99,7 @@ describe("public product API draft visibility", () => {
     delete process.env.ADMIN_API_SECRET;
     listProductsMock.mockResolvedValue({ rows: [sampleProduct], totalCount: 1 });
     getProductBySlugMock.mockResolvedValue(sampleProduct);
+    getProductsByIdsMock.mockResolvedValue([sampleProduct]);
   });
 
   it("ignores includeDrafts=true for anonymous list requests", async () => {
@@ -118,12 +124,41 @@ describe("public product API draft visibility", () => {
     );
   });
 
+  it("clamps anonymous product list limits", async () => {
+    const response = await productRoutes().request("/?limit=999&offset=5");
+
+    expect(response.status).toBe(200);
+    expect(listProductsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeDrafts: false,
+        limit: 100,
+        offset: 5,
+      }),
+    );
+  });
+
+  it("resolves targeted public product IDs without listing the full catalog", async () => {
+    const response = await productRoutes().request(
+      "/?ids=11111111-1111-4111-8111-111111111111",
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(getProductsByIdsMock).toHaveBeenCalledWith(
+      ["11111111-1111-4111-8111-111111111111"],
+      { includeDrafts: false },
+    );
+    expect(listProductsMock).not.toHaveBeenCalled();
+    expect(body[0]).not.toHaveProperty("metadata");
+  });
+
   it("does not expose drafts from the public product detail route", async () => {
     const response = await productRoutes().request("/draft-saree");
 
     expect(response.status).toBe(200);
-    expect(getProductBySlugMock).toHaveBeenCalledWith("draft-saree", {
-      includeDrafts: false,
-    });
+    expect(getProductBySlugMock).toHaveBeenCalledWith(
+      "draft-saree",
+      expect.any(Function)
+    );
   });
 });

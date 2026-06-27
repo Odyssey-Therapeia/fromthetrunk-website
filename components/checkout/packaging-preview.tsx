@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon, TriangleAlert } from "lucide-react";
 
 import {
   Dialog,
@@ -20,6 +20,8 @@ type PackagingPreviewProps = {
   description: string;
   price: string;
   images: string[];
+  /** Shows an "AI-generated lookalike" disclaimer over the preview. */
+  aiPreview?: boolean;
 };
 
 /**
@@ -33,6 +35,7 @@ export function PackagingPreview({
   description,
   price,
   images,
+  aiPreview = false,
 }: PackagingPreviewProps) {
   const [index, setIndex] = useState(0);
   const count = images.length;
@@ -48,7 +51,7 @@ export function PackagingPreview({
         <ImageIcon className="size-4" />
         Preview packaging
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-ftt-navy">{title}</DialogTitle>
           <DialogDescription className="text-ftt-burgundy/65">
@@ -114,6 +117,19 @@ export function PackagingPreview({
               />
             ))}
           </div>
+        ) : null}
+
+        {aiPreview && count > 0 ? (
+          <p className="flex items-start gap-2 rounded-xl border border-ftt-gold/35 bg-ftt-gold/12 px-3 py-2 text-xs leading-5 text-ftt-burgundy/80">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-ftt-gold" />
+            <span>
+              The image shown is an{" "}
+              <strong className="font-semibold text-ftt-navy">
+                AI-generated lookalike
+              </strong>{" "}
+              of the packaging. The final packaging may vary.
+            </span>
+          </p>
         ) : null}
 
         <p className="text-sm leading-6 text-ftt-burgundy/70">{description}</p>

@@ -37,7 +37,7 @@ const FAQ_ITEMS = [
   {
     question: "Do you offer returns?",
     answer:
-      "We accept returns within 7 days of delivery if the piece is significantly different from its description. Because each saree is one-of-one, we encourage you to reach out to us before initiating a return.",
+      "We accept returns within 7 days of delivery if the piece is significantly different from its description. Because each saree is unique, we encourage you to reach out to us before initiating a return.",
   },
   {
     question: "How do you ship the sarees?",
@@ -87,7 +87,7 @@ export default function FaqsPage() {
           FAQs &amp; Policies
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-          Everything you need before bringing a one-of-one piece home — read our
+          Everything you need before bringing a unique piece home — read our
           policies, then the answers to common questions.
         </p>
       </header>

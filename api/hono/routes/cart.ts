@@ -7,6 +7,7 @@ import { errorSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
 import { products } from "@/db/schema";
+import { getCartReservationExpiresAt } from "@/lib/cart/reservation-policy";
 import {
   createReservationToken,
   verifyReservationToken,
@@ -14,8 +15,6 @@ import {
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
-
-const RESERVATION_MINUTES = 30;
 
 export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.openapi(
@@ -57,7 +56,7 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       const { productId } = c.req.valid("json");
       const now = new Date();
-      const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+      const reservedUntil = getCartReservationExpiresAt(now);
       let signedReservationToken: string;
       try {
         signedReservationToken = createReservationToken({
@@ -120,8 +119,8 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
         if (product.stockStatus === "sold") {
           return c.json(
             {
-              code: "ITEM_SOLD",
-              message: "This item has been sold.",
+              code: "PRODUCT_SOLD",
+              message: "This saree has found its next home.",
             },
             409
           );
@@ -129,8 +128,8 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
         return c.json(
           {
-            code: "ITEM_RESERVED",
-            message: "This item is reserved by another buyer.",
+            code: "PRODUCT_RESERVED",
+            message: "This piece has just been reserved.",
           },
           409
         );

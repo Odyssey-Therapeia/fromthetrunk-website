@@ -43,7 +43,6 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
   const [phase, setPhase] = useState<IntroPhase>("checking");
 
   const shouldShowOverlay = phase === "playing" || phase === "revealing";
-  const shouldHoldPage = phase !== "done";
   const isIntroReady = phase === "done";
 
   useEffect(() => {
@@ -51,9 +50,12 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
       const prefersReducedMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
+      const prefersCompactViewport = window.matchMedia(
+        "(max-width: 767px)",
+      ).matches;
       const hasSeenIntro = hasSeenIntroThisSession();
 
-      if (prefersReducedMotion || hasSeenIntro) {
+      if (prefersReducedMotion || prefersCompactViewport || hasSeenIntro) {
         setPhase("done");
         return;
       }
@@ -106,10 +108,7 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
   return (
     <HomeIntroReadyContext.Provider value={isIntroReady}>
       <div
-        className={cn(
-          "transition-opacity duration-700 ease-out",
-          shouldHoldPage ? "opacity-0" : "opacity-100",
-        )}
+        className="transition-opacity duration-700 ease-out"
       >
         {children}
       </div>
