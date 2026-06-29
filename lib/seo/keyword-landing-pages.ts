@@ -48,7 +48,7 @@ export const keywordLandingPages = [
     title: "Pre-Loved Silk Sarees Online India",
     description:
       "Shop authenticated pre-loved silk sarees from From the Trunk: restored, story-logged, and ready for another life.",
-    h1: "Pre-loved silk sarees, authenticated and re-storied",
+    h1: "Pre-loved silk sarees, authenticated and re-stored",
     intro: [
       "Silk is where many saree stories begin: wedding trunks, festive mornings, heirloom gifts, and pieces kept carefully for years. This edit gathers pre-loved silk sarees that have been checked, restored where needed, and prepared for a new wardrobe without pretending they are newly made.",
       "Every listed piece is one of one. We document condition, fabric, provenance where available, and visible signs of age so you can choose with clarity. If you are looking for vintage silk sarees online in India, start here for pieces with craft, memory, and a lighter footprint than buying new.",

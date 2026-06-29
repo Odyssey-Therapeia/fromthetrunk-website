@@ -32,16 +32,13 @@ const NAV_ITEMS = [
 ];
 
 const SHOP_BY_ITEMS = [
-  { href: "/collection#filter-edit", label: "Edit" },
+  { href: "/collection#filter-sort", label: "Sort" },
   { href: "/collection#filter-type", label: "Category" },
   { href: "/collection#filter-fabric", label: "Fabric" },
   { href: "/collection#filter-color", label: "Colour" },
-  { href: "/collection#filter-price", label: "Price" },
+  { href: "/collection#filter-price", label: "Price Range" },
   { href: "/collection#filter-availability", label: "Availability" },
   { href: "/collection#filter-occasion", label: "Occasion" },
-  { href: "/collection#filter-work", label: "Work / Border" },
-  { href: "/collection#filter-pattern", label: "Pattern / Motif" },
-  { href: "/collection#filter-sort", label: "Sort" },
 ];
 
 const ABOUT_ITEMS = [
@@ -317,6 +314,15 @@ export function SiteHeader() {
                               </Link>
                             ))}
                           </div>
+                        ) : link.label === "FAQ & Policies" ? (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block text-lg font-medium text-[#601D1C]"
+                          >
+                            {link.label}
+                          </Link>
                         ) : link.label === "Connect With Us" ? (
                           <button
                             key={link.href}
@@ -329,16 +335,7 @@ export function SiteHeader() {
                           >
                             Connect With Us
                           </button>
-                        ) : (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block text-lg font-medium text-[#601D1C]"
-                          >
-                            {link.label}
-                          </Link>
-                        ),
+                        ) : null,
                       )}
                       <Link
                         href={session ? "/account/profile" : "/account/sign-in"}

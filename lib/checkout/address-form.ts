@@ -28,6 +28,11 @@ export type AddressForm = {
   phoneCountry: CountryCode;
   line1: string;
   line2: string;
+  apartment: string;
+  floorNumber: string;
+  building: string;
+  area: string;
+  landmark: string;
   city: string;
   state: string;
   postalCode: string;
@@ -45,6 +50,11 @@ export const emptyAddress = (email = ""): AddressForm => ({
   phoneCountry: DEFAULT_COUNTRY_CODE,
   line1: "",
   line2: "",
+  apartment: "",
+  floorNumber: "",
+  building: "",
+  area: "",
+  landmark: "",
   city: "",
   state: DEFAULT_STATE,
   postalCode: "",
@@ -90,7 +100,12 @@ export const savedAddressToForm = (
   phone: address.phone ?? "",
   phoneCountry: DEFAULT_COUNTRY_CODE,
   line1: address.line1 ?? "",
-  line2: address.line2 ?? "",
+  line2: "",
+  apartment: "",
+  floorNumber: "",
+  building: "",
+  area: "",
+  landmark: address.line2 ?? "",
   city: address.city ?? "",
   state: address.state ?? DEFAULT_STATE,
   postalCode: address.postalCode ?? "",
@@ -99,11 +114,29 @@ export const savedAddressToForm = (
 
 export const fullName = (address: AddressForm): string => address.fullName.trim();
 
+export const composeAddressLine2 = (address: AddressForm): string =>
+  [
+    address.apartment,
+    address.floorNumber
+      ? /^floor\b/i.test(address.floorNumber.trim())
+        ? address.floorNumber.trim()
+        : `Floor ${address.floorNumber.trim()}`
+      : "",
+    address.building,
+    address.area,
+    address.landmark,
+    address.line2,
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part, index, parts) => parts.indexOf(part) === index)
+    .join(", ");
+
 /** Build the create-order `shippingAddress` payload (matches shippingAddressSchema). */
 export const toOrderAddress = (address: AddressForm) => ({
   name: fullName(address),
   line1: address.line1.trim(),
-  line2: address.line2.trim() || undefined,
+  line2: composeAddressLine2(address) || undefined,
   city: address.city.trim(),
   state: address.state.trim() || undefined,
   postalCode: address.postalCode.trim(),
@@ -120,7 +153,7 @@ export const toSavedAddressPayload = (
   label: options.label,
   name: fullName(address),
   line1: address.line1.trim(),
-  line2: address.line2.trim(),
+  line2: composeAddressLine2(address),
   city: address.city.trim(),
   state: address.state.trim(),
   postalCode: address.postalCode.trim(),

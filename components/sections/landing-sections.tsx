@@ -124,7 +124,7 @@ const storyChapters = [
   {
     label: "Provenance",
     title: "It begins in a trunk.",
-    body: "Every saree arrives with a past - a wardrobe, a wedding, a journey, a woman who wore it before.",
+    body: "Every saree arrives with a past: a wardrobe, a wedding, a journey, a woman who wore it before.",
   },
   {
     label: "Restoration",
@@ -134,12 +134,12 @@ const storyChapters = [
   {
     label: "Styling",
     title: "Then we style it for now.",
-    body: "The saree keeps its memory, but the look becomes current - easy to wear, photograph, and make your own.",
+    body: "The saree keeps its memory, but the look becomes current: easy to wear, photograph, and make your own.",
   },
   {
     label: "Rewear",
     title: "The next chapter is yours.",
-    body: "Not pre-owned. Re-storied. A piece of heritage continues its life with someone new.",
+    body: "Not pre-owned. Re-stored. A piece of heritage continues its life with someone new.",
   },
 ];
 
@@ -368,7 +368,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
               href="/collection"
               className="inline-flex rounded-full bg-[#141D46] px-5 py-3 text-sm font-medium text-[#FDF7F1] shadow-[0_12px_28px_rgba(20,29,70,0.16)] transition hover:bg-[#0E0D0E]"
             >
-              Explore re-storied pieces
+              Explore re-stored pieces
             </Link>
 
             <Link
@@ -789,88 +789,90 @@ export function ConnectWithUsSection() {
           </div>
         </div>
 
-        <form
-          onFocusCapture={() => {
-            if (!startedAtRef.current) startedAtRef.current = Date.now();
-          }}
-          onSubmit={handleSubmit}
-          className="min-w-0 rounded-4xl bg-[#FDF7F1] p-5 text-[#141D46] sm:p-6 md:p-8"
-        >
-          <div className="grid gap-4 sm:gap-5">
-            <input
-              tabIndex={-1}
-              autoComplete="off"
-              value={website}
-              onChange={(event) => setWebsite(event.target.value)}
-              name="website"
-              className="hidden"
-              aria-hidden="true"
-            />
-            <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                Name
-              </span>
+        <div className="flex min-w-0 items-center justify-center rounded-[1.75rem] border border-[#B39152]/22 bg-[#FFFCF8] p-4 shadow-[0_22px_60px_rgba(20,29,70,0.12)] sm:p-6 md:p-8">
+          <form
+            onFocusCapture={() => {
+              if (!startedAtRef.current) startedAtRef.current = Date.now();
+            }}
+            onSubmit={handleSubmit}
+            className="mx-auto w-full max-w-xl rounded-[1.5rem] border border-[#601D1C]/10 bg-[#FDF7F1] p-5 text-[#141D46] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] sm:p-6 md:p-8"
+          >
+            <div className="grid gap-4 sm:gap-5">
               <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-                className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                placeholder="Your name"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(event) => setWebsite(event.target.value)}
+                name="website"
+                className="hidden"
+                aria-hidden="true"
               />
-            </label>
-            <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                Email
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                className="w-full rounded-full border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                placeholder="you@example.com"
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                Message
-              </span>
-              <textarea
-                rows={5}
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                required
-                className="w-full resize-none rounded-3xl border border-[#141D46]/15 bg-[#FDF7F1] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                placeholder="Tell us what you are looking for..."
-              />
-            </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
+                  Name
+                </span>
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  className="w-full rounded-full border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
+                  placeholder="Your name"
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
+                  Email
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                  className="w-full rounded-full border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
+                  Message
+                </span>
+                <textarea
+                  rows={5}
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  required
+                  className="w-full resize-none rounded-3xl border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
+                  placeholder="Tell us what you are looking for..."
+                />
+              </label>
 
-            <div aria-live="polite" className="min-h-5 text-sm leading-6">
-              {status === "success" ? (
-                <p className="text-[#141D46]">
-                  Thanks for reaching out — we&rsquo;ve received your request. Our
-                  team will contact you shortly.
-                </p>
-              ) : null}
-              {status === "error" ? (
-                <p className="text-[#601D1C]">
-                  We couldn&rsquo;t send this right now. Please try again.
-                </p>
-              ) : null}
+              <div aria-live="polite" className="min-h-5 text-sm leading-6">
+                {status === "success" ? (
+                  <p className="text-[#141D46]">
+                    Thanks for reaching out. We&rsquo;ve received your request.
+                    Our team will contact you shortly.
+                  </p>
+                ) : null}
+                {status === "error" ? (
+                  <p className="text-[#601D1C]">
+                    We couldn&rsquo;t send this right now. Please try again.
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] disabled:cursor-not-allowed disabled:opacity-70 sm:py-4"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : null}
+                {isSubmitting ? "Sending..." : "Send Message"}
+              </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] disabled:cursor-not-allowed disabled:opacity-70 sm:py-4"
-            >
-              {isSubmitting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              ) : null}
-              {isSubmitting ? "Sending..." : "Send Message"}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   );

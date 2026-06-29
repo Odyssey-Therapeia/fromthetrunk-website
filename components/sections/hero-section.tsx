@@ -7,8 +7,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUiHaptics } from "@/lib/haptics/use-ui-haptics";
 import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 
-const SLIDE_DURATION_MS = 8500;
-const SLIDE_TRANSITION_MS = 1600;
+const SLIDE_DURATION_MS = 3000;
+const SLIDE_TRANSITION_MS = 900;
 const HERO_GOLD = "#B39152";
 
 // TEMP (debugging): flip back to true to restore auto-advance.
@@ -22,6 +22,7 @@ type HeadlinePart = {
 type Slide = {
   image: string;
   mobileImage: string;
+  fallbackBackground: string;
   imagePosition?: string;
   tabletImagePosition?: string;
   mobileImagePosition?: string;
@@ -39,10 +40,12 @@ const slides: Slide[] = [
   {
     image: "/hero/3-lcp.webp",
     mobileImage: "/hero/mobile_1-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 24% 44%, rgba(179,145,82,0.30), transparent 32%), linear-gradient(135deg, #601D1C 0%, #141D46 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
     mobileImagePosition: "center 80%",
-    eyebrow: "From the Trunk",
+    eyebrow: "FROM THE TRUNK",
     headline: [
       { text: "Crafted for the " },
       { text: "FEARLESS", accent: true },
@@ -57,12 +60,14 @@ const slides: Slide[] = [
       "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0",
   },
   {
-    image: "/hero/4.png",
-    mobileImage: "/hero/mobile_2.png",
+    image: "/hero/4-lcp.webp",
+    mobileImage: "/hero/mobile_2-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 24% 44%, rgba(179,145,82,0.28), transparent 34%), linear-gradient(135deg, #141D46 0%, #050816 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
     mobileImagePosition: "center 80%",
-    eyebrow: "HERITAGE IN MOTION",
+    eyebrow: "FROM THE TRUNK",
     headline: [{ text: "TIMELESS", accent: true }, { text: " by design." }],
     mobileHeadline: [
       [{ text: "TIMELESS", accent: true }],
@@ -74,12 +79,14 @@ const slides: Slide[] = [
       "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
-    image: "/hero/5.png",
-    mobileImage: "/hero/mobile_3.png",
+    image: "/hero/5-lcp.webp",
+    mobileImage: "/hero/mobile_3-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 25% 42%, rgba(179,145,82,0.24), transparent 34%), linear-gradient(135deg, #2F1A2B 0%, #601D1C 48%, #141D46 100%)",
     imagePosition: "center center",
     tabletImagePosition: "56% center",
     mobileImagePosition: "center 80%",
-    eyebrow: "The Final statement",
+    eyebrow: "FROM THE TRUNK",
     headline: [
       { text: "Beautiful " },
       { text: "YOU", accent: true },
@@ -94,12 +101,14 @@ const slides: Slide[] = [
       "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
-    image: "/hero/6.png",
-    mobileImage: "/hero/mobile_4.png",
+    image: "/hero/6-lcp.webp",
+    mobileImage: "/hero/mobile_4-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 25% 42%, rgba(179,145,82,0.24), transparent 34%), linear-gradient(135deg, #141D46 0%, #30151D 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
     mobileImagePosition: "center 80%",
-    eyebrow: "Curated Drop",
+    eyebrow: "THE FINAL STATEMENT",
     headline: [
       { text: "FROM THE " },
       { text: "TRUNK", accent: true },
@@ -123,6 +132,91 @@ const slides: Slide[] = [
     mobileHeadlineClassName: "!text-[clamp(2.65rem,11vw,4rem)] !leading-[0.92]",
   },
 ];
+
+type HeroViewport = "mobile" | "tablet" | "desktop";
+
+function getHeroViewport(): HeroViewport {
+  if (typeof window === "undefined") return "desktop";
+  if (window.innerWidth < 768) return "mobile";
+  if (window.innerWidth < 1024) return "tablet";
+  return "desktop";
+}
+
+function useHeroViewport() {
+  const [viewport, setViewport] = useState<HeroViewport>("desktop");
+
+  useEffect(() => {
+    const updateViewport = () => setViewport(getHeroViewport());
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport, { passive: true });
+
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  return viewport;
+}
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return prefersReducedMotion;
+}
+
+function HeroSlideImage({
+  index,
+  slide,
+  viewport,
+  onFirstImageReady,
+}: {
+  index: number;
+  slide: Slide;
+  viewport: HeroViewport;
+  onFirstImageReady: () => void;
+}) {
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
+  const isFirstSlide = index === 0;
+  const isMobile = viewport === "mobile";
+  const imageSrc = isMobile ? slide.mobileImage : slide.image;
+  const objectPosition = isMobile
+    ? (slide.mobileImagePosition ?? "center center")
+    : viewport === "tablet"
+      ? (slide.tabletImagePosition ?? slide.imagePosition ?? "center center")
+      : (slide.imagePosition ?? "center center");
+
+  if (failedImageSrc === imageSrc) return null;
+
+  return (
+    <Image
+      src={imageSrc}
+      alt=""
+      fill
+      priority={isFirstSlide}
+      loading={isFirstSlide ? undefined : "lazy"}
+      fetchPriority={isFirstSlide ? "high" : "auto"}
+      sizes="100vw"
+      className="object-cover"
+      style={{ objectPosition }}
+      onLoad={isFirstSlide ? onFirstImageReady : undefined}
+      onError={() => {
+        setFailedImageSrc(imageSrc);
+        if (isFirstSlide) {
+          onFirstImageReady();
+        }
+      }}
+    />
+  );
+}
 
 interface HeroSectionProps {
   content?: unknown;
@@ -177,8 +271,8 @@ function HeroCopy({
     <div
       className={
         isMobile
-          ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_4px_18px_rgba(0,0,0,0.35)]"
-          : "drop-shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none lg:w-[clamp(24rem,40vw,44rem)]"
+          ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_5px_22px_rgba(0,0,0,0.48)]"
+          : "drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none lg:w-[clamp(24rem,40vw,44rem)]"
       }
     >
       <p
@@ -231,10 +325,13 @@ export function HeroSection(props: HeroSectionProps) {
   void props;
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [initialHeroImageReady, setInitialHeroImageReady] = useState(false);
+  const viewport = useHeroViewport();
   const lockedRef = useRef(false);
   const unlockTimeoutRef = useRef<number | null>(null);
   const { nudge } = useUiHaptics();
   const isIntroReady = useHomeIntroReady();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const changeSlide = useCallback(
     (nextIndex: number) => {
@@ -249,9 +346,9 @@ export function HeroSection(props: HeroSectionProps) {
 
       unlockTimeoutRef.current = window.setTimeout(() => {
         lockedRef.current = false;
-      }, SLIDE_TRANSITION_MS);
+      }, prefersReducedMotion ? 0 : SLIDE_TRANSITION_MS);
     },
-    [activeImageIndex],
+    [activeImageIndex, prefersReducedMotion],
   );
 
   const nextSlide = useCallback(() => {
@@ -263,7 +360,12 @@ export function HeroSection(props: HeroSectionProps) {
   }, [activeImageIndex, changeSlide]);
 
   useEffect(() => {
-    if (!AUTOPLAY_ENABLED || !isIntroReady) {
+    if (
+      prefersReducedMotion ||
+      !AUTOPLAY_ENABLED ||
+      !isIntroReady ||
+      !initialHeroImageReady
+    ) {
       return;
     }
 
@@ -272,7 +374,13 @@ export function HeroSection(props: HeroSectionProps) {
     }, SLIDE_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeImageIndex, isIntroReady, nextSlide]);
+  }, [
+    activeImageIndex,
+    initialHeroImageReady,
+    isIntroReady,
+    nextSlide,
+    prefersReducedMotion,
+  ]);
 
   useEffect(() => {
     if (isIntroReady) {
@@ -303,82 +411,28 @@ export function HeroSection(props: HeroSectionProps) {
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div
-            key={`${slide.image}-tablet`}
-            aria-hidden={activeImageIndex !== index}
-            className={[
-              "absolute inset-0 hidden opacity-0 transition-opacity ease-in-out md:block lg:hidden",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
-            ].join(" ")}
-            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
-          >
-            {activeImageIndex === index ? (
-              <Image
-                src={slide.image}
-                alt=""
-                fill
-                loading="lazy"
-                sizes="(min-width: 768px) and (max-width: 1023px) 100vw, 0vw"
-                className="object-cover"
-                style={{
-                  objectPosition:
-                  slide.tabletImagePosition ??
-                  slide.imagePosition ??
-                  "center center",
-                }}
-              />
-            ) : null}
-          </div>
-        ))}
-        {slides.map((slide, index) => (
-          <div
             key={slide.image}
             aria-hidden={activeImageIndex !== index}
             className={[
-              "absolute inset-0 hidden opacity-0 transition-opacity ease-in-out lg:block",
+              "absolute inset-0 opacity-0 transition-opacity ease-in-out",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
-            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+            style={{
+              background: slide.fallbackBackground,
+              transitionDuration: prefersReducedMotion
+                ? "0ms"
+                : `${SLIDE_TRANSITION_MS}ms`,
+            }}
           >
             {activeImageIndex === index ? (
-              <Image
-                src={slide.image}
-                alt=""
-                fill
-                loading="lazy"
-                sizes="(min-width: 1024px) 100vw, 0vw"
-                className="object-cover"
-                style={{
-                  objectPosition: slide.imagePosition ?? "center center",
-                }}
+              <HeroSlideImage
+                index={index}
+                slide={slide}
+                viewport={viewport}
+                onFirstImageReady={() => setInitialHeroImageReady(true)}
               />
             ) : null}
-          </div>
-        ))}
-        {slides.map((slide, index) => (
-          <div
-            key={`${slide.image}-mobile`}
-            aria-hidden={activeImageIndex !== index}
-            className={[
-              "absolute inset-0 opacity-0 transition-opacity ease-in-out md:hidden",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
-            ].join(" ")}
-            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
-          >
-            {activeImageIndex === index ? (
-              <Image
-                src={slide.mobileImage}
-                alt=""
-                fill
-                priority={index === 0}
-                fetchPriority={index === 0 ? "high" : "auto"}
-                loading={index === 0 ? undefined : "lazy"}
-                sizes="(max-width: 767px) 100vw, 0vw"
-                className="object-cover"
-                style={{
-                  objectPosition: slide.mobileImagePosition ?? "center center",
-                }}
-              />
-            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,6,20,0.72),rgba(3,6,20,0.24)_48%,rgba(3,6,20,0.46))] md:bg-[linear-gradient(90deg,rgba(3,6,20,0.64),rgba(3,6,20,0.18)_48%,rgba(3,6,20,0.36))]" />
           </div>
         ))}
       </div>
@@ -422,7 +476,11 @@ export function HeroSection(props: HeroSectionProps) {
               "absolute inset-0 transition-opacity ease-in-out",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
-            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+            style={{
+              transitionDuration: prefersReducedMotion
+                ? "0ms"
+                : `${SLIDE_TRANSITION_MS}ms`,
+            }}
           >
             <div
               className={[

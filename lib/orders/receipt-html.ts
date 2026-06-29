@@ -311,7 +311,7 @@ export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
   <body>
     <main>
       <div class="brand-mark">
-        <img src="${escapeHtml(logoUrl)}" alt="From the Trunk">
+        <img src="${escapeHtml(logoUrl)}" width="160" height="89" alt="From the Trunk">
       </div>
       <header>
         <div>

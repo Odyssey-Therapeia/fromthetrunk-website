@@ -19,7 +19,7 @@ export default function ReturnPolicyPage() {
           Return & Refund Policy
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: April 2026
+          Last updated: June 29, 2026
         </p>
       </div>
 

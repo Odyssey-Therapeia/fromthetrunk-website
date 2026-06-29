@@ -69,7 +69,7 @@ const ENABLE_PACKAGING_SELECTION: boolean = false;
 const PACKAGING_CONTENTS = [
   {
     title: "The Box",
-    body: "A simple brown box. No excess, no waste — just enough to keep your saree safe on its journey to you.",
+    body: "A simple brown box. No excess, no waste. Just enough to keep your saree safe on its journey to you.",
   },
   {
     title: "The Saree Bag",
@@ -81,11 +81,11 @@ const PACKAGING_CONTENTS = [
   },
   {
     title: "The Thank You Note",
-    body: "A small note from us to you. From our trunk to yours.",
+    body: "A small note from our trunk to yours.",
   },
   {
     title: "The Surprise",
-    body: "There's one more thing inside the box. We won't say what it is. Some things are better discovered.",
+    body: "We won’t say what it is. Some things are better discovered.",
   },
 ];
 
@@ -250,7 +250,7 @@ export function PackagingStep({
               {price}
             </span>
             <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-ftt-burgundy/55">
-              Shipped by Shiprocket
+              Shipped by Shiprocket / DTDC
             </span>
           </div>
         </div>
@@ -274,7 +274,7 @@ export function PackagingStep({
         </ul>
 
         <p className="mt-6 border-t border-ftt-border pt-5 text-sm leading-6 text-ftt-burgundy/70">
-          Every element is chosen to reflect what we believe in — that nothing
+          Every element is chosen to reflect what we believe in: that nothing
           beautiful should go to waste. Not sarees. Not fabric. Not the small
           moments of joy that come with opening something made with care.
         </p>
@@ -283,7 +283,7 @@ export function PackagingStep({
           <PackagingPreview
             title="From the Trunk Packaging"
             subtitle="Made from recycled sarees"
-            description="A simple brown box, a saree bag stitched from a recycled saree, a care card, a thank-you note, and a little surprise — packed so nothing beautiful goes to waste."
+            description="A simple brown box, a saree bag stitched from a recycled saree, a care card, a thank-you note, and a little surprise. Packed so nothing beautiful goes to waste."
             price={price}
             images={NORMAL_PACKAGING_IMAGES}
           />

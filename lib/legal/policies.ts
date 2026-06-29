@@ -32,7 +32,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Your data",
     description:
       "How From the Trunk collects, uses, protects, and handles personal information.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "information-we-collect",
@@ -143,7 +143,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Returns",
     description:
       "How returns, refunds, exchanges, and unique product concerns are handled.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "return-window",
@@ -241,7 +241,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Delivery",
     description:
       "Processing time, packaging, tracking, shipping charges, and delivery support.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "processing",
@@ -254,7 +254,14 @@ export const policies: LegalPolicy[] = [
         id: "packaging",
         title: "Packaging",
         body: [
-          "Every saree is carefully folded, wrapped in muslin, and packed with care. Depending on your selected delivery option, your order may be shipped in normal care packaging or premium trunk-inspired packaging.",
+          "Every saree is carefully wrapped in tissue wrap, packed in our signature recycled saree cloth bag, and nestled in our brand box.",
+        ],
+      },
+      {
+        id: "courier-partners",
+        title: "Courier partners",
+        body: [
+          "Orders are dispatched through Shiprocket and/or DTDC for delivery across PAN India.",
         ],
       },
       {
@@ -263,15 +270,14 @@ export const policies: LegalPolicy[] = [
         body: [
           "Metro cities in India: 3–7 business days after dispatch.",
           "Other Indian locations: 5–10 business days after dispatch.",
-          "International orders: timeline depends on destination, customs, and courier partner.",
-          "These are estimates and may vary due to courier delays, weather, public holidays, strikes, customs, or force majeure events.",
+          "These are estimates and may vary due to courier delays, weather, public holidays, strikes, or force majeure events.",
         ],
       },
       {
         id: "shipping-charges",
         title: "Shipping charges",
         body: [
-          "Shipping charges are displayed at checkout before payment. Premium packaging, express shipping, or international shipping may carry additional charges.",
+          "Shipping charges are displayed at checkout before payment. Premium packaging or express shipping may carry additional charges.",
         ],
       },
       {
@@ -290,9 +296,9 @@ export const policies: LegalPolicy[] = [
       },
       {
         id: "international",
-        title: "International orders",
+        title: "International shipping",
         body: [
-          "International customers are responsible for customs duties, import taxes, clearance charges, or local fees charged by the destination country.",
+          "We currently ship across PAN India only. International shipping is not available.",
         ],
       },
       {
@@ -317,7 +323,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Terms",
     description:
       "The terms that govern use of the website, accounts, orders, listings, and payments.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "about",
@@ -396,7 +402,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Authenticity",
     description:
       "How we authenticate, grade, and document every pre-loved saree before it is listed.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "authentication",
@@ -451,7 +457,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Care",
     description:
       "How to store, wear, and care for your pre-loved saree, and how we package it.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "general-care",
@@ -464,7 +470,7 @@ export const policies: LegalPolicy[] = [
         id: "storage",
         title: "Storage",
         body: [
-          "Store your saree in the muslin wrap provided. Keep it away from direct sunlight, humidity, perfume, and plastic covers. Refold occasionally to avoid permanent crease lines.",
+          "Store your saree in a breathable muslin or cotton cloth bag. Keep it away from direct sunlight, humidity, perfume, and plastic covers. Refold occasionally to avoid permanent crease lines.",
         ],
       },
       {
@@ -502,8 +508,8 @@ export const policies: LegalPolicy[] = [
     title: "Cancellation Policy",
     eyebrow: "Cancellations",
     description:
-      "How and when an order can be cancelled — by you, or by From the Trunk.",
-    lastUpdated: "[DATE]",
+      "How and when an order can be cancelled by you, or by From the Trunk.",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "before-dispatch",
@@ -550,7 +556,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Consign",
     description:
       "How to submit a saree to From the Trunk for consignment and curation.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "what-to-submit",
@@ -605,7 +611,7 @@ export const policies: LegalPolicy[] = [
         id: "contact",
         title: "Contact",
         body: [
-          `Submit to ${CONTACT_EMAIL} with the subject “Saree Submission — [Your Name]”.`,
+          `Submit to ${CONTACT_EMAIL} with the subject “Saree Submission: [Your Name]”.`,
         ],
       },
     ],
@@ -616,7 +622,7 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Support",
     description:
       "How to reach us, and how we acknowledge and resolve grievances.",
-    lastUpdated: "[DATE]",
+    lastUpdated: "June 29, 2026",
     sections: [
       {
         id: "customer-support",

@@ -23,10 +23,6 @@ const campaignBanners: CampaignBanner[] = [
     image: "/banner/newbanner3.png",
     alt: "Provenance Promise, Every Weave Remembers campaign banner",
   },
-  {
-    image: "/banner/newbanner4.png",
-    alt: "Complimentary Styling, Find the Saree That Finds You campaign banner",
-  },
 ];
 
 export function CampaignBannerSection() {

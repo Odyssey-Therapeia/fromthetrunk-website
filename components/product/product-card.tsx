@@ -99,7 +99,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               </div>
             )}
             {isReserved && (
-              <Badge className="absolute left-2 top-2 @sm:left-4 @sm:top-4 text-[10px] @sm:text-xs bg-amber-100/90 text-trunk-brown shadow-soft">
+              <Badge className="absolute left-2 top-2 @sm:left-4 @sm:top-4 bg-[#B39152]/18 text-[10px] text-[#601D1C] shadow-soft @sm:text-xs">
                 Reserved
               </Badge>
             )}

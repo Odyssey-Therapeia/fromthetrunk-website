@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { buildClientCallbackUrl } from "@/lib/auth/client-callback-url";
 import {
+  composeAddressLine2,
   emptyAddress,
   hasErrors,
   type AddressFieldErrors,
@@ -626,7 +627,7 @@ function SignUpOtpPanel({
         isDefault: true,
         label: addressLabel,
         line1: normalizedAddress.line1.trim(),
-        line2: normalizedAddress.line2.trim(),
+        line2: composeAddressLine2(normalizedAddress),
         name: normalizedAddress.fullName.trim(),
         phone: normalizedAddress.phone.trim(),
         postalCode: normalizedAddress.postalCode.trim(),

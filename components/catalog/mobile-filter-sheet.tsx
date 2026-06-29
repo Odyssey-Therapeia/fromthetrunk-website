@@ -26,6 +26,7 @@ export type CatalogFilterGroup = {
     | "pattern"
     | "price"
     | "sort"
+    | "tags"
     | "type"
     | "work";
   selected: string[];
@@ -37,6 +38,7 @@ type MobileFilterSheetProps = {
   activeCount: number;
   groups: CatalogFilterGroup[];
   perPage?: number;
+  preservedParams?: Partial<Record<"collection" | "type", string[]>>;
 };
 
 const encodeSelections = (groups: CatalogFilterGroup[]) =>
@@ -46,6 +48,7 @@ export function MobileFilterSheet({
   activeCount,
   groups,
   perPage,
+  preservedParams,
 }: MobileFilterSheetProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -90,6 +93,12 @@ export function MobileFilterSheet({
 
   const buildHref = (nextDraft: Record<string, string[]>) => {
     const params = new URLSearchParams();
+    for (const [param, values] of Object.entries(preservedParams ?? {})) {
+      for (const value of values ?? []) {
+        if (value) params.append(param, value);
+      }
+    }
+
     for (const group of groups) {
       const selected = nextDraft[group.key] ?? [];
       if (selected.length === 0) continue;
@@ -157,7 +166,7 @@ export function MobileFilterSheet({
               Refine
             </p>
             <h2 id="mobile-filter-title" className="mt-1 font-serif text-2xl text-ftt-navy">
-              Refine the trunk
+              Explore the trunk
             </h2>
           </div>
           <button

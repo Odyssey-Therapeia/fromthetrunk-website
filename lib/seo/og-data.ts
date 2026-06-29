@@ -30,7 +30,7 @@ export function extractPdpOgData(product: Product): PdpOgData {
   const displayDetails = getProductDisplayDetails(product);
   const imageUrl = resolveMediaURL(product.images?.[0]) ?? null;
 
-  const title = `${product.name} — ${displayDetails.fabric}`;
+  const title = `${product.name}: ${displayDetails.fabric}`;
 
   return {
     title,

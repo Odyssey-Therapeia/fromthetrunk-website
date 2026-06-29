@@ -22,7 +22,7 @@ const PROMISES = [
   },
   {
     title: "Secure checkout",
-    body: "Payments are processed through trusted gateway partners — we never store your card details.",
+    body: "Payments are processed through trusted gateway partners. We never store your card details.",
   },
   {
     title: "Grievance support",
@@ -51,7 +51,7 @@ export default function PoliciesPage() {
               </h1>
               <p className="mt-6 max-w-xl text-sm leading-7 text-ftt-ivory/75 sm:text-base">
                 Everything you need to know before bringing a unique saree
-                home — privacy, returns, shipping, authentication, care, and
+                home: privacy, returns, shipping, authentication, care, and
                 customer support.
               </p>
             </div>

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { TrackPageView } from "@/components/analytics/track-page-view";
@@ -32,6 +31,7 @@ import type {
   CatalogSearchFilters,
 } from "@/lib/ports/catalog-search";
 import {
+  CANONICAL_FABRIC_FILTERS,
   colorSwatch,
   displayFacetLabel,
   normalizeColorSlug,
@@ -62,15 +62,23 @@ const MAX_VISIBLE_PRODUCTS = 100;
 
 const shortSortLabels: Record<ProductSortOption, string> = {
   latest: "Newest",
-  "price-low-to-high": "Low to High",
-  "price-high-to-low": "High to Low",
+  "price-low-to-high": "Price-(Low to High)",
+  "price-high-to-low": "Price-(High to Low)",
 };
 
 const PRICE_RANGES = [
   { label: "Under ₹5k", min: undefined, max: 500000 },
-  { label: "₹5k - ₹15k", min: 500000, max: 1500000 },
-  { label: "₹15k - ₹50k", min: 1500000, max: 5000000 },
+  { label: "₹5k to ₹15k", min: 500000, max: 1500000 },
+  { label: "₹15k to ₹50k", min: 1500000, max: 5000000 },
   { label: "₹50k+", min: 5000000, max: undefined },
+] as const;
+
+const SLEEVE_LENGTH_FILTERS = [
+  { label: "Sleeveless", value: "sleeveless" },
+  { label: "Short Sleeve", value: "short-sleeve" },
+  { label: "Elbow Sleeve", value: "elbow-sleeve" },
+  { label: "Three Quarter Sleeve", value: "three-quarter-sleeve" },
+  { label: "Full Sleeve", value: "full-sleeve" },
 ] as const;
 
 type CollectionSearchParams = {
@@ -105,7 +113,7 @@ export async function generateMetadata({
     ...publicPageMetadata({
       title: "Collection",
       description:
-        "Discover curated, authenticated pre-loved luxury sarees from private wardrobes, couture archives, and collector trunks.",
+        "Discover curated, authenticated pre-loved luxury sarees from private wardrobes and collector trunks.",
       path: "/collection",
     }),
     robots: hasFilters
@@ -266,6 +274,7 @@ export default async function CollectionPage({
       ? "available"
       : undefined;
   const activeTags = toArray(resolvedSearchParams?.tags);
+  const isBlouseMode = activeTypes.includes("blouse");
 
   const hasFilters =
     activeTypes.length > 0 ||
@@ -476,12 +485,10 @@ export default async function CollectionPage({
     }
   }
 
-  const collectionCount = collections.length;
   const activeCollectionLabel = activeCollection?.name ?? "All pieces";
-  const filterDescription =
-    activeCollection?.description ??
-    cms?.filtersBody ??
-    "Choose an edit, then refine by category, fabric, colour, price, occasion, work, and availability.";
+  const filterDescription = isBlouseMode
+    ? "Find your blouse, refine by sleeve length and colour."
+    : "Find your pre-loved saree, refine by category, fabric, colour, price, occasion, and availability.";
   const buildUrl = (patch: BuildUrlPatch = {}) => {
     const nextCollectionSlug =
       "collectionSlug" in patch
@@ -563,12 +570,42 @@ export default async function CollectionPage({
         value,
       }));
 
-  const fabricOptions = toOptions(facets.fabric);
+  const fabricOptions = Array.from(
+    new Set([
+      ...CANONICAL_FABRIC_FILTERS,
+      ...Object.keys(facets.fabric).filter(Boolean),
+    ]),
+  )
+    .map((value) => ({
+      count: facets.fabric[value] ?? 0,
+      label: displayFacetLabel(value),
+      value,
+    }))
+    .sort((a, b) => {
+      const countDelta = b.count - a.count;
+      if (countDelta !== 0) return countDelta;
+      const canonicalDelta =
+        CANONICAL_FABRIC_FILTERS.indexOf(
+          a.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
+        ) -
+        CANONICAL_FABRIC_FILTERS.indexOf(
+          b.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
+        );
+      if (
+        CANONICAL_FABRIC_FILTERS.includes(
+          a.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
+        ) &&
+        CANONICAL_FABRIC_FILTERS.includes(
+          b.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
+        )
+      ) {
+        return canonicalDelta;
+      }
+      return a.label.localeCompare(b.label);
+    });
   const typeOptions = toOptions(facets.type);
   const colorOptions = toOptions(facets.color, { color: true });
   const occasionOptions = toOptions(facets.occasion);
-  const workOptions = toOptions(facets.work);
-  const patternOptions = toOptions(facets.pattern);
   const availableCount = facets.availability.available ?? 0;
   const activePriceValue =
     typeof activePriceMin === "number" || typeof activePriceMax === "number"
@@ -589,23 +626,27 @@ export default async function CollectionPage({
     label: shortSortLabels[option.value],
     value: option.value,
   }));
-  const collectionOptions: CatalogFilterOption[] = collections.map((collection) => ({
-    count: undefined,
-    label: collection.name,
-    value: collection.slug,
-  }));
   const keepFacetGroup = (options: CatalogFilterOption[]) => options.length >= 2;
-  const filterGroups: CatalogFilterGroup[] = [
-    collectionOptions.length > 0
-      ? {
-          key: "collection",
-          options: collectionOptions,
-          param: "collection",
-          selected: activeCollectionSlug ? [activeCollectionSlug] : [],
-          selection: "single",
-          title: "Edit",
-        }
-      : null,
+  const sleeveLengthOptions: CatalogFilterOption[] = SLEEVE_LENGTH_FILTERS.map((option) => ({
+    count: facets.tags[option.value] ?? undefined,
+    label: option.label,
+    value: option.value,
+  }));
+  const sleeveLengthValues = new Set(
+    sleeveLengthOptions.map((option) => option.value),
+  );
+  const activeSleeveLengthTags = activeTags.filter((tag) =>
+    sleeveLengthValues.has(tag),
+  );
+  const sareeFilterGroups: CatalogFilterGroup[] = [
+    {
+      key: "sort",
+      options: sortOptions,
+      param: "sort",
+      selected: [activeSort],
+      selection: "single",
+      title: "Sort",
+    },
     keepFacetGroup(typeOptions)
       ? {
           key: "type",
@@ -642,7 +683,7 @@ export default async function CollectionPage({
       param: "price",
       selected: activePriceValue ? [activePriceValue] : [],
       selection: "single",
-      title: "Price",
+      title: "Price Range",
     },
     {
       key: "availability",
@@ -662,26 +703,8 @@ export default async function CollectionPage({
           title: "Occasion",
         }
       : null,
-    keepFacetGroup(workOptions)
-      ? {
-          key: "work",
-          options: workOptions,
-          param: "work",
-          selected: activeWorks,
-          selection: "multi",
-          title: "Work / Border",
-        }
-      : null,
-    keepFacetGroup(patternOptions)
-      ? {
-          key: "pattern",
-          options: patternOptions,
-          param: "pattern",
-          selected: activePatterns,
-          selection: "multi",
-          title: "Pattern / Motif",
-        }
-      : null,
+  ].filter((group): group is CatalogFilterGroup => Boolean(group));
+  const blouseFilterGroups: CatalogFilterGroup[] = [
     {
       key: "sort",
       options: sortOptions,
@@ -690,7 +713,24 @@ export default async function CollectionPage({
       selection: "single",
       title: "Sort",
     },
+    {
+      key: "sleeve-length",
+      options: sleeveLengthOptions,
+      param: "tags",
+      selected: activeSleeveLengthTags,
+      selection: "single",
+      title: "Sleeve Length",
+    },
+    {
+      key: "color",
+      options: colorOptions,
+      param: "color",
+      selected: activeColors,
+      selection: "multi",
+      title: "Colour",
+    },
   ].filter((group): group is CatalogFilterGroup => Boolean(group));
+  const filterGroups = isBlouseMode ? blouseFilterGroups : sareeFilterGroups;
   const appliedFilters: Array<{ label: string; href: string; kind?: string }> =
     [];
 
@@ -933,6 +973,14 @@ export default async function CollectionPage({
           page: 1,
           sort: (nextSelected[0] as ProductSortOption | undefined) ?? DEFAULT_PRODUCT_SORT,
         });
+      case "tags": {
+        const groupValues = new Set(group.options.map((entry) => entry.value));
+        const retainedTags = activeTags.filter((tag) => !groupValues.has(tag));
+        return buildUrl({
+          page: 1,
+          tags: [...retainedTags, ...nextSelected],
+        });
+      }
     }
   };
 
@@ -941,7 +989,7 @@ export default async function CollectionPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-[#74531B]">
-            Refine the trunk
+            Explore the trunk
           </p>
           <h2 className="mt-1 font-serif text-2xl leading-none text-[var(--ftt-royal-navy)]">
             Filters
@@ -1063,24 +1111,31 @@ export default async function CollectionPage({
                 </p>
 
                 <h1 className="max-w-[12ch] text-balance font-serif text-4xl font-medium leading-[0.98] text-[#FDF7F1] sm:text-5xl lg:text-6xl lg:leading-[0.96]">
-                  {cms?.title ?? "Curated pre-loved sarees"}
+                  {cms?.title ? (
+                    cms.title
+                  ) : (
+                    <>
+                      Curated{" "}
+                      <span className="whitespace-nowrap">pre-loved</span>{" "}
+                      sarees
+                    </>
+                  )}
                 </h1>
 
                 <p className="max-w-md text-pretty text-sm leading-6 text-[#FDF7F1]/78 sm:text-base lg:leading-7">
                   {cms?.description ??
-                    "Discover heirlooms from private wardrobes, couture archives, and collector trunks. Each piece is authenticated and accompanied by its story."}
+                    "Discover heirlooms from private wardrobes and collector trunks. Each piece is authenticated and accompanied by its story."}
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <HeroStat label="Live pieces" value={String(totalDocs)} />
-                <HeroStat label="Edits" value={String(collectionCount)} />
                 <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
                   <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
                     Promise
                   </p>
                   <p className="mt-2 text-sm font-medium text-[var(--ftt-ivory)]">
-                    Authenticated, graded, re-storied
+                    Authenticated, graded, re-stored
                   </p>
                 </div>
               </div>
@@ -1088,18 +1143,9 @@ export default async function CollectionPage({
           </div>
 
           <div className="relative min-h-[300px] overflow-hidden bg-[#141D46] sm:min-h-[340px] md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
-            <Image
-              src={COLLECTION_BANNER_IMAGES[0].src}
-              alt={COLLECTION_BANNER_IMAGES[0].alt}
-              fill
-              priority
-              fetchPriority="high"
-              sizes="(max-width: 1024px) 100vw, 52vw"
-              className="object-contain object-top"
-            />
             <CollectionHeroCarousel
               images={COLLECTION_BANNER_IMAGES}
-              prioritizeFirst={false}
+              prioritizeFirst
             />
           </div>
         </section>
@@ -1139,6 +1185,10 @@ export default async function CollectionPage({
               <MobileFilterSheet
                 activeCount={appliedFilterCount}
                 groups={filterGroups}
+                preservedParams={{
+                  collection: activeCollectionSlug ? [activeCollectionSlug] : [],
+                  type: isBlouseMode ? activeTypes : [],
+                }}
                 perPage={
                   activeItemsPerPage === DEFAULT_ITEMS_PER_PAGE
                     ? undefined
@@ -1209,7 +1259,7 @@ export default async function CollectionPage({
             <div className="flex flex-col gap-3 border-b border-[var(--ftt-border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-[#74531B]">
-                  Current edit
+                  Current view
                 </p>
                 <h2 className="mt-1 font-serif text-3xl text-[var(--ftt-royal-navy)]">
                   {activeCollectionLabel}
