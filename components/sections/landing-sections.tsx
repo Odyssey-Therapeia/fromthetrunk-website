@@ -117,29 +117,35 @@ const testimonials = [
   },
 ];
 
-const story =
-  "From family trunks to modern wardrobes, every saree we choose carries a life before this one. We authenticate, restore, and style each piece with care, so its next chapter feels as meaningful as its first.";
+const story = [
+  "There’s something quietly powerful about a saree. It carries more than fabric, it holds memories, milestones, and moments that once meant everything.",
+  "In so many homes, these beautiful pieces lie tucked away, preserved but forgotten.",
+  "From the Trunk was born from a simple, heartfelt belief: these sarees still have stories left to tell.",
+  "By giving your pre-loved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship. Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
+  "And in doing so, you’re also making a conscious, sustainable choice, reducing waste while celebrating timeless fashion.",
+  "At From the Trunk, we don’t just collect sarees. We honor them. We preserve their stories. And we help them be loved all over again.",
+].join(" ");
 
 const storyChapters = [
   {
-    label: "Provenance",
-    title: "It begins in a trunk.",
-    body: "Every saree arrives with a past: a wardrobe, a wedding, a journey, a woman who wore it before.",
+    label: "Memory",
+    title: "More than fabric.",
+    body: "A saree holds memories, milestones, and moments that once meant everything.",
   },
   {
-    label: "Restoration",
-    title: "We care before we curate.",
-    body: "Each piece is checked, refreshed, repaired where needed, and prepared with the attention old textiles deserve.",
+    label: "Rediscovery",
+    title: "Preserved, not forgotten.",
+    body: "Beautiful pieces tucked away in homes still have stories left to tell.",
   },
   {
-    label: "Styling",
-    title: "Then we style it for now.",
-    body: "The saree keeps its memory, but the look becomes current: easy to wear, photograph, and make your own.",
+    label: "Second Life",
+    title: "A bridge between journeys.",
+    body: "Passing on a pre-loved saree carries heritage, emotion, and craftsmanship forward.",
   },
   {
-    label: "Rewear",
-    title: "The next chapter is yours.",
-    body: "Not pre-owned. Re-stored. A piece of heritage continues its life with someone new.",
+    label: "Conscious Choice",
+    title: "Loved all over again.",
+    body: "Each re-storied saree reduces waste while celebrating timeless fashion.",
   },
 ];
 
@@ -252,7 +258,7 @@ export function SectionSeparator() {
 
 export function OurStorySection({ images }: { images: LandingImage[] }) {
   const storyImages = fillImages(images);
-  const { ref, visibleText } = useTypewriter(story);
+  const { ref, visibleText } = useTypewriter(story, 8);
   const [activeImage, setActiveImage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
