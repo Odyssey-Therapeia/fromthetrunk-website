@@ -3,12 +3,14 @@ import Link from "next/link";
 
 import { SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { formatCurrency } from "@/lib/formatters";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Shipping Policy",
   description:
     "Shipping rates, delivery timelines, and packaging details for From the Trunk orders.",
-};
+  path: "/shipping-policy",
+});
 
 export default function ShippingPolicyPage() {
   return (

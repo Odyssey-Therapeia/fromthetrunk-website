@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { DEFAULT_WHATSAPP_MESSAGE, whatsappLink } from "@/lib/config/site";
+import { cn } from "@/lib/utils";
 
 const BUBBLE_DISMISSED_KEY = "ftt-wa-bubble-dismissed";
 
@@ -29,7 +30,19 @@ export function FloatingWhatsApp() {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const [showBubble, setShowBubble] = useState(false);
-  const suppressAutoBubble = pathname === "/founders" || pathname === "/our-team";
+  const mobileReadingPage =
+    pathname === "/founders" ||
+    pathname === "/our-team" ||
+    pathname === "/our-story" ||
+    pathname.startsWith("/policies") ||
+    pathname.endsWith("-policy") ||
+    pathname === "/terms-of-service";
+  const commerceOrAuthPage =
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/cart") ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/collection/");
+  const suppressAutoBubble = mobileReadingPage || commerceOrAuthPage;
 
   useEffect(() => {
     if (suppressAutoBubble) return;
@@ -51,7 +64,10 @@ export function FloatingWhatsApp() {
     // Full-viewport drag boundary; pointer-events-none so it never blocks the page.
     <div
       ref={constraintsRef}
-      className="pointer-events-none fixed inset-0 z-60 print:hidden"
+      className={cn(
+        "pointer-events-none fixed inset-0 z-60 print:hidden",
+        mobileReadingPage && "max-lg:hidden",
+      )}
     >
       <motion.div
         drag
@@ -67,7 +83,10 @@ export function FloatingWhatsApp() {
             draggingRef.current = false;
           }, 0);
         }}
-        className="pointer-events-auto absolute bottom-24 right-5 flex touch-none cursor-grab flex-col items-end gap-3 active:cursor-grabbing sm:bottom-6"
+        className={cn(
+          "pointer-events-auto absolute right-4 flex touch-none cursor-grab flex-col items-end gap-3 active:cursor-grabbing sm:right-6",
+          commerceOrAuthPage ? "bottom-5 sm:bottom-6" : "bottom-24 sm:bottom-6",
+        )}
       >
         {showBubble && !suppressAutoBubble ? (
           <motion.div

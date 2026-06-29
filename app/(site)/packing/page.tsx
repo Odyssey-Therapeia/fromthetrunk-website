@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
+import { publicPageMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = publicPageMetadata({
   title: "Packing",
   description:
     "How From the Trunk prepares, protects, and dispatches each saree order.",
-};
+  path: "/packing",
+});
 
 export default function PackingPage() {
   return (

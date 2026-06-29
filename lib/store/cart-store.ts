@@ -23,7 +23,20 @@ export interface CartItem {
 async function releaseReservation(
   productId: string,
   reservationToken?: null | string,
+  reservedUntil?: null | string,
 ): Promise<void> {
+  const reservationExpiry = reservedUntil ? new Date(reservedUntil) : null;
+  const reservationHasExpired =
+    reservationExpiry != null &&
+    !Number.isNaN(reservationExpiry.getTime()) &&
+    reservationExpiry <= new Date();
+
+  // Old local carts may have a reservation timestamp but no signed token. The
+  // server must reject active tokenless releases, so skip that noisy request.
+  if (!reservationToken && !reservationHasExpired) {
+    return;
+  }
+
   try {
     await fetch("/api/v2/cart/release", {
       method: "POST",
@@ -95,7 +108,7 @@ export const useCartStore = create<CartState>()(
       removeItem: (id) => {
         const item = get().items.find((cartItem) => cartItem.id === id);
         if (item?.reservedUntil) {
-          releaseReservation(id, item.reservationToken);
+          releaseReservation(id, item.reservationToken, item.reservedUntil);
         }
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
@@ -111,7 +124,11 @@ export const useCartStore = create<CartState>()(
         const currentItems = get().items;
         for (const item of currentItems) {
           if (item.reservedUntil) {
-            releaseReservation(item.id, item.reservationToken);
+            releaseReservation(
+              item.id,
+              item.reservationToken,
+              item.reservedUntil
+            );
           }
         }
         set({ items: [] });

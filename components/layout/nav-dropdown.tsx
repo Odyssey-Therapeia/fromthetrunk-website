@@ -46,7 +46,7 @@ export function NavDropdown({
 
       {open ? (
         <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-4">
-          <div className="w-48 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 shadow-xl shadow-[#601D1C]/10">
+          <div className="w-64 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 shadow-xl shadow-[#601D1C]/10">
             {items.map((item) => (
               <Link
                 key={item.href}

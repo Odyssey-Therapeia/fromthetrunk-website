@@ -21,17 +21,19 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
 import type { Product } from "@/types/domain";
 import type { HomePageContent } from "@/types/site-content";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "From the Trunk | Pre-Loved Luxury Sarees with Provenance",
   description:
     "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance, a story woven in silk, and careful restoration.",
-};
+  path: "/",
+});
 
 const homeCoverImage = "/media/home-cover.png";
 

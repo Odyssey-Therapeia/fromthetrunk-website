@@ -139,9 +139,9 @@ export default function AddressesPage() {
   const activeMutation = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+    <div className="min-w-0 space-y-6">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-ftt-gold">
             Addresses
           </p>
@@ -166,7 +166,7 @@ export default function AddressesPage() {
       ) : addresses.length === 0 ? (
         <AddressState message="No addresses saved yet. Add your first delivery location below." />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid max-w-full gap-4 md:grid-cols-2 [&>*]:min-w-0">
           {addresses.map((address) => (
             <AddressCard
               key={address.id}
@@ -190,7 +190,7 @@ export default function AddressesPage() {
       )}
 
       <form
-        className="ftt-account-glow-card rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6"
+        className="ftt-account-glow-card min-w-0 rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           if (editingId) {
@@ -219,7 +219,7 @@ export default function AddressesPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="mt-6 grid max-w-full gap-4 md:grid-cols-2 [&>*]:min-w-0">
           <FormField label="Label" htmlFor="label">
             <Input
               id="label"
@@ -245,7 +245,7 @@ export default function AddressesPage() {
           </FormField>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="mt-4 grid max-w-full gap-4 lg:grid-cols-[1.1fr_0.9fr] [&>*]:min-w-0">
           <FormField label="Street address" htmlFor="line1">
             <Input
               id="line1"
@@ -269,7 +269,7 @@ export default function AddressesPage() {
           </FormField>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid max-w-full gap-4 md:grid-cols-3 [&>*]:min-w-0">
           <FormField label="City" htmlFor="city">
             <SuggestInput
               id="city"
@@ -320,7 +320,7 @@ export default function AddressesPage() {
           </FormField>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-4 grid max-w-full gap-4 md:grid-cols-2 [&>*]:min-w-0">
           <FormField label="Country" htmlFor="country">
             <SuggestInput
               id="country"
@@ -449,8 +449,8 @@ function AddressCard({
           : "border-ftt-border bg-ftt-card text-ftt-navy",
       )}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           <div
             className={cn(
               "grid size-10 shrink-0 place-items-center rounded-full",
@@ -461,11 +461,11 @@ function AddressCard({
           >
             <Home className="size-4" />
           </div>
-          <div>
-            <p className="font-serif text-2xl leading-none">
+          <div className="min-w-0">
+            <p className="break-words font-serif text-2xl leading-none">
               {address.label || "Address"}
             </p>
-            <p className={cn("mt-1 text-xs uppercase tracking-[0.18em]", lineClass)}>
+            <p className={cn("mt-1 break-words text-xs uppercase tracking-[0.18em]", lineClass)}>
               {address.name || "Recipient"}
             </p>
           </div>
@@ -478,7 +478,7 @@ function AddressCard({
         ) : null}
       </div>
 
-      <div className={cn("mt-5 space-y-1 text-sm leading-6", lineClass)}>
+      <div className={cn("mt-5 space-y-1 break-words text-sm leading-6", lineClass)}>
         <p>{address.line1}</p>
         {address.line2 ? <p>{address.line2}</p> : null}
         <p>

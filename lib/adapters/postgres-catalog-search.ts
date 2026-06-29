@@ -5,8 +5,12 @@
  * products and returns hydrated ProductWithRelations rows + facet counts.
  *
  * Filter mapping:
- *   type         → SQL subquery: WHERE typeId IN (SELECT id FROM product_types WHERE slug = ?)
- *   fabric       → WHERE (products.attributes->>'fabric') = value
+ *   types        → SQL subquery: WHERE typeId IN (SELECT id FROM product_types WHERE slug IN (...))
+ *   fabrics      → attributes/details fabric OR fabric tags match any selected value
+ *   colors       → color/colour attributes OR color tags match any selected value
+ *   occasions    → occasion attributes OR occasion tags match any selected value
+ *   works        → work/border/craft attributes OR craft/work/border tags match any selected value
+ *   patterns     → pattern/motif/print attributes OR pattern/motif tags match any selected value
  *   priceMin     → WHERE products.price_paise >= value
  *   priceMax     → WHERE products.price_paise <= value
  *   availability → WHERE products.stock_status = 'available'
@@ -42,6 +46,7 @@ import {
   inArray,
   lte,
   or,
+  type SQL,
   sql,
 } from "drizzle-orm";
 
@@ -57,6 +62,12 @@ import {
   productTypes,
   tags,
 } from "@/db/schema";
+import {
+  normalizeColorSlug,
+  normalizeFacetSlug,
+  toFacetSlugs,
+  type CatalogAvailability,
+} from "@/lib/catalog/filter-taxonomy";
 import type { CatalogFacets, CatalogSearchFilters, CatalogSearchPort } from "@/lib/ports/catalog-search";
 import { DEFAULT_PRODUCT_SORT } from "@/lib/products/sort";
 import type { ProductSortOption } from "@/lib/products/sort";
@@ -67,11 +78,100 @@ import { timed, timedRows } from "@/lib/perf/timed";
 /** Resolve static facet counts for the active published catalog scope. */
 const emptyFacets = (): CatalogFacets => ({
   fabric: {},
+  color: {},
+  occasion: {},
+  work: {},
+  pattern: {},
   type: {},
   availability: {},
   tags: {},
   tagDetails: {},
 });
+
+const addFacetValue = (
+  target: Record<string, number>,
+  rawValue: unknown,
+  countValue: unknown,
+  options: { color?: boolean } = {},
+) => {
+  const slug = options.color
+    ? normalizeColorSlug(rawValue)
+    : normalizeFacetSlug(rawValue);
+  const countValueNumber =
+    typeof countValue === "number" ? countValue : Number(countValue);
+  if (!slug || !Number.isFinite(countValueNumber) || countValueNumber <= 0) {
+    return;
+  }
+  target[slug] = Math.max(target[slug] ?? 0, countValueNumber);
+};
+
+const normalizeInputSlugs = (
+  values: Array<string | undefined> | string[] | undefined,
+  options: { color?: boolean } = {},
+) => {
+  const slugs = values
+    ?.flatMap((value) => toFacetSlugs(value))
+    .map((value) => (options.color ? normalizeColorSlug(value) : value))
+    .filter(Boolean);
+
+  return Array.from(new Set(slugs ?? []));
+};
+
+const normalizedSqlValue = (expression: SQL<unknown>) =>
+  sql<string>`lower(regexp_replace(coalesce(${expression}, ''), '[^a-z0-9]+', '-', 'g'))`;
+
+const colorSqlValue = (expression: SQL<unknown>) =>
+  sql<string>`case
+    when ${normalizedSqlValue(expression)} in ('ivory', 'white') then 'ivory-white'
+    when ${normalizedSqlValue(expression)} = 'multicolor' then 'multicolour'
+    else ${normalizedSqlValue(expression)}
+  end`;
+
+const productHasTag = (slugs: string[], categories: string[]) =>
+  sql`${products.id} in (
+    select pt.product_id
+    from ${productTags} pt
+    join ${tags} t on pt.tag_id = t.id
+    where lower(t.category) in (${sql.join(categories.map((category) => sql`${category}`), sql`, `)})
+      and t.slug in (${sql.join(slugs.map((slug) => sql`${slug}`), sql`, `)})
+  )`;
+
+const jsonStringMatches = (
+  expression: SQL<unknown>,
+  slugs: string[],
+  options: { color?: boolean; contains?: boolean } = {},
+) => {
+  if (slugs.length === 0) return undefined;
+  const normalized = options.color ? colorSqlValue(expression) : normalizedSqlValue(expression);
+  const exact = sql`${normalized} in (${sql.join(slugs.map((slug) => sql`${slug}`), sql`, `)})`;
+  if (!options.contains) return exact;
+
+  return or(
+    exact,
+    ...slugs.map((slug) => sql`${normalized} like ${`%${slug}%`}`),
+  );
+};
+
+const multiSourceFacetFilter = ({
+  attributeExpressions,
+  categories,
+  contains,
+  color,
+  slugs,
+}: {
+  attributeExpressions: SQL<unknown>[];
+  categories: string[];
+  contains?: boolean;
+  color?: boolean;
+  slugs: string[];
+}) => {
+  if (slugs.length === 0) return undefined;
+  const attributeClauses = attributeExpressions
+    .map((expression) => jsonStringMatches(expression, slugs, { color, contains }))
+    .filter((clause): clause is SQL<unknown> => Boolean(clause));
+
+  return or(...attributeClauses, productHasTag(slugs, categories));
+};
 
 const getProductSortOrder = (sort: ProductSortOption) => {
   switch (sort) {
@@ -111,17 +211,74 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
       )
     : and(eq(products.status, "published" as const), stockVisible);
 
-  const [fabricRows, typeRows, availabilityRows, tagRows] = await Promise.all([
-    // Fabric: (attributes->>'fabric') GROUP BY value
+  const [
+    fabricRows,
+    colorRows,
+    occasionRows,
+    workRows,
+    patternRows,
+    typeRows,
+    availabilityRows,
+    tagRows,
+  ] = await Promise.all([
+    // Fabric: details_fabric / attributes->>'fabric' GROUP BY value
     timedRows("catalog.facets.fabric", () => withRetry(() =>
       db
         .select({
-          fabric: sql<string>`(${products.attributes}->>'fabric')`.as("fabric"),
+          fabric: sql<string>`coalesce(nullif(btrim(${products.detailsFabric}), ''), nullif(btrim(${products.attributes}->>'fabric'), ''))`.as("fabric"),
           count: sql<number>`cast(count(*) as integer)`.as("count"),
         })
         .from(products)
         .where(publishedFilter)
-        .groupBy(sql`(${products.attributes}->>'fabric')`)
+        .groupBy(sql`coalesce(nullif(btrim(${products.detailsFabric}), ''), nullif(btrim(${products.attributes}->>'fabric'), ''))`)
+    )),
+
+    // Colour: attributes color/colour values.
+    timedRows("catalog.facets.color", () => withRetry(() =>
+      db
+        .select({
+          color: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'color'), ''), nullif(btrim(${products.attributes}->>'colour'), ''), nullif(btrim(${products.attributes}->>'colors'), ''), nullif(btrim(${products.attributes}->>'colours'), ''))`.as("color"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'color'), ''), nullif(btrim(${products.attributes}->>'colour'), ''), nullif(btrim(${products.attributes}->>'colors'), ''), nullif(btrim(${products.attributes}->>'colours'), ''))`)
+    )),
+
+    // Occasion: attributes occasion/occasions values.
+    timedRows("catalog.facets.occasion", () => withRetry(() =>
+      db
+        .select({
+          occasion: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'occasion'), ''), nullif(btrim(${products.attributes}->>'occasions'), ''))`.as("occasion"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'occasion'), ''), nullif(btrim(${products.attributes}->>'occasions'), ''))`)
+    )),
+
+    // Work / border: attributes work/border/craft/embellishment values.
+    timedRows("catalog.facets.work", () => withRetry(() =>
+      db
+        .select({
+          work: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'work'), ''), nullif(btrim(${products.attributes}->>'border'), ''), nullif(btrim(${products.attributes}->>'craft'), ''), nullif(btrim(${products.attributes}->>'embellishment'), ''), nullif(btrim(${products.attributes}->>'embroidery'), ''))`.as("work"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'work'), ''), nullif(btrim(${products.attributes}->>'border'), ''), nullif(btrim(${products.attributes}->>'craft'), ''), nullif(btrim(${products.attributes}->>'embellishment'), ''), nullif(btrim(${products.attributes}->>'embroidery'), ''))`)
+    )),
+
+    // Pattern / motif: attributes pattern/motif/print values.
+    timedRows("catalog.facets.pattern", () => withRetry(() =>
+      db
+        .select({
+          pattern: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'pattern'), ''), nullif(btrim(${products.attributes}->>'motif'), ''), nullif(btrim(${products.attributes}->>'print'), ''))`.as("pattern"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'pattern'), ''), nullif(btrim(${products.attributes}->>'motif'), ''), nullif(btrim(${products.attributes}->>'print'), ''))`)
     )),
 
     // Type: LEFT JOIN productTypes → slug, GROUP BY slug
@@ -168,7 +325,27 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
 
   const fabric: Record<string, number> = {};
   for (const row of fabricRows) {
-    if (row.fabric) fabric[row.fabric] = row.count;
+    addFacetValue(fabric, row.fabric, row.count);
+  }
+
+  const color: Record<string, number> = {};
+  for (const row of colorRows) {
+    addFacetValue(color, row.color, row.count, { color: true });
+  }
+
+  const occasion: Record<string, number> = {};
+  for (const row of occasionRows) {
+    addFacetValue(occasion, row.occasion, row.count);
+  }
+
+  const work: Record<string, number> = {};
+  for (const row of workRows) {
+    addFacetValue(work, row.work, row.count);
+  }
+
+  const pattern: Record<string, number> = {};
+  for (const row of patternRows) {
+    addFacetValue(pattern, row.pattern, row.count);
   }
 
   const type: Record<string, number> = {};
@@ -190,10 +367,22 @@ async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
         category: row.tagCategory ?? "",
         name: row.tagName ?? row.tagSlug,
       };
+      const category = normalizeFacetSlug(row.tagCategory ?? "");
+      if (category === "fabric") {
+        addFacetValue(fabric, row.tagSlug, row.count);
+      } else if (category === "color" || category === "colour") {
+        addFacetValue(color, row.tagSlug, row.count, { color: true });
+      } else if (category === "occasion") {
+        addFacetValue(occasion, row.tagSlug, row.count);
+      } else if (["craft", "work", "border", "embellishment", "embroidery"].includes(category)) {
+        addFacetValue(work, row.tagSlug, row.count);
+      } else if (["pattern", "motif", "print"].includes(category)) {
+        addFacetValue(pattern, row.tagSlug, row.count);
+      }
     }
   }
 
-  return { fabric, type, availability, tags: tagsMap, tagDetails };
+  return { fabric, color, occasion, work, pattern, type, availability, tags: tagsMap, tagDetails };
 }
 
 // ── Main adapter ──────────────────────────────────────────────────────────────
@@ -202,20 +391,35 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
   return {
     async searchProducts(filters: CatalogSearchFilters) {
       const {
+        availability,
+        availabilityStatus,
+        colors,
         collectionSlug,
+        fabrics,
         facetsOnly = false,
         includeFacets = true,
+        occasions,
+        patterns,
         query,
         type,
+        types,
         fabric,
         limit,
         offset = 0,
         priceMin,
         priceMax,
         sort = DEFAULT_PRODUCT_SORT,
-        availability,
         tags: tagSlugs,
+        works,
       } = filters;
+      const activeTypes = normalizeInputSlugs([...(types ?? []), type]);
+      const activeFabrics = normalizeInputSlugs([...(fabrics ?? []), fabric]);
+      const activeColors = normalizeInputSlugs(colors, { color: true });
+      const activeOccasions = normalizeInputSlugs(occasions);
+      const activeWorks = normalizeInputSlugs(works);
+      const activePatterns = normalizeInputSlugs(patterns);
+      const activeAvailability: CatalogAvailability | undefined =
+        availabilityStatus ?? (availability === true ? "available" : undefined);
       const collectionProductIds = await timed(
         "catalog.scope.collectionIds",
         () => buildScopedCollectionIds(collectionSlug),
@@ -285,28 +489,82 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         whereClauses.push(lte(products.pricePaise, priceMax));
       }
 
-      // Availability: stockStatus = 'available'
-      if (availability === true) {
-        whereClauses.push(eq(products.stockStatus, "available" as const));
+      // Availability: stock status.
+      if (activeAvailability) {
+        whereClauses.push(eq(products.stockStatus, activeAvailability));
       }
 
-      // Fabric: JSONB expression — uses expression index on (attributes->>'fabric')
-      if (fabric) {
-        whereClauses.push(
-          sql`(${products.attributes}->>'fabric') = ${fabric}`
-        );
+      // Fabric: OR within selected fabric values; ANDed with other groups.
+      const fabricClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.detailsFabric}`,
+          sql`${products.attributes}->>'fabric'`,
+        ],
+        categories: ["fabric"],
+        contains: true,
+        slugs: activeFabrics,
+      });
+      if (fabricClause) {
+        whereClauses.push(fabricClause);
       }
 
       // Type: raw SQL subquery avoids a separate db.select() call.
-      //   WHERE products.type_id IN (SELECT id FROM product_types WHERE slug = ?)
-      if (type) {
+      //   WHERE products.type_id IN (SELECT id FROM product_types WHERE slug IN (...))
+      if (activeTypes.length > 0) {
         whereClauses.push(
           sql`${products.typeId} IN (
             SELECT id FROM ${productTypes}
-            WHERE ${productTypes.slug} = ${type}
+            WHERE ${productTypes.slug} in (${sql.join(activeTypes.map((typeSlug) => sql`${typeSlug}`), sql`, `)})
           )`
         );
       }
+
+      const colorClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'color'`,
+          sql`${products.attributes}->>'colour'`,
+          sql`${products.attributes}->>'colors'`,
+          sql`${products.attributes}->>'colours'`,
+        ],
+        categories: ["color", "colour"],
+        color: true,
+        slugs: activeColors,
+      });
+      if (colorClause) whereClauses.push(colorClause);
+
+      const occasionClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'occasion'`,
+          sql`${products.attributes}->>'occasions'`,
+        ],
+        categories: ["occasion"],
+        slugs: activeOccasions,
+      });
+      if (occasionClause) whereClauses.push(occasionClause);
+
+      const workClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'work'`,
+          sql`${products.attributes}->>'border'`,
+          sql`${products.attributes}->>'craft'`,
+          sql`${products.attributes}->>'embellishment'`,
+          sql`${products.attributes}->>'embroidery'`,
+        ],
+        categories: ["craft", "work", "border", "embellishment", "embroidery"],
+        slugs: activeWorks,
+      });
+      if (workClause) whereClauses.push(workClause);
+
+      const patternClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'pattern'`,
+          sql`${products.attributes}->>'motif'`,
+          sql`${products.attributes}->>'print'`,
+        ],
+        categories: ["pattern", "motif", "print"],
+        slugs: activePatterns,
+      });
+      if (patternClause) whereClauses.push(patternClause);
 
       // Tags: one subquery per tag slug (AND semantics).
       //   WHERE products.id IN (

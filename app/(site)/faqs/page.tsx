@@ -11,12 +11,14 @@ import Link from "next/link";
 
 import { policies } from "@/lib/legal/policies";
 import { safeJsonLd } from "@/lib/seo/json-ld";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "FAQs & Policies",
   description:
     "Answers to common questions about From the Trunk — how we source, authenticate, and ship pre-loved luxury sarees — plus our privacy, returns, shipping, authentication, and customer-care policies.",
-};
+  path: "/faqs",
+});
 
 const FAQ_ITEMS = [
   {

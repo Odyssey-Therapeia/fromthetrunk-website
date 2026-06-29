@@ -3,14 +3,16 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getGlobals } from "@/lib/data/products";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "How It Works",
   description:
     "Give your saree a second story. From sourcing to doorstep delivery, every piece is cared for with love and respect for its heritage.",
-};
+  path: "/how-it-works",
+});
 
 export default async function HowItWorksPage() {
   const howItWorksPage = await getGlobals("howItWorksPage", {

@@ -4,8 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { TrackPageView } from "@/components/analytics/track-page-view";
+import {
+  MobileFilterSheet,
+  type CatalogFilterGroup,
+  type CatalogFilterOption,
+} from "@/components/catalog/mobile-filter-sheet";
 import { FilterLink } from "@/components/collection/filter-link";
-import { MobileFilterDisclosure } from "@/components/collection/mobile-filter-disclosure";
 
 import { CollectionPageSizeSelect } from "@/components/product/collection-page-size-select";
 import { ProductCard } from "@/components/product/product-card";
@@ -23,18 +27,23 @@ import {
   PRODUCT_SORT_OPTIONS,
   type ProductSortOption,
 } from "@/lib/products/sort";
-import type { CatalogFacets } from "@/lib/ports/catalog-search";
+import type {
+  CatalogFacets,
+  CatalogSearchFilters,
+} from "@/lib/ports/catalog-search";
+import {
+  colorSwatch,
+  displayFacetLabel,
+  normalizeColorSlug,
+  normalizeFacetSlug,
+} from "@/lib/catalog/filter-taxonomy";
+import { hasCollectionFilterParams } from "@/lib/seo/collection-filter";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import type { Collection, Product } from "@/types/domain";
 import type { CollectionPageContent } from "@/types/site-content";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 60;
-
-export const metadata: Metadata = {
-  title: "Collection",
-  description:
-    "Discover curated, authenticated pre-loved luxury sarees from private wardrobes, couture archives, and collector trunks.",
-};
 
 const COLLECTION_BANNER_IMAGES = [
   {
@@ -64,149 +73,66 @@ const PRICE_RANGES = [
   { label: "₹50k+", min: 5000000, max: undefined },
 ] as const;
 
-const TAG_FILTER_GROUPS = [
-  {
-    key: "occasion",
-    title: "Occasion",
-    aliases: ["occasion", "occasions", "event", "events"],
-    keywords: [
-      "bridal",
-      "wedding",
-      "festive",
-      "party",
-      "cocktail",
-      "reception",
-      "engagement",
-      "mehendi",
-      "sangeet",
-      "temple",
-      "gala",
-      "daily",
-      "office",
-    ],
-  },
-  {
-    key: "saree-style",
-    title: "Saree style / weave",
-    aliases: [
-      "saree-style",
-      "saree style",
-      "style",
-      "weave",
-      "weaving",
-      "craft",
-      "region",
-    ],
-    keywords: [
-      "banarasi",
-      "kanjeevaram",
-      "kanjivaram",
-      "chanderi",
-      "patola",
-      "paithani",
-      "tussar",
-      "kota",
-      "organza",
-      "linen",
-      "handloom",
-      "printed",
-    ],
-  },
-  {
-    key: "work-border",
-    title: "Work / border",
-    aliases: [
-      "work",
-      "border",
-      "embellishment",
-      "embroidery",
-      "craftwork",
-      "finish",
-    ],
-    keywords: [
-      "zari",
-      "zardozi",
-      "gota",
-      "sequins",
-      "embroidered",
-      "embroidery",
-      "thread",
-      "mirror",
-      "lace",
-      "border",
-      "temple border",
-    ],
-  },
-  {
-    key: "pattern",
-    title: "Pattern / motif",
-    aliases: ["pattern", "patterns", "motif", "motifs", "print", "prints"],
-    keywords: [
-      "floral",
-      "geometric",
-      "paisley",
-      "butti",
-      "stripes",
-      "checks",
-      "solid",
-      "plain",
-      "abstract",
-      "animal",
-    ],
-  },
-  {
-    key: "color",
-    title: "Colour",
-    aliases: ["color", "colour", "colors", "colours", "shade", "shades"],
-    keywords: [
-      "red",
-      "maroon",
-      "burgundy",
-      "ivory",
-      "white",
-      "black",
-      "gold",
-      "green",
-      "blue",
-      "navy",
-      "pink",
-      "purple",
-      "yellow",
-      "orange",
-      "grey",
-      "gray",
-      "beige",
-      "cream",
-    ],
-  },
-] as const;
-
 type CollectionSearchParams = {
   availability?: string;
   collection?: string | string[];
+  color?: string | string[];
+  colour?: string | string[];
   fabric?: string | string[];
+  occasion?: string | string[];
   page?: string;
+  pattern?: string | string[];
   perPage?: string | string[];
   priceMax?: string;
   priceMin?: string;
   sort?: string | string[];
   tags?: string | string[];
   type?: string | string[];
+  work?: string | string[];
 };
 
 type CollectionPageProps = {
   searchParams?: Promise<CollectionSearchParams>;
 };
 
+export async function generateMetadata({
+  searchParams,
+}: CollectionPageProps): Promise<Metadata> {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const hasFilters = hasCollectionFilterParams(resolvedSearchParams);
+
+  return {
+    ...publicPageMetadata({
+      title: "Collection",
+      description:
+        "Discover curated, authenticated pre-loved luxury sarees from private wardrobes, couture archives, and collector trunks.",
+      path: "/collection",
+    }),
+    robots: hasFilters
+      ? {
+          index: false,
+          follow: true,
+        }
+      : {
+          index: true,
+          follow: true,
+        },
+  };
+}
+
 type BuildUrlPatch = {
   collectionSlug?: string | null;
   page?: number | null;
   sort?: ProductSortOption | null;
-  type?: string | null;
-  fabric?: string | null;
+  types?: string[] | null;
+  fabrics?: string[] | null;
+  colors?: string[] | null;
+  occasions?: string[] | null;
+  works?: string[] | null;
+  patterns?: string[] | null;
   priceMin?: number | null;
   priceMax?: number | null;
-  availability?: boolean | null;
+  availability?: string | null;
   perPage?: number | null;
   tags?: string[] | null;
 };
@@ -224,6 +150,20 @@ const toArray = (v: string | string[] | undefined): string[] => {
   if (!v) return [];
   return Array.isArray(v) ? v : [v];
 };
+
+const toSlugArray = (
+  value: string | string[] | undefined,
+  options: { color?: boolean } = {},
+) =>
+  Array.from(
+    new Set(
+      toArray(value)
+        .map((entry) =>
+          options.color ? normalizeColorSlug(entry) : normalizeFacetSlug(entry),
+        )
+        .filter(Boolean),
+    ),
+  );
 
 const safePage = (value: string | undefined): number => {
   const parsed = Number.parseInt(value ?? "1", 10);
@@ -249,36 +189,7 @@ const parseItemsPerPage = (
 };
 
 const humanizeFilterValue = (value: string): string =>
-  value
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
-const normalizeFilterKey = (value: string): string =>
-  value.toLowerCase().replace(/[_\s]+/g, "-").trim();
-
-type TagFilterOption = {
-  category: string;
-  count: number;
-  label: string;
-  slug: string;
-};
-
-const tagOptionMatchesGroup = (
-  option: TagFilterOption,
-  group: (typeof TAG_FILTER_GROUPS)[number],
-) => {
-  const category = normalizeFilterKey(option.category);
-  if (group.aliases.some((alias) => normalizeFilterKey(alias) === category)) {
-    return true;
-  }
-
-  const searchable = normalizeFilterKey(`${option.slug} ${option.label}`);
-  return group.keywords.some((keyword) =>
-    searchable.includes(normalizeFilterKey(keyword)),
-  );
-};
+  displayFacetLabel(value);
 
 const formatRupeesFromPaise = (value: number): string =>
   `₹${Math.round(value / 100).toLocaleString("en-IN")}`;
@@ -338,19 +249,34 @@ export default async function CollectionPage({
     MAX_VISIBLE_PRODUCTS,
   );
 
-  const activeType = firstStr(resolvedSearchParams?.type);
-  const activeFabric = firstStr(resolvedSearchParams?.fabric);
+  const activeTypes = toSlugArray(resolvedSearchParams?.type);
+  const activeFabrics = toSlugArray(resolvedSearchParams?.fabric);
+  const activeColors = toSlugArray(
+    resolvedSearchParams?.color ?? resolvedSearchParams?.colour,
+    { color: true },
+  );
+  const activeOccasions = toSlugArray(resolvedSearchParams?.occasion);
+  const activeWorks = toSlugArray(resolvedSearchParams?.work);
+  const activePatterns = toSlugArray(resolvedSearchParams?.pattern);
   const activePriceMin = parseOptionalInt(resolvedSearchParams?.priceMin);
   const activePriceMax = parseOptionalInt(resolvedSearchParams?.priceMax);
-  const activeAvailability = resolvedSearchParams?.availability === "true";
+  const requestedAvailability = firstStr(resolvedSearchParams?.availability);
+  const activeAvailability =
+    requestedAvailability === "true" || requestedAvailability === "available"
+      ? "available"
+      : undefined;
   const activeTags = toArray(resolvedSearchParams?.tags);
 
   const hasFilters =
-    !!activeType ||
-    !!activeFabric ||
+    activeTypes.length > 0 ||
+    activeFabrics.length > 0 ||
+    activeColors.length > 0 ||
+    activeOccasions.length > 0 ||
+    activeWorks.length > 0 ||
+    activePatterns.length > 0 ||
     typeof activePriceMin === "number" ||
     typeof activePriceMax === "number" ||
-    activeAvailability ||
+    !!activeAvailability ||
     activeTags.length > 0;
 
   const collectionPagePromise = getCachedCollectionPage(perfRequestId);
@@ -382,6 +308,10 @@ export default async function CollectionPage({
   let totalDocs = 0;
   let facets: CatalogFacets = {
     fabric: {},
+    color: {},
+    occasion: {},
+    work: {},
+    pattern: {},
     type: {},
     availability: {},
     tags: {},
@@ -392,11 +322,15 @@ export default async function CollectionPage({
     const [result, cachedFacets] = await Promise.all([
       getCachedSearchProducts({
         collectionSlug: activeCollectionSlug,
-        type: activeType,
-        fabric: activeFabric,
+        types: activeTypes.length > 0 ? activeTypes : undefined,
+        fabrics: activeFabrics.length > 0 ? activeFabrics : undefined,
+        colors: activeColors.length > 0 ? activeColors : undefined,
+        occasions: activeOccasions.length > 0 ? activeOccasions : undefined,
+        works: activeWorks.length > 0 ? activeWorks : undefined,
+        patterns: activePatterns.length > 0 ? activePatterns : undefined,
         priceMin: activePriceMin,
         priceMax: activePriceMax,
-        availability: activeAvailability || undefined,
+        availabilityStatus: activeAvailability,
         tags: activeTags.length > 0 ? activeTags : undefined,
         limit: visibleLimit,
         sort: activeSort,
@@ -439,12 +373,115 @@ export default async function CollectionPage({
 
   const hasMoreProducts =
     items.length < totalDocs && visibleLimit < MAX_VISIBLE_PRODUCTS;
+  let suggestedItems: Product[] = [];
+  let suggestionLabel = "Try one of these pieces instead.";
+
+  const shouldFetchSuggestions =
+    totalDocs === 0 && items.length === 0 && (hasFilters || !!activeCollectionSlug);
+
+  if (shouldFetchSuggestions) {
+    const suggestionLimit = 6;
+    const suggestionBase: CatalogSearchFilters = {
+      availabilityStatus: "available",
+      collectionSlug: activeCollectionSlug,
+      includeFacets: false,
+      limit: suggestionLimit,
+      sort: DEFAULT_PRODUCT_SORT,
+    };
+    const scopedTypes = activeTypes.length > 0 ? activeTypes : undefined;
+    const suggestions: Array<{
+      filters: CatalogSearchFilters;
+      label: string;
+    }> = [];
+    const addSuggestion = (
+      label: string,
+      filters: Omit<CatalogSearchFilters, "includeFacets" | "limit" | "sort">,
+    ) => {
+      suggestions.push({
+        filters: {
+          ...suggestionBase,
+          ...filters,
+        },
+        label,
+      });
+    };
+
+    if (scopedTypes) {
+      if (activeTypes.includes("blouse")) {
+        if (activeColors.length > 0) {
+          addSuggestion("Try one of these blouse options in a similar colour.", {
+            colors: activeColors,
+            types: scopedTypes,
+          });
+        }
+        if (activeFabrics.length > 0) {
+          addSuggestion("Try one of these blouse options in a similar fabric.", {
+            fabrics: activeFabrics,
+            types: scopedTypes,
+          });
+        }
+      } else {
+        if (activeFabrics.length > 0) {
+          addSuggestion("Try one of these saree options in a similar fabric.", {
+            fabrics: activeFabrics,
+            types: scopedTypes,
+          });
+        }
+        if (activeColors.length > 0) {
+          addSuggestion("Try one of these saree options in a similar colour.", {
+            colors: activeColors,
+            types: scopedTypes,
+          });
+        }
+      }
+
+      if (activeOccasions.length > 0) {
+        addSuggestion("Try pieces from the same occasion edit.", {
+          occasions: activeOccasions,
+          types: scopedTypes,
+        });
+      }
+      addSuggestion("Try the newest available pieces in this category.", {
+        types: scopedTypes,
+      });
+    } else {
+      if (activeFabrics.length > 0) {
+        addSuggestion("Try pieces in a similar fabric.", {
+          fabrics: activeFabrics,
+        });
+      }
+      if (activeColors.length > 0) {
+        addSuggestion("Try pieces in a similar colour.", {
+          colors: activeColors,
+        });
+      }
+      if (activeOccasions.length > 0) {
+        addSuggestion("Try pieces from the same occasion edit.", {
+          occasions: activeOccasions,
+        });
+      }
+      addSuggestion("Try the newest available pieces from the trunk.", {});
+    }
+
+    for (const suggestion of suggestions) {
+      const result = await getCachedSearchProducts(
+        suggestion.filters,
+        perfRequestId,
+      );
+      if (result.products.length > 0) {
+        suggestedItems = result.products as unknown as Product[];
+        suggestionLabel = suggestion.label;
+        break;
+      }
+    }
+  }
+
   const collectionCount = collections.length;
   const activeCollectionLabel = activeCollection?.name ?? "All pieces";
   const filterDescription =
     activeCollection?.description ??
     cms?.filtersBody ??
-    "Choose an edit, then refine by fabric, saree style, occasion, pattern, colour, and availability.";
+    "Choose an edit, then refine by category, fabric, colour, price, occasion, work, and availability.";
   const buildUrl = (patch: BuildUrlPatch = {}) => {
     const nextCollectionSlug =
       "collectionSlug" in patch
@@ -453,9 +490,15 @@ export default async function CollectionPage({
     const nextSort =
       "sort" in patch ? (patch.sort ?? DEFAULT_PRODUCT_SORT) : activeSort;
     const nextPage = "page" in patch ? (patch.page ?? 1) : currentPage;
-    const nextType = "type" in patch ? (patch.type ?? undefined) : activeType;
-    const nextFabric =
-      "fabric" in patch ? (patch.fabric ?? undefined) : activeFabric;
+    const nextTypes = "types" in patch ? (patch.types ?? []) : activeTypes;
+    const nextFabrics =
+      "fabrics" in patch ? (patch.fabrics ?? []) : activeFabrics;
+    const nextColors = "colors" in patch ? (patch.colors ?? []) : activeColors;
+    const nextOccasions =
+      "occasions" in patch ? (patch.occasions ?? []) : activeOccasions;
+    const nextWorks = "works" in patch ? (patch.works ?? []) : activeWorks;
+    const nextPatterns =
+      "patterns" in patch ? (patch.patterns ?? []) : activePatterns;
     const nextPriceMin =
       "priceMin" in patch
         ? (patch.priceMin ?? undefined)
@@ -466,7 +509,7 @@ export default async function CollectionPage({
         : activePriceMax;
     const nextAvailability =
       "availability" in patch
-        ? Boolean(patch.availability)
+        ? (patch.availability ?? undefined)
         : activeAvailability;
     const nextItemsPerPage =
       "perPage" in patch
@@ -478,15 +521,19 @@ export default async function CollectionPage({
     if (nextCollectionSlug) params.set("collection", nextCollectionSlug);
     if (nextSort !== DEFAULT_PRODUCT_SORT) params.set("sort", nextSort);
     if (nextPage && nextPage > 1) params.set("page", String(nextPage));
-    if (nextType) params.set("type", nextType);
-    if (nextFabric) params.set("fabric", nextFabric);
+    for (const type of nextTypes) params.append("type", type);
+    for (const fabric of nextFabrics) params.append("fabric", fabric);
+    for (const color of nextColors) params.append("color", color);
+    for (const occasion of nextOccasions) params.append("occasion", occasion);
+    for (const work of nextWorks) params.append("work", work);
+    for (const pattern of nextPatterns) params.append("pattern", pattern);
     if (typeof nextPriceMin === "number") {
       params.set("priceMin", String(nextPriceMin));
     }
     if (typeof nextPriceMax === "number") {
       params.set("priceMax", String(nextPriceMax));
     }
-    if (nextAvailability) params.set("availability", "true");
+    if (nextAvailability) params.set("availability", nextAvailability);
     if (nextItemsPerPage !== DEFAULT_ITEMS_PER_PAGE) {
       params.set("perPage", String(nextItemsPerPage));
     }
@@ -495,45 +542,155 @@ export default async function CollectionPage({
     const qs = params.toString();
     return `/collection${qs ? `?${qs}` : ""}`;
   };
+  const toggleValue = (values: string[], value: string) =>
+    values.includes(value)
+      ? values.filter((entry) => entry !== value)
+      : [...values, value];
 
   const hasAnyFilter =
     !!activeCollectionSlug || hasFilters || activeSort !== DEFAULT_PRODUCT_SORT;
-  const fabricOptions = Object.entries(facets.fabric)
-    .filter(([key]) => key)
-    .sort((a, b) => b[1] - a[1]);
-  const typeOptions = Object.entries(facets.type)
-    .filter(([key]) => key)
-    .sort((a, b) => b[1] - a[1]);
-  const tagOptions: TagFilterOption[] = Object.entries(facets.tags)
-    .filter(([key]) => key)
-    .sort((a, b) => b[1] - a[1])
-    .map(([slug, count]) => {
-      const details = facets.tagDetails[slug];
-      return {
-        category: details?.category ?? "",
+  const toOptions = (
+    facet: Record<string, number>,
+    options: { color?: boolean } = {},
+  ): CatalogFilterOption[] =>
+    Object.entries(facet)
+      .filter(([key, count]) => key && count > 0)
+      .sort((a, b) => b[1] - a[1] || displayFacetLabel(a[0]).localeCompare(displayFacetLabel(b[0])))
+      .map(([value, count]) => ({
         count,
-        label: details?.name ?? humanizeFilterValue(slug),
-        slug,
-      };
-    });
-  const groupedTagSlugs = new Set<string>();
-  const groupedTagOptions = TAG_FILTER_GROUPS.map((group) => {
-    const options = tagOptions
-      .filter(
-        (option) =>
-          !groupedTagSlugs.has(option.slug) &&
-          tagOptionMatchesGroup(option, group),
-      )
-      .slice(0, 10);
+        label: displayFacetLabel(value),
+        swatch: options.color ? colorSwatch(value) : undefined,
+        value,
+      }));
 
-    for (const option of options) groupedTagSlugs.add(option.slug);
-
-    return { ...group, options };
-  }).filter((group) => group.options.length > 0);
-  const moreTagOptions = tagOptions
-    .filter((option) => !groupedTagSlugs.has(option.slug))
-    .slice(0, 12);
+  const fabricOptions = toOptions(facets.fabric);
+  const typeOptions = toOptions(facets.type);
+  const colorOptions = toOptions(facets.color, { color: true });
+  const occasionOptions = toOptions(facets.occasion);
+  const workOptions = toOptions(facets.work);
+  const patternOptions = toOptions(facets.pattern);
   const availableCount = facets.availability.available ?? 0;
+  const activePriceValue =
+    typeof activePriceMin === "number" || typeof activePriceMax === "number"
+      ? `${activePriceMin ?? ""}:${activePriceMax ?? ""}`
+      : "";
+  const priceOptions: CatalogFilterOption[] = PRICE_RANGES.map((range) => ({
+    label: range.label,
+    value: `${range.min ?? ""}:${range.max ?? ""}`,
+  }));
+  const availabilityOptions: CatalogFilterOption[] = [
+    {
+      count: availableCount > 0 ? availableCount : undefined,
+      label: "In stock",
+      value: "available",
+    },
+  ];
+  const sortOptions: CatalogFilterOption[] = PRODUCT_SORT_OPTIONS.map((option) => ({
+    label: shortSortLabels[option.value],
+    value: option.value,
+  }));
+  const collectionOptions: CatalogFilterOption[] = collections.map((collection) => ({
+    count: undefined,
+    label: collection.name,
+    value: collection.slug,
+  }));
+  const keepFacetGroup = (options: CatalogFilterOption[]) => options.length >= 2;
+  const filterGroups: CatalogFilterGroup[] = [
+    collectionOptions.length > 0
+      ? {
+          key: "collection",
+          options: collectionOptions,
+          param: "collection",
+          selected: activeCollectionSlug ? [activeCollectionSlug] : [],
+          selection: "single",
+          title: "Edit",
+        }
+      : null,
+    keepFacetGroup(typeOptions)
+      ? {
+          key: "type",
+          options: typeOptions,
+          param: "type",
+          selected: activeTypes,
+          selection: "multi",
+          title: "Category",
+        }
+      : null,
+    keepFacetGroup(fabricOptions)
+      ? {
+          key: "fabric",
+          options: fabricOptions,
+          param: "fabric",
+          selected: activeFabrics,
+          selection: "multi",
+          title: "Fabric",
+        }
+      : null,
+    keepFacetGroup(colorOptions)
+      ? {
+          key: "color",
+          options: colorOptions,
+          param: "color",
+          selected: activeColors,
+          selection: "multi",
+          title: "Colour",
+        }
+      : null,
+    {
+      key: "price",
+      options: priceOptions,
+      param: "price",
+      selected: activePriceValue ? [activePriceValue] : [],
+      selection: "single",
+      title: "Price",
+    },
+    {
+      key: "availability",
+      options: availabilityOptions,
+      param: "availability",
+      selected: activeAvailability ? [activeAvailability] : [],
+      selection: "single",
+      title: "Availability",
+    },
+    keepFacetGroup(occasionOptions)
+      ? {
+          key: "occasion",
+          options: occasionOptions,
+          param: "occasion",
+          selected: activeOccasions,
+          selection: "multi",
+          title: "Occasion",
+        }
+      : null,
+    keepFacetGroup(workOptions)
+      ? {
+          key: "work",
+          options: workOptions,
+          param: "work",
+          selected: activeWorks,
+          selection: "multi",
+          title: "Work / Border",
+        }
+      : null,
+    keepFacetGroup(patternOptions)
+      ? {
+          key: "pattern",
+          options: patternOptions,
+          param: "pattern",
+          selected: activePatterns,
+          selection: "multi",
+          title: "Pattern / Motif",
+        }
+      : null,
+    {
+      key: "sort",
+      options: sortOptions,
+      param: "sort",
+      selected: [activeSort],
+      selection: "single",
+      title: "Sort",
+    },
+  ].filter((group): group is CatalogFilterGroup => Boolean(group));
   const appliedFilters: Array<{ label: string; href: string; kind?: string }> =
     [];
 
@@ -545,19 +702,66 @@ export default async function CollectionPage({
     });
   }
 
-  if (activeType) {
+  for (const type of activeTypes) {
     appliedFilters.push({
-      label: humanizeFilterValue(activeType),
-      href: buildUrl({ type: null, page: 1 }),
+      label: humanizeFilterValue(type),
+      href: buildUrl({ types: activeTypes.filter((entry) => entry !== type), page: 1 }),
       kind: "type",
     });
   }
 
-  if (activeFabric) {
+  for (const fabric of activeFabrics) {
     appliedFilters.push({
-      label: humanizeFilterValue(activeFabric),
-      href: buildUrl({ fabric: null, page: 1 }),
+      label: humanizeFilterValue(fabric),
+      href: buildUrl({
+        fabrics: activeFabrics.filter((entry) => entry !== fabric),
+        page: 1,
+      }),
       kind: "fabric",
+    });
+  }
+
+  for (const color of activeColors) {
+    appliedFilters.push({
+      label: humanizeFilterValue(color),
+      href: buildUrl({
+        colors: activeColors.filter((entry) => entry !== color),
+        page: 1,
+      }),
+      kind: "color",
+    });
+  }
+
+  for (const occasion of activeOccasions) {
+    appliedFilters.push({
+      label: humanizeFilterValue(occasion),
+      href: buildUrl({
+        occasions: activeOccasions.filter((entry) => entry !== occasion),
+        page: 1,
+      }),
+      kind: "occasion",
+    });
+  }
+
+  for (const work of activeWorks) {
+    appliedFilters.push({
+      label: humanizeFilterValue(work),
+      href: buildUrl({
+        works: activeWorks.filter((entry) => entry !== work),
+        page: 1,
+      }),
+      kind: "work",
+    });
+  }
+
+  for (const pattern of activePatterns) {
+    appliedFilters.push({
+      label: humanizeFilterValue(pattern),
+      href: buildUrl({
+        patterns: activePatterns.filter((entry) => entry !== pattern),
+        page: 1,
+      }),
+      kind: "pattern",
     });
   }
 
@@ -608,20 +812,36 @@ export default async function CollectionPage({
           filterValue: activeCollectionSlug,
         }
       : null,
-    activeType
-      ? {
-          filterLabel: humanizeFilterValue(activeType),
-          filterType: "type",
-          filterValue: activeType,
-        }
-      : null,
-    activeFabric
-      ? {
-          filterLabel: humanizeFilterValue(activeFabric),
-          filterType: "fabric",
-          filterValue: activeFabric,
-        }
-      : null,
+    ...activeTypes.map((type) => ({
+      filterLabel: humanizeFilterValue(type),
+      filterType: "type",
+      filterValue: type,
+    })),
+    ...activeFabrics.map((fabric) => ({
+      filterLabel: humanizeFilterValue(fabric),
+      filterType: "fabric",
+      filterValue: fabric,
+    })),
+    ...activeColors.map((color) => ({
+      filterLabel: humanizeFilterValue(color),
+      filterType: "color",
+      filterValue: color,
+    })),
+    ...activeOccasions.map((occasion) => ({
+      filterLabel: humanizeFilterValue(occasion),
+      filterType: "occasion",
+      filterValue: occasion,
+    })),
+    ...activeWorks.map((work) => ({
+      filterLabel: humanizeFilterValue(work),
+      filterType: "work",
+      filterValue: work,
+    })),
+    ...activePatterns.map((pattern) => ({
+      filterLabel: humanizeFilterValue(pattern),
+      filterType: "pattern",
+      filterValue: pattern,
+    })),
     typeof activePriceMin === "number" || typeof activePriceMax === "number"
       ? {
           filterLabel: getPriceRangeLabel(activePriceMin, activePriceMax),
@@ -657,31 +877,64 @@ export default async function CollectionPage({
     (filter) => filter.kind !== "sort",
   ).length;
 
-  const renderTagFilterSection = (
-    title: string,
-    options: TagFilterOption[],
-  ) =>
-    options.length > 0 ? (
-      <FilterSection title={title}>
-        {options.map((option) => {
-          const isActive = activeTags.includes(option.slug);
-          const nextTags = isActive
-            ? activeTags.filter((tag) => tag !== option.slug)
-            : [...activeTags, option.slug];
+  const selectedForGroup = (group: CatalogFilterGroup, optionValue: string) => {
+    if (group.selection === "single") {
+      return group.selected.includes(optionValue) ? [] : [optionValue];
+    }
 
-          return (
-            <FilterPill
-              key={option.slug}
-              href={buildUrl({ tags: nextTags, page: 1 })}
-              active={isActive}
-            >
-              {option.label}
-              <span className="ml-1 text-[#5F564D]">({option.count})</span>
-            </FilterPill>
-          );
-        })}
-      </FilterSection>
-    ) : null;
+    return toggleValue(group.selected, optionValue);
+  };
+
+  const parsePriceOption = (value: string) => {
+    const [min, max] = value.split(":");
+    return {
+      max: max ? Number(max) : null,
+      min: min ? Number(min) : null,
+    };
+  };
+
+  const buildFilterOptionHref = (
+    group: CatalogFilterGroup,
+    option: CatalogFilterOption,
+  ) => {
+    const nextSelected = selectedForGroup(group, option.value);
+
+    switch (group.param) {
+      case "collection":
+        return buildUrl({ collectionSlug: nextSelected[0] ?? null, page: 1 });
+      case "type":
+        return buildUrl({ page: 1, types: nextSelected });
+      case "fabric":
+        return buildUrl({ fabrics: nextSelected, page: 1 });
+      case "color":
+        return buildUrl({ colors: nextSelected, page: 1 });
+      case "occasion":
+        return buildUrl({ occasions: nextSelected, page: 1 });
+      case "work":
+        return buildUrl({ page: 1, works: nextSelected });
+      case "pattern":
+        return buildUrl({ page: 1, patterns: nextSelected });
+      case "price": {
+        const isActive = group.selected.includes(option.value);
+        const range = parsePriceOption(option.value);
+        return buildUrl({
+          page: 1,
+          priceMax: isActive ? null : range.max,
+          priceMin: isActive ? null : range.min,
+        });
+      }
+      case "availability":
+        return buildUrl({
+          availability: nextSelected[0] ?? null,
+          page: 1,
+        });
+      case "sort":
+        return buildUrl({
+          page: 1,
+          sort: (nextSelected[0] as ProductSortOption | undefined) ?? DEFAULT_PRODUCT_SORT,
+        });
+    }
+  };
 
   const renderFilterPanel = () => (
     <div className="space-y-5">
@@ -709,116 +962,40 @@ export default async function CollectionPage({
         {filterDescription}
       </p>
 
-      <FilterSection title="Edit">
-        <FilterPill
-          href={buildUrl({ collectionSlug: null, page: 1 })}
-          active={!activeCollectionSlug}
-        >
-          All pieces
-        </FilterPill>
+      {filterGroups.map((group) => {
+        const selectedCount =
+          group.param === "sort" ? 0 : group.selected.length;
 
-        {collections.map((collection) => (
-          <FilterPill
-            key={collection.id}
-            href={buildUrl({ collectionSlug: collection.slug, page: 1 })}
-            active={activeCollectionSlug === collection.slug}
+        return (
+          <FilterSection
+            key={group.key}
+            id={`filter-${group.key}`}
+            selectedCount={selectedCount}
+            title={group.title}
           >
-            {collection.name}
-          </FilterPill>
-        ))}
-      </FilterSection>
+            {group.param === "collection" ? (
+              <FilterPill
+                href={buildUrl({ collectionSlug: null, page: 1 })}
+                active={!activeCollectionSlug}
+              >
+                All pieces
+              </FilterPill>
+            ) : null}
 
-      {typeOptions.length > 0 ? (
-        <FilterSection title="Saree category">
-          {typeOptions.map(([type, count]) => (
-            <FilterPill
-              key={type}
-              href={buildUrl({
-                type: activeType === type ? null : type,
-                page: 1,
-              })}
-              active={activeType === type}
-            >
-              {humanizeFilterValue(type)}
-              <span className="ml-1 text-[#5F564D]">({count})</span>
-            </FilterPill>
-          ))}
-        </FilterSection>
-      ) : null}
-
-      {fabricOptions.length > 0 ? (
-        <FilterSection title="Fabric">
-          {fabricOptions.map(([fabric, count]) => (
-            <FilterPill
-              key={fabric}
-              href={buildUrl({
-                fabric: activeFabric === fabric ? null : fabric,
-                page: 1,
-              })}
-              active={activeFabric === fabric}
-            >
-              {humanizeFilterValue(fabric)}
-              <span className="ml-1 text-[#5F564D]">({count})</span>
-            </FilterPill>
-          ))}
-        </FilterSection>
-      ) : null}
-
-      <FilterSection title="Price">
-        {PRICE_RANGES.map((range) => {
-          const active =
-            activePriceMin === range.min && activePriceMax === range.max;
-
-          return (
-            <FilterPill
-              key={range.label}
-              href={buildUrl({
-                priceMin: active ? null : range.min,
-                priceMax: active ? null : range.max,
-                page: 1,
-              })}
-              active={active}
-            >
-              {range.label}
-            </FilterPill>
-          );
-        })}
-      </FilterSection>
-
-      <FilterSection title="Availability">
-        <FilterPill
-          href={buildUrl({
-            availability: activeAvailability ? null : true,
-            page: 1,
-          })}
-          active={activeAvailability}
-        >
-          In stock
-          {availableCount > 0 ? (
-            <span className="ml-1 text-[#5F564D]">({availableCount})</span>
-          ) : null}
-        </FilterPill>
-      </FilterSection>
-
-      {groupedTagOptions.map((group) => (
-        <div key={group.key}>
-          {renderTagFilterSection(group.title, group.options)}
-        </div>
-      ))}
-
-      {renderTagFilterSection("More filters", moreTagOptions)}
-
-      <FilterSection title="Sort">
-        {PRODUCT_SORT_OPTIONS.map((option) => (
-          <FilterPill
-            key={option.value}
-            href={buildUrl({ sort: option.value, page: 1 })}
-            active={activeSort === option.value}
-          >
-            {shortSortLabels[option.value]}
-          </FilterPill>
-        ))}
-      </FilterSection>
+            {group.options.map((option) => (
+              <FilterPill
+                key={option.value}
+                href={buildFilterOptionHref(group, option)}
+                active={group.selected.includes(option.value)}
+                count={option.count}
+                swatch={option.swatch}
+              >
+                {option.label}
+              </FilterPill>
+            ))}
+          </FilterSection>
+        );
+      })}
     </div>
   );
 
@@ -829,17 +1006,21 @@ export default async function CollectionPage({
   return (
     <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
       <TrackPageView
-        eventKey={`collection_view:${activeCollectionSlug ?? "all"}:${currentPage}:${activeSort}:${activeType ?? "all"}:${activeFabric ?? "all"}:${activePriceMin ?? "min-any"}:${activePriceMax ?? "max-any"}:${activeAvailability ? "available" : "any"}:${activeTags.slice().sort().join(",")}`}
+        eventKey={`collection_view:${activeCollectionSlug ?? "all"}:${currentPage}:${activeSort}:${activeTypes.join(",") || "all"}:${activeFabrics.join(",") || "all"}:${activeColors.join(",") || "all"}:${activeOccasions.join(",") || "all"}:${activePriceMin ?? "min-any"}:${activePriceMax ?? "max-any"}:${activeAvailability ?? "any"}:${activeTags.slice().sort().join(",")}`}
         type="collection_view"
         payload={{
           collectionSlug: activeCollectionSlug ?? null,
           filters: {
             availability: activeAvailability,
-            fabric: activeFabric ?? null,
+            colors: activeColors,
+            fabrics: activeFabrics,
+            occasions: activeOccasions,
+            patterns: activePatterns,
             priceMax: activePriceMax ?? null,
             priceMin: activePriceMin ?? null,
             tags: activeTags,
-            type: activeType ?? null,
+            types: activeTypes,
+            works: activeWorks,
           },
           page: currentPage,
           resultCount: items.length,
@@ -955,9 +1136,15 @@ export default async function CollectionPage({
         <section className="sticky top-[6.75rem] z-30 rounded-[1.35rem] border border-[var(--ftt-border)] bg-[var(--ftt-card)]/94 p-3 shadow-[0_12px_35px_rgba(20,29,70,0.10)] backdrop-blur-xl lg:rounded-[1.5rem]">
           <div className="grid min-w-0 gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
             <div className="flex min-w-0 items-center gap-3">
-              <MobileFilterDisclosure activeCount={appliedFilterCount}>
-                {renderFilterPanel()}
-              </MobileFilterDisclosure>
+              <MobileFilterSheet
+                activeCount={appliedFilterCount}
+                groups={filterGroups}
+                perPage={
+                  activeItemsPerPage === DEFAULT_ITEMS_PER_PAGE
+                    ? undefined
+                    : activeItemsPerPage
+                }
+              />
 
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.26em] text-[#74531B]">
@@ -975,6 +1162,7 @@ export default async function CollectionPage({
                 appliedFilters.map((filter) => (
                   <FilterLink
                     key={`${filter.kind}-${filter.label}`}
+                    aria-label={`Remove ${filter.label} filter`}
                     href={filter.href}
                     className="inline-flex h-9 max-w-full shrink-0 items-center rounded-full border border-[var(--ftt-gold)]/40 bg-[var(--ftt-gold)]/10 px-3 text-xs font-medium text-[var(--ftt-royal-navy)] transition hover:bg-[var(--ftt-gold)]/18"
                   >
@@ -1005,21 +1193,6 @@ export default async function CollectionPage({
                 options={ITEMS_PER_PAGE_OPTIONS}
                 value={activeItemsPerPage}
               />
-
-              {PRODUCT_SORT_OPTIONS.map((option) => (
-                <FilterLink
-                  key={option.value}
-                  href={buildUrl({ sort: option.value, page: 1 })}
-                  className={cn(
-                    "inline-flex h-10 min-w-[7.1rem] shrink-0 items-center justify-center rounded-full border px-3 text-xs font-medium uppercase tracking-[0.12em] transition",
-                    activeSort === option.value
-                      ? "border-[var(--ftt-royal-navy)] bg-[var(--ftt-royal-navy)] text-[var(--ftt-ivory)]"
-                      : "border-[var(--ftt-border)] bg-white/60 text-[var(--ftt-muted)] hover:border-[var(--ftt-gold)]/60 hover:text-[var(--ftt-royal-navy)]",
-                  )}
-                >
-                  {shortSortLabels[option.value]}
-                </FilterLink>
-              ))}
             </div>
           </div>
         </section>
@@ -1049,21 +1222,48 @@ export default async function CollectionPage({
             </div>
 
             {items.length === 0 ? (
-              <div className="rounded-[1.75rem] border border-dashed border-[var(--ftt-gold)]/50 bg-[var(--ftt-card)] p-8 text-center shadow-sm">
-                <p className="font-serif text-3xl text-[var(--ftt-royal-navy)]">
-                  The next curated drop is being prepared
-                </p>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--ftt-muted)]">
-                  Our team is authenticating fresh heirloom pieces right now.
-                  Reset the filters or return shortly for the next trunk edit.
-                </p>
+              <div className="space-y-6">
+                <div className="rounded-[1.75rem] border border-dashed border-[var(--ftt-gold)]/50 bg-[var(--ftt-card)] p-8 text-center shadow-sm">
+                  <p className="font-serif text-3xl text-[var(--ftt-royal-navy)]">
+                    {hasFilters
+                      ? "No exact matches found."
+                      : "The next curated drop is being prepared"}
+                  </p>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--ftt-muted)]">
+                    {hasFilters
+                      ? "Your exact filter combination is not available right now. The recommendations below are nearby options, not exact matches."
+                      : "Our team is authenticating fresh heirloom pieces right now. Reset the filters or return shortly for the next trunk edit."}
+                  </p>
 
-                <FilterLink
-                  href="/collection"
-                  className="mt-6 inline-flex rounded-full bg-[var(--ftt-royal-navy)] px-6 py-3 text-sm font-medium text-[var(--ftt-ivory)] transition hover:bg-[var(--ftt-midnight)]"
-                >
-                  Reset filters
-                </FilterLink>
+                  <FilterLink
+                    href="/collection"
+                    className="mt-6 inline-flex rounded-full bg-[var(--ftt-royal-navy)] px-6 py-3 text-sm font-medium text-[var(--ftt-ivory)] transition hover:bg-[var(--ftt-midnight)]"
+                  >
+                    Reset filters
+                  </FilterLink>
+                </div>
+
+                {suggestedItems.length > 0 ? (
+                  <section
+                    aria-labelledby="collection-suggestions-title"
+                    className="space-y-4"
+                  >
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.34em] text-[#74531B]">
+                        Suggested pieces
+                      </p>
+                      <h3
+                        id="collection-suggestions-title"
+                        className="mt-1 font-serif text-3xl text-[var(--ftt-royal-navy)]"
+                      >
+                        {suggestionLabel}
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-5 min-[520px]:grid-cols-2 md:grid-cols-3 md:gap-y-6 xl:grid-cols-4 [&>*]:min-w-0">
+                      {suggestedItems.map(renderProduct)}
+                    </div>
+                  </section>
+                ) : null}
               </div>
             ) : (
               <>
@@ -1151,19 +1351,39 @@ function CollectionRailCard({
 }
 
 function FilterSection({
+  id,
+  selectedCount = 0,
   title,
   children,
 }: {
+  id?: string;
+  selectedCount?: number;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--ftt-muted)]">
-        {title}
-      </p>
-      <div className="grid gap-2">{children}</div>
-    </div>
+    <details
+      id={id}
+      open={selectedCount > 0}
+      className="scroll-mt-28 rounded-[1.1rem] border border-[var(--ftt-border)] bg-[#FDF7F1]/65 shadow-sm"
+    >
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
+        <span className="text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--ftt-muted)]">
+          {title}
+        </span>
+        {selectedCount > 0 ? (
+          <span
+            aria-label={`${selectedCount} selected`}
+            className="rounded-full bg-[var(--ftt-gold)] px-2 py-0.5 text-xs font-semibold text-[var(--ftt-royal-navy)]"
+          >
+            {selectedCount}
+          </span>
+        ) : null}
+      </summary>
+      <div className="grid gap-2 border-t border-[var(--ftt-border)]/70 p-3">
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -1172,17 +1392,21 @@ function FilterPill({
   active,
   children,
   className,
+  count,
+  swatch,
 }: {
   href: string;
   active?: boolean;
   children: ReactNode;
   className?: string;
+  count?: number;
+  swatch?: string;
 }) {
   return (
     <FilterLink
       href={href}
       className={cn(
-        "group inline-flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",
+        "group inline-flex min-h-11 min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",
         active
           ? "border-[var(--ftt-royal-navy)] bg-[var(--ftt-royal-navy)]/7 text-[var(--ftt-royal-navy)] shadow-sm"
           : "border-[var(--ftt-border)] bg-[#FDF7F1]/70 text-[var(--ftt-muted)] hover:border-[var(--ftt-gold)]/60 hover:text-[var(--ftt-royal-navy)]",
@@ -1201,7 +1425,17 @@ function FilterPill({
           <span className="h-1.5 w-1.5 rounded-[2px] bg-[var(--ftt-gold)]" />
         ) : null}
       </span>
-      <span className="min-w-0">{children}</span>
+      {swatch ? (
+        <span
+          className="h-4 w-4 shrink-0 rounded-full border border-[var(--ftt-border)]"
+          style={{ backgroundColor: swatch }}
+          aria-hidden
+        />
+      ) : null}
+      <span className="min-w-0 flex-1">{children}</span>
+      {typeof count === "number" ? (
+        <span className="text-[var(--ftt-muted)]/75">({count})</span>
+      ) : null}
     </FilterLink>
   );
 }

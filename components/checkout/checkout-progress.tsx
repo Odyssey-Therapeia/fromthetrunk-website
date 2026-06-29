@@ -6,6 +6,13 @@ import { CHECKOUT_STEPS, type CheckoutStep } from "@/lib/checkout/steps";
 
 /** Completed "Account" links to the account page; checkout steps navigate in-flow. */
 const ACCOUNT_HREF = "/account/profile";
+const MOBILE_LABELS: Record<(typeof CHECKOUT_STEPS)[number]["id"], string> = {
+  account: "Acct",
+  billing: "Bill",
+  packaging: "Pack",
+  review: "Pay",
+  shipping: "Ship",
+};
 
 type CheckoutProgressProps = {
   currentStep: CheckoutStep;
@@ -26,27 +33,27 @@ export function CheckoutProgress({
   const fillFraction = activeIndex / lastIndex;
 
   return (
-    <div className="rounded-3xl border border-ftt-border bg-ftt-card p-5 shadow-[var(--ftt-soft-shadow)] sm:p-6">
-      <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="rounded-3xl border border-ftt-border bg-ftt-card p-4 shadow-[var(--ftt-soft-shadow)] sm:p-6">
+      <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-ftt-gold">
             Booking progress
           </p>
-          <h2 className="mt-1 font-serif text-2xl text-ftt-navy">
+          <h2 className="mt-1 font-serif text-xl text-ftt-navy sm:text-2xl">
             {CHECKOUT_STEPS[activeIndex]?.label}
           </h2>
         </div>
-        <p className="text-xs font-medium text-ftt-burgundy/60">
+        <p className="shrink-0 rounded-full border border-ftt-border bg-ftt-ivory px-3 py-1.5 text-xs font-semibold text-ftt-burgundy/60">
           Step {activeIndex + 1} of {CHECKOUT_STEPS.length}
         </p>
       </div>
 
-      <div className="relative flex justify-between">
+      <div className="relative flex justify-between [--checkout-progress-inset:3rem] sm:[--checkout-progress-inset:4rem]">
         {/* connector track + gold fill, centred on the 36px nodes */}
-        <div className="absolute inset-x-8 top-[18px] h-0.5 rounded-full bg-ftt-border" />
+        <div className="absolute inset-x-6 top-[18px] h-0.5 rounded-full bg-ftt-border sm:inset-x-8" />
         <div
-          className="absolute left-8 top-[18px] h-0.5 rounded-full bg-ftt-gold transition-all duration-500"
-          style={{ width: `calc((100% - 4rem) * ${fillFraction})` }}
+          className="absolute left-6 top-[18px] h-0.5 rounded-full bg-ftt-gold transition-all duration-500 sm:left-8"
+          style={{ width: `calc((100% - var(--checkout-progress-inset, 3rem)) * ${fillFraction})` }}
         />
 
         {CHECKOUT_STEPS.map((step, index) => {
@@ -76,7 +83,7 @@ export function CheckoutProgress({
           return (
             <div
               key={step.id}
-              className="relative z-10 flex w-16 flex-col items-center gap-2"
+              className="relative z-10 flex w-12 flex-col items-center gap-2 sm:w-16"
             >
               {isAccount && complete ? (
                 <Link
@@ -103,7 +110,7 @@ export function CheckoutProgress({
               )}
               <span
                 className={cn(
-                  "text-center text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] sm:text-[9px]",
+                  "text-center text-[8px] font-semibold uppercase leading-tight tracking-[0.08em] sm:text-[9px] sm:tracking-[0.1em]",
                   active
                     ? "text-ftt-navy"
                     : complete
@@ -111,7 +118,8 @@ export function CheckoutProgress({
                       : "text-ftt-burgundy/40",
                 )}
               >
-                {step.label}
+                <span className="sm:hidden">{MOBILE_LABELS[step.id]}</span>
+                <span className="hidden sm:inline">{step.label}</span>
               </span>
             </div>
           );

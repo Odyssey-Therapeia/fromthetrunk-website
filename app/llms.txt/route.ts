@@ -22,7 +22,8 @@ export const dynamic = "force-dynamic";
 const STATIC_PAGES = [
   { title: "Home", path: "/" },
   { title: "Collection", path: "/collection" },
-  { title: "Our Story", path: "/our-team" },
+  { title: "Our Story", path: "/our-story" },
+  { title: "Our Team", path: "/our-team" },
   { title: "How It Works", path: "/how-it-works" },
   { title: "FAQs", path: "/faqs" },
   { title: "Return Policy", path: "/return-policy" },

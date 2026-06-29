@@ -55,7 +55,7 @@ export function SavedAddressPicker({
           onSelect(id);
         }}
       >
-        <SelectTrigger className="mt-2 h-auto min-h-12 border-ftt-border bg-ftt-ivory py-2 text-left text-ftt-navy [&>span]:line-clamp-none">
+        <SelectTrigger className="mt-2 h-auto min-h-12 min-w-0 border-ftt-border bg-ftt-ivory py-2 text-left text-ftt-navy [&>span]:line-clamp-none">
           {selected ? (
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate font-semibold text-ftt-navy">
@@ -69,11 +69,11 @@ export function SavedAddressPicker({
             <SelectValue placeholder="Choose from your address book" />
           )}
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-w-[calc(100vw-2rem)]">
           {addresses.map((address) => (
             <SelectItem key={address.id} value={address.id} className="py-2">
-              <span className="flex flex-col gap-0.5 text-left">
-                <span className="font-semibold text-ftt-navy">
+              <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                <span className="break-words font-semibold text-ftt-navy">
                   {addressTitle(address)}
                   {address.isDefault ? (
                     <span className="ml-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ftt-gold">
@@ -81,7 +81,7 @@ export function SavedAddressPicker({
                     </span>
                   ) : null}
                 </span>
-                <span className="text-xs font-normal text-ftt-burgundy/60">
+                <span className="break-words text-xs font-normal text-ftt-burgundy/60">
                   {addressLine(address)}
                 </span>
               </span>

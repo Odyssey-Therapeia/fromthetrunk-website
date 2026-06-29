@@ -65,10 +65,10 @@ export function AccountShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <section className="bg-ftt-ivory px-4 py-8 sm:px-6 lg:py-10">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <Card className="ftt-account-reveal overflow-hidden rounded-[2rem] border-ftt-border bg-ftt-navy text-ftt-ivory shadow-[0_22px_70px_rgba(20,29,70,0.16)] lg:grid lg:grid-cols-[minmax(0,1fr)_420px]">
-          <CardContent className="relative flex flex-col gap-8 overflow-hidden p-6 sm:p-8 lg:p-10">
+    <section className="bg-ftt-ivory px-3 py-6 sm:px-6 sm:py-8 lg:py-10">
+      <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 sm:gap-6">
+        <Card className="ftt-account-reveal max-w-full overflow-hidden rounded-[1.5rem] border-ftt-border bg-ftt-navy text-ftt-ivory shadow-[0_22px_70px_rgba(20,29,70,0.16)] sm:rounded-[2rem] lg:grid lg:grid-cols-[minmax(0,1fr)_420px] [&>*]:min-w-0">
+          <CardContent className="relative flex flex-col gap-6 overflow-hidden p-5 sm:gap-8 sm:p-8 lg:p-10">
             <div className="absolute right-8 top-8 hidden size-28 rounded-full border border-ftt-gold/20 lg:block" />
             <div className="absolute right-14 top-14 hidden size-12 rounded-full bg-ftt-gold/10 lg:block" />
             <div className="absolute inset-0 bg-[linear-gradient(135deg,#141D46_0%,#10183B_62%,#601D1C_155%)]" />
@@ -78,7 +78,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                 My Trunk
               </Badge>
 
-              <h1 className="mt-5 max-w-3xl font-serif text-[clamp(2.7rem,6vw,6.4rem)] font-medium leading-[0.92] text-ftt-ivory">
+              <h1 className="mt-5 max-w-3xl break-words font-serif text-[clamp(2.35rem,13vw,6.4rem)] font-medium leading-[0.92] text-ftt-ivory sm:text-[clamp(2.7rem,6vw,6.4rem)]">
                 Welcome, {firstName}.
               </h1>
 
@@ -138,11 +138,11 @@ export function AccountShell({ children }: { children: ReactNode }) {
           </div>
         </Card>
 
-        <div className="grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:items-start">
-          <aside className="lg:sticky lg:top-28">
+        <div className="grid max-w-full gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:items-start [&>*]:min-w-0">
+          <aside className="min-w-0 lg:sticky lg:top-28">
             <nav
               aria-label="Account navigation"
-              className="flex gap-2 overflow-x-auto rounded-[1.5rem] border border-ftt-border bg-ftt-card/90 p-2 shadow-[0_14px_38px_rgba(20,29,70,0.08)] backdrop-blur lg:flex-col"
+              className="flex max-w-full gap-2 overflow-x-auto rounded-[1.35rem] border border-ftt-border bg-ftt-card/90 p-2 shadow-[0_14px_38px_rgba(20,29,70,0.08)] backdrop-blur sm:rounded-[1.5rem] lg:flex-col"
             >
               {navLinks.map((link) => {
                 const Icon = link.icon;
@@ -155,7 +155,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                     href={link.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "group flex min-w-fit items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ftt-ivory lg:min-w-0 lg:rounded-[1.1rem]",
+                      "group flex min-h-12 min-w-fit items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ftt-ivory lg:min-w-0 lg:rounded-[1.1rem]",
                       isActive
                         ? "border-ftt-gold/60 bg-ftt-navy text-ftt-ivory shadow-[0_12px_28px_rgba(20,29,70,0.16)]"
                         : "border-transparent bg-transparent text-ftt-burgundy/70 hover:border-ftt-gold/40 hover:bg-ftt-gold/10 hover:text-ftt-navy",
@@ -172,7 +172,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                       <Icon className="size-4" />
                     </span>
 
-                    <span>
+                    <span className="min-w-0">
                       <span className="block">{link.label}</span>
                       <span
                         className={cn(

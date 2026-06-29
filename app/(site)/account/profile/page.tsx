@@ -110,9 +110,9 @@ export default function ProfilePage() {
   const currentEmail = data?.email ?? session.user.email ?? "";
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)] lg:items-end">
-        <div>
+    <div className="min-w-0 space-y-6">
+      <div className="grid max-w-full gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)] lg:items-end [&>*]:min-w-0">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-ftt-gold">
             Profile
           </p>
@@ -125,7 +125,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <Card className="rounded-[1.5rem] border-ftt-border bg-ftt-navy text-ftt-ivory shadow-[0_18px_50px_rgba(20,29,70,0.13)]">
+        <Card className="min-w-0 rounded-[1.5rem] border-ftt-border bg-ftt-navy text-ftt-ivory shadow-[0_18px_50px_rgba(20,29,70,0.13)]">
           <CardContent className="space-y-4 p-5">
             <ProfileCue
               icon={<ShieldCheck className="size-4" />}
@@ -151,9 +151,9 @@ export default function ProfilePage() {
       ) : isError ? (
         <AccountStateCard message="Unable to load your profile right now." />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.72fr)]">
+        <div className="grid max-w-full gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.72fr)] [&>*]:min-w-0">
           <form
-            className="ftt-account-glow-card rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6"
+            className="ftt-account-glow-card min-w-0 rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6"
             onSubmit={(event) => {
               event.preventDefault();
               mutation.mutate({
@@ -176,8 +176,8 @@ export default function ProfilePage() {
               </Badge>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+            <div className="mt-6 grid max-w-full gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+              <div className="min-w-0 space-y-2">
                 <Label
                   htmlFor="name"
                   className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/60"
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label
                   htmlFor="phone"
                   className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/60"
@@ -212,13 +212,13 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="space-y-2 sm:col-span-2">
+              <div className="min-w-0 space-y-2 sm:col-span-2">
                 <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/60">
                   Current email
                 </Label>
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ftt-border bg-ftt-ivory px-3 py-2">
                   <Mail className="size-4 text-ftt-gold" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ftt-navy">
+                  <span className="min-w-0 flex-1 break-all text-sm font-medium text-ftt-navy">
                     {currentEmail}
                   </span>
                   <Badge className="rounded-full bg-ftt-navy px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-ftt-ivory">
@@ -252,7 +252,7 @@ export default function ProfilePage() {
             </div>
           </form>
 
-          <div className="ftt-account-glow-card rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6">
+          <div className="ftt-account-glow-card min-w-0 rounded-[1.75rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] sm:p-6">
             <div className="flex items-start gap-3">
               <div className="grid size-10 shrink-0 place-items-center rounded-full bg-ftt-gold/12 text-ftt-gold">
                 <Mail className="size-4" />

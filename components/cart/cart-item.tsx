@@ -82,12 +82,12 @@ export function CartItem({ item, className }: CartItemProps) {
             </button>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#E7DDD4] pt-3">
-            <span className="rounded-full bg-[#B39152]/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#141D46]">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#E7DDD4] pt-3">
+            <span className="max-w-full rounded-full bg-[#B39152]/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#141D46]">
               Reserved for you
             </span>
 
-            <span className="text-right text-xs text-[#6B625B]">
+            <span className="min-w-0 text-right text-xs text-[#6B625B]">
               {reservedUntilLabel ?? "Ready for checkout"}
             </span>
           </div>

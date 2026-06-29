@@ -238,9 +238,10 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json(
           {
             code: "RESERVATION_NOT_ACTIVE",
-            message: "This item does not have a releasable reservation.",
+            message: "This item does not have an active reservation to release.",
+            released: false,
           },
-          409
+          200
         );
       }
 
@@ -272,9 +273,10 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json(
           {
             code: "RESERVATION_NOT_ACTIVE",
-            message: "This item does not have an expired reservation to release.",
+            message: "This item does not have an active reservation to release.",
+            released: false,
           },
-          409
+          200
         );
       }
 

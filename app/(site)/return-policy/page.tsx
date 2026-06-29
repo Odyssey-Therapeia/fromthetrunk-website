@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+import { publicPageMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = publicPageMetadata({
   title: "Return Policy",
   description: "Return and refund policy for purchases from From the Trunk.",
-};
+  path: "/return-policy",
+});
 
 export default function ReturnPolicyPage() {
   return (

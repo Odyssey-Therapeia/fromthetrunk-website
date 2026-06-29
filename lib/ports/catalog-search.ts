@@ -10,6 +10,7 @@
  */
 
 import type { ProductWithRelations } from "@/db/queries/products";
+import type { CatalogAvailability } from "@/lib/catalog/filter-taxonomy";
 import type { ProductSortOption } from "@/lib/products/sort";
 
 // ── Filter input ─────────────────────────────────────────────────────────────
@@ -34,16 +35,30 @@ export type CatalogSearchFilters = {
    * The port signature is unchanged — only the adapter implementation changes.
    */
   query?: string;
-  /** Product type slug (matches productTypes.slug via typeId FK). */
+  /** Product type slug (legacy single-value alias; matches productTypes.slug via typeId FK). */
   type?: string;
-  /** Fabric attribute value (matches attributes->>'fabric'). */
+  /** Product type slugs. OR within this group. */
+  types?: string[];
+  /** Fabric attribute value (legacy single-value alias). */
   fabric?: string;
+  /** Fabric/material slugs. OR within this group. */
+  fabrics?: string[];
+  /** Colour slugs. OR within this group. */
+  colors?: string[];
+  /** Occasion slugs. OR within this group. */
+  occasions?: string[];
+  /** Work / border / craft slugs. OR within this group. */
+  works?: string[];
+  /** Pattern / motif slugs. OR within this group. */
+  patterns?: string[];
   /** Price lower bound in paise (inclusive). */
   priceMin?: number;
   /** Price upper bound in paise (inclusive). */
   priceMax?: number;
-  /** When true: only products where stockStatus = 'available' OR quantityAvailable > 0. */
+  /** Legacy boolean alias. When true, maps to availabilityStatus = 'available'. */
   availability?: boolean;
+  /** Stock status filter. */
+  availabilityStatus?: CatalogAvailability;
   /** Tag slugs — products must belong to ALL provided tags (AND). */
   tags?: string[];
   /** Maximum product rows to hydrate and return. */
@@ -72,6 +87,14 @@ export type CatalogSearchFilters = {
 export type CatalogFacets = {
   /** Fabric attribute values → count. */
   fabric: Record<string, number>;
+  /** Colour values → count. */
+  color: Record<string, number>;
+  /** Occasion values → count. */
+  occasion: Record<string, number>;
+  /** Work / border / craft values → count. */
+  work: Record<string, number>;
+  /** Pattern / motif values → count. */
+  pattern: Record<string, number>;
   /** Product type slugs → count. */
   type: Record<string, number>;
   /** Availability states → count (keys: 'available', 'reserved', 'sold'). */
