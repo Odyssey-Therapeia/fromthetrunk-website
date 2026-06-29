@@ -65,7 +65,7 @@ export function PackagingPreview({
               <Image
                 key={images[safeIndex]}
                 src={images[safeIndex]}
-                alt={`${title} — photo ${safeIndex + 1} of ${count}`}
+                alt={`${title}, photo ${safeIndex + 1} of ${count}`}
                 fill
                 sizes="(max-width: 640px) 100vw, 32rem"
                 className="object-cover"

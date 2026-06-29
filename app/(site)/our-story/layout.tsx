@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = publicPageMetadata({
   title: "Our Story",
   description:
-    "The story behind From the Trunk: authenticated, restored, and re-storied sarees given another life.",
+    "The story behind From the Trunk: authenticated, restored, and re-stored sarees given another life.",
   path: "/our-story",
 });
 

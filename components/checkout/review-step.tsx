@@ -1,6 +1,10 @@
 import { Gift } from "lucide-react";
 
-import { type AddressForm, fullName } from "@/lib/checkout/address-form";
+import {
+  type AddressForm,
+  composeAddressLine2,
+  fullName,
+} from "@/lib/checkout/address-form";
 import { STEP_COPY } from "@/lib/checkout/steps";
 import type { ShippingMethod } from "@/lib/config/order-pricing";
 
@@ -84,6 +88,8 @@ function ReviewAddress({
   address: AddressForm;
   note?: string;
 }) {
+  const line2 = composeAddressLine2(address);
+
   return (
     <div className="rounded-3xl border border-ftt-border bg-ftt-ivory p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-gold">
@@ -95,7 +101,7 @@ function ReviewAddress({
       <p className="mt-2 font-medium text-ftt-navy">{fullName(address)}</p>
       <p className="mt-1 text-sm leading-6 text-ftt-burgundy/65">
         {address.line1}
-        {address.line2 ? `, ${address.line2}` : ""}
+        {line2 ? `, ${line2}` : ""}
         <br />
         {address.city}, {address.state} {address.postalCode}
         <br />

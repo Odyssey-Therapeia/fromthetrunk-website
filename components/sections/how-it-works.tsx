@@ -9,7 +9,7 @@ const steps = [
   {
     title: "Curate",
     description:
-      "We source sarees from private wardrobes, couture archives, and heritage collectors.",
+      "We source sarees from private wardrobes and heritage collectors.",
   },
   {
     title: "Authenticate",

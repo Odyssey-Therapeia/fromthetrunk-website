@@ -124,8 +124,8 @@ export default async function CmsPage({ params, searchParams }: CmsPageProps) {
 
     return (
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
-        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-700 dark:text-amber-400">
-          Preview mode — draft content. This URL will expire.
+        <div className="mb-4 rounded-lg border border-[#B39152]/35 bg-[#B39152]/10 px-4 py-2 text-sm text-[#601D1C] dark:text-[#B39152]">
+          Preview mode: draft content. This URL will expire.
         </div>
         {rendered.map((node, i) => (
           <div key={i}>{node}</div>

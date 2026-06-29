@@ -45,7 +45,7 @@ export async function GET(): Promise<Response> {
     "# From the Trunk",
     "",
     "> From the Trunk is a curated marketplace for authenticated, pre-loved luxury",
-    "> sarees — each piece carries provenance, history, and a story.",
+    "> sarees. Each piece carries provenance, history, and a story.",
     "> We specialise in unique preloved pieces from renowned Indian weaving traditions.",
     "",
     "## Key pages",

@@ -342,7 +342,7 @@ export default async function SareePage({ params }: ProductPageProps) {
                 Provenance Promise
               </p>
               <h2 className="mt-2 max-w-xl font-serif text-[clamp(1.7rem,2.6vw,2.7rem)] leading-[0.98]">
-                Not just pre-loved. Carefully re-storied.
+                Not just pre-loved. Carefully re-stored.
               </h2>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:mt-0">

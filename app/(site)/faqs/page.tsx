@@ -16,7 +16,7 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = publicPageMetadata({
   title: "FAQs & Policies",
   description:
-    "Answers to common questions about From the Trunk — how we source, authenticate, and ship pre-loved luxury sarees — plus our privacy, returns, shipping, authentication, and customer-care policies.",
+    "Answers to common questions about From the Trunk: how we source, authenticate, and ship pre-loved luxury sarees, plus our privacy, returns, shipping, authentication, and customer-care policies.",
   path: "/faqs",
 });
 
@@ -27,9 +27,9 @@ const FAQ_ITEMS = [
       "From the Trunk is a curated marketplace for authenticated, pre-loved luxury sarees. We source forgotten treasures from homes across India, meticulously restore them, and give them a second life with a new custodian.",
   },
   {
-    question: "How do you authenticate the sarees?",
+    question: "How do we authenticate the sarees?",
     answer:
-      "Every piece undergoes a rigorous 360° condition check — we inspect for tears, stains, zari integrity, and fabric quality before listing. Only pieces that pass our quality threshold make it to the collection.",
+      "Every piece undergoes a rigorous 360° condition check. We inspect for tears, stains, zari integrity, and fabric quality before listing. Only pieces that pass our quality threshold make it to the collection.",
   },
   {
     question: "Are the sarees really pre-loved?",
@@ -44,7 +44,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you ship the sarees?",
     answer:
-      "We ship all sarees carefully folded and wrapped in muslin, packed in our signature trunk-inspired box. We ship across India and offer international shipping to select countries.",
+      "We ship all sarees carefully wrapped in tissue wrap, packed in our signature recycled saree cloth bag, and carefully nestled in our brand box. We ship across PAN India only, with no international shipping. Orders are dispatched through Shiprocket and/or DTDC.",
   },
   {
     question: "Can I sell my sarees through From the Trunk?",
@@ -54,7 +54,7 @@ const FAQ_ITEMS = [
   {
     question: "How do I care for my saree?",
     answer:
-      "Dry clean only. Store in the provided muslin wrap away from direct sunlight and humidity. Avoid plastic storage as it can trap moisture and damage the fabric.",
+      "Dry clean only. Store them in a breathable muslin or cotton cloth bag and keep it away from direct sunlight and humidity. Avoid plastic storage as it can trap moisture and damage the fabric.",
   },
   {
     question: "What payment methods do you accept?",
@@ -89,7 +89,7 @@ export default function FaqsPage() {
           FAQs &amp; Policies
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-          Everything you need before bringing a unique piece home — read our
+          Everything you need before bringing a unique piece home. Read our
           policies, then the answers to common questions.
         </p>
       </header>

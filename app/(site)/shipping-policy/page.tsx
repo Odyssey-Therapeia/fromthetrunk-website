@@ -23,7 +23,7 @@ export default function ShippingPolicyPage() {
           Shipping Policy
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: April 2026
+          Last updated: June 29, 2026
         </p>
       </div>
 
@@ -70,16 +70,19 @@ export default function ShippingPolicyPage() {
             </table>
           </div>
           <p className="text-xs text-trunk-gold">
-            All orders are dispatched via Shiprocket.
+            All orders are dispatched through Shiprocket and/or DTDC.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">Packaging</h2>
-          <p>Every saree is carefully packaged to preserve its condition:</p>
+          <p>
+            Every saree is carefully wrapped in tissue wrap, packed in our
+            signature recycled saree cloth bag, and nestled in our brand box.
+          </p>
           <ul className="list-disc space-y-1 pl-6">
-            <li>Wrapped in acid-free tissue paper</li>
-            <li>Placed in a protective muslin cloth bag</li>
+            <li>Wrapped in protective tissue wrap</li>
+            <li>Placed in a recycled saree cloth bag</li>
             <li>Accompanied by a story card and care instructions</li>
             <li>Shipped in a sturdy branded box</li>
           </ul>
@@ -105,15 +108,8 @@ export default function ShippingPolicyPage() {
             International Shipping
           </h2>
           <p>
-            We currently ship within India. International shipping will be
-            available soon. Contact us at{" "}
-            <a
-              href="mailto:hello@fromthetrunk.shop"
-              className="text-primary underline"
-            >
-              hello@fromthetrunk.shop
-            </a>{" "}
-            for special requests.
+            We currently ship across PAN India only. International shipping is
+            not available.
           </p>
         </section>
       </div>

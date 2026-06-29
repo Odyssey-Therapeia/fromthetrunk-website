@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   AsYouType,
   getCountryCallingCode,
@@ -34,6 +35,7 @@ type PhoneFieldProps = {
   error?: string;
   disabled?: boolean;
   className?: string;
+  fieldName?: string;
 };
 
 /** International phone input: FTT country dropdown + nationally-formatted number. */
@@ -46,7 +48,10 @@ export function PhoneField({
   error,
   disabled,
   className,
+  fieldName,
 }: PhoneFieldProps) {
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
   const display = toNationalDisplay(value, country);
 
   const emitFromNational = (nationalInput: string, nextCountry: CountryCode) => {
@@ -66,7 +71,7 @@ export function PhoneField({
   };
 
   return (
-    <label className={cn("flex flex-col gap-2", className)}>
+    <label htmlFor={inputId} className={cn("flex flex-col gap-2", className)}>
       <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/65">
         {label}
       </span>
@@ -79,6 +84,7 @@ export function PhoneField({
           buttonClassName="w-32 shrink-0"
         />
         <input
+          id={inputId}
           type="tel"
           inputMode="numeric"
           value={display}
@@ -86,6 +92,9 @@ export function PhoneField({
           disabled={disabled}
           placeholder="98765 43210"
           autoComplete="tel-national"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          data-checkout-field={fieldName}
           className={cn(
             "h-12 w-full rounded-xl border bg-ftt-ivory px-4 text-sm text-ftt-navy outline-none transition placeholder:text-ftt-burgundy/30 focus:ring-2 disabled:opacity-60",
             error
@@ -94,7 +103,11 @@ export function PhoneField({
           )}
         />
       </div>
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      {error ? (
+        <span id={errorId} className="text-xs text-destructive">
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }

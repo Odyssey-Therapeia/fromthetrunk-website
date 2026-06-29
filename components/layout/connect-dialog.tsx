@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Instagram, Loader2, Mail, MessageCircle } from "lucide-react";
 
 import {
@@ -54,8 +54,21 @@ export function ConnectDialog({
   const [status, setStatus] = useState<"error" | "idle" | "success">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const startedAtRef = useRef(0);
+  const closeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     if (nextOpen) {
       startedAtRef.current = Date.now();
       setStatus("idle");
@@ -101,6 +114,9 @@ export function ConnectDialog({
       setTopic("");
       setMessage("");
       setStatus("success");
+      closeTimerRef.current = window.setTimeout(() => {
+        handleOpenChange(false);
+      }, 900);
     } catch {
       setStatus("error");
     } finally {
@@ -200,7 +216,7 @@ export function ConnectDialog({
           <div aria-live="polite" className="min-h-5">
             {status === "success" ? (
               <p className="text-sm leading-6 text-[#141D46]">
-                Thanks for reaching out — we’ve received your request. Our team
+                Thanks for reaching out. We’ve received your request. Our team
                 will contact you shortly.
               </p>
             ) : null}

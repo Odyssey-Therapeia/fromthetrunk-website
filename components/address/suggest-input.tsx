@@ -18,6 +18,7 @@ type SuggestInputProps<T> = {
   id?: string;
   placeholder?: string;
   disabled?: boolean;
+  fieldName?: string;
   inputClassName?: string;
   maxResults?: number;
 };
@@ -38,6 +39,7 @@ export function SuggestInput<T>({
   id,
   placeholder,
   disabled,
+  fieldName,
   inputClassName,
   maxResults = 8,
 }: SuggestInputProps<T>) {
@@ -69,6 +71,7 @@ export function SuggestInput<T>({
         disabled={disabled}
         placeholder={placeholder}
         autoComplete="off"
+        data-checkout-field={fieldName}
         className={cn(inputClassName)}
       />
       {showList ? (

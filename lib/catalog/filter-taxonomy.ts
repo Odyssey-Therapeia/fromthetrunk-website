@@ -29,13 +29,16 @@ export const toFacetSlugs = (value: unknown): string[] =>
 const LABEL_OVERRIDES: Record<string, string> = {
   "banarasi-silk": "Banarasi Silk",
   "cotton-silk": "Cotton Silk",
+  georgette: "Georgette",
   "handloom-cotton-silk": "Handloom Cotton Silk",
   "ivory-white": "Ivory / White",
+  kanjeevaram: "Kanjeevaram",
   "kanjeevaram-mix": "Kanjeevaram Mix",
   "kanjeevaram-silk": "Kanjeevaram Silk",
+  "kota-cotton": "Kota Cotton",
   "linen-cotton": "Linen Cotton",
-  "low-to-high": "Price: Low to High",
-  "high-to-low": "Price: High to Low",
+  "low-to-high": "Price-(Low to High)",
+  "high-to-low": "Price-(High to Low)",
   "multicolor": "Multicolour",
   "multicolour": "Multicolour",
   "powder-blue": "Powder Blue",
@@ -44,6 +47,23 @@ const LABEL_OVERRIDES: Record<string, string> = {
   "sage-green": "Sage Green",
   "tissue-silk": "Tissue Silk",
 };
+
+export const CANONICAL_FABRIC_FILTERS = [
+  "silk",
+  "cotton",
+  "cotton-silk",
+  "handloom-cotton-silk",
+  "banarasi-silk",
+  "kanjeevaram",
+  "kanjeevaram-silk",
+  "kanjeevaram-mix",
+  "tissue-silk",
+  "kota-cotton",
+  "chiffon",
+  "georgette",
+  "organza",
+  "linen-cotton",
+] as const;
 
 export const displayFacetLabel = (value: string): string => {
   const slug = normalizeFacetSlug(value);

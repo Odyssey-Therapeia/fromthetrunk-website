@@ -82,6 +82,23 @@ describe("formatThemeCssVariables", () => {
     // Proves the prefix constant is load-bearing and not just a string literal
     expect(THEME_CSS_VAR_PREFIX).toBe("--");
   });
+
+  it("normalizes the unsafe orange page background token back to FTT ivory", () => {
+    const css = formatThemeCssVariables({
+      "--background": "#d98530",
+      "--accent": "#b39152",
+    });
+
+    expect(css).toContain("--background: #FDF7F1");
+    expect(css).not.toContain("--background: #d98530");
+    expect(css).toContain("--accent: #b39152");
+  });
+
+  it("preserves non-orange background tokens", () => {
+    const css = formatThemeCssVariables({ "--background": "#141D46" });
+
+    expect(css).toContain("--background: #141D46");
+  });
 });
 
 // -- buildInlineStyle ---------------------------------------------------------
@@ -105,6 +122,13 @@ describe("buildInlineStyle", () => {
     expect(s1).not.toBe(s2);
     expect(s1).toContain("0.5rem");
     expect(s2).toContain("1rem");
+  });
+
+  it("does not inject the known orange leak as the root page background", () => {
+    const style = buildInlineStyle({ "--background": "#d98530" });
+
+    expect(style).toContain("--background: #FDF7F1");
+    expect(style).not.toContain("--background: #d98530");
   });
 });
 

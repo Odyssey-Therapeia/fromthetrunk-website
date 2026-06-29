@@ -105,10 +105,6 @@ export async function SocialSection({ images }: { images: LandingImage[] }) {
               >
                 Follow @{username}
               </Link>
-
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#74531B]">
-                Live notes, not a catalogue
-              </span>
             </div>
           </div>
 

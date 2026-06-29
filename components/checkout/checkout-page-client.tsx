@@ -57,6 +57,22 @@ const saveCheckbox =
 const normalizeAddressPart = (value: string | null | undefined) =>
   (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
+const ADDRESS_ERROR_FIELD_ORDER: Array<keyof AddressForm> = [
+  "fullName",
+  "email",
+  "phone",
+  "line1",
+  "apartment",
+  "floorNumber",
+  "building",
+  "area",
+  "landmark",
+  "city",
+  "state",
+  "postalCode",
+  "country",
+];
+
 // Identity of an address for de-duplication: same street line, city, and PIN.
 const addressDedupeKey = (parts: {
   line1?: string | null;
@@ -326,6 +342,46 @@ export function CheckoutPageClient({
   const savedShippingRef = useRef(false);
   const savedBillingRef = useRef(false);
 
+  const scrollCheckoutToTop = useCallback(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        top: 0,
+      });
+    });
+  }, []);
+
+  const goToStep = useCallback(
+    (step: CheckoutStep) => {
+      setCurrentStep(step);
+      scrollCheckoutToTop();
+    },
+    [scrollCheckoutToTop],
+  );
+
+  const focusFirstAddressError = useCallback((errors: AddressFieldErrors) => {
+    const firstField = ADDRESS_ERROR_FIELD_ORDER.find((field) => errors[field]);
+    if (!firstField) return;
+
+    window.setTimeout(() => {
+      const field = document.querySelector<HTMLElement>(
+        `[data-checkout-field="${firstField}"]`,
+      );
+      if (!field) return;
+
+      field.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      });
+      window.setTimeout(() => field.focus({ preventScroll: true }), 120);
+    }, 80);
+  }, []);
+
   // True when an identical address is already in the customer's address book,
   // so we skip the save instead of creating a duplicate.
   const isAddressAlreadySaved = (form: AddressForm) => {
@@ -399,21 +455,27 @@ export function CheckoutPageClient({
   const goToBilling = () => {
     const errors = validateAddressForm(shippingAddress);
     setShippingErrors(errors);
-    if (hasErrors(errors)) return;
+    if (hasErrors(errors)) {
+      focusFirstAddressError(errors);
+      return;
+    }
     void saveShippingToAccount();
-    setCurrentStep("billing");
+    goToStep("billing");
   };
 
   const goToPackaging = () => {
     if (billingSameAsShipping) {
-      setCurrentStep("packaging");
+      goToStep("packaging");
       return;
     }
     const errors = validateAddressForm(billingAddress);
     setBillingErrors(errors);
-    if (hasErrors(errors)) return;
+    if (hasErrors(errors)) {
+      focusFirstAddressError(errors);
+      return;
+    }
     void saveBillingToAccount();
-    setCurrentStep("packaging");
+    goToStep("packaging");
   };
 
   const handlePay = async () => {
@@ -435,14 +497,16 @@ export function CheckoutPageClient({
     const shipErrors = validateAddressForm(shippingAddress);
     if (hasErrors(shipErrors)) {
       setShippingErrors(shipErrors);
-      setCurrentStep("shipping");
+      goToStep("shipping");
+      focusFirstAddressError(shipErrors);
       return;
     }
     if (!billingSameAsShipping) {
       const billErrors = validateAddressForm(billingAddress);
       if (hasErrors(billErrors)) {
         setBillingErrors(billErrors);
-        setCurrentStep("billing");
+        goToStep("billing");
+        focusFirstAddressError(billErrors);
         return;
       }
     }
@@ -493,7 +557,7 @@ export function CheckoutPageClient({
   };
 
   const handleCheckoutAuthSuccess = async () => {
-    setCurrentStep("shipping");
+    goToStep("shipping");
     await queryClient.invalidateQueries({ queryKey: ["addresses"] });
     await addressesQuery.refetch();
     router.refresh();
@@ -559,7 +623,7 @@ export function CheckoutPageClient({
           <div className="flex flex-col gap-5 lg:col-span-7 xl:col-span-8">
             <CheckoutProgress
               currentStep={currentStep}
-              onStepChange={setCurrentStep}
+              onStepChange={goToStep}
             />
 
             <div key={currentStep} className="ftt-step-enter space-y-4">
@@ -645,7 +709,7 @@ export function CheckoutPageClient({
                   />
                   <CheckoutStepActions
                     secondaryLabel="Back to shipping"
-                    onSecondary={() => setCurrentStep("shipping")}
+                    onSecondary={() => goToStep("shipping")}
                     primaryLabel="Choose packaging"
                     onPrimary={goToPackaging}
                   />
@@ -675,9 +739,9 @@ export function CheckoutPageClient({
                   ) : null}
                   <CheckoutStepActions
                     secondaryLabel="Back to billing"
-                    onSecondary={() => setCurrentStep("billing")}
+                    onSecondary={() => goToStep("billing")}
                     primaryLabel="Review order"
-                    onPrimary={() => setCurrentStep("review")}
+                    onPrimary={() => goToStep("review")}
                   />
                 </>
               ) : null}
@@ -754,7 +818,7 @@ export function CheckoutPageClient({
 
                   <CheckoutStepActions
                     secondaryLabel="Back to packaging"
-                    onSecondary={() => setCurrentStep("packaging")}
+                    onSecondary={() => goToStep("packaging")}
                     primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
                     onPrimary={handlePay}
                     disabledPrimary={!hasItems || isSubmitting || !agreedToTerms}

@@ -2,6 +2,7 @@
 
 import type { CountryCode } from "libphonenumber-js";
 
+import { AddressAutocomplete } from "@/components/checkout/address-autocomplete";
 import { CheckoutField } from "@/components/checkout/checkout-field";
 import { CountryCombobox } from "@/components/checkout/country-combobox";
 import { PhoneField } from "@/components/checkout/phone-field";
@@ -104,6 +105,7 @@ export function SignupAddressStep({
           disabled={disabled}
           autoComplete="name"
           className="md:col-span-2"
+          fieldName="fullName"
         />
 
         <PhoneField
@@ -117,25 +119,30 @@ export function SignupAddressStep({
           error={errors.phone}
           disabled={disabled}
           className="md:col-span-2"
+          fieldName="phone"
         />
 
         <CheckoutField
-          label="Address line 1"
+          label="Apartment / flat, floor number, building"
           value={value.line1}
           onChange={update("line1")}
           error={errors.line1}
           disabled={disabled}
           autoComplete="address-line1"
           className="md:col-span-2"
+          fieldName="line1"
         />
 
-        <CheckoutField
-          label="Address line 2"
-          value={value.line2}
-          onChange={update("line2")}
-          disabled={disabled}
-          autoComplete="address-line2"
+        <AddressAutocomplete
           className="md:col-span-2"
+          label="Area / Landmark"
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          field="landmark"
+          fieldName="landmark"
+          mapPlacement="side"
+          placeholder="Search area, landmark, or neighbourhood"
         />
 
         <CheckoutField
@@ -145,6 +152,7 @@ export function SignupAddressStep({
           error={errors.city}
           disabled={disabled}
           autoComplete="address-level2"
+          fieldName="city"
         />
 
         {india ? (
@@ -157,7 +165,11 @@ export function SignupAddressStep({
               onValueChange={(state) => onChange({ ...value, state })}
               disabled={disabled}
             >
-              <SelectTrigger className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy">
+              <SelectTrigger
+                aria-invalid={errors.state ? true : undefined}
+                data-checkout-field="state"
+                className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy"
+              >
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
               <SelectContent>
@@ -182,6 +194,7 @@ export function SignupAddressStep({
             error={errors.state}
             disabled={disabled}
             autoComplete="address-level1"
+            fieldName="state"
           />
         )}
 
@@ -192,6 +205,7 @@ export function SignupAddressStep({
           error={errors.postalCode}
           disabled={disabled}
           autoComplete="postal-code"
+          fieldName="postalCode"
         />
 
         <label className="flex flex-col gap-2">
@@ -207,6 +221,8 @@ export function SignupAddressStep({
               })
             }
             disabled={disabled}
+            error={Boolean(errors.country)}
+            fieldName="country"
           />
           {errors.country ? (
             <span className="text-xs text-destructive">{errors.country}</span>

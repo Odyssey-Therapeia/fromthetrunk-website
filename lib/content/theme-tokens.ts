@@ -20,6 +20,56 @@
 /** Sentinel prefix for valid CSS custom property names. */
 export const THEME_CSS_VAR_PREFIX = "--" as const;
 
+const FTT_IVORY_BACKGROUND = "#FDF7F1";
+const UNSAFE_BACKGROUND_REFERENCE = { r: 217, g: 133, b: 48 };
+const UNSAFE_BACKGROUND_DISTANCE_THRESHOLD = 36;
+
+type RgbColor = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+function parseHexColor(value: string): RgbColor | null {
+  const trimmed = value.trim();
+  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
+  if (!match) return null;
+
+  const hex = match[1];
+  const normalized =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((character) => `${character}${character}`)
+          .join("")
+      : hex;
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function colorDistance(a: RgbColor, b: RgbColor): number {
+  return Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+}
+
+function sanitizeThemeToken(key: string, value: unknown): unknown {
+  if (key !== "--background" || typeof value !== "string") {
+    return value;
+  }
+
+  const color = parseHexColor(value);
+  if (!color) return value;
+
+  const isUnsafeOrangeBackground =
+    colorDistance(color, UNSAFE_BACKGROUND_REFERENCE) <=
+    UNSAFE_BACKGROUND_DISTANCE_THRESHOLD;
+
+  return isUnsafeOrangeBackground ? FTT_IVORY_BACKGROUND : value;
+}
+
 /**
  * Converts a theme token map to a CSS custom-property declarations string.
  *
@@ -36,7 +86,7 @@ export function formatThemeCssVariables(
   for (const [key, value] of Object.entries(tokens)) {
     if (!key.startsWith(THEME_CSS_VAR_PREFIX)) continue;
     if (value === null || value === undefined) continue;
-    lines.push(`${key}: ${String(value)};`);
+    lines.push(`${key}: ${String(sanitizeThemeToken(key, value))};`);
   }
   return lines.join("\n");
 }

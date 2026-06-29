@@ -110,7 +110,7 @@ export default async function ConfirmationPage({
                 is scheduled.
               </p>
               {paymentNeedsReview ? (
-                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="mt-3 rounded-2xl border border-[#B39152]/35 bg-[#B39152]/10 px-4 py-3 text-sm text-[#601D1C]">
                   We received the payment handoff and are checking the payment
                   record before dispatch.
                 </p>

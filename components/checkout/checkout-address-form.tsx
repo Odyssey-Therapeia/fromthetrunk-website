@@ -84,6 +84,7 @@ export function CheckoutAddressForm({
           error={errors.fullName}
           disabled={disabled}
           autoComplete="name"
+          fieldName="fullName"
         />
         <CheckoutField
           className="md:col-span-2"
@@ -94,6 +95,7 @@ export function CheckoutAddressForm({
           error={errors.email}
           disabled={disabled}
           autoComplete="email"
+          fieldName="email"
         />
         <PhoneField
           className="md:col-span-2"
@@ -104,38 +106,43 @@ export function CheckoutAddressForm({
           onCountryChange={(phoneCountry) => onChange({ ...value, phoneCountry })}
           error={errors.phone}
           disabled={disabled}
+          fieldName="phone"
         />
-
-        {withPlaceSearch ? (
-          <div className="md:col-span-2">
-            <AddressAutocomplete
-              label="Address / area / location"
-              value={value}
-              onChange={onChange}
-              error={errors.line1}
-              disabled={disabled}
-            />
-          </div>
-        ) : (
-          <CheckoutField
-            className="md:col-span-2"
-            label="Address / area / location"
-            value={value.line1}
-            onChange={update("line1")}
-            error={errors.line1}
-            disabled={disabled}
-            autoComplete="address-line1"
-          />
-        )}
 
         <CheckoutField
           className="md:col-span-2"
-          label="Apartment, suite, landmark"
-          value={value.line2}
-          onChange={update("line2")}
+          label="Apartment / flat, floor number, building"
+          value={value.line1}
+          onChange={update("line1")}
+          error={errors.line1}
           disabled={disabled}
-          autoComplete="address-line2"
+          autoComplete="address-line1"
+          fieldName="line1"
         />
+
+        {withPlaceSearch ? (
+          <AddressAutocomplete
+            className="md:col-span-2"
+            label="Area / Landmark"
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            field="landmark"
+            fieldName="landmark"
+            mapPlacement="side"
+            placeholder="Search area, landmark, or neighbourhood"
+          />
+        ) : (
+          <CheckoutField
+            className="md:col-span-2"
+            label="Area / Landmark"
+            value={value.landmark}
+            onChange={update("landmark")}
+            disabled={disabled}
+            autoComplete="address-line2"
+            fieldName="landmark"
+          />
+        )}
 
         <div className="flex flex-col gap-2">
           <span className={labelClass}>City</span>
@@ -159,6 +166,7 @@ export function CheckoutAddressForm({
             }
             placeholder="Start typing your city"
             disabled={disabled}
+            fieldName="city"
             inputClassName={cn(
               fttInputBase,
               errors.city ? fttInputError : fttInputOk,
@@ -177,7 +185,11 @@ export function CheckoutAddressForm({
               onValueChange={(state) => onChange({ ...value, state })}
               disabled={disabled}
             >
-              <SelectTrigger className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy">
+              <SelectTrigger
+                aria-invalid={errors.state ? true : undefined}
+                data-checkout-field="state"
+                className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy"
+              >
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
               <SelectContent>
@@ -200,6 +212,7 @@ export function CheckoutAddressForm({
             error={errors.state}
             disabled={disabled}
             autoComplete="address-level1"
+            fieldName="state"
           />
         )}
 
@@ -210,6 +223,7 @@ export function CheckoutAddressForm({
           error={errors.postalCode}
           disabled={disabled}
           autoComplete="postal-code"
+          fieldName="postalCode"
         />
 
         <div className="flex flex-col gap-2">
@@ -223,6 +237,8 @@ export function CheckoutAddressForm({
               })
             }
             disabled={disabled}
+            error={Boolean(errors.country)}
+            fieldName="country"
           />
           {errors.country ? (
             <span className="text-xs text-destructive">{errors.country}</span>

@@ -29,7 +29,7 @@ export function CartHeroShell() {
               Trunk assurance
             </p>
             <h2 className="mt-3 font-serif text-3xl leading-none text-[#141D46]">
-              Not pre-owned. Re-storied.
+              Not pre-owned. Re-stored.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#6B625B]">
               A final review before your heirloom continues its next life.

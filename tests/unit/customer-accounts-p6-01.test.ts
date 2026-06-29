@@ -125,6 +125,7 @@ vi.mock("@/lib/email/send", () => ({
 }));
 
 vi.mock("@/lib/config/site", () => ({
+  getPublicAssetOrigin: () => "https://fromthetrunk.com",
   getSiteOrigin: () => "https://fromthetrunk.com",
 }));
 

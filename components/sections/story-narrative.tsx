@@ -29,7 +29,7 @@ function SplitWords({ text, className }: { text: string; className?: string }) {
 const beats = [
   {
     paragraphs: [
-      "There\u2019s something quietly powerful about a saree. It carries more than fabric \u2014 it holds memories, milestones, and moments that once meant everything.",
+      "There\u2019s something quietly powerful about a saree. It carries more than fabric, it holds memories, milestones, and moments that once meant everything.",
       "In so many homes, these beautiful pieces lie tucked away, preserved but forgotten.",
     ],
     layout: "image-right" as const,
@@ -42,14 +42,14 @@ const beats = [
   },
   {
     paragraphs: [
-      "By giving your pre-loved sarees a second life, you\u2019re not just clearing space \u2014 you\u2019re passing on heritage, emotion, and craftsmanship.",
+      "By giving your pre-loved sarees a second life, you\u2019re not just clearing space, you\u2019re passing on heritage, emotion, and craftsmanship.",
       "Each saree becomes a bridge between past and present, finding new meaning in someone else\u2019s journey.",
     ],
     layout: "image-left" as const,
   },
   {
     paragraphs: [
-      "And in doing so, you\u2019re also making a conscious, sustainable choice \u2014 reducing waste while celebrating timeless fashion.",
+      "And in doing so, you\u2019re also making a conscious, sustainable choice, reducing waste while celebrating timeless fashion.",
     ],
     layout: "full-bleed" as const,
   },
@@ -264,13 +264,13 @@ export function StoryNarrative({
             <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/40 to-black/10" />
           </div>
           <div className="relative mx-auto w-full max-w-5xl space-y-5 px-4 pb-20 @[640px]:px-6 @[640px]:pb-28 @[1024px]:pb-36">
-            <p className="hero-eyebrow reveal-el text-xs uppercase tracking-[0.5em] text-amber-100/50">
+            <p className="hero-eyebrow reveal-el text-xs uppercase tracking-[0.5em] text-[#FDF7F1]/55">
               Our Manifesto
             </p>
             <h1 className="hero-title font-serif text-5xl leading-[1.1] text-white @[640px]:text-6xl @[1024px]:text-8xl">
               <SplitWords text="Why we do what we do" />
             </h1>
-            <p className="hero-subtitle reveal-el max-w-lg text-base text-amber-100/60 @[640px]:text-lg @[1024px]:text-xl">
+            <p className="hero-subtitle reveal-el max-w-lg text-base text-[#FDF7F1]/68 @[640px]:text-lg @[1024px]:text-xl">
               A story of heritage, second chances, and the quiet power of a
               saree.
             </p>

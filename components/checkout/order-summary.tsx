@@ -162,7 +162,7 @@ export function OrderSummary({
           </h4>
           <p className="text-xs leading-relaxed text-ftt-burgundy/70">
             Every piece is authenticated and protected in transit. Payment is
-            handled securely by Razorpay — we never see your card details.
+            handled securely by Razorpay. We never see your card details.
           </p>
         </div>
       </div>

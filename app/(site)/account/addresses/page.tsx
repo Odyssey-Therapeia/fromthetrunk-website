@@ -8,13 +8,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Home, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { SuggestInput } from "@/components/address/suggest-input";
+import { AddressAutocomplete } from "@/components/checkout/address-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import type { AddressForm } from "@/lib/checkout/address-form";
 import { INDIA_CITIES } from "@/lib/checkout/india-cities";
-import { COUNTRY_OPTIONS, INDIA_STATES } from "@/lib/checkout/locations";
+import {
+  COUNTRY_OPTIONS,
+  DEFAULT_COUNTRY_CODE,
+  DEFAULT_COUNTRY_NAME,
+  DEFAULT_STATE,
+  INDIA_STATES,
+} from "@/lib/checkout/locations";
 import { cn } from "@/lib/utils";
 import type { Address } from "@/types/domain";
 
@@ -26,15 +34,28 @@ const fetchAddresses = async () => {
   return (await response.json()) as Address[];
 };
 
-const emptyForm = {
+type AddressBookForm = {
+  label: string;
+  name: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
+};
+
+const emptyForm: AddressBookForm = {
   label: "",
   name: "",
   line1: "",
   line2: "",
   city: "",
-  state: "",
+  state: DEFAULT_STATE,
   postalCode: "",
-  country: "",
+  country: DEFAULT_COUNTRY_NAME,
   phone: "",
   isDefault: false,
 };
@@ -50,6 +71,40 @@ const toAddressForm = (address: Address) => ({
   country: address.country ?? "",
   phone: address.phone ?? "",
   isDefault: Boolean(address.isDefault),
+});
+
+const toAutocompleteAddress = (
+  form: AddressBookForm,
+  email: string,
+): AddressForm => ({
+  fullName: form.name,
+  email,
+  phone: form.phone,
+  phoneCountry: DEFAULT_COUNTRY_CODE,
+  line1: form.line1,
+  line2: "",
+  apartment: "",
+  floorNumber: "",
+  building: "",
+  area: "",
+  landmark: form.line2,
+  city: form.city,
+  state: form.state || DEFAULT_STATE,
+  postalCode: form.postalCode,
+  country: form.country || DEFAULT_COUNTRY_NAME,
+});
+
+const mergeAutocompleteAddress = (
+  form: AddressBookForm,
+  next: AddressForm,
+): AddressBookForm => ({
+  ...form,
+  line1: next.line1,
+  line2: next.landmark || next.area || next.line2,
+  city: next.city,
+  state: next.state,
+  postalCode: next.postalCode,
+  country: next.country,
 });
 
 export default function AddressesPage() {
@@ -137,6 +192,8 @@ export default function AddressesPage() {
 
   const addresses = data ?? [];
   const activeMutation = createMutation.isPending || updateMutation.isPending;
+  const accountEmail = session.user.email ?? "";
+  const autocompleteAddress = toAutocompleteAddress(form, accountEmail);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -245,29 +302,47 @@ export default function AddressesPage() {
           </FormField>
         </div>
 
-        <div className="mt-4 grid max-w-full gap-4 lg:grid-cols-[1.1fr_0.9fr] [&>*]:min-w-0">
-          <FormField label="Street address" htmlFor="line1">
+        <div className="mt-4 grid max-w-full gap-4 lg:grid-cols-[0.72fr_1.28fr] [&>*]:min-w-0">
+          <FormField label="Phone" htmlFor="phone">
+            <Input
+              id="phone"
+              type="tel"
+              value={form.phone}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, phone: event.target.value }))
+              }
+              className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy focus-visible:ring-ftt-gold/35"
+            />
+          </FormField>
+
+          <FormField
+            label="Apartment / flat, floor number, building"
+            htmlFor="line1"
+          >
             <Input
               id="line1"
               value={form.line1}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, line1: event.target.value }))
               }
-              className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy focus-visible:ring-ftt-gold/35"
-            />
-          </FormField>
-
-          <FormField label="Apartment, suite, etc." htmlFor="line2">
-            <Input
-              id="line2"
-              value={form.line2}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, line2: event.target.value }))
-              }
+              autoComplete="address-line1"
               className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy focus-visible:ring-ftt-gold/35"
             />
           </FormField>
         </div>
+
+        <AddressAutocomplete
+          className="mt-4"
+          label="Area / Landmark"
+          value={autocompleteAddress}
+          onChange={(next) =>
+            setForm((prev) => mergeAutocompleteAddress(prev, next))
+          }
+          field="landmark"
+          fieldName="line2"
+          mapPlacement="side"
+          placeholder="Search area, landmark, or neighbourhood"
+        />
 
         <div className="mt-4 grid max-w-full gap-4 md:grid-cols-3 [&>*]:min-w-0">
           <FormField label="City" htmlFor="city">
@@ -320,7 +395,7 @@ export default function AddressesPage() {
           </FormField>
         </div>
 
-        <div className="mt-4 grid max-w-full gap-4 md:grid-cols-2 [&>*]:min-w-0">
+        <div className="mt-4 grid max-w-full gap-4 md:grid-cols-1 [&>*]:min-w-0">
           <FormField label="Country" htmlFor="country">
             <SuggestInput
               id="country"
@@ -336,18 +411,6 @@ export default function AddressesPage() {
                 setForm((prev) => ({ ...prev, country: item.name }))
               }
               placeholder="Start typing your country"
-            />
-          </FormField>
-
-          <FormField label="Phone" htmlFor="phone">
-            <Input
-              id="phone"
-              type="tel"
-              value={form.phone}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, phone: event.target.value }))
-              }
-              className="h-12 rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy focus-visible:ring-ftt-gold/35"
             />
           </FormField>
         </div>

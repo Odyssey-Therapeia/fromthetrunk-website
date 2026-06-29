@@ -53,8 +53,8 @@ export function GiftOptions({
             </span>
           </span>
           <span className="mt-1 block text-sm leading-6 text-ftt-burgundy/65">
-            We&apos;ll ship it straight to them with a keepsake presentation —
-            add your name and a note for the gift card.
+            We&apos;ll ship it straight to them with a keepsake presentation. Add
+            your name and a note for the gift card.
           </span>
         </span>
       </label>
@@ -62,7 +62,7 @@ export function GiftOptions({
       {isGift ? (
         <div className="mt-6 space-y-5 border-t border-ftt-border pt-6">
           <CheckoutField
-            label="From — so they know it's from you"
+            label="From, so they know it's from you"
             value={senderName}
             onChange={onSenderNameChange}
             disabled={disabled}
@@ -91,7 +91,7 @@ export function GiftOptions({
                   }
                   disabled={disabled}
                   rows={4}
-                  placeholder="Write a little note for them — we'll hand-write it on an FTT card."
+                  placeholder="Write a little note for them. We'll hand-write it on an FTT card."
                   className="rounded-xl border-ftt-border bg-ftt-ivory text-ftt-navy focus-visible:ring-ftt-gold/25"
                 />
                 <p className="text-right text-[11px] text-ftt-burgundy/45">

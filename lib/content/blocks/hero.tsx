@@ -122,9 +122,9 @@ function HeroRenderer(props: Record<string, unknown>) {
 
         {(p.infoCardEyebrow || p.infoCardTitle || p.infoCardBody) && (
           <div className="max-w-md">
-            <div className="rounded-2xl border border-white/25 bg-white/15 p-6 text-sm text-amber-50/80 shadow-soft backdrop-blur-md">
+            <div className="rounded-2xl border border-white/25 bg-white/15 p-6 text-sm text-[#FDF7F1]/80 shadow-soft backdrop-blur-md">
               {p.infoCardEyebrow && (
-                <p className="text-xs uppercase tracking-widest text-amber-100/60">
+                <p className="text-xs uppercase tracking-widest text-[#FDF7F1]/62">
                   {p.infoCardEyebrow}
                 </p>
               )}
@@ -134,7 +134,7 @@ function HeroRenderer(props: Record<string, unknown>) {
                 </p>
               )}
               {p.infoCardBody && (
-                <p className="mt-2 text-amber-100/70">{p.infoCardBody}</p>
+                <p className="mt-2 text-[#FDF7F1]/72">{p.infoCardBody}</p>
               )}
             </div>
           </div>

@@ -19,6 +19,8 @@ type CountryComboboxProps = {
   variant?: "address" | "phone";
   disabled?: boolean;
   buttonClassName?: string;
+  error?: boolean;
+  fieldName?: string;
 };
 
 /** Searchable country dropdown (flag · name · dial code) reused for phone + address. */
@@ -28,6 +30,8 @@ export function CountryCombobox({
   variant = "address",
   disabled,
   buttonClassName,
+  error,
+  fieldName,
 }: CountryComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -62,8 +66,10 @@ export function CountryCombobox({
         <button
           type="button"
           disabled={disabled}
+          data-invalid={error ? "true" : undefined}
+          data-checkout-field={fieldName}
           className={cn(
-            "flex h-12 items-center gap-2 rounded-xl border border-ftt-border bg-ftt-ivory px-3 text-sm text-ftt-navy outline-none transition focus:border-ftt-gold focus:ring-2 focus:ring-ftt-gold/20 disabled:opacity-60",
+            "flex h-12 items-center gap-2 rounded-xl border border-ftt-border bg-ftt-ivory px-3 text-sm text-ftt-navy outline-none transition focus:border-ftt-gold focus:ring-2 focus:ring-ftt-gold/20 disabled:opacity-60 data-[invalid=true]:border-ftt-burgundy/70 data-[invalid=true]:ring-2 data-[invalid=true]:ring-ftt-burgundy/10",
             buttonClassName,
           )}
         >
