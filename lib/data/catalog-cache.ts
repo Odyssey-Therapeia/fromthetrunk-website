@@ -41,7 +41,13 @@ const normalizeSearchInput = (
   input: CatalogSearchFilters,
 ): CatalogSearchFilters => ({
   ...input,
+  colors: input.colors ? [...input.colors].sort() : undefined,
+  fabrics: input.fabrics ? [...input.fabrics].sort() : undefined,
+  occasions: input.occasions ? [...input.occasions].sort() : undefined,
+  patterns: input.patterns ? [...input.patterns].sort() : undefined,
   tags: input.tags ? [...input.tags].sort() : undefined,
+  types: input.types ? [...input.types].sort() : undefined,
+  works: input.works ? [...input.works].sort() : undefined,
 });
 
 export const getCachedCollectionPage = (requestId?: string) =>

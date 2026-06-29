@@ -9,19 +9,24 @@ const PROMO_INTERVAL_MS = 3000;
 
 const promoSlides = [
   {
-    eyebrow: "The provenance promise",
-    title: "Not pre-owned. Re-storied.",
-    body: "Every saree is authenticated, condition graded, and story logged before it enters the trunk.",
+    eyebrow: "THE PROVENANCE PROMISE",
+    title: "Every saree, fully vouched for.",
+    body: "Authenticated, condition-graded, and story-logged before it joins the trunk.",
   },
   {
-    eyebrow: "Chosen by you",
-    title: "How lucky these pieces are.",
-    body: "A saree waits for the right next wardrobe. Yours could be the chapter it was meant to find.",
+    eyebrow: "A CONSCIOUS CHOICE",
+    title: "Style that costs the planet less.",
+    body: "Choosing pre-loved means less waste and more life for sarees worth keeping.",
   },
   {
-    eyebrow: "Why shop here",
-    title: "Rare pieces, ready for another life.",
-    body: "Find handpicked drapes with texture, craft, and history you will not see twice.",
+    eyebrow: "HERITAGE, CARRIED FORWARD",
+    title: "Wear a piece of history.",
+    body: "Vintage sarees rich with memory and craft, ready for a new chapter.",
+  },
+  {
+    eyebrow: "VINTAGE, REDISCOVERED",
+    title: "Heirloom luxury, within reach.",
+    body: "Unique vintage sarees of heirloom quality, thoughtfully priced.",
   },
 ] as const;
 

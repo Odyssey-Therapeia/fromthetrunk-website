@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { policies } from "@/lib/legal/policies";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Policies",
   description:
     "Privacy, returns, refunds, shipping, authentication, and customer-care policies for From the Trunk.",
-};
+  path: "/policies",
+});
 
 const PROMISES = [
   {

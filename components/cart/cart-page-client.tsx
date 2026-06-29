@@ -144,8 +144,8 @@ export function CartPageClient({
           </section>
         ) : null}
 
-        <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_19rem] md:items-start lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="space-y-5">
+        <section className="grid max-w-full gap-6 md:grid-cols-[minmax(0,1fr)_19rem] md:items-start lg:grid-cols-[minmax(0,1fr)_390px] [&>*]:min-w-0">
+          <div className="min-w-0 space-y-5">
             <div className="flex flex-col gap-3 rounded-[1.5rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#74531B]">
@@ -262,9 +262,7 @@ function OrderSummaryPanel({
   onCheckoutClick: () => void;
 }) {
   return (
-    <aside
-      className="sticky top-24 rounded-[1.75rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 shadow-[0_18px_50px_rgba(20,29,70,0.10)]"
-    >
+    <aside className="min-w-0 rounded-[1.75rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 shadow-[0_18px_50px_rgba(20,29,70,0.10)] md:sticky md:top-24">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#74531B]">

@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { getSiteOrigin } from "@/lib/config/site";
-
-const baseUrl = getSiteOrigin();
+import { absoluteUrl } from "@/lib/seo/site-url";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -10,9 +8,20 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/account", "/checkout", "/api"],
+        disallow: [
+          "/admin/",
+          "/account/",
+          "/api/",
+          "/api/debug/",
+          "/api/v2/docs",
+          "/api/v2/openapi.json",
+          "/cart",
+          "/checkout",
+          "/search",
+          "/wishlist",
+        ],
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: absoluteUrl("/sitemap.xml"),
   };
 }

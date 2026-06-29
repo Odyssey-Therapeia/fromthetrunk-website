@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getPolicyBySlug, policies } from "@/lib/legal/policies";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
 type PolicyPageProps = {
   params: Promise<{ slug: string }>;
@@ -18,7 +19,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const policy = getPolicyBySlug(slug);
   if (!policy) return { title: "Policy" };
-  return { title: policy.title, description: policy.description };
+  return publicPageMetadata({
+    title: policy.title,
+    description: policy.description,
+    path: `/policies/${policy.slug}`,
+  });
 }
 
 export default async function PolicyPage({ params }: PolicyPageProps) {

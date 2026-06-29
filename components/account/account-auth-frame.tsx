@@ -25,15 +25,15 @@ export function AccountAuthFrame({
     mode === "sign-in" ? "Create account" : "Sign in";
 
   return (
-    <section className="bg-ftt-ivory px-4 py-8 sm:px-6 lg:py-12">
-      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-ftt-border bg-ftt-card shadow-[0_24px_80px_rgba(20,29,70,0.13)] xl:min-h-[680px] xl:grid-cols-[70fr_30fr]">
-        <div className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
+    <section className="bg-ftt-ivory px-3 py-5 sm:px-6 sm:py-8 lg:py-12">
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[1.5rem] border border-ftt-border bg-ftt-card shadow-[0_24px_80px_rgba(20,29,70,0.13)] sm:rounded-[2rem] xl:min-h-[680px] xl:grid-cols-[70fr_30fr]">
+        <div className="flex items-center justify-center p-4 sm:p-8 lg:p-10">
           <div className="ftt-account-reveal w-full max-w-xl">
             <p className="text-center text-[11px] font-semibold uppercase tracking-[0.38em] text-ftt-gold">
               {eyebrow}
             </p>
 
-            <h1 className="mt-4 text-center font-serif text-[clamp(2.35rem,5vw,4.6rem)] leading-[0.96] text-ftt-navy">
+            <h1 className="mt-4 text-center font-serif text-[clamp(2.1rem,12vw,4.6rem)] leading-[0.96] text-ftt-navy sm:text-[clamp(2.35rem,5vw,4.6rem)]">
               {title}
             </h1>
 
@@ -41,7 +41,7 @@ export function AccountAuthFrame({
               {body}
             </p>
 
-            <div className="mt-8">{children}</div>
+            <div className="mt-6 sm:mt-8">{children}</div>
           </div>
         </div>
 

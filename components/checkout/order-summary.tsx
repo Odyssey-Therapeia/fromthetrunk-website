@@ -63,7 +63,7 @@ export function OrderSummary({
         <div className="space-y-6 p-6">
           <ul className="space-y-5">
             {items.map((item) => (
-              <li key={item.id} className="flex gap-4">
+              <li key={item.id} className="flex min-w-0 gap-4">
                 <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-ftt-border bg-ftt-ivory">
                   {item.image ? (
                     <Image
@@ -79,8 +79,8 @@ export function OrderSummary({
                     </span>
                   )}
                 </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <p className="text-sm font-semibold text-ftt-navy">
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
+                  <p className="break-words text-sm font-semibold text-ftt-navy">
                     {item.name}
                   </p>
                   <p className="mt-1 text-[11px] uppercase tracking-widest text-ftt-burgundy/50">
@@ -135,9 +135,9 @@ export function OrderSummary({
 
           <div className="h-px bg-ftt-border" />
 
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-4">
             <span className="font-serif text-lg text-ftt-navy">Total</span>
-            <span className="font-serif text-3xl text-ftt-burgundy">
+            <span className="shrink-0 text-right font-serif text-3xl text-ftt-burgundy">
               {formatCurrency(total)}
             </span>
           </div>
@@ -180,13 +180,15 @@ function Row({
   accent?: boolean;
 }) {
   return (
-    <div className="flex justify-between">
-      <dt className={accent ? "text-ftt-gold" : "text-ftt-burgundy/60"}>
+    <div className="flex min-w-0 justify-between gap-4">
+      <dt className={accent ? "min-w-0 break-words text-ftt-gold" : "min-w-0 break-words text-ftt-burgundy/60"}>
         {label}
       </dt>
       <dd
         className={
-          accent ? "font-semibold text-ftt-gold" : "font-medium text-ftt-navy"
+          accent
+            ? "shrink-0 text-right font-semibold text-ftt-gold"
+            : "shrink-0 text-right font-medium text-ftt-navy"
         }
       >
         {value}
@@ -226,7 +228,7 @@ function DiscountField({
           </button>
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <Input
             value={discount.code}
             onChange={(event) => discount.onCodeChange(event.target.value.toUpperCase())}
@@ -235,7 +237,7 @@ function DiscountField({
             }}
             placeholder="Enter code"
             disabled={disabled || discount.isValidating}
-            className="rounded-xl border-ftt-border bg-ftt-ivory font-mono text-sm uppercase text-ftt-navy focus-visible:ring-ftt-gold/20"
+            className="min-w-0 rounded-xl border-ftt-border bg-ftt-ivory font-mono text-sm uppercase text-ftt-navy focus-visible:ring-ftt-gold/20"
           />
           <Button
             type="button"

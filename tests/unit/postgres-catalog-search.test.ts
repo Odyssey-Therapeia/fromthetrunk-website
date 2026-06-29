@@ -239,8 +239,12 @@ const pushProduct = (
   };
   // Main product rows
   selectQueue.push([base]);
-  // Facet rows (fabric counts, type counts, availability counts, tag counts)
+  // Facet rows: fabric, color, occasion, work, pattern, type, availability, tags
   selectQueue.push([{ fabric: "silk", count: 1 }]);
+  selectQueue.push([{ color: "navy", count: 1 }]);
+  selectQueue.push([{ occasion: "festive", count: 1 }]);
+  selectQueue.push([{ work: "zari", count: 1 }]);
+  selectQueue.push([{ pattern: "floral", count: 1 }]);
   selectQueue.push([{ typeSlug: null, count: 1 }]);
   selectQueue.push([{ stockStatus: "available", count: 1 }]);
   selectQueue.push([{ tagSlug: null, count: 1 }]);
@@ -254,6 +258,10 @@ const pushProduct = (
 const pushEmpty = () => {
   selectQueue.push([]);
   // Facet rows — all empty
+  selectQueue.push([]);
+  selectQueue.push([]);
+  selectQueue.push([]);
+  selectQueue.push([]);
   selectQueue.push([]);
   selectQueue.push([]);
   selectQueue.push([]);
@@ -379,6 +387,66 @@ describe("searchProducts — fabric filter", () => {
     const filters: CatalogSearchFilters = { fabric: "cotton" };
     const { products } = await searchProducts(filters);
     expect(products).toHaveLength(0);
+  });
+
+  it("supports multi-select fabric OR values", async () => {
+    pushProduct({ id: "p-multi-fabric", attributes: { fabric: "silk" } });
+    await searchProducts({ fabrics: ["silk", "cotton"] });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("silk");
+    expect(strings).toContain("cotton");
+    expect(strings).toContain("fabric");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filter: color / occasion / work / pattern faceted filters
+// ---------------------------------------------------------------------------
+
+describe("searchProducts — faceted storefront filters", () => {
+  it("supports multi-select color OR values", async () => {
+    pushProduct({ id: "p-color", attributes: { color: "navy" } });
+    await searchProducts({ colors: ["black", "navy"] });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("black");
+    expect(strings).toContain("navy");
+    expect(strings).toContain("color");
+  });
+
+  it("combines type=blouse and color=black with AND semantics", async () => {
+    pushProduct({ id: "p-black-blouse", typeId: "type-blouse", attributes: { color: "black" } });
+    await searchProducts({ colors: ["black"], types: ["blouse"] });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("blouse");
+    expect(strings).toContain("black");
+  });
+
+  it("combines type=blouse and fabric=cotton with AND semantics", async () => {
+    pushProduct({ id: "p-cotton-blouse", typeId: "type-blouse", attributes: { fabric: "cotton" } });
+    await searchProducts({ fabrics: ["cotton"], types: ["blouse"] });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("blouse");
+    expect(strings).toContain("cotton");
+  });
+
+  it("combines type=saree, fabric=silk, and occasion=festive", async () => {
+    pushProduct({ id: "p-festive-saree", typeId: "type-saree", attributes: { fabric: "silk", occasion: "festive" } });
+    await searchProducts({
+      fabrics: ["silk"],
+      occasions: ["festive"],
+      types: ["saree"],
+    });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("saree");
+    expect(strings).toContain("silk");
+    expect(strings).toContain("festive");
+  });
+
+  it("supports availabilityStatus=available", async () => {
+    pushProduct({ id: "p-available", stockStatus: "available" });
+    await searchProducts({ availabilityStatus: "available" });
+    const strings = mainWhereStrings();
+    expect(strings).toContain("available");
   });
 });
 

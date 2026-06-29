@@ -22,7 +22,7 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for fluid movement and evening ease",
     description:
       "Choose georgette when you want a graceful fall, soft pleats, and a saree that feels dressed without feeling heavy.",
-    href: "/collection?fabric=georgette",
+    href: "/collection/fabric/georgette",
     image: "/category/georgette.jpg",
     fallbackImage: "/hero/timeless.JPG",
   },
@@ -40,7 +40,7 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for weddings and ceremonial presence",
     description:
       "Pick Kanjeevaram for structure, rich silk weight, zari detail, and a saree that holds a formal silhouette beautifully.",
-    href: "/collection?fabric=kanjeevaram",
+    href: "/collection/fabric/kanjeevaram",
     image: "/category/kanjiverram.jpg",
     fallbackImage: "/hero/banner.png",
   },
@@ -49,7 +49,7 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for timeless polish and soft sheen",
     description:
       "Silk brings luminosity and refinement, making it a dependable choice for festive dinners, family events, and heirloom dressing.",
-    href: "/collection?fabric=silk",
+    href: "/collection/fabric/silk",
     image: "/category/silk.JPG",
     fallbackImage: "/hero/banner1.png",
   },
@@ -67,7 +67,7 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for soft flow and delicate styling",
     description:
       "Chiffon is sheer, light, and feminine, ideal when you want a saree that moves gently and keeps the look minimal.",
-    href: "/collection?fabric=chiffon",
+    href: "/collection/fabric/chiffon",
     image: "/category/Chiffon.JPG",
     fallbackImage: "/media/home-cover.png",
   },
@@ -113,12 +113,12 @@ const fabricQuickLinks = [
   },
   {
     label: "Ceremonial",
-    href: "/collection?fabric=kanjeevaram",
+    href: "/collection/fabric/kanjeevaram",
     note: "Kanjeevaram, silk",
   },
   {
     label: "Soft flow",
-    href: "/collection?fabric=georgette",
+    href: "/collection/fabric/georgette",
     note: "Georgette, chiffon",
   },
   {

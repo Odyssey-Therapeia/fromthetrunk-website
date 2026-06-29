@@ -73,7 +73,7 @@ export default async function ConfirmationPage({
   const placedDate = getOrderPlacedDate(order);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-16">
       <ClearCartOnConfirmation />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start">
         <div className="space-y-6">
@@ -117,8 +117,8 @@ export default async function ConfirmationPage({
               ) : null}
             </div>
 
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild className="h-11 rounded-full px-6">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button asChild className="h-12 w-full rounded-full px-6 sm:h-11 sm:w-auto">
                 <a href={receiptHref} download>
                   <Download aria-hidden="true" className="h-4 w-4" />
                   Download receipt
@@ -127,14 +127,14 @@ export default async function ConfirmationPage({
               <Button
                 asChild
                 variant="outline"
-                className="h-11 rounded-full border-ftt-border bg-ftt-ivory px-6 text-ftt-navy"
+                className="h-12 w-full rounded-full border-ftt-border bg-ftt-ivory px-6 text-ftt-navy sm:h-11 sm:w-auto"
               >
                 <Link href="/account/orders">View orders</Link>
               </Button>
               <Button
                 asChild
                 variant="ghost"
-                className="h-11 rounded-full px-6 text-ftt-burgundy"
+                className="h-12 w-full rounded-full px-6 text-ftt-burgundy sm:h-11 sm:w-auto"
               >
                 <Link href="/collection">Continue shopping</Link>
               </Button>
@@ -169,7 +169,7 @@ export default async function ConfirmationPage({
                 <h2 className="font-serif text-2xl">Delivery details</h2>
               </div>
               <Separator className="my-4 bg-ftt-border" />
-              <div className="space-y-1 text-sm leading-6 text-ftt-burgundy/70">
+              <div className="space-y-1 break-words text-sm leading-6 text-ftt-burgundy/70">
                 {addressLines.map((line, index) => (
                   <p key={`${line}-${index}`}>{line}</p>
                 ))}
@@ -218,12 +218,12 @@ export default async function ConfirmationPage({
                     <ShoppingBag aria-hidden="true" className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium leading-5 text-ftt-navy">{item.name}</p>
+                    <p className="break-words font-medium leading-5 text-ftt-navy">{item.name}</p>
                     <p className="mt-1 text-xs text-ftt-burgundy/60">
                       Qty {item.quantity} x {formatCurrency(item.pricePaise / 100)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold text-ftt-navy">
+                  <p className="shrink-0 text-right text-sm font-semibold text-ftt-navy">
                     {formatCurrency((item.pricePaise * item.quantity) / 100)}
                   </p>
                 </div>
@@ -318,7 +318,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <dt className="text-ftt-burgundy/55">{label}</dt>
-      <dd className="max-w-[65%] text-right font-medium text-ftt-navy">{value}</dd>
+      <dd className="max-w-[65%] break-words text-right font-medium text-ftt-navy">{value}</dd>
     </div>
   );
 }
@@ -326,8 +326,8 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function TotalRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 text-ftt-burgundy/70">
-      <dt>{label}</dt>
-      <dd className="font-medium text-ftt-navy">{value}</dd>
+      <dt className="min-w-0 break-words">{label}</dt>
+      <dd className="shrink-0 text-right font-medium text-ftt-navy">{value}</dd>
     </div>
   );
 }

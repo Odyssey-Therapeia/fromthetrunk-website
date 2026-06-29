@@ -12,8 +12,13 @@ import { SiteHeaderServer } from "@/components/layout/site-header-server";
 import { ThemeStyler } from "@/components/layout/theme-styler";
 import { Providers } from "@/components/providers";
 import { SiteWidgets } from "@/components/widgets/site-widgets";
-import { organizationJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
+import {
+  organizationJsonLd,
+  safeJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo/json-ld";
 import { getSiteOrigin } from "@/lib/config/site";
+import { absoluteUrl } from "@/lib/seo/site-url";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -30,6 +35,7 @@ const sans = Jost({
 });
 
 const baseUrl = getSiteOrigin();
+const defaultOgImage = absoluteUrl("/banner/collection_banner.png");
 
 export const metadata: Metadata = {
   title: {
@@ -43,15 +49,18 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     siteName: "From the Trunk",
+    url: baseUrl,
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
       "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
+    images: [{ url: defaultOgImage }],
   },
   twitter: {
     card: "summary_large_image",
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
       "Curated collection of authenticated, pre-loved luxury sarees.",
+    images: [defaultOgImage],
   },
   robots: {
     index: true,
@@ -87,6 +96,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: safeJsonLd(organizationJsonLd()),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLd(websiteJsonLd()),
           }}
         />
         {/* Skip to content link for keyboard navigation */}

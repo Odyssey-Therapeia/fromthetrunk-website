@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+import { publicPageMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = publicPageMetadata({
   title: "Privacy Policy",
   description:
     "How From the Trunk collects, uses, and protects your personal information.",
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (

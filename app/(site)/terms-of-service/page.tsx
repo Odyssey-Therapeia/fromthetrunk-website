@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+import { publicPageMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = publicPageMetadata({
   title: "Terms of Service",
   description:
     "Terms and conditions governing use of the From the Trunk platform.",
-};
+  path: "/terms-of-service",
+});
 
 export default function TermsOfServicePage() {
   return (

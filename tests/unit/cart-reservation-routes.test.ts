@@ -303,7 +303,7 @@ describe("cart reservation routes", () => {
     );
   });
 
-  it("returns 409 when the reservation is no longer active", async () => {
+  it("treats a no-longer-active reservation release as an idempotent no-op", async () => {
     const selectChain = makeSelectLimitChain([
       {
         id: PRODUCT_ID,
@@ -323,8 +323,9 @@ describe("cart reservation routes", () => {
     );
     const payload = await response.json();
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
     expect(payload.code).toBe("RESERVATION_NOT_ACTIVE");
+    expect(payload.released).toBe(false);
   });
 
   it("does not expose expired cleanup as a public GET", async () => {

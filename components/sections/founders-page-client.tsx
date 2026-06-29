@@ -205,18 +205,34 @@ export function FoundersPageClient() {
   }, [isSpread]);
 
   const goNext = () => {
+    if (!isSpread) {
+      setCurrentPage((page) => Math.min(page + 1, pages.length - 1));
+      return;
+    }
     bookRef.current?.pageFlip().flipNext("bottom");
   };
 
   const goPrev = () => {
+    if (!isSpread) {
+      setCurrentPage((page) => Math.max(page - 1, 0));
+      return;
+    }
     bookRef.current?.pageFlip().flipPrev("bottom");
   };
 
   const goToPage = (index: number) => {
+    if (!isSpread) {
+      setCurrentPage(Math.min(Math.max(index, 0), pages.length - 1));
+      return;
+    }
     bookRef.current?.pageFlip().flip(index, "bottom");
   };
 
   const openFounderPages = () => {
+    if (!isSpread) {
+      setCurrentPage(1);
+      return;
+    }
     bookRef.current?.pageFlip().flip(1, "bottom");
   };
 
@@ -273,75 +289,111 @@ export function FoundersPageClient() {
           </header>
 
           <div className="relative mx-auto flex justify-center [perspective:2400px]">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={activePage === 0}
-              aria-label="Previous page"
-              className="absolute left-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:left-2 xl:left-8"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={activePage === pages.length - 1}
-              aria-label="Next page"
-              className="absolute right-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:right-2 xl:right-8"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-            <HTMLFlipBook
-              key={isSpread ? "spread-book" : "single-book"}
-              ref={bookRef}
-              width={isSpread ? 560 : 370}
-              height={isSpread ? 710 : 660}
-              size="stretch"
-              minWidth={300}
-              maxWidth={isSpread ? 590 : 430}
-              minHeight={520}
-              maxHeight={760}
-              startPage={0}
-              drawShadow={!reduceMotion}
-              flippingTime={reduceMotion ? 1 : 980}
-              usePortrait={!isSpread}
-              startZIndex={10}
-              autoSize
-              maxShadowOpacity={0.34}
-              showCover
-              mobileScrollSupport
-              clickEventForward
-              useMouseEvents={false}
-              swipeDistance={28}
-              showPageCorners={!reduceMotion}
-              disableFlipByClick
-              className="ftt-founder-book"
-              style={{}}
-              onFlip={(event: { data: number }) => setCurrentPage(event.data)}
-            >
-              {pages.map((page, index) => (
-                <BookPage
-                  key={page.id}
-                  hard={page.kind === "cover" || page.kind === "back-cover"}
-                  className={cn(
-                    (page.kind === "cover" || page.kind === "back-cover") &&
-                      "bg-[#141D46]",
-                  )}
+            {isSpread ? (
+              <>
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  disabled={activePage === 0}
+                  aria-label="Previous page"
+                  className="absolute left-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:left-2 xl:left-8"
                 >
-                  <RenderedPage
-                    onOpen={(event) => {
-                      event.stopPropagation();
-                      openFounderPages();
-                    }}
-                    page={page}
-                    pageNumber={index + 1}
-                    reduceMotion={reduceMotion}
-                    totalPages={pages.length}
-                  />
-                </BookPage>
-              ))}
-            </HTMLFlipBook>
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={activePage === pages.length - 1}
+                  aria-label="Next page"
+                  className="absolute right-1 top-1/2 z-30 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-[#B39152]/45 bg-[#FDF7F1]/95 text-[#601D1C] shadow-[0_12px_30px_rgba(20,29,70,0.22)] backdrop-blur transition hover:border-[#B39152] hover:bg-[#B39152]/12 disabled:cursor-not-allowed disabled:opacity-30 sm:right-2 xl:right-8"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+                <HTMLFlipBook
+                  key="spread-book"
+                  ref={bookRef}
+                  width={560}
+                  height={710}
+                  size="stretch"
+                  minWidth={300}
+                  maxWidth={590}
+                  minHeight={520}
+                  maxHeight={760}
+                  startPage={0}
+                  drawShadow={!reduceMotion}
+                  flippingTime={reduceMotion ? 1 : 980}
+                  usePortrait={false}
+                  startZIndex={10}
+                  autoSize
+                  maxShadowOpacity={0.34}
+                  showCover
+                  mobileScrollSupport
+                  clickEventForward
+                  useMouseEvents={false}
+                  swipeDistance={28}
+                  showPageCorners={!reduceMotion}
+                  disableFlipByClick
+                  className="ftt-founder-book"
+                  style={{}}
+                  onFlip={(event: { data: number }) => setCurrentPage(event.data)}
+                >
+                  {pages.map((page, index) => (
+                    <BookPage
+                      key={page.id}
+                      hard={page.kind === "cover" || page.kind === "back-cover"}
+                      className={cn(
+                        (page.kind === "cover" || page.kind === "back-cover") &&
+                          "bg-[#141D46]",
+                      )}
+                    >
+                      <RenderedPage
+                        onOpen={(event) => {
+                          event.stopPropagation();
+                          openFounderPages();
+                        }}
+                        page={page}
+                        pageNumber={index + 1}
+                        reduceMotion={reduceMotion}
+                        totalPages={pages.length}
+                      />
+                    </BookPage>
+                  ))}
+                </HTMLFlipBook>
+              </>
+            ) : (
+              <MobileReadablePage
+                onOpen={openFounderPages}
+                page={pages[activePage]}
+                pageNumber={activePage + 1}
+                reduceMotion={reduceMotion}
+                totalPages={pages.length}
+              />
+            )}
           </div>
+
+          {!isSpread ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-md">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goPrev}
+                disabled={activePage === 0}
+                className="h-12 rounded-full border-[#B39152]/36 bg-[#FDF7F1] text-[#601D1C] hover:bg-[#B39152]/10"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <Button
+                type="button"
+                onClick={goNext}
+                disabled={activePage === pages.length - 1}
+                className="h-12 rounded-full bg-[#141D46] text-[#FDF7F1] hover:bg-[#0E0D0E]"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
 
           <div className="mt-5 flex justify-center">
             <div className="flex max-w-full gap-2 overflow-x-auto rounded-full border border-[#B39152]/24 bg-[#FFFCF8] p-2 shadow-[0_12px_34px_rgba(20,29,70,0.07)]">
@@ -366,6 +418,207 @@ export function FoundersPageClient() {
         </div>
       </section>
     </main>
+  );
+}
+
+function MobileReadablePage({
+  page,
+  pageNumber,
+  totalPages,
+  reduceMotion,
+  onOpen,
+}: {
+  page?: BookPageData;
+  pageNumber: number;
+  totalPages: number;
+  reduceMotion: boolean;
+  onOpen: () => void;
+}) {
+  if (!page) return null;
+
+  if (page.kind === "cover") {
+    return (
+      <motion.article
+        initial="hidden"
+        animate="show"
+        custom={reduceMotion}
+        variants={rowStagger}
+        className="relative w-full overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_22px_70px_rgba(20,29,70,0.18)] sm:max-w-2xl sm:p-8"
+      >
+        <Image
+          src="/CoverPage.svg"
+          alt=""
+          fill
+          priority
+          unoptimized
+          sizes="(max-width: 1024px) 100vw, 640px"
+          className="object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,13,14,0.7)_0%,rgba(20,29,70,0.5)_50%,rgba(14,13,14,0.72)_100%)]" />
+        <div className="relative z-10">
+          <motion.div custom={reduceMotion} variants={pageEnter}>
+            <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.22em] text-[#B39152] hover:bg-[#FDF7F1]/10">
+              FTT · The people behind the trunk
+            </Badge>
+          </motion.div>
+          <motion.h2
+            custom={reduceMotion}
+            variants={pageEnter}
+            className="mt-8 max-w-[11ch] font-serif text-[clamp(3rem,15vw,5rem)] leading-[0.88]"
+          >
+            The minds behind the trunk.
+          </motion.h2>
+          <motion.p
+            custom={reduceMotion}
+            variants={pageEnter}
+            className="mt-5 max-w-md text-sm leading-7 text-[#FDF7F1]/76"
+          >
+            From the Trunk is a small team with a quiet obsession: beautiful
+            sarees, given another life. We find them, restore them by hand, and
+            pass their stories on. Open the book to meet us.
+          </motion.p>
+          <motion.div custom={reduceMotion} variants={pageEnter}>
+            <Button
+              type="button"
+              onClick={onOpen}
+              className="mt-8 h-12 w-full rounded-full bg-[#B39152] text-[#0E0D0E] hover:bg-[#C8A45F] sm:w-auto"
+            >
+              Meet our founders
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        </div>
+        <MobilePageCount pageNumber={pageNumber} totalPages={totalPages} />
+      </motion.article>
+    );
+  }
+
+  if (page.kind === "back-cover") {
+    return (
+      <article className="relative w-full overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_22px_70px_rgba(20,29,70,0.18)] sm:max-w-2xl sm:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(179,145,82,0.18),transparent_28%),linear-gradient(135deg,#141D46_0%,#10183B_62%,#601D1C_150%)]" />
+        <div className="relative z-10">
+          <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#B39152] hover:bg-[#FDF7F1]/10">
+            The FTT promise
+          </Badge>
+          <h2 className="mt-8 font-serif text-[clamp(3rem,15vw,5.5rem)] leading-[0.86]">
+            Authenticated. Restored. Re-storied.
+          </h2>
+          <p className="mt-6 max-w-md text-sm leading-7 text-[#FDF7F1]/76">
+            Every saree is authenticated, restored by hand, and given a story
+            card of its own — proof of where it&apos;s been, and a start to where
+            it&apos;s going.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <Button
+              asChild
+              className="h-12 rounded-full bg-[#B39152] text-[#0E0D0E] hover:bg-[#C8A45F]"
+            >
+              <Link href="/collection">
+                <BookOpen className="h-4 w-4" />
+                Find your saree
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-12 rounded-full border-[#FDF7F1]/35 bg-transparent text-[#FDF7F1] hover:bg-[#FDF7F1]/10 hover:text-[#FDF7F1]"
+            >
+              <Link href="/collection">
+                <Sparkles className="h-4 w-4" />
+                Open your trunk
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <MobilePageCount pageNumber={pageNumber} totalPages={totalPages} />
+      </article>
+    );
+  }
+
+  if (!page.founder) return null;
+
+  return (
+    <motion.article
+      initial="hidden"
+      animate="show"
+      custom={reduceMotion}
+      variants={rowStagger}
+      className="w-full rounded-[1.5rem] border border-[#B39152]/22 bg-[#FFFCF8] p-4 shadow-[0_22px_70px_rgba(20,29,70,0.12)] sm:max-w-2xl sm:p-6"
+    >
+      <div className="rounded-[1.25rem] border border-[#B39152]/22 bg-[#FDF7F1] p-4 sm:p-6">
+        <motion.div
+          custom={reduceMotion}
+          variants={pageEnter}
+          className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center"
+        >
+          <div className="relative h-24 w-24 overflow-hidden rounded-full border border-[#B39152]/45 bg-[#601D1C]/10 sm:h-28 sm:w-28">
+            <Image
+              src={page.founder.image}
+              alt={page.founder.name}
+              fill
+              sizes="112px"
+              className="object-cover"
+            />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#B39152]">
+              Founder
+            </p>
+            <h2 className="mt-2 font-serif text-[clamp(2.35rem,12vw,4rem)] leading-[0.9] text-[#141D46]">
+              {page.founder.name}
+            </h2>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#601D1C]/60">
+              {page.founder.designation}
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          custom={reduceMotion}
+          variants={pageEnter}
+          className="mt-6 space-y-4"
+        >
+          {page.founder.about.map((paragraph) => (
+            <p key={paragraph} className="text-sm leading-7 text-[#601D1C]/74">
+              {paragraph}
+            </p>
+          ))}
+        </motion.div>
+
+        <motion.div
+          custom={reduceMotion}
+          variants={pageEnter}
+          className="mt-6 rounded-[1.2rem] border border-[#B39152]/28 bg-[#B39152]/10 p-4 sm:p-5"
+        >
+          <h3 className="font-serif text-3xl leading-tight text-[#141D46]">
+            Why From the Trunk
+          </h3>
+          <div className="mt-3 space-y-3">
+            {page.founder.whyFTT.map((paragraph) => (
+              <p key={paragraph} className="text-sm leading-7 text-[#601D1C]/74">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+      <MobilePageCount pageNumber={pageNumber} totalPages={totalPages} />
+    </motion.article>
+  );
+}
+
+function MobilePageCount({
+  pageNumber,
+  totalPages,
+}: {
+  pageNumber: number;
+  totalPages: number;
+}) {
+  return (
+    <p className="relative z-10 mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-[#601D1C]/42">
+      {pageNumber}/{totalPages}
+    </p>
   );
 }
 
@@ -519,7 +772,7 @@ function CoverPage({
             variants={pageEnter}
             className="mt-5 max-w-[12ch] font-serif text-[clamp(2.65rem,7vw,5.1rem)] font-medium leading-[0.88] text-[#FDF7F1]"
           >
-            Every saree deserves a second story.
+            The minds behind the trunk.
           </motion.h2>
 
           <motion.p
@@ -527,9 +780,9 @@ function CoverPage({
             variants={pageEnter}
             className="mt-5 max-w-md text-[clamp(0.88rem,1.2vw,1rem)] leading-6 text-[#FDF7F1]/74"
           >
-            From the Trunk began with a simple belief: the sarees folded away in
-            homes still carry memory, craft, and emotion. They are not finished.
-            They are waiting for their next chapter.
+            From the Trunk is a small team with a quiet obsession: beautiful
+            sarees, given another life. We find them, restore them by hand, and
+            pass their stories on. Open the book to meet us.
           </motion.p>
 
           <motion.p
@@ -781,11 +1034,12 @@ function BackCoverPage() {
             The FTT promise
           </Badge>
           <h2 className="mt-8 font-serif text-[clamp(3rem,8vw,6.6rem)] leading-[0.86] text-[#FDF7F1]">
-            Not pre-owned. Re-storied.
+            Authenticated. Restored. Re-storied.
           </h2>
           <p className="mt-7 max-w-md text-sm leading-7 text-[#FDF7F1]/74">
-            We honour the sarees, preserve their stories, and help them be
-            loved all over again.
+            Every saree is authenticated, restored by hand, and given a story
+            card of its own — proof of where it&apos;s been, and a start to where
+            it&apos;s going.
           </p>
         </div>
 
@@ -805,7 +1059,7 @@ function BackCoverPage() {
             variant="outline"
             className="rounded-full border-[#FDF7F1]/35 bg-transparent text-[#FDF7F1] hover:bg-[#FDF7F1]/10 hover:text-[#FDF7F1]"
           >
-            <Link href="mailto:hello@fromthetrunk.shop?subject=I want to open my trunk">
+            <Link href="/collection">
               <Sparkles className="h-4 w-4" />
               Open your trunk
             </Link>

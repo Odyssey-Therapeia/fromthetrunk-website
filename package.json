@@ -31,6 +31,7 @@
     "verify:ux": "pnpm run build && pnpm run lhci:matrix",
     "agent:check": "pnpm run verify && pnpm run lhci:matrix",
     "lint": "eslint .",
+    "seo:import-keywords": "tsx scripts/seo/import-keywords.ts",
     "generate:icons": "node --import tsx scripts/generate-icons.ts",
     "demo:check": "node --import tsx scripts/demo-readiness.ts",
     "migrate:payload-to-drizzle": "node --import tsx scripts/archive/migrate-payload-to-drizzle.ts",

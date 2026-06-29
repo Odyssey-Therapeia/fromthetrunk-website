@@ -372,7 +372,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
             </Link>
 
             <Link
-              href="/our-team"
+              href="/our-story"
               className="inline-flex rounded-full border border-[#B39152]/55 px-5 py-3 text-sm font-medium text-[#601D1C] transition hover:bg-[#B39152]/10"
             >
               Read the full story

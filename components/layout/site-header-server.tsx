@@ -14,8 +14,16 @@ const NAV_ITEMS = [
 ] as const;
 
 const SHOP_BY_ITEMS = [
-  { href: "/collection?tags=season", label: "Season" },
-  { href: "/collection?tags=occasion", label: "Occasion" },
+  { href: "/collection#filter-edit", label: "Edit" },
+  { href: "/collection#filter-type", label: "Category" },
+  { href: "/collection#filter-fabric", label: "Fabric" },
+  { href: "/collection#filter-color", label: "Colour" },
+  { href: "/collection#filter-price", label: "Price" },
+  { href: "/collection#filter-availability", label: "Availability" },
+  { href: "/collection#filter-occasion", label: "Occasion" },
+  { href: "/collection#filter-work", label: "Work / Border" },
+  { href: "/collection#filter-pattern", label: "Pattern / Motif" },
+  { href: "/collection#filter-sort", label: "Sort" },
 ] as const;
 
 const ABOUT_ITEMS = [
@@ -74,7 +82,7 @@ function ServerNavDropdown({
         <NavUnderline />
       </button>
       <div className="pointer-events-none absolute left-1/2 top-full z-50 -translate-x-1/2 pt-4 opacity-0 transition group-hover/dropdown:pointer-events-auto group-hover/dropdown:opacity-100 group-focus-within/dropdown:pointer-events-auto group-focus-within/dropdown:opacity-100">
-        <div className="w-48 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 shadow-xl shadow-[#601D1C]/10">
+        <div className="w-64 rounded-xl border border-[#601D1C]/10 bg-[#FDF7F1] p-2 shadow-xl shadow-[#601D1C]/10">
           {items.map((item) => (
             <Link
               key={item.href}
@@ -95,15 +103,15 @@ export async function SiteHeaderServer() {
     <header className="sticky top-0 z-50 bg-[#FDF7F1]/95 backdrop-blur">
       <AnnouncementBar />
       <div className="border-b border-[#601D1C]/10">
-        <div className="flex h-18 w-full items-stretch justify-between gap-4 px-5 md:px-8 lg:px-10 xl:px-14">
-          <div className="flex min-w-0 flex-1 items-center gap-8 xl:gap-10">
+        <div className="flex h-16 w-full items-stretch justify-between gap-2 px-3 sm:px-5 md:px-8 lg:px-10 xl:h-18 xl:px-14">
+          <div className="flex min-w-0 flex-1 items-center gap-4 xl:gap-10">
             <Link href="/" className="flex h-full shrink-0 items-center">
               <Image
                 src="/logo.png"
                 alt="From the Trunk"
                 width={180}
                 height={100}
-                className="h-[4.25rem] w-auto object-contain"
+                className="h-14 w-auto object-contain xl:h-[4.25rem]"
                 sizes="180px"
               />
               <span className="sr-only">From the Trunk</span>

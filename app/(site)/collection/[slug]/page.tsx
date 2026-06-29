@@ -37,6 +37,8 @@ import {
 import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { buildPdpTitle, buildPdpDescription } from "@/lib/seo/pdp-meta";
 import { getSiteOrigin } from "@/lib/config/site";
+import { absoluteUrl } from "@/lib/seo/site-url";
+import { getFabricLandingForLabel } from "@/lib/seo/keyword-landing-pages";
 import { resolveProductRowStockStatus } from "@/db/inventory";
 import type { Product } from "@/types/domain";
 
@@ -59,6 +61,8 @@ export async function generateMetadata({
   const product = rawProduct as Product;
   const displayDetails = getProductDisplayDetails(product);
   const image = resolveMediaURL(product.images?.[0]);
+  const imageUrl = image ? absoluteUrl(image) : undefined;
+  const canonical = absoluteUrl(`/collection/${product.slug}`);
 
   const pdpTitle = buildPdpTitle(product.name, displayDetails.fabric);
   const pdpDescription = buildPdpDescription(
@@ -71,11 +75,21 @@ export async function generateMetadata({
   return {
     title: pdpTitle,
     description: pdpDescription,
+    alternates: {
+      canonical,
+    },
     openGraph: {
       title: pdpTitle,
       description: pdpDescription,
       type: "website",
-      images: image ? [{ url: image }] : undefined,
+      url: canonical,
+      images: imageUrl ? [{ url: imageUrl }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: pdpTitle,
+      description: pdpDescription,
+      images: imageUrl ? [imageUrl] : undefined,
     },
   };
 }
@@ -96,16 +110,16 @@ export default async function SareePage({ params }: ProductPageProps) {
   });
 
   const displayDetails = getProductDisplayDetails(product);
+  const fabricLanding = getFabricLandingForLabel(displayDetails.fabric);
   const images = (product.images ?? [])
     .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
   const tags = product.tags.map((tag) => tag.name).filter(Boolean);
-  const baseUrl = getSiteOrigin();
   const jsonLd = productJsonLd(product);
   const breadcrumbs = breadcrumbJsonLd([
-    { name: "Home", url: baseUrl },
-    { name: "Collection", url: `${baseUrl}/collection` },
-    { name: product.name, url: `${baseUrl}/collection/${product.slug}` },
+    { name: "Home", url: getSiteOrigin() },
+    { name: "Collection", url: absoluteUrl("/collection") },
+    { name: product.name, url: absoluteUrl(`/collection/${product.slug}`) },
   ]);
 
   const allProducts = await getProducts(12, { includeDrafts });
@@ -214,6 +228,23 @@ export default async function SareePage({ params }: ProductPageProps) {
                 <DossierFact label="Grade" value={displayDetails.condition} />
                 <DossierFact label="Length" value={displayDetails.length} />
                 <DossierFact label="Width" value={displayDetails.width} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {fabricLanding ? (
+                  <Link
+                    href={fabricLanding.canonicalPath}
+                    className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
+                  >
+                    More {displayDetails.fabric} sarees
+                  </Link>
+                ) : null}
+                <Link
+                  href="/guides/what-is-a-pre-loved-saree"
+                  className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
+                >
+                  What pre-loved means
+                </Link>
               </div>
 
               <div className="mt-4 space-y-2.5">
