@@ -28,6 +28,7 @@ import {
   validateAddressForm,
 } from "@/lib/checkout/address-form";
 import { type CheckoutStep, STEP_COPY } from "@/lib/checkout/steps";
+import { clearCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
 import { useCheckoutPayment } from "@/lib/checkout/use-checkout-payment";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
@@ -341,6 +342,10 @@ export function CheckoutPageClient({
   // abandoned. The refs make each save idempotent across back-and-forth.
   const savedShippingRef = useRef(false);
   const savedBillingRef = useRef(false);
+  // Synchronous double-submit guard. `isSubmitting` only flips inside
+  // startPayment (after two awaited network phases in handlePay), so a rapid
+  // double-click could otherwise issue two concurrent create-order POSTs.
+  const submitLockRef = useRef(false);
 
   const scrollCheckoutToTop = useCallback(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -479,6 +484,11 @@ export function CheckoutPageClient({
   };
 
   const handlePay = async () => {
+    // Block re-entry for the whole handler (covers the pre-startPayment awaited
+    // phases where isSubmitting has not yet flipped) — no duplicate create-order.
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    try {
     if (!hasItems) return;
     if (!isAuthenticated) {
       toast.error("Sign in or create an account to continue checkout.");
@@ -550,11 +560,18 @@ export function CheckoutPageClient({
         }
       },
       onPaid: (path) => {
+        clearCheckoutAttempt();
         clearCart();
         toast.success("Order placed successfully!");
         router.push(path);
       },
     });
+    } finally {
+      // On the payment-link redirect path the page is already navigating away;
+      // on the modal path isSubmitting keeps the button disabled. Releasing the
+      // ref here re-enables retry after an error or a dismissed modal.
+      submitLockRef.current = false;
+    }
   };
 
   const handleCheckoutAuthSuccess = async () => {

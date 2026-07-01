@@ -16,6 +16,7 @@ import {
   isAvailabilityErrorCode,
   type AvailabilityErrorCode,
 } from "@/lib/cart/availability-errors";
+import { getCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
 
 type CreatePaymentOrderResponse = {
   amount?: number;
@@ -153,11 +154,19 @@ export function useCheckoutPayment() {
     setIsSubmitting(true);
     setError(null);
 
+    // Stable idempotency key for this checkout attempt. Sent as both the
+    // Idempotency-Key header and body fields so a retry/abort of the SAME cart
+    // reuses the first order + payment link instead of creating a duplicate.
+    const { checkoutAttemptId, cartFingerprint } = getCheckoutAttempt(payload);
+
     try {
       const createResponse = await fetch("/api/v2/payments/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": checkoutAttemptId,
+        },
+        body: JSON.stringify({ ...payload, checkoutAttemptId, cartFingerprint }),
       });
 
       if (!createResponse.ok) {

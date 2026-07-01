@@ -1,4 +1,4 @@
-import { InferInsertModel } from "drizzle-orm";
+import { eq, InferInsertModel } from "drizzle-orm";
 
 import { db } from "@/db";
 import { events } from "@/db/schema";
@@ -34,4 +34,27 @@ export async function claimEvent(input: CreateEventInput): Promise<boolean> {
     .returning({ id: events.id });
 
   return rows.length > 0;
+}
+
+/** Reads a single event by its unique `event_id` (null if absent). */
+export async function getEventByEventId(
+  eventId: string,
+): Promise<{
+  eventId: string;
+  type: string;
+  payload: Record<string, unknown> | null;
+  occurredAt: Date;
+} | null> {
+  const [row] = await db
+    .select({
+      eventId: events.eventId,
+      type: events.type,
+      payload: events.payload,
+      occurredAt: events.occurredAt,
+    })
+    .from(events)
+    .where(eq(events.eventId, eventId))
+    .limit(1);
+
+  return row ?? null;
 }
