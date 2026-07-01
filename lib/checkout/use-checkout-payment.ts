@@ -64,7 +64,12 @@ declare global {
 }
 
 export type CheckoutOrderPayload = {
-  items: Array<{ productId: string; quantity: number; reservationToken?: string }>;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    reservationToken?: string;
+    selectedOptions?: { size?: string };
+  }>;
   shippingAddress: {
     name: string;
     line1: string;

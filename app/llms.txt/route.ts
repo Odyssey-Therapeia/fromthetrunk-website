@@ -25,11 +25,22 @@ const STATIC_PAGES = [
   { title: "Our Story", path: "/our-story" },
   { title: "Our Team", path: "/our-team" },
   { title: "How It Works", path: "/how-it-works" },
+  { title: "Our Why", path: "/why" },
   { title: "FAQs", path: "/faqs" },
-  { title: "Return Policy", path: "/return-policy" },
-  { title: "Shipping Policy", path: "/shipping-policy" },
-  { title: "Privacy Policy", path: "/privacy-policy" },
-  { title: "Terms of Service", path: "/terms-of-service" },
+  { title: "Sell Your Saree", path: "/sell-your-saree" },
+  {
+    title: "What Is a Pre-Loved Saree",
+    path: "/guides/what-is-a-pre-loved-saree",
+  },
+  {
+    title: "Pre-Loved vs Second-Hand Saree",
+    path: "/guides/pre-loved-vs-second-hand-saree",
+  },
+  { title: "Policies", path: "/policies" },
+  { title: "Return Policy", path: "/policies/return-refund-policy" },
+  { title: "Shipping Policy", path: "/policies/shipping-delivery-policy" },
+  { title: "Privacy Policy", path: "/policies/privacy-policy" },
+  { title: "Terms of Service", path: "/policies/terms-of-service" },
 ] as const;
 
 export async function GET(): Promise<Response> {
@@ -54,9 +65,9 @@ export async function GET(): Promise<Response> {
     "",
     "## Products",
     "",
-    ...products.map(
-      (p) => `- [${p.name}](${origin}/collection/${p.slug})`
-    ),
+    ...products
+      .filter((p) => p.slug && p.stockStatus !== "sold")
+      .map((p) => `- [${p.name}](${origin}/collection/${p.slug})`),
   ];
 
   const body = lines.join("\n");

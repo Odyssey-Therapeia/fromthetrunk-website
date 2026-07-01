@@ -72,7 +72,9 @@ vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => ({ _and: args }),
   eq: (col: unknown, val: unknown) => ({ _eq: [col, val] }),
   inArray: (col: unknown, vals: unknown) => ({ _inArray: [col, vals] }),
+  isNull: (col: unknown) => ({ _isNull: col }),
   ne: (col: unknown, val: unknown) => ({ _ne: [col, val] }),
+  or: (...args: unknown[]) => ({ _or: args }),
 }));
 
 vi.mock("@/lib/analytics/emit", () => ({

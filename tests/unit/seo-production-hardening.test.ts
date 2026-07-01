@@ -9,6 +9,10 @@ vi.mock("@/db/queries/products", () => ({
         slug: "available-saree",
         stockStatus: "available",
         updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [
+          { media: { url: "/media/available-one.webp" } },
+          { media: { url: "https://cdn.example.com/available-two.webp" } },
+        ],
       },
       {
         id: "p_sold",
@@ -16,6 +20,7 @@ vi.mock("@/db/queries/products", () => ({
         slug: "sold-saree",
         stockStatus: "sold",
         updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [{ media: { url: "/media/sold.webp" } }],
       },
     ],
     totalCount: 2,
@@ -93,6 +98,17 @@ describe("SEO production hardening", () => {
     expect(urls.some((url) => url.includes("?collection="))).toBe(false);
     expect(urls.some((url) => url.includes("localhost"))).toBe(false);
     expect(urls.some((url) => url.includes("vercel.app"))).toBe(false);
+
+    const availableEntry = entries.find((entry) =>
+      entry.url.endsWith("/collection/available-saree"),
+    );
+    expect(availableEntry?.images).toEqual([
+      "https://www.fromthetrunk.shop/media/available-one.webp",
+      "https://cdn.example.com/available-two.webp",
+    ]);
+    expect(
+      entries.some((entry) => entry.images?.some((image) => image.includes("sold.webp"))),
+    ).toBe(false);
   });
 
   it("robots disallows private, API, checkout, cart, and search surfaces", async () => {

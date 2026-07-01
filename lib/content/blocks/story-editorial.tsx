@@ -8,10 +8,8 @@
  * propsSchema validated on SAVE and on RENDER (defense in depth via renderBlock).
  * Renderer: RSC, theme tokens only — no raw hex or arbitrary px.
  *
- * Draft-safe behavior:
- * - Empty beats are allowed while editing.
- * - Empty paragraph rows are ignored on render.
- * - Old saved media UUIDs are ignored instead of being passed into next/image.
+ * Beat and image refs are validated before render. Unresolved media refs are
+ * ignored by the renderer instead of being passed into next/image.
  */
 
 import { z } from "zod";
@@ -23,21 +21,6 @@ import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
 const emptyToUndefined = (value: unknown) =>
   value === "" || value === null ? undefined : value;
-
-const toArray = (value: unknown) => (Array.isArray(value) ? value : []);
-
-const normalizeBeatLayout = (value: unknown) => {
-  if (
-    value === "image-right" ||
-    value === "image-left" ||
-    value === "text-only-dark" ||
-    value === "full-bleed"
-  ) {
-    return value;
-  }
-
-  return undefined;
-};
 
 const getSafeImageSrc = (value: unknown) => {
   if (typeof value !== "string") return undefined;
@@ -60,26 +43,17 @@ const getSafeImageSrc = (value: unknown) => {
 };
 
 export const beatSchema = z.object({
-  paragraphs: z.preprocess(
-    toArray,
-    z.array(z.string().max(600)).max(4).default([]),
-  ),
-  image: z.preprocess(emptyToUndefined, z.string().max(2000).optional()),
+  paragraphs: z.array(z.string().max(600)).min(1).max(4),
+  image: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
   imageAlt: z.string().max(200).optional(),
-  layout: z.preprocess(
-    normalizeBeatLayout,
-    z
-      .enum(["image-right", "image-left", "text-only-dark", "full-bleed"])
-      .default("image-right"),
-  ),
+  layout: z
+    .enum(["image-right", "image-left", "text-only-dark", "full-bleed"])
+    .default("image-right"),
 });
 
 export const storyEditorialPropsSchema = z.object({
-  beats: z.preprocess(toArray, z.array(beatSchema).max(6).default([])),
-  climaxLines: z.preprocess(
-    toArray,
-    z.array(z.string().max(200)).max(6).default([]),
-  ),
+  beats: z.array(beatSchema).min(1).max(6),
+  climaxLines: z.array(z.string().max(200)).max(6).default([]),
   ctaLabel: z.string().max(60).optional(),
   ctaHref: z.string().max(300).optional(),
 });

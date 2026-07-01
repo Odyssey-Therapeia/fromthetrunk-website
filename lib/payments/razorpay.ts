@@ -58,7 +58,40 @@ export type RazorpayPaymentLinkResponse = {
   amount_paid?: number;
   currency?: string;
   id: string;
+  reference_id?: string;
+  payments?: Array<{
+    amount?: number | string;
+    method?: string;
+    payment_id?: string;
+    plink_id?: string;
+    status?: string;
+  }> | {
+    amount?: number | string;
+    method?: string;
+    payment_id?: string;
+    plink_id?: string;
+    status?: string;
+  } | null;
   short_url: string;
+  status?: string;
+};
+
+export type RazorpayPaymentResponse = {
+  amount?: number;
+  captured?: boolean;
+  created_at?: number;
+  currency?: string;
+  id: string;
+  method?: string;
+  order_id?: null | string;
+  status?: string;
+};
+
+export type RazorpayOrderResponse = {
+  amount?: number;
+  amount_paid?: number;
+  currency?: string;
+  id: string;
   status?: string;
 };
 
@@ -115,6 +148,35 @@ export async function createRazorpayPaymentLink({
   });
 
   return paymentLink as RazorpayPaymentLinkResponse;
+}
+
+export async function fetchRazorpayPayment(
+  paymentId: string
+): Promise<RazorpayPaymentResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.payments.fetch(paymentId) as Promise<RazorpayPaymentResponse>;
+}
+
+export async function fetchRazorpayOrder(
+  orderId: string
+): Promise<RazorpayOrderResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.orders.fetch(orderId) as Promise<RazorpayOrderResponse>;
+}
+
+export async function fetchRazorpayOrderPayments(
+  orderId: string
+): Promise<RazorpayPaymentResponse[]> {
+  const razorpay = getRazorpayInstance();
+  const result = await razorpay.orders.fetchPayments(orderId);
+  return (result.items ?? []) as RazorpayPaymentResponse[];
+}
+
+export async function fetchRazorpayPaymentLink(
+  paymentLinkId: string
+): Promise<RazorpayPaymentLinkResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.paymentLink.fetch(paymentLinkId) as Promise<RazorpayPaymentLinkResponse>;
 }
 
 /**

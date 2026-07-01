@@ -39,6 +39,10 @@ export type CatalogSearchFilters = {
   type?: string;
   /** Product type slugs. OR within this group. */
   types?: string[];
+  /** Product type slugs to EXCLUDE — e.g. hide blouses from the default catalog. */
+  excludeTypes?: string[];
+  /** Blouse `attributes.sleeve_type` slugs. OR within this group. */
+  sleeveTypes?: string[];
   /** Fabric attribute value (legacy single-value alias). */
   fabric?: string;
   /** Fabric/material slugs. OR within this group. */
@@ -61,6 +65,13 @@ export type CatalogSearchFilters = {
   availabilityStatus?: CatalogAvailability;
   /** Tag slugs — products must belong to ALL provided tags (AND). */
   tags?: string[];
+  /**
+   * Virtual ordering that can't be expressed via `sort`.
+   *   "top-viewed" → rank the matching (already-filtered) products by
+   *   product_view event count over the last 30 days, most-viewed first,
+   *   omitting products with zero views. Overrides `sort`.
+   */
+  sortBy?: "top-viewed";
   /** Maximum product rows to hydrate and return. */
   limit?: number;
   /** Product offset for paged catalog views. */

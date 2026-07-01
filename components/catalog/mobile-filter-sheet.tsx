@@ -25,6 +25,7 @@ export type CatalogFilterGroup = {
     | "occasion"
     | "pattern"
     | "price"
+    | "sleeve"
     | "sort"
     | "tags"
     | "type"
@@ -201,9 +202,38 @@ export function MobileFilterSheet({
                     </span>
                   ) : null}
                 </summary>
-                <div className="grid gap-2 border-t border-ftt-border/70 p-3">
+                <div
+                  className={cn(
+                    "border-t border-ftt-border/70 p-3",
+                    group.param === "color" ? "flex flex-wrap gap-2.5" : "grid gap-2",
+                  )}
+                >
                   {group.options.map((option) => {
                     const active = selected.includes(option.value);
+                    if (group.param === "color") {
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => toggle(group, option.value)}
+                          aria-pressed={active}
+                          aria-label={option.label}
+                          title={option.label}
+                          className="relative grid place-items-center rounded-full p-1.5"
+                        >
+                          <span
+                            className={cn(
+                              "size-7 rounded-full border-2 transition",
+                              active ? "border-ftt-gold" : "border-black/10",
+                            )}
+                            style={{ backgroundColor: option.swatch }}
+                            aria-hidden
+                          />
+                          {active ? <SelectedTick /> : null}
+                          <span className="sr-only">{option.label}</span>
+                        </button>
+                      );
+                    }
                     return (
                       <button
                         key={option.value}
@@ -211,24 +241,12 @@ export function MobileFilterSheet({
                         onClick={() => toggle(group, option.value)}
                         aria-pressed={active}
                         className={cn(
-                          "flex min-h-11 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] transition",
+                          "relative flex min-h-11 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] transition",
                           active
-                            ? "border-ftt-navy bg-ftt-navy/8 text-ftt-navy"
+                            ? "border-ftt-gold bg-ftt-gold/10 text-ftt-navy"
                             : "border-ftt-border bg-white/65 text-ftt-muted",
                         )}
                       >
-                        <span
-                          className={cn(
-                            "grid size-4 shrink-0 place-items-center rounded-[5px] border",
-                            active
-                              ? "border-ftt-navy bg-ftt-navy"
-                              : "border-ftt-border bg-ftt-ivory",
-                          )}
-                        >
-                          {active ? (
-                            <span className="size-1.5 rounded-[2px] bg-ftt-gold" />
-                          ) : null}
-                        </span>
                         {option.swatch ? (
                           <span
                             className="size-4 shrink-0 rounded-full border border-ftt-border"
@@ -240,6 +258,7 @@ export function MobileFilterSheet({
                         {typeof option.count === "number" ? (
                           <span className="text-ftt-muted/70">({option.count})</span>
                         ) : null}
+                        {active ? <SelectedTick /> : null}
                       </button>
                     );
                   })}
@@ -294,5 +313,24 @@ export function MobileFilterSheet({
 
       {dialog ? createPortal(dialog, document.body) : null}
     </div>
+  );
+}
+
+function SelectedTick() {
+  return (
+    <span className="pointer-events-none absolute -right-1 -top-1 z-10 grid size-4 place-items-center rounded-full bg-ftt-gold text-ftt-navy shadow-sm ring-2 ring-ftt-ivory">
+      <svg
+        viewBox="0 0 12 12"
+        className="size-2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M2.5 6.5 5 9l4.5-5" />
+      </svg>
+    </span>
   );
 }

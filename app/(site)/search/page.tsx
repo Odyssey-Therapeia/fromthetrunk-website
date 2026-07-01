@@ -6,21 +6,22 @@ import { TrackPageView } from "@/components/analytics/track-page-view";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { searchProducts } from "@/lib/ports/catalog-search";
+import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
 import type { Product } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Search",
-  robots: { index: false, follow: false },
+  robots: PRIVATE_NOINDEX_ROBOTS,
 };
 
 type SearchPageProps = {
-  searchParams: Promise<{ q?: string }> | { q?: string };
+  searchParams: Promise<{ q?: string }>;
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const resolvedParams = await Promise.resolve(searchParams);
+  const resolvedParams = await searchParams;
   const query = resolvedParams?.q?.trim() ?? "";
 
   let results: Product[] = [];

@@ -137,8 +137,8 @@ describe("Brand content — How It Works page", () => {
     expect(hiw).toContain("Doorstep Magic");
   });
 
-  it("uses the 'second story' heading", () => {
-    expect(hiw).toContain("Give your saree a second story");
+  it("uses the current 'second life' heading", () => {
+    expect(hiw).toContain("A second life, handled with care");
   });
 
   it("no longer has the old generic step titles", () => {

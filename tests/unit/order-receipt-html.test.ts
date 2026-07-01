@@ -20,12 +20,14 @@ const baseOrder = {
       pricePaise: 200000,
       productId: null,
       quantity: 2,
+      selectedOptions: {},
     },
   ],
   paymentGateway: "razorpay",
   paymentId: "pay_123",
   paymentMethod: null,
   paymentStatus: "paid",
+  paidAt: new Date("2026-06-26T10:55:25.701Z"),
   placedAt: new Date("2026-06-26T10:49:25.701Z"),
   razorpayOrderId: "plink_123",
   refundedAmountPaise: null,
@@ -80,15 +82,15 @@ describe("buildOrderReceiptHtml", () => {
     expect(html).toContain("hello&amp;test@example.com");
   });
 
-  it("uses createdAt when placedAt is missing at runtime", () => {
+  it("uses updatedAt when paidAt is missing at runtime", () => {
     const order = {
       ...baseOrder,
-      placedAt: null as unknown as Date,
+      paidAt: null,
     };
 
     const html = buildOrderReceiptHtml(order, new Date("2026-06-26T11:00:00.000Z"));
 
-    expect(html).toContain("Order placed 26 Jun 2026");
+    expect(html).toContain("Paid 26 Jun 2026");
     expect(html).not.toContain("1 Jan 1970");
   });
 });

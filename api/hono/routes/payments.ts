@@ -11,19 +11,23 @@ import { addOrderEvent, createOrder, getOrder } from "@/db/queries/orders";
 import { insertReservation, releaseReservationsByProducts } from "@/db/queries/reservations";
 import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
 import { getCollectionProductIds } from "@/db/queries/collections";
-import { collections, orders, products } from "@/db/schema";
+import { collections, orders, products, productTypes } from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { verifyReservationToken } from "@/lib/cart/reservation-token";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { GST_RATE } from "@/lib/config/order-pricing";
 import { isInventoryV2 } from "@/lib/config/flags";
-import { createOrderAccessToken } from "@/lib/orders/order-access-token";
+import { createOrderAccessToken, verifyOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
+import { validateOrderItemSelectedOptions } from "@/lib/orders/selected-options";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 import { validateDiscountCode } from "@/lib/discounts/validate";
 import {
   calculateOrderTotals,
   createRazorpayPaymentLink,
+  fetchRazorpayOrder,
+  fetchRazorpayPayment,
+  fetchRazorpayPaymentLink,
   getRazorpayPaymentLinkReferenceId,
   isRazorpayAuthError,
   RAZORPAY_PAYMENT_LINK_HOLD_MINUTES,
@@ -67,6 +71,166 @@ const paymentLinkCallbackSchema = z.object({
   razorpay_payment_link_status: z.string().trim().min(1).max(64).optional(),
   razorpay_signature: z.string().trim().min(1).max(256).optional(),
 }).strict();
+
+const paymentStatusQuerySchema = z.object({
+  key: z.string().trim().min(1).max(512).optional(),
+  orderId: z.string().uuid(),
+}).strict();
+
+type PaymentVerificationFailure = {
+  code: string;
+  message: string;
+  status: 400 | 409 | 502;
+};
+
+const asPaiseNumber = (value: number | string | null | undefined) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const paidAtFromUnixSeconds = (value: number | null | undefined) =>
+  typeof value === "number" && Number.isFinite(value)
+    ? new Date(value * 1000)
+    : undefined;
+
+const isCapturedPayment = (payment: { captured?: boolean; status?: string }) =>
+  payment.status === "captured" && payment.captured !== false;
+
+const validateFetchedPayment = (
+  order: NonNullable<Awaited<ReturnType<typeof getOrder>>>,
+  payment: Awaited<ReturnType<typeof fetchRazorpayPayment>>,
+  expectedReference?: string
+): PaymentVerificationFailure | null => {
+  if (!isCapturedPayment(payment)) {
+    return {
+      code: "PAYMENT_NOT_CAPTURED",
+      message: "Payment is not captured yet.",
+      status: 409,
+    };
+  }
+
+  if (payment.currency !== "INR") {
+    return {
+      code: "CURRENCY_MISMATCH",
+      message: "Payment currency does not match this order.",
+      status: 400,
+    };
+  }
+
+  if (payment.amount !== order.totalPaise) {
+    return {
+      code: "AMOUNT_MISMATCH",
+      message: "Payment amount does not match this order.",
+      status: 400,
+    };
+  }
+
+  if (expectedReference?.startsWith("order_") && payment.order_id !== expectedReference) {
+    return {
+      code: "ORDER_ID_MISMATCH",
+      message: "Payment does not match this Razorpay order.",
+      status: 400,
+    };
+  }
+
+  return null;
+};
+
+const validateFetchedOrder = async (
+  order: NonNullable<Awaited<ReturnType<typeof getOrder>>>,
+  razorpayOrderId: string
+): Promise<PaymentVerificationFailure | null> => {
+  if (!razorpayOrderId.startsWith("order_")) return null;
+
+  const razorpayOrder = await fetchRazorpayOrder(razorpayOrderId);
+  if (razorpayOrder.id !== razorpayOrderId) {
+    return {
+      code: "ORDER_ID_MISMATCH",
+      message: "Payment does not match this Razorpay order.",
+      status: 400,
+    };
+  }
+
+  if (razorpayOrder.currency !== "INR" || razorpayOrder.amount !== order.totalPaise) {
+    return {
+      code: "ORDER_AMOUNT_MISMATCH",
+      message: "Razorpay order amount does not match this order.",
+      status: 400,
+    };
+  }
+
+  if (razorpayOrder.status && razorpayOrder.status !== "paid") {
+    return {
+      code: "ORDER_NOT_PAID",
+      message: "Razorpay order is not paid yet.",
+      status: 409,
+    };
+  }
+
+  return null;
+};
+
+const validateFetchedPaymentLink = (
+  order: NonNullable<Awaited<ReturnType<typeof getOrder>>>,
+  paymentLink: Awaited<ReturnType<typeof fetchRazorpayPaymentLink>>,
+  expectedPaymentLinkId: string
+): PaymentVerificationFailure | null => {
+  if (paymentLink.id !== expectedPaymentLinkId) {
+    return {
+      code: "PAYMENT_LINK_MISMATCH",
+      message: "Payment link does not match this order.",
+      status: 400,
+    };
+  }
+
+  if (paymentLink.status !== "paid") {
+    return {
+      code: "PAYMENT_LINK_NOT_PAID",
+      message: "Payment link is not paid yet.",
+      status: 409,
+    };
+  }
+
+  if (paymentLink.currency !== "INR") {
+    return {
+      code: "CURRENCY_MISMATCH",
+      message: "Payment link currency does not match this order.",
+      status: 400,
+    };
+  }
+
+  const amount = asPaiseNumber(paymentLink.amount);
+  const paidAmount = asPaiseNumber(paymentLink.amount_paid);
+  if (amount !== order.totalPaise || paidAmount !== order.totalPaise) {
+    return {
+      code: "AMOUNT_MISMATCH",
+      message: "Payment link amount does not match this order.",
+      status: 400,
+    };
+  }
+
+  const expectedReferenceId = getRazorpayPaymentLinkReferenceId(order.id);
+  if (paymentLink.reference_id && paymentLink.reference_id !== expectedReferenceId) {
+    return {
+      code: "PAYMENT_LINK_REFERENCE_MISMATCH",
+      message: "Payment link reference does not match this order.",
+      status: 400,
+    };
+  }
+
+  return null;
+};
+
+const normalizeVerifyPaymentBody = (body: z.infer<typeof verifyPaymentSchema>) => ({
+  orderId: body.orderId,
+  razorpayOrderId: body.razorpayOrderId ?? body.razorpay_order_id ?? "",
+  razorpayPaymentId: body.razorpayPaymentId ?? body.razorpay_payment_id ?? "",
+  razorpaySignature: body.razorpaySignature ?? body.razorpay_signature ?? "",
+});
 
 const getRequestOrigin = (url: string) => new URL(url).origin;
 
@@ -155,6 +319,23 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       );
 
       const productById = new Map(productRows.map((product) => [product.id, product]));
+      const typeIds = Array.from(
+        new Set(
+          productRows
+            .map((product) => product.typeId)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      );
+      const typeRows =
+        typeIds.length > 0
+          ? await timedRows("payments.createOrder.productTypes", () =>
+              db
+                .select()
+                .from(productTypes)
+                .where(inArray(productTypes.id, typeIds)),
+            )
+          : [];
+      const typeById = new Map(typeRows.map((type) => [type.id, type]));
       const now = new Date();
       const validReservationTokens = new Map<string, Date>();
       for (const productId of productIds) {
@@ -222,16 +403,41 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         }
       }
 
-      const normalizedItems = body.items.map((item) => {
+      const normalizedItems: Array<{
+        imageUrl: null | string;
+        name: string;
+        pricePaise: number;
+        productId: string;
+        quantity: number;
+        selectedOptions: Record<string, string>;
+      }> = [];
+      for (const item of body.items) {
         const product = productById.get(item.productId)!;
-        return {
+        const optionValidation = validateOrderItemSelectedOptions({
+          product: {
+            ...product,
+            typeSlug: product.typeId
+              ? (typeById.get(product.typeId)?.slug ?? null)
+              : null,
+          },
+          selectedOptions: item.selectedOptions,
+        });
+        if ("error" in optionValidation) {
+          return c.json(optionValidation.error, 400);
+        }
+        const selectedOptions: Record<string, string> = optionValidation
+          .selectedOptions.size
+          ? { size: optionValidation.selectedOptions.size }
+          : {};
+        normalizedItems.push({
           imageUrl: null,
           name: product.name,
           pricePaise: product.pricePaise,
           productId: product.id,
           quantity: item.quantity,
-        };
-      });
+          selectedOptions,
+        });
+      }
 
       const subtotalPaise = normalizedItems.reduce(
         (sum, item) => sum + item.pricePaise * item.quantity,
@@ -636,7 +842,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const authUserOrResponse = requireAuth(c);
       if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+      const body = normalizeVerifyPaymentBody(c.req.valid("json"));
       const order = await getOrder(body.orderId);
       if (!order) {
         return c.json({ code: "ORDER_NOT_FOUND", message: "Order not found." }, 404);
@@ -673,19 +879,119 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      await completePaidOrder({
-        orderId: body.orderId,
-        paymentId: body.razorpayPaymentId,
-        paymentMethod: "razorpay_checkout",
-        paymentReference: body.razorpayOrderId,
-        source: "Razorpay checkout verification",
-      });
+      let payment: Awaited<ReturnType<typeof fetchRazorpayPayment>>;
+      try {
+        payment = await fetchRazorpayPayment(body.razorpayPaymentId);
+        const paymentFailure = validateFetchedPayment(order, payment, body.razorpayOrderId);
+        if (paymentFailure) {
+          return c.json(
+            { code: paymentFailure.code, message: paymentFailure.message },
+            paymentFailure.status
+          );
+        }
+
+        const orderFailure = await validateFetchedOrder(order, body.razorpayOrderId);
+        if (orderFailure) {
+          return c.json(
+            { code: orderFailure.code, message: orderFailure.message },
+            orderFailure.status
+          );
+        }
+      } catch (error) {
+        logCreateOrder.error("Razorpay payment verification fetch failed", { err: error as Record<string, unknown> });
+        return c.json(
+          {
+            code: "RAZORPAY_VERIFICATION_UNAVAILABLE",
+            message: "Unable to verify payment with Razorpay.",
+          },
+          502
+        );
+      }
+
+      try {
+        await completePaidOrder({
+          orderId: body.orderId,
+          paidAt: paidAtFromUnixSeconds(payment.created_at),
+          paymentId: body.razorpayPaymentId,
+          paymentMethod: payment.method ?? "razorpay_checkout",
+          paymentReference: body.razorpayOrderId,
+          source: "Razorpay checkout verification",
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === "PRODUCT_SOLD") {
+          return c.json(
+            {
+              code: "INVENTORY_CONFLICT",
+              message: "Payment is verified, but inventory needs manual review.",
+            },
+            409
+          );
+        }
+        throw error;
+      }
 
       return c.json(
         {
           orderId: body.orderId,
           status: "confirmed",
           verified: true,
+        },
+        200
+      );
+    }
+  );
+
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/status",
+      request: {
+        query: paymentStatusQuerySchema,
+      },
+      responses: {
+        200: { description: "Payment status" },
+        403: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Forbidden",
+        },
+        404: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Order not found",
+        },
+      },
+      tags: ["Payments"],
+    }),
+    async (c) => {
+      const query = c.req.valid("query");
+      const order = await getOrder(query.orderId);
+      if (!order) {
+        return c.json({ code: "ORDER_NOT_FOUND", message: "Order not found." }, 404);
+      }
+
+      const authUser = c.get("authUser");
+      const sessionEmail = authUser?.email ?? null;
+      const canView =
+        (authUser?.role === "admin") ||
+        (authUser?.id != null && order.userId === authUser.id) ||
+        (order.userId === null &&
+          order.shippingEmail != null &&
+          sessionEmail != null &&
+          order.shippingEmail.toLowerCase() === sessionEmail.toLowerCase()) ||
+        (query.key != null && verifyOrderAccessToken(order.id, query.key));
+
+      if (!canView) {
+        return c.json({ code: "FORBIDDEN", message: "Forbidden." }, 403);
+      }
+
+      return c.json(
+        {
+          canDownloadReceipt: order.paymentStatus === "paid",
+          orderId: order.id,
+          orderStatus: order.status,
+          paidAt: order.paidAt?.toISOString?.() ?? null,
+          paymentStatus: order.paymentStatus,
+          retryAfterSeconds: order.paymentStatus === "pending" ? 3 : null,
+          updatedAt: order.updatedAt?.toISOString?.() ?? null,
         },
         200
       );
@@ -752,11 +1058,42 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.redirect(redirectUrl.toString());
       }
 
+      let payment: Awaited<ReturnType<typeof fetchRazorpayPayment>>;
+      try {
+        const [paymentLink, fetchedPayment] = await Promise.all([
+          fetchRazorpayPaymentLink(query.razorpay_payment_link_id),
+          fetchRazorpayPayment(query.razorpay_payment_id),
+        ]);
+        payment = fetchedPayment;
+
+        const paymentLinkFailure = validateFetchedPaymentLink(
+          order,
+          paymentLink,
+          query.razorpay_payment_link_id
+        );
+        const paymentFailure = validateFetchedPayment(order, payment);
+        const failure = paymentLinkFailure ?? paymentFailure;
+        if (failure) {
+          await addOrderEvent(order.id, "Razorpay payment link verification rejected", order.status, {
+            code: failure.code,
+            paymentId: query.razorpay_payment_id,
+            paymentLinkId: query.razorpay_payment_link_id,
+          });
+          redirectUrl.searchParams.set("payment", "review");
+          return c.redirect(redirectUrl.toString());
+        }
+      } catch (error) {
+        logPaymentLinkCallback.error("Unable to verify Razorpay payment link", { err: error as Record<string, unknown> });
+        redirectUrl.searchParams.set("payment", "review");
+        return c.redirect(redirectUrl.toString());
+      }
+
       try {
         await completePaidOrder({
           orderId: order.id,
+          paidAt: paidAtFromUnixSeconds(payment.created_at),
           paymentId: query.razorpay_payment_id,
-          paymentMethod: "razorpay_payment_link",
+          paymentMethod: payment.method ?? "razorpay_payment_link",
           paymentReference: query.razorpay_payment_link_id,
           source: "Razorpay payment link callback",
         });

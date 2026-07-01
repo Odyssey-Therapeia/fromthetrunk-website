@@ -12,15 +12,15 @@ const BANNER_DURATION_MS = 3000;
 
 const campaignBanners: CampaignBanner[] = [
   {
-    image: "/banner/newbanner1.png",
+    image: "/banner/banner1.avif",
     alt: "Grand Launch Edit, The Trunk Opens campaign banner",
   },
   {
-    image: "/banner/newbanner2.png",
+    image: "/banner/banner2.avif",
     alt: "New Arrivals, Newly Yours campaign banner",
   },
   {
-    image: "/banner/newbanner3.png",
+    image: "/banner/banner3.avif",
     alt: "Provenance Promise, Every Weave Remembers campaign banner",
   },
 ];
@@ -52,6 +52,7 @@ export function CampaignBannerSection() {
                 src={banner.image}
                 alt={activeIndex === index ? banner.alt : ""}
                 fill
+                fetchPriority="low"
                 sizes="(max-width: 768px) calc(100vw - 3rem), (max-width: 1280px) calc(100vw - 6rem), 1440px"
                 unoptimized={banner.image.endsWith(".gif") || banner.image.endsWith(".svg")}
                 className="object-cover"

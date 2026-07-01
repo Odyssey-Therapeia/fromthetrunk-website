@@ -5,10 +5,8 @@
  * propsSchema validated on SAVE and on RENDER (defense in depth via renderBlock).
  * Renderer: RSC, theme tokens only — no raw hex or arbitrary px.
  *
- * Draft-safe behavior:
- * - Image can be empty while editing.
- * - Old saved media UUIDs are ignored instead of being passed into next/image.
- * - Invalid background values fall back to "transparent".
+ * Image refs are validated as media UUIDs. Old or unresolved media refs are
+ * ignored by the renderer instead of being passed into next/image.
  */
 
 import { z } from "zod";
@@ -21,14 +19,6 @@ import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
 const emptyToUndefined = (value: unknown) =>
   value === "" || value === null ? undefined : value;
-
-const normalizeImageTextBackground = (value: unknown) => {
-  if (value === "transparent" || value === "secondary" || value === "muted") {
-    return value;
-  }
-
-  return undefined;
-};
 
 const getSafeImageSrc = (value: unknown) => {
   if (typeof value !== "string") return undefined;
@@ -54,15 +44,12 @@ export const imageTextSplitPropsSchema = z.object({
   eyebrow: z.string().max(80).optional(),
   heading: z.string().max(200),
   body: z.string().max(2000),
-  image: z.preprocess(emptyToUndefined, z.string().max(2000).optional()),
+  image: z.preprocess(emptyToUndefined, z.string().uuid()),
   imageAlt: z.string().max(200).optional(),
   imagePosition: z.enum(["left", "right"]).default("right"),
   ctaLabel: z.string().max(60).optional(),
   ctaHref: z.string().max(300).optional(),
-  background: z.preprocess(
-    normalizeImageTextBackground,
-    z.enum(["transparent", "secondary", "muted"]).default("transparent"),
-  ),
+  background: z.enum(["transparent", "secondary", "muted"]).default("transparent"),
 });
 
 export type ImageTextSplitBlockProps = z.infer<

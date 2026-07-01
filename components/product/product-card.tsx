@@ -8,12 +8,14 @@ import { ArrowUpRight } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { buildProductCardAlt } from "@/lib/seo/image-alt";
 import { cn } from "@/lib/utils";
 import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
 import { useCartStore } from "@/lib/store/cart-store";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { ProductCardCommerceRow } from "@/components/product/product-card-commerce-row";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import type { Product, StockStatus } from "@/types/domain";
 
 interface ProductCardProps {
@@ -32,6 +34,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
     getServerMountedSnapshot,
   );
   const primaryImage = resolveMediaURL(product.images?.[0]);
+  const productImageAlt = buildProductCardAlt(product);
   const { stockStatus } = useLiveProductStock({
     enabled: false,
     initialStatus: product.stockStatus as StockStatus,
@@ -43,6 +46,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const inCart = hasMounted && hasHydrated && hasCartItem;
   const isSold = stockStatus === "sold";
   const isReserved = stockStatus === "reserved";
+  const isBlouse = isBlouseProduct(product);
   const trackProductCardClick = () => {
     trackWebsiteMetric("product_card_click", {
       pricePaise: product.pricePaise,
@@ -76,9 +80,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
             {primaryImage ? (
               <Image
                 src={primaryImage}
-                alt={product.name}
+                alt={productImageAlt}
                 fill
-                sizes="(max-width: 519px) 100vw, (max-width: 767px) 50vw, (max-width: 1279px) 33vw, 25vw"
+                sizes="(max-width: 519px) calc(100vw - 1.5rem), (max-width: 767px) calc(50vw - 1.5rem), (max-width: 1023px) calc(33vw - 1.5rem), (max-width: 1279px) calc(33vw - 2rem), (max-width: 1720px) calc((100vw - 24rem) / 4), 320px"
+                quality={70}
                 className={cn(
                   "object-cover transition duration-700 group-hover:scale-105",
                   isSold && "grayscale",
@@ -92,10 +97,14 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <div className="absolute inset-0 bg-linear-to-t from-black/25 via-black/0 to-transparent opacity-0 transition duration-500 group-hover:opacity-100" />
 
             {isSold && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 px-3 text-center backdrop-blur-[3px]">
                 <Badge className="bg-foreground/90 text-background shadow-soft">
-                  Sold
+                  Sold out
                 </Badge>
+                <p className="max-w-[15rem] text-[10px] font-medium leading-snug text-white/90 @sm:text-[11px]">
+                  We&apos;ll notify you if something like this comes back. Till
+                  then, shop with us.
+                </p>
               </div>
             )}
             {isReserved && (
@@ -104,7 +113,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               </Badge>
             )}
 
-            {!isSold && !isReserved && product.originalPricePaise && (
+            {!isSold && !isReserved && !isBlouse && product.originalPricePaise && (
               <Badge className="absolute left-2 top-2 @sm:left-4 @sm:top-4 text-[10px] @sm:text-xs bg-white/85 text-trunk-brown shadow-soft">
                 Pre-loved
               </Badge>

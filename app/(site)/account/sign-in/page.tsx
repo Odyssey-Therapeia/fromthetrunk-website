@@ -195,6 +195,13 @@ export default function SignInPage() {
           : "/account/sign-up"
       }
     >
+      <div className="mb-5 rounded-[1.25rem] border border-ftt-gold/60 bg-ftt-burgundy p-4 text-sm leading-6 text-ftt-ivory/85">
+        <span className="font-semibold text-ftt-gold">New here?</span> Enter your{" "}
+        <span className="font-semibold text-ftt-ivory">email only</span> — the OTP
+        is always sent to your email, never by SMS. A mobile number works only when
+        it is already linked to an existing account&apos;s email.
+      </div>
+
       <OtpAuthPanel
         mode="sign-in"
         context="account"

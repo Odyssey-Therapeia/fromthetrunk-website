@@ -20,3 +20,18 @@ export async function insertEvent(input: CreateEventInput): Promise<void> {
     })
     .onConflictDoNothing({ target: events.eventId });
 }
+
+export async function claimEvent(input: CreateEventInput): Promise<boolean> {
+  const rows = await db
+    .insert(events)
+    .values({
+      eventId: input.eventId,
+      type: input.type,
+      payload: input.payload,
+      occurredAt: input.occurredAt,
+    })
+    .onConflictDoNothing({ target: events.eventId })
+    .returning({ id: events.id });
+
+  return rows.length > 0;
+}

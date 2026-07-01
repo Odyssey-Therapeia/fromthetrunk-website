@@ -2,10 +2,17 @@ import { z } from "@hono/zod-openapi";
 
 export const MAX_ORDER_ITEMS = 20;
 
+export const selectedOptionsSchema = z
+  .object({
+    size: z.string().trim().max(16).optional(),
+  })
+  .strict();
+
 export const orderItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().min(1).max(1),
   reservationToken: z.string().min(1).max(512).optional(),
+  selectedOptions: selectedOptionsSchema.optional(),
 }).strict();
 
 export const shippingAddressSchema = z

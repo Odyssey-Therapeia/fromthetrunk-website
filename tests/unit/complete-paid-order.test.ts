@@ -66,7 +66,9 @@ vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => ({ _and: args }),
   eq: (col: unknown, val: unknown) => ({ _eq: [col, val] }),
   inArray: (col: unknown, vals: unknown) => ({ _inArray: [col, vals] }),
+  isNull: (col: unknown) => ({ _isNull: col }),
   ne: (col: unknown, val: unknown) => ({ _ne: [col, val] }),
+  or: (...args: unknown[]) => ({ _or: args }),
 }));
 
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
@@ -188,9 +190,13 @@ describe("completePaidOrder", () => {
       // sendEmail called exactly twice (customer + admin notification from winner only)
       expect(sendEmailMock).toHaveBeenCalledTimes(2);
 
-      // Assert the atomic SET includes paymentStatus: "paid" (the guard that prevents double-pay).
+      // Assert the atomic payment claim marks paymentStatus: "paid".
       expect(setMock).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentStatus: "paid", status: "confirmed" })
+        expect.objectContaining({ paymentStatus: "paid" })
+      );
+      // Fulfilment status is only confirmed after the reserved product is sold.
+      expect(setMock).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "confirmed" })
       );
 
       // Assert the WHERE predicate contains the ne(orders.paymentStatus, "paid") guard.
@@ -237,9 +243,9 @@ describe("completePaidOrder", () => {
       expect(result).toHaveProperty("alreadyPaid", true);
       expect(sendEmailMock).not.toHaveBeenCalled();
 
-      // Assert the atomic SET was attempted with paymentStatus: "paid"
+      // Assert the atomic payment claim was attempted with paymentStatus: "paid"
       expect(setMock).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentStatus: "paid", status: "confirmed" })
+        expect.objectContaining({ paymentStatus: "paid" })
       );
 
       // Assert the WHERE included the ne(orders.paymentStatus, "paid") guard
@@ -275,7 +281,7 @@ describe("completePaidOrder", () => {
       expect(addOrderEventMock).toHaveBeenCalledWith(
         "order-1",
         "Payment completion inventory conflict",
-        "confirmed",
+        "pending",
         expect.objectContaining({
           code: "PRODUCT_SOLD",
           requestedProductIds: ["prod-1"],

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import type { Order, OrderItem } from "@/types/domain";
 
 const fetchOrder = async (id: string): Promise<Order> => {
@@ -130,6 +131,11 @@ export default function OrderDetailPage() {
             <div key={index} className="flex items-center justify-between text-sm">
               <div>
                 <p className="font-medium text-foreground">{item.name}</p>
+                {formatSelectedOptions(item.selectedOptions) ? (
+                  <p className="text-xs font-semibold text-foreground/70">
+                    {formatSelectedOptions(item.selectedOptions)}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">Qty: {item.quantity}, unique</p>
               </div>
               <p className="font-semibold text-foreground">

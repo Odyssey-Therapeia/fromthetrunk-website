@@ -9,7 +9,9 @@ import { ArrowUpRight, Clock3, Package, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/formatters";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import type { Order, OrderItem } from "@/types/domain";
 
 const fetchOrders = async () => {
@@ -19,6 +21,8 @@ const fetchOrders = async () => {
   }
   return (await response.json()) as Order[];
 };
+
+type OrdersTab = "successful" | "attention";
 
 export default function OrdersPage() {
   const { data: session, status } = useSession();
@@ -43,6 +47,8 @@ export default function OrdersPage() {
   }
 
   const orders = data ?? [];
+  const successfulOrders = orders.filter((order) => order.paymentStatus === "paid");
+  const attentionOrders = orders.filter((order) => order.paymentStatus !== "paid");
 
   return (
     <div className="space-y-6">
@@ -105,13 +111,80 @@ export default function OrdersPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {orders.map((order, index) => (
-            <OrderTimelineCard key={order.id} order={order} index={index} />
-          ))}
-        </div>
+        <OrdersTabs
+          attentionOrders={attentionOrders}
+          successfulOrders={successfulOrders}
+        />
       )}
     </div>
+  );
+}
+
+function OrdersTabs({
+  attentionOrders,
+  successfulOrders,
+}: {
+  attentionOrders: Order[];
+  successfulOrders: Order[];
+}) {
+  const tabs: Array<{
+    count: number;
+    emptyMessage: string;
+    label: string;
+    orders: Order[];
+    value: OrdersTab;
+  }> = [
+    {
+      count: successfulOrders.length,
+      emptyMessage: "Paid orders will appear here once payment is confirmed.",
+      label: "Successful",
+      orders: successfulOrders,
+      value: "successful",
+    },
+    {
+      count: attentionOrders.length,
+      emptyMessage: "No unpaid or failed orders right now.",
+      label: "Unpaid / failed",
+      orders: attentionOrders,
+      value: "attention",
+    },
+  ];
+
+  return (
+    <Tabs defaultValue="successful" className="space-y-4">
+      <TabsList className="grid h-auto w-full grid-cols-2 rounded-full border border-ftt-border bg-ftt-card p-1 text-ftt-burgundy/60 shadow-sm sm:inline-grid sm:w-auto">
+        {tabs.map((tab) => (
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+            className="min-h-11 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-ftt-burgundy/60 data-[state=active]:bg-ftt-navy data-[state=active]:text-ftt-ivory data-[state=active]:shadow-sm sm:px-5 sm:text-[11px] sm:tracking-[0.18em]"
+          >
+            <span className="truncate">{tab.label}</span>
+            <span className="ml-2 rounded-full bg-ftt-gold/15 px-2 py-0.5 text-[10px] text-ftt-gold">
+              {tab.count}
+            </span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {tabs.map((tab) => (
+        <TabsContent key={tab.value} value={tab.value} className="mt-0">
+          {tab.orders.length > 0 ? (
+            <div className="space-y-4">
+              {tab.orders.map((order, index) => (
+                <OrderTimelineCard
+                  key={order.id}
+                  order={order}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <OrderState message={tab.emptyMessage} />
+          )}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }
 
@@ -167,8 +240,15 @@ function OrderTimelineCard({ order, index }: { order: Order; index: number }) {
                     key={`${order.id}-${item.id ?? itemIndex}`}
                     className="flex items-center justify-between gap-4 text-sm"
                   >
-                    <span className="min-w-0 truncate text-ftt-navy">
-                      {item.name}
+                    <span className="min-w-0">
+                      <span className="block truncate text-ftt-navy">
+                        {item.name}
+                      </span>
+                      {formatSelectedOptions(item.selectedOptions) ? (
+                        <span className="block text-xs font-semibold text-ftt-navy/65">
+                          {formatSelectedOptions(item.selectedOptions)}
+                        </span>
+                      ) : null}
                     </span>
                     <span className="shrink-0 text-ftt-burgundy/58">
                       {item.quantity} x {formatCurrency(item.pricePaise / 100)}

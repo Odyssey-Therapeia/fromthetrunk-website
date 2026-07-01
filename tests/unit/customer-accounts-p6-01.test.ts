@@ -585,6 +585,7 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
     paymentGateway: null,
     paymentMethod: null,
     paymentId: null,
+    paidAt: null,
     razorpayOrderId: null,
     reminderSentAt: null,
     discountId: null,

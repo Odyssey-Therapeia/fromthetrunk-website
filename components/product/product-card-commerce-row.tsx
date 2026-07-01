@@ -7,12 +7,14 @@ import {
   useSyncExternalStore,
   type MouseEvent,
 } from "react";
+import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import { useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types/domain";
@@ -76,6 +78,7 @@ export function ProductCardCommerceRow({
   const hasHydrated = useCartStore((store) => store.hasHydrated);
   const hasCartItem = useCartStore((store) => store.hasItem(product.id));
   const inCart = hasMounted && hasHydrated && hasCartItem;
+  const isBlouse = isBlouseProduct(product);
   const rafRef = useRef<number | null>(null);
   const resetTimerRef = useRef<number | null>(null);
   const labelRef = useRef(compactLabel);
@@ -316,31 +319,41 @@ export function ProductCardCommerceRow({
       </div>
 
       <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={isUnavailable || inCart || state !== "idle"}
-          data-phase={dataPhase}
-          aria-live="polite"
-          className={cn(
-            "ftt-cart-motion-button inline-flex h-9 min-w-[104px] max-w-full items-center justify-center rounded-full px-4 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-[116px] @sm:text-sm",
-            isUnavailable
-              ? "cursor-not-allowed bg-[#601D1C] text-[#FDF7F1] opacity-90"
-              : inCart || state === "added"
-                ? "border border-[#B39152] bg-[#601D1C] text-[#FDF7F1] shadow-[0_8px_20px_rgba(96,29,28,0.16)]"
-                : state === "error"
-                  ? "bg-[#601D1C] text-[#FDF7F1]"
-                  : "bg-[#141D46] text-[#FDF7F1] shadow-[0_8px_20px_rgba(20,29,70,0.16)] hover:bg-[#0E0D0E]",
-          )}
-        >
-          <span className="ftt-motion-bag" aria-hidden="true">
-            <BagIcon />
-          </span>
-          <span className="ftt-motion-garment" aria-hidden="true">
-            <MiniSareeIcon />
-          </span>
-          <span className="ftt-motion-label">{buttonLabel}</span>
-        </button>
+        {isBlouse && !isUnavailable && !inCart ? (
+          <Link
+            href={`/collection/${product.slug}`}
+            className="inline-flex h-9 min-w-[104px] max-w-full items-center justify-center rounded-full bg-[#141D46] px-4 text-[13px] font-medium text-[#FDF7F1] shadow-[0_8px_20px_rgba(20,29,70,0.16)] transition hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-[116px] @sm:text-sm"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Select size
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={isUnavailable || inCart || state !== "idle"}
+            data-phase={dataPhase}
+            aria-live="polite"
+            className={cn(
+              "ftt-cart-motion-button inline-flex h-9 min-w-[104px] max-w-full items-center justify-center rounded-full px-4 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-[116px] @sm:text-sm",
+              isUnavailable
+                ? "cursor-not-allowed bg-[#601D1C] text-[#FDF7F1] opacity-90"
+                : inCart || state === "added"
+                  ? "border border-[#B39152] bg-[#601D1C] text-[#FDF7F1] shadow-[0_8px_20px_rgba(96,29,28,0.16)]"
+                  : state === "error"
+                    ? "bg-[#601D1C] text-[#FDF7F1]"
+                    : "bg-[#141D46] text-[#FDF7F1] shadow-[0_8px_20px_rgba(20,29,70,0.16)] hover:bg-[#0E0D0E]",
+            )}
+          >
+            <span className="ftt-motion-bag" aria-hidden="true">
+              <BagIcon />
+            </span>
+            <span className="ftt-motion-garment" aria-hidden="true">
+              <MiniSareeIcon />
+            </span>
+            <span className="ftt-motion-label">{buttonLabel}</span>
+          </button>
+        )}
 
         {inCart ? (
           <button

@@ -14,6 +14,12 @@ export async function GET(request: NextRequest) {
     if (!order) {
       return NextResponse.json({ message: "Receipt not found." }, { status: 404 });
     }
+    if (order.paymentStatus !== "paid") {
+      return NextResponse.json(
+        { message: "Receipt is available after payment is confirmed." },
+        { status: 409 }
+      );
+    }
 
     const shortId = formatOrderShortId(order.id);
     return new NextResponse(buildOrderReceiptHtml(order), {

@@ -57,6 +57,7 @@ import {
 } from "@/db/queries/collections";
 import { hydrateProducts as hydrateProductsQuery } from "@/db/queries/products";
 import {
+  events,
   products,
   productTags,
   productTypes,
@@ -72,6 +73,16 @@ import type { CatalogFacets, CatalogSearchFilters, CatalogSearchPort } from "@/l
 import { DEFAULT_PRODUCT_SORT } from "@/lib/products/sort";
 import type { ProductSortOption } from "@/lib/products/sort";
 import { timed, timedRows } from "@/lib/perf/timed";
+
+/**
+ * Max products returned for the virtual `top-viewed` collection. Kept small so
+ * the storefront "Top View" edit stays a tight, curated shortlist (6–7 pieces)
+ * rather than a full paginated grid.
+ */
+const TOP_VIEWED_LIMIT = 7;
+
+/** Rolling window (days) for counting product_view events, matching Admin Control Centre. */
+const TOP_VIEWED_WINDOW_DAYS = 30;
 
 // ── Facet helpers ─────────────────────────────────────────────────────────────
 
@@ -118,7 +129,17 @@ const normalizeInputSlugs = (
 };
 
 const normalizedSqlValue = (expression: SQL<unknown>) =>
-  sql<string>`lower(regexp_replace(coalesce(${expression}, ''), '[^a-z0-9]+', '-', 'g'))`;
+  sql<string>`regexp_replace(
+    regexp_replace(
+      replace(lower(btrim(coalesce(${expression}, ''))), '&', ' and '),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    ),
+    '(^-+|-+$)',
+    '',
+    'g'
+  )`;
 
 const colorSqlValue = (expression: SQL<unknown>) =>
   sql<string>`case
@@ -403,16 +424,21 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         query,
         type,
         types,
+        excludeTypes,
+        sleeveTypes,
         fabric,
         limit,
         offset = 0,
         priceMin,
         priceMax,
         sort = DEFAULT_PRODUCT_SORT,
+        sortBy,
         tags: tagSlugs,
         works,
       } = filters;
       const activeTypes = normalizeInputSlugs([...(types ?? []), type]);
+      const activeExcludeTypes = normalizeInputSlugs(excludeTypes);
+      const activeSleeves = normalizeInputSlugs(sleeveTypes);
       const activeFabrics = normalizeInputSlugs([...(fabrics ?? []), fabric]);
       const activeColors = normalizeInputSlugs(colors, { color: true });
       const activeOccasions = normalizeInputSlugs(occasions);
@@ -519,6 +545,24 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         );
       }
 
+      // Exclude types (e.g. hide blouses from the default catalog). Products
+      // with no type (typeId IS NULL) are kept — only the named types drop out.
+      if (activeExcludeTypes.length > 0) {
+        whereClauses.push(
+          sql`(${products.typeId} IS NULL OR ${products.typeId} NOT IN (
+            SELECT id FROM ${productTypes}
+            WHERE ${productTypes.slug} in (${sql.join(activeExcludeTypes.map((typeSlug) => sql`${typeSlug}`), sql`, `)})
+          ))`
+        );
+      }
+
+      // Blouse sleeve: match attributes->>'sleeve_type' against selected slugs.
+      const sleeveClause = jsonStringMatches(
+        sql`${products.attributes}->>'sleeve_type'`,
+        activeSleeves,
+      );
+      if (sleeveClause) whereClauses.push(sleeveClause);
+
       const colorClause = multiSourceFacetFilter({
         attributeExpressions: [
           sql`${products.attributes}->>'color'`,
@@ -594,6 +638,70 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
           buildFacets(collectionProductIds),
         );
         return { products: [], facets, totalDocs: 0 };
+      }
+
+      // Virtual "top-viewed" collection: rank the already-filtered products by
+      // product_view event count over the last 30 days, most-viewed first.
+      // `whereClause` still applies every active filter (blouses are excluded by
+      // default, so this ranks within the visible saree catalog unless the caller
+      // opted blouses back in). Products with zero views are omitted by design.
+      if (sortBy === "top-viewed") {
+        const topViewedLimit = Math.min(limit ?? TOP_VIEWED_LIMIT, TOP_VIEWED_LIMIT);
+        const viewCount = sql<number>`cast(count(${events.id}) as integer)`;
+
+        const rankedRows = await timedRows("catalog.products.topViewed", () =>
+          withRetry(() =>
+            db
+              .select({ productId: products.id, viewCount })
+              .from(products)
+              .innerJoin(
+                events,
+                sql`${products.id} = (${events.payload}->>'productId')::uuid`,
+              )
+              .where(
+                and(
+                  whereClause,
+                  eq(events.type, "product_view"),
+                  sql`${events.occurredAt} >= now() - make_interval(days => ${TOP_VIEWED_WINDOW_DAYS})`,
+                  sql`${events.payload}->>'productId' is not null`,
+                ),
+              )
+              .groupBy(products.id)
+              .orderBy(desc(viewCount), desc(products.createdAt))
+              .limit(topViewedLimit),
+          ),
+        );
+
+        const rankedIds = rankedRows.map((row) => row.productId);
+        const facets = includeFacets
+          ? await timed("catalog.facets", () => buildFacets(collectionProductIds))
+          : emptyFacets();
+
+        if (rankedIds.length === 0) {
+          return { products: [], facets, totalDocs: 0 };
+        }
+
+        // Re-fetch full rows (grouped query only selected id) then re-order them
+        // to match the ranked id order before hydrating relations.
+        const productRows = await timedRows("catalog.products.topViewed.rows", () =>
+          withRetry(() =>
+            db.select().from(products).where(inArray(products.id, rankedIds)),
+          ),
+        );
+        const rowById = new Map(productRows.map((row) => [row.id, row]));
+        const orderedRows = rankedIds
+          .map((id) => rowById.get(id))
+          .filter((row): row is (typeof productRows)[number] => Boolean(row));
+
+        const hydratedProducts = await timedRows("catalog.products.hydrate", () =>
+          hydrateProductsQuery(orderedRows),
+        );
+
+        return {
+          products: hydratedProducts,
+          facets,
+          totalDocs: rankedIds.length,
+        };
       }
 
       const rowsPromise = timedRows("catalog.products.rows", () => withRetry(() => {

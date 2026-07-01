@@ -56,7 +56,7 @@ export function useAgentChat() {
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
-        api: "/api/chat",
+        api: "/api/v2/admin/agent-chat",
         body: () => {
           const s = useAgentStore.getState();
           if (s.conversationId === INITIAL_AGENT_CONVERSATION_ID) {

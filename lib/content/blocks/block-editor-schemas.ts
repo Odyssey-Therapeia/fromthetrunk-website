@@ -20,32 +20,6 @@ import type { FormSchema } from "@/lib/forms/types";
 const emptyToUndefined = (value: unknown) =>
   value === "" || value === null ? undefined : value;
 
-const toMaxThreeArray = (value: unknown) =>
-  Array.isArray(value) ? value.slice(0, 3) : [];
-
-const normalizeNewsletterBackground = (value: unknown) => {
-  if (value === "card" || value === "secondary" || value === "transparent") {
-    return value;
-  }
-
-  return undefined;
-};
-
-const toArray = (value: unknown) => (Array.isArray(value) ? value : []);
-
-const normalizeStoryBeatLayout = (value: unknown) => {
-  if (
-    value === "image-right" ||
-    value === "image-left" ||
-    value === "text-only-dark" ||
-    value === "full-bleed"
-  ) {
-    return value;
-  }
-
-  return undefined;
-};
-
 // ── Hero block schema ─────────────────────────────────────────────────────────
 // Mirrors heroPropsSchema from lib/content/blocks/hero.tsx
 
@@ -129,7 +103,7 @@ export const heroEditorSchema: FormSchema = {
       },
     },
     backgroundImage: {
-      zod: z.preprocess(emptyToUndefined, z.string().max(2000).optional()),
+      zod: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
       meta: {
         type: "image-ref",
         label: "Background image",
@@ -380,7 +354,7 @@ export const imageTextSplitEditorSchema: FormSchema = {
       },
     },
     image: {
-      zod: z.preprocess(emptyToUndefined, z.string().max(2000).optional()),
+      zod: z.preprocess(emptyToUndefined, z.string().uuid()),
       meta: {
         type: "image-ref",
         label: "Image",
@@ -448,36 +422,27 @@ export const imageTextSplitEditorSchema: FormSchema = {
 export const storyEditorialEditorSchema: FormSchema = {
   fields: {
     beats: {
-      zod: z.preprocess(
-        toArray,
-        z
-          .array(
-            z.object({
-              paragraphs: z.preprocess(
-                toArray,
-                z.array(z.string().max(600)).max(4).default([]),
-              ),
-              image: z.preprocess(
-                emptyToUndefined,
-                z.string().max(2000).optional(),
-              ),
-              imageAlt: z.string().max(200).optional(),
-              layout: z.preprocess(
-                normalizeStoryBeatLayout,
-                z
-                  .enum([
-                    "image-right",
-                    "image-left",
-                    "text-only-dark",
-                    "full-bleed",
-                  ])
-                  .default("image-right"),
-              ),
-            }),
-          )
-          .max(6)
-          .default([]),
-      ),
+      zod: z
+        .array(
+          z.object({
+            paragraphs: z.array(z.string().max(600)).min(1).max(4),
+            image: z.preprocess(
+              emptyToUndefined,
+              z.string().uuid().optional(),
+            ),
+            imageAlt: z.string().max(200).optional(),
+            layout: z
+              .enum([
+                "image-right",
+                "image-left",
+                "text-only-dark",
+                "full-bleed",
+              ])
+              .default("image-right"),
+          }),
+        )
+        .min(1)
+        .max(6),
       meta: {
         type: "list-of-group",
         label: "Beats",
@@ -486,17 +451,14 @@ export const storyEditorialEditorSchema: FormSchema = {
         itemSchema: {
           fields: {
             layout: {
-              zod: z.preprocess(
-                normalizeStoryBeatLayout,
-                z
-                  .enum([
-                    "image-right",
-                    "image-left",
-                    "text-only-dark",
-                    "full-bleed",
-                  ])
-                  .default("image-right"),
-              ),
+              zod: z
+                .enum([
+                  "image-right",
+                  "image-left",
+                  "text-only-dark",
+                  "full-bleed",
+                ])
+                .default("image-right"),
               meta: {
                 type: "select",
                 label: "Layout",
@@ -510,10 +472,7 @@ export const storyEditorialEditorSchema: FormSchema = {
               },
             },
             paragraphs: {
-              zod: z.preprocess(
-                toArray,
-                z.array(z.string().max(600)).max(4).default([]),
-              ),
+              zod: z.array(z.string().max(600)).min(1).max(4),
               meta: {
                 type: "list-of-text",
                 label: "Paragraphs",
@@ -525,7 +484,7 @@ export const storyEditorialEditorSchema: FormSchema = {
             image: {
               zod: z.preprocess(
                 emptyToUndefined,
-                z.string().max(2000).optional(),
+                z.string().uuid().optional(),
               ),
               meta: {
                 type: "image-ref",
@@ -547,10 +506,7 @@ export const storyEditorialEditorSchema: FormSchema = {
       },
     },
     climaxLines: {
-      zod: z.preprocess(
-        toArray,
-        z.array(z.string().max(200)).max(6).default([]),
-      ),
+      zod: z.array(z.string().max(200)).max(6).default([]),
       meta: {
         type: "list-of-text",
         label: "Climax lines",
@@ -697,10 +653,7 @@ export const newsletterSignupEditorSchema: FormSchema = {
       },
     },
     background: {
-      zod: z.preprocess(
-        normalizeNewsletterBackground,
-        z.enum(["card", "secondary", "transparent"]).default("card"),
-      ),
+      zod: z.enum(["card", "secondary", "transparent"]).default("card"),
       meta: {
         type: "select",
         label: "Background",
@@ -799,30 +752,32 @@ export const spacerEditorSchema: FormSchema = {
 
 // ── Trust-signals block schema ────────────────────────────────────────────────
 // Mirrors trustSignalsPropsSchema from lib/content/blocks/trust-signals.tsx.
-// The propsSchema supports up to 3 stats; the editor surfaces it as a
+// The propsSchema requires 3 stats; the editor surfaces it as a
 // list-of-group of {value, label}. Icons are fixed per slot (not editable).
 
 export const trustSignalsEditorSchema: FormSchema = {
   fields: {
     stats: {
-      zod: z.preprocess(
-        toMaxThreeArray,
-        z
-          .array(
-            z.object({
-              value: z.preprocess(
-                emptyToUndefined,
-                z.string().max(40).default(""),
-              ),
-              label: z.preprocess(
-                emptyToUndefined,
-                z.string().max(80).default(""),
-              ),
-            }),
-          )
-          .max(3)
-          .default([]),
-      ),
+      zod: z
+        .tuple([
+          z.object({
+            value: z.string().max(40),
+            label: z.string().max(80),
+          }),
+          z.object({
+            value: z.string().max(40),
+            label: z.string().max(80),
+          }),
+          z.object({
+            value: z.string().max(40),
+            label: z.string().max(80),
+          }),
+        ])
+        .default([
+          { value: "200+", label: "Authenticated Sarees" },
+          { value: "50+", label: "Happy Collectors" },
+          { value: "100%", label: "Provenance Verified" },
+        ]),
       meta: {
         type: "list-of-group",
         label: "Stats",

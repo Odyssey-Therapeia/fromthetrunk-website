@@ -1035,3 +1035,75 @@ describe("searchProducts — free-text query (P6-03)", () => {
     expect(strings.some((s) => s.startsWith("%") && s.endsWith("%"))).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Virtual sort: top-viewed (rank by product_view events, last 30 days)
+// ---------------------------------------------------------------------------
+
+describe("searchProducts — sortBy: top-viewed", () => {
+  /** Minimal full product row for the inArray re-fetch step. */
+  const productRow = (id: string) => ({
+    id,
+    name: `Product ${id}`,
+    slug: id,
+    status: "published",
+    pricePaise: 10000,
+    stockStatus: "available",
+    quantityAvailable: 1,
+    typeId: null,
+    attributes: {},
+    collectionId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  it("orders products by product_view count and re-orders re-fetched rows to match rank", async () => {
+    // 1) Ranked ids query (most-viewed first).
+    selectQueue.push([
+      { productId: "p-top-2", viewCount: 9 },
+      { productId: "p-top-1", viewCount: 4 },
+    ]);
+    // 2) Full rows re-fetched via inArray — deliberately in the OPPOSITE order
+    //    to prove the adapter restores rank order.
+    selectQueue.push([productRow("p-top-1"), productRow("p-top-2")]);
+    // 3) hydrateProducts: images, tags (collection/type skipped — null ids).
+    selectQueue.push([]);
+    selectQueue.push([]);
+
+    const { products, totalDocs } = await searchProducts({
+      sortBy: "top-viewed",
+      includeFacets: false,
+    });
+
+    expect(products.map((p) => p.id)).toEqual(["p-top-2", "p-top-1"]);
+    expect(totalDocs).toBe(2);
+  });
+
+  it("ranks on product_view events, not on a real 'top-viewed' tag slug", async () => {
+    selectQueue.push([{ productId: "p-top-1", viewCount: 3 }]);
+    selectQueue.push([productRow("p-top-1")]);
+    selectQueue.push([]);
+    selectQueue.push([]);
+
+    await searchProducts({ sortBy: "top-viewed", includeFacets: false });
+
+    const strings = mainWhereStrings();
+    // The ranked WHERE targets the product_view event stream over published rows.
+    expect(strings).toContain("product_view");
+    expect(strings).toContain("published");
+    // It must NOT degrade into a real tag filter for the virtual slug.
+    expect(strings).not.toContain("top-viewed");
+  });
+
+  it("returns no products when there are no product_view events in the window", async () => {
+    selectQueue.push([]); // ranked query → zero rows
+
+    const { products, totalDocs } = await searchProducts({
+      sortBy: "top-viewed",
+      includeFacets: false,
+    });
+
+    expect(products).toHaveLength(0);
+    expect(totalDocs).toBe(0);
+  });
+});

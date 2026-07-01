@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const anthropicMock = vi.hoisted(() => vi.fn(() => "anthropic-model"));
 const convertToModelMessagesMock = vi.hoisted(() => vi.fn(async () => []));
 const getConversationByIdMock = vi.hoisted(() => vi.fn());
-const getServerAuthSessionMock = vi.hoisted(() => vi.fn());
+const getProductMock = vi.hoisted(() => vi.fn());
 const safeValidateUIMessagesMock = vi.hoisted(() => vi.fn());
 const stepCountIsMock = vi.hoisted(() => vi.fn(() => "stop-after-25"));
 const streamTextMock = vi.hoisted(() => vi.fn());
+const updateConversationTitleMock = vi.hoisted(() => vi.fn());
 const upsertConversationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@ai-sdk/anthropic", () => ({
@@ -25,16 +26,32 @@ vi.mock("ai", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/auth/get-session", () => ({
-  getServerAuthSession: getServerAuthSessionMock,
-}));
-
 vi.mock("@/db/queries/conversations", () => ({
   getConversationById: getConversationByIdMock,
+  updateConversationTitle: updateConversationTitleMock,
   upsertConversation: upsertConversationMock,
 }));
 
-let POST: typeof import("@/app/api/chat/route")["POST"];
+vi.mock("@/db/queries/products", () => ({
+  getProduct: getProductMock,
+}));
+
+vi.mock("@/lib/ai/tools/product-tools", () => ({
+  productTools: {},
+}));
+
+import { registerAgentChatRoutes } from "@/api/hono/routes/agent-chat";
+import { createRouteHarness } from "../helpers/route-harness";
+
+const createAdminHarness = () =>
+  createRouteHarness({
+    authUser: {
+      email: "admin@example.com",
+      id: "admin-1",
+      role: "admin",
+    },
+    register: registerAgentChatRoutes,
+  });
 
 const VALIDATED_MESSAGES = [
   {
@@ -48,10 +65,9 @@ const VALIDATED_MESSAGES = [
   },
 ];
 
-describe("POST /api/chat", () => {
-  beforeEach(async () => {
+describe("POST /api/v2/admin/agent-chat", () => {
+  beforeEach(() => {
     process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/ftt_test";
-    POST ??= (await import("@/app/api/chat/route")).POST;
   });
 
   beforeEach(() => {
@@ -60,18 +76,12 @@ describe("POST /api/chat", () => {
     anthropicMock.mockClear();
     convertToModelMessagesMock.mockClear();
     getConversationByIdMock.mockReset();
-    getServerAuthSessionMock.mockReset();
+    getProductMock.mockReset();
     safeValidateUIMessagesMock.mockReset();
     stepCountIsMock.mockClear();
     streamTextMock.mockReset();
+    updateConversationTitleMock.mockReset();
     upsertConversationMock.mockReset();
-
-    getServerAuthSessionMock.mockResolvedValue({
-      user: {
-        id: "admin-1",
-        role: "admin",
-      },
-    });
     safeValidateUIMessagesMock.mockResolvedValue({
       data: VALIDATED_MESSAGES,
       success: true,
@@ -91,15 +101,13 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 400 for invalid JSON", async () => {
-    const response = await POST(
-      new Request("http://localhost/api/chat", {
+    const response = await createAdminHarness().request("/", {
         body: "{",
         headers: {
           "Content-Type": "application/json",
         },
         method: "POST",
-      })
-    );
+      });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -108,8 +116,7 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 400 for an invalid request body", async () => {
-    const response = await POST(
-      new Request("http://localhost/api/chat", {
+    const response = await createAdminHarness().request("/", {
         body: JSON.stringify({
           messages: "not-an-array",
         }),
@@ -117,8 +124,7 @@ describe("POST /api/chat", () => {
           "Content-Type": "application/json",
         },
         method: "POST",
-      })
-    );
+      });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -132,8 +138,7 @@ describe("POST /api/chat", () => {
       error: { message: "Invalid message format" },
     });
 
-    const response = await POST(
-      new Request("http://localhost/api/chat", {
+    const response = await createAdminHarness().request("/", {
         body: JSON.stringify({
           messages: [{ role: "user", parts: [{ type: "text", text: "hi" }] }],
         }),
@@ -141,8 +146,7 @@ describe("POST /api/chat", () => {
           "Content-Type": "application/json",
         },
         method: "POST",
-      })
-    );
+      });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -158,8 +162,7 @@ describe("POST /api/chat", () => {
       userId: "someone-else",
     });
 
-    const response = await POST(
-      new Request("http://localhost/api/chat", {
+    const response = await createAdminHarness().request("/", {
         body: JSON.stringify({
           conversationId,
           formContext: {
@@ -174,8 +177,7 @@ describe("POST /api/chat", () => {
           "Content-Type": "application/json",
         },
         method: "POST",
-      })
-    );
+      });
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
@@ -192,8 +194,7 @@ describe("POST /api/chat", () => {
       userId: "admin-1",
     });
 
-    const response = await POST(
-      new Request("http://localhost/api/chat", {
+    const response = await createAdminHarness().request("/", {
         body: JSON.stringify({
           conversationId,
           formContext: {
@@ -211,8 +212,7 @@ describe("POST /api/chat", () => {
           "Content-Type": "application/json",
         },
         method: "POST",
-      })
-    );
+      });
 
     await Promise.resolve();
 

@@ -146,7 +146,6 @@ export default async function Home() {
           featuredProducts={landingProducts}
           showIntroSeparator={false}
           socialSection={socialSection}
-          storyImages={storyImages}
         />
       </div>
     </HomeIntroGate>

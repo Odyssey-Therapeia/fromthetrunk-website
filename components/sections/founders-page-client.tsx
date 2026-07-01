@@ -603,7 +603,7 @@ function MobileReadablePage({
             The FTT promise
           </Badge>
           <h2 className="mt-8 font-serif text-[clamp(3rem,15vw,5.5rem)] leading-[0.86]">
-            Authenticated. Restored. Re-stored.
+            Authenticated. Restored. Remembered.
           </h2>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#FDF7F1]/76">
             Every saree is authenticated, restored by hand, and given a story
@@ -1147,7 +1147,7 @@ function BackCoverPage() {
             The FTT promise
           </Badge>
           <h2 className="mt-6 font-serif text-[clamp(2.2rem,5.6vw,4.4rem)] leading-[0.9] text-[#FDF7F1]">
-            Authenticated. Restored. Re-stored.
+            Authenticated. Restored. Remembered.
           </h2>
           <p className="mt-5 max-w-md text-[clamp(0.76rem,0.96vw,0.9rem)] leading-6 text-[#FDF7F1]/78">
             Every saree is authenticated, restored by hand, and given a story

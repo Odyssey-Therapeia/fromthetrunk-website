@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getOrder } from "@/db/queries/orders";
 import { getServerAuthSession } from "@/lib/auth/get-session";
 import { formatCurrency } from "@/lib/formatters";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 
 import { PrintControls } from "./print-controls";
 
@@ -107,6 +108,11 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
               <div key={item.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto]">
                 <div>
                   <p className="font-semibold text-[#141D46]">{item.name}</p>
+                  {formatSelectedOptions(item.selectedOptions) ? (
+                    <p className="text-sm font-semibold text-[#141D46]/70">
+                      {formatSelectedOptions(item.selectedOptions)}
+                    </p>
+                  ) : null}
                   <p className="text-sm text-[#141D46]/60">Qty {item.quantity}</p>
                 </div>
                 <p className="font-semibold text-[#141D46]">

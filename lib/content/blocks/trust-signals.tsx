@@ -10,11 +10,6 @@
  * The icons are FIXED per slot (ShieldCheck, Users, Sparkles) to match the
  * original section exactly — only the value + label of each stat are editable.
  *
- * Draft-safe behavior:
- * - Empty stats are allowed while editing CMS drafts.
- * - Incomplete rows are ignored on render.
- * - If no complete stats exist, the block renders nothing instead of crashing.
- *
  * propsSchema validated on SAVE and on RENDER (defense in depth via renderBlock).
  * Renderer: RSC, theme tokens only — no raw hex or arbitrary px.
  */
@@ -24,22 +19,21 @@ import { z } from "zod";
 
 import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
-const emptyToUndefined = (value: unknown) =>
-  value === "" || value === null ? undefined : value;
-
-const toMaxThreeArray = (value: unknown) =>
-  Array.isArray(value) ? value.slice(0, 3) : [];
-
 export const trustStatSchema = z.object({
-  value: z.preprocess(emptyToUndefined, z.string().max(40).default("")),
-  label: z.preprocess(emptyToUndefined, z.string().max(80).default("")),
+  value: z.string().max(40),
+  label: z.string().max(80),
 });
 
+const DEFAULT_TRUST_STATS = [
+  { value: "200+", label: "Authenticated Sarees" },
+  { value: "50+", label: "Happy Collectors" },
+  { value: "100%", label: "Provenance Verified" },
+] satisfies [z.infer<typeof trustStatSchema>, z.infer<typeof trustStatSchema>, z.infer<typeof trustStatSchema>];
+
 export const trustSignalsPropsSchema = z.object({
-  stats: z.preprocess(
-    toMaxThreeArray,
-    z.array(trustStatSchema).max(3).default([]),
-  ),
+  stats: z
+    .tuple([trustStatSchema, trustStatSchema, trustStatSchema])
+    .default(DEFAULT_TRUST_STATS),
 });
 
 export type TrustSignalsBlockProps = z.infer<typeof trustSignalsPropsSchema>;

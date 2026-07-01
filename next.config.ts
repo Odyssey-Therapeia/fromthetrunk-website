@@ -15,7 +15,7 @@ const cspReportOnly = [
   "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "worker-src 'self' blob:",
-  "report-uri /api/csp-report",
+  "report-uri /api/v2/security/csp-report",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [360, 414, 640, 750, 828, 1080, 1200, 1600, 1920],
+    imageSizes: [32, 48, 64, 96, 128, 192, 256, 384, 512],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+    qualities: [70, 75, 80, 82, 85],
     remotePatterns: [
       {
         protocol: "https",
@@ -111,12 +116,30 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // The founders page was renamed to "Our Team". Keep old links working.
-      // Temporary (307) while still iterating — make permanent before launch.
       {
         source: "/founders",
         destination: "/our-team",
-        permanent: false,
+        permanent: true,
+      },
+      {
+        source: "/privacy-policy",
+        destination: "/policies/privacy-policy",
+        permanent: true,
+      },
+      {
+        source: "/terms-of-service",
+        destination: "/policies/terms-of-service",
+        permanent: true,
+      },
+      {
+        source: "/shipping-policy",
+        destination: "/policies/shipping-delivery-policy",
+        permanent: true,
+      },
+      {
+        source: "/return-policy",
+        destination: "/policies/return-refund-policy",
+        permanent: true,
       },
     ];
   },

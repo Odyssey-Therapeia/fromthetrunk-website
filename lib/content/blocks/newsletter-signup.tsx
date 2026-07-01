@@ -22,24 +22,13 @@ import { z } from "zod";
 import { Newsletter } from "@/components/sections/newsletter";
 import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
-const normalizeNewsletterBackground = (value: unknown) => {
-  if (value === "card" || value === "secondary" || value === "transparent") {
-    return value;
-  }
-
-  return undefined;
-};
-
 export const newsletterSignupPropsSchema = z.object({
   eyebrow: z.string().max(80).optional(),
   heading: z.string().max(200),
   body: z.string().max(400).optional(),
   inputPlaceholder: z.string().max(80).default("Enter your email"),
   buttonLabel: z.string().max(60).default("Join the list"),
-  background: z.preprocess(
-    normalizeNewsletterBackground,
-    z.enum(["card", "secondary", "transparent"]).default("card"),
-  ),
+  background: z.enum(["card", "secondary", "transparent"]).default("card"),
 });
 
 export type NewsletterSignupBlockProps = z.infer<

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, X } from "lucide-react";
 
+import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
+
 const WELCOME_SEEN_KEY = "ftt-welcome-seen-v1";
 const SHOW_AFTER_MS = 20000; // 20s of browsing
 const SCROLL_THRESHOLD_PX = 200;
@@ -118,7 +120,7 @@ export function WelcomePopup() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.985 }}
             transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-            className="relative flex h-[472px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-3rem)] flex-col items-center justify-center overflow-hidden rounded-[14px] border px-[46px] pb-[34px] pt-[42px] text-center max-[540px]:h-auto max-[540px]:px-[30px] max-[540px]:pb-7 max-[540px]:pt-[38px]"
+            className="relative flex min-h-[472px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-3rem)] flex-col items-center justify-center overflow-y-auto rounded-[14px] border px-[46px] pb-[34px] pt-[42px] text-center max-[540px]:px-[30px] max-[540px]:pb-7 max-[540px]:pt-[38px]"
             style={{
               borderColor: "#C7AE82",
               background:
@@ -187,10 +189,20 @@ export function WelcomePopup() {
               <p className="m-0 mb-[7px] font-sans text-[10.5px] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
                 Grand Launch Week
               </p>
-              <p className="mx-auto m-0 mb-[22px] max-w-[30ch] font-serif text-[16px] leading-[1.45] text-[#2A1714]">
+              <p className="mx-auto m-0 mb-[18px] max-w-[30ch] font-serif text-[16px] leading-[1.45] text-[#2A1714]">
                 Limited <b className="font-semibold">fortnightly drops</b> —
                 reserve your piece early.
               </p>
+
+              <div className="mb-[18px] w-full">
+                <p className="m-0 mb-2 font-sans text-[10.5px] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
+                  Connect with us for the newsletter
+                </p>
+                <FooterNewsletterForm variant="light" />
+                <p className="m-0 mt-2 font-sans text-[11px] leading-[1.4] text-[#6B5149]">
+                  Be first to know about private drops &amp; restocks.
+                </p>
+              </div>
 
               <button
                 type="button"

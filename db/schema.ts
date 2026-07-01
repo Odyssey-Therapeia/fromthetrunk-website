@@ -385,6 +385,7 @@ export const orders = pgTable(
     paymentMethod: text("payment_method"),
     paymentId: text("payment_id"),
     razorpayOrderId: text("razorpay_order_id"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
     shippingName: text("shipping_name"),
     shippingLine1: text("shipping_line1"),
     shippingLine2: text("shipping_line2"),
@@ -469,6 +470,12 @@ export const orders = pgTable(
     ),
     razorpayOrderIdx: index("orders_razorpay_order_id_idx").on(table.razorpayOrderId),
     paymentIdIdx: index("orders_payment_id_idx").on(table.paymentId),
+    razorpayOrderUnique: uniqueIndex("orders_razorpay_order_id_unique")
+      .on(table.razorpayOrderId)
+      .where(sql`${table.razorpayOrderId} is not null`),
+    paymentIdUnique: uniqueIndex("orders_payment_id_unique")
+      .on(table.paymentId)
+      .where(sql`${table.paymentId} is not null`),
     shippingEmailLowerIdx: index("orders_shipping_email_lower_idx").on(sql`lower(${table.shippingEmail})`),
     subtotalNonNegative: check(
       "orders_subtotal_paise_non_negative",
@@ -505,6 +512,10 @@ export const orderItems = pgTable(
     pricePaise: integer("price_paise").notNull(),
     quantity: integer("quantity").notNull().default(1),
     imageUrl: text("image_url"),
+    selectedOptions: jsonb("selected_options")
+      .$type<Record<string, boolean | null | number | string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

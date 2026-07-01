@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,22 @@ export default function ProfilePage() {
       setEmailChangeForm({ newEmail: "" });
     },
   });
+
+  // Nudge users whose account was created without a name/phone (e.g. a bare OTP
+  // sign-in) to finish setting up. Fires once per visit, only when incomplete.
+  const incompletePromptedRef = useRef(false);
+  useEffect(() => {
+    if (!data || incompletePromptedRef.current) return;
+    const missingName = !data.name?.trim();
+    const missingPhone = !data.phone?.trim();
+    if (missingName || missingPhone) {
+      incompletePromptedRef.current = true;
+      toast("Complete your account", {
+        description:
+          "Please fill in your name and phone number below to finish setting up your account.",
+      });
+    }
+  }, [data]);
 
   if (status === "loading") {
     return <AccountStateCard message="Loading your trunk profile..." />;

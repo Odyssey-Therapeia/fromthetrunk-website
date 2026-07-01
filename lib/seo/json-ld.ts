@@ -1,7 +1,7 @@
 import type { Product } from "@/types/domain";
 import { isGstInclusive } from "@/lib/config/flags";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
+import { productSeoImageUrls } from "@/lib/seo/image-urls";
 import { absoluteUrl, getCanonicalOrigin } from "@/lib/seo/site-url";
 
 /**
@@ -9,10 +9,7 @@ import { absoluteUrl, getCanonicalOrigin } from "@/lib/seo/site-url";
  * See: https://schema.org/Product
  */
 export function productJsonLd(product: Product): Record<string, unknown> {
-  const images = (product.images ?? [])
-    .map((entry) => resolveMediaURL(entry as unknown))
-    .filter((url): url is string => Boolean(url))
-    .map((url) => absoluteUrl(url));
+  const images = productSeoImageUrls(product);
   const displayDetails = getProductDisplayDetails(product);
   const category = product.collection?.name ?? "Pre-loved saree";
   const additionalProperty = [

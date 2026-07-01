@@ -7,6 +7,7 @@ import {
   isKeywordLandingIndexable,
   keywordLandingPages,
 } from "@/lib/seo/keyword-landing-pages";
+import { productSeoImageUrls } from "@/lib/seo/image-urls";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
 export const dynamic = "force-dynamic";
@@ -64,28 +65,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.4,
     },
     {
-      url: absoluteUrl("/privacy-policy"),
+      url: absoluteUrl("/why"),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: absoluteUrl("/terms-of-service"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: absoluteUrl("/return-policy"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: absoluteUrl("/shipping-policy"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
-      changeFrequency: "yearly",
-      priority: 0.3,
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
     {
       url: absoluteUrl("/packing"),
@@ -104,12 +87,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const productPages: MetadataRoute.Sitemap = products
     .filter((product) => product.slug && product.stockStatus !== "sold")
-    .map((product) => ({
-      url: absoluteUrl(`/collection/${product.slug}`),
-      lastModified: new Date(product.updatedAt),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
+    .map((product) => {
+      const images = productSeoImageUrls(product);
+
+      return {
+        url: absoluteUrl(`/collection/${product.slug}`),
+        lastModified: new Date(product.updatedAt),
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+        ...(images.length > 0 ? { images } : {}),
+      };
+    });
 
   const keywordPages = await getKeywordSitemapPages();
 

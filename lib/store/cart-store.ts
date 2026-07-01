@@ -9,6 +9,9 @@ export interface CartItem {
   quantity: number;
   slug?: string;
   detailsFabric?: string | null;
+  selectedOptions?: {
+    size?: string;
+  };
   /** Signed proof that this client received the active server reservation. */
   reservationToken?: string | null;
   /** ISO date string — when the server-side reservation expires. */
@@ -81,6 +84,13 @@ interface CartState {
   clearCartWithRelease: () => void;
   /** Check whether a product is already in the cart. */
   hasItem: (id: string) => boolean;
+  /** Return the cart line for a product id. */
+  getItem: (id: string) => CartItem | undefined;
+  /** Update line-item options without changing one-of-one reservation state. */
+  updateSelectedOptions: (
+    id: string,
+    selectedOptions: CartItem["selectedOptions"],
+  ) => void;
 }
 
 export const useCartStore = create<CartState>()(
@@ -96,7 +106,17 @@ export const useCartStore = create<CartState>()(
             (existingItem) => existingItem.id === item.id
           );
           if (existing) {
-            return state; // no-op, already in cart
+            return {
+              items: state.items.map((existingItem) =>
+                existingItem.id === item.id
+                  ? {
+                      ...existingItem,
+                      selectedOptions:
+                        item.selectedOptions ?? existingItem.selectedOptions,
+                    }
+                  : existingItem
+              ),
+            };
           }
           return {
             items: [
@@ -134,6 +154,13 @@ export const useCartStore = create<CartState>()(
         set({ items: [] });
       },
       hasItem: (id) => get().items.some((item) => item.id === id),
+      getItem: (id) => get().items.find((item) => item.id === id),
+      updateSelectedOptions: (id, selectedOptions) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id ? { ...item, selectedOptions } : item
+          ),
+        })),
     }),
     {
       name: "ftt-cart-v2",

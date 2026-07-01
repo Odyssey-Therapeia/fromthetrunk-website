@@ -153,6 +153,8 @@ export const serializePublicProduct = (product: ProductWithRelations) => ({
     reservedUntil: product.reservedUntil,
     stockStatus: product.stockStatus,
   }),
+  typeName: product.typeName,
+  typeSlug: product.typeSlug,
   storyTitle: product.storyTitle,
   storyNarrative: product.storyNarrative,
   storyProvenance: product.storyProvenance,

@@ -5,7 +5,12 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-const INTRO_VIDEO_SRC = "/Welcoming.mp4";
+// WebM (~3MB) is served first; MP4 (~13MB) is the fallback for browsers that
+// can't play WebM (mainly older Safari). The lightweight AVIF poster paints
+// instantly so there's no blank flash before the video decodes.
+const INTRO_VIDEO_WEBM = "/Welcoming.webm";
+const INTRO_VIDEO_MP4 = "/Welcoming.mp4";
+const INTRO_VIDEO_POSTER = "/welcome-poster.avif";
 const INTRO_FADE_MS = 800;
 const INTRO_MAX_MS = 9500;
 const INTRO_SESSION_KEY = "ftt-home-intro-seen";
@@ -124,14 +129,17 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
             ref={videoRef}
             aria-hidden="true"
             className="h-full w-full object-cover"
-            src={INTRO_VIDEO_SRC}
+            poster={INTRO_VIDEO_POSTER}
             muted
             autoPlay
             playsInline
             preload="metadata"
             onEnded={reveal}
             onError={reveal}
-          />
+          >
+            <source src={INTRO_VIDEO_WEBM} type="video/webm" />
+            <source src={INTRO_VIDEO_MP4} type="video/mp4" />
+          </video>
           <button
             type="button"
             onClick={reveal}

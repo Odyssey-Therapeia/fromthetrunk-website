@@ -3,6 +3,7 @@ import { ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getSelectedSizeLabel } from "@/lib/catalog/blouse-size-chart";
 import { formatCurrency } from "@/lib/formatters";
 import type { ShippingMethod } from "@/lib/config/order-pricing";
 import type { CartItem } from "@/lib/store/cart-store";
@@ -86,6 +87,11 @@ export function OrderSummary({
                   <p className="mt-1 text-[11px] uppercase tracking-widest text-ftt-burgundy/50">
                     Qty {item.quantity}
                   </p>
+                  {getSelectedSizeLabel(item.selectedOptions) ? (
+                    <p className="mt-1 text-xs font-semibold text-ftt-navy/70">
+                      {getSelectedSizeLabel(item.selectedOptions)}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-sm font-semibold text-ftt-burgundy">
                     {formatCurrency(item.price)}
                   </p>

@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { formatCurrency } from "@/lib/formatters";
+import { getSelectedSizeLabel } from "@/lib/catalog/blouse-size-chart";
 import { type CartItem as CartItemType, useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export function CartItem({ item, className }: CartItemProps) {
   const quantity = item.quantity > 0 ? item.quantity : 1;
   const href = item.slug ? `/collection/${item.slug}` : "/collection";
   const reservedUntilLabel = formatReservationExpiry(item.reservedUntil);
+  const selectedSizeLabel = getSelectedSizeLabel(item.selectedOptions);
 
   return (
     <article
@@ -63,6 +65,11 @@ export function CartItem({ item, className }: CartItemProps) {
               <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.22em] text-[#6B625B]">
                 {item.detailsFabric ?? "Unique"}
               </p>
+              {selectedSizeLabel ? (
+                <p className="mt-1 text-xs font-semibold text-[#141D46]/72">
+                  {selectedSizeLabel}
+                </p>
+              ) : null}
 
               <p className="mt-2 text-sm font-semibold text-[#141D46]">
                 {formatCurrency(item.price * quantity)}

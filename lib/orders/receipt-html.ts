@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/formatters";
 import { getPublicAssetOrigin } from "@/lib/config/site";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import type { Order } from "@/types/domain";
 
 const RECEIPT_TIME_ZONE = "Asia/Kolkata";
@@ -19,6 +20,10 @@ const toValidDate = (value: ReceiptDateInput) => {
 
 export function getOrderPlacedDate(order: Order) {
   return toValidDate(order.placedAt) ?? toValidDate(order.createdAt);
+}
+
+export function getOrderPaidDate(order: Order) {
+  return toValidDate(order.paidAt) ?? toValidDate(order.updatedAt);
 }
 
 export function formatReceiptDate(date: ReceiptDateInput) {
@@ -86,23 +91,25 @@ const paymentMethodLabel = (order: Order) => {
 
 export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
   const shortId = formatOrderShortId(order.id);
-  const placedDate = getOrderPlacedDate(order);
+  const paidDate = getOrderPaidDate(order);
   const addressLines = getShippingAddressLines(order);
   const logoUrl = `${getPublicAssetOrigin()}/Ftt_logo_navbar.png`;
   const itemsHtml = order.items
-    .map(
-      (item) => `
+    .map((item) => {
+      const optionLabel = formatSelectedOptions(item.selectedOptions);
+      return `
         <tr>
           <td>
             <strong>${escapeHtml(item.name)}</strong>
             <span>Qty ${item.quantity}</span>
+            ${optionLabel ? `<span>${escapeHtml(optionLabel)}</span>` : ""}
           </td>
           <td>${moneyFromPaise(item.pricePaise)}</td>
           <td>${item.quantity}</td>
           <td class="amount">${moneyFromPaise(item.pricePaise * item.quantity)}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
 
   return `<!doctype html>
@@ -317,7 +324,7 @@ export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
         <div>
           <p class="brand">From the Trunk</p>
           <h1>Order receipt</h1>
-          <p class="meta">Receipt #${escapeHtml(shortId)} &middot; Order placed ${escapeHtml(formatReceiptDate(placedDate))}</p>
+          <p class="meta">Receipt #${escapeHtml(shortId)} &middot; Paid ${escapeHtml(formatReceiptDate(paidDate))}</p>
         </div>
         <p class="status">${escapeHtml(formatPaymentStatusLabel(order.paymentStatus))}</p>
       </header>
@@ -336,8 +343,8 @@ export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
           <p class="value">${escapeHtml(order.shippingMethod || "Standard")}</p>
         </div>
         <div class="box">
-          <p class="label">Generated</p>
-          <p class="value">${escapeHtml(formatReceiptDate(generatedAt))}</p>
+          <p class="label">Paid</p>
+          <p class="value">${escapeHtml(formatReceiptDate(paidDate))}</p>
         </div>
       </section>
 
@@ -383,7 +390,7 @@ export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
 
       <p class="footer">
         Thank you for shopping with From the Trunk. This receipt confirms the order details recorded by FTT.
-        For help, contact hello@fromthetrunk.shop with receipt #${escapeHtml(shortId)}.
+        Generated ${escapeHtml(formatReceiptDate(generatedAt))}. For help, contact hello@fromthetrunk.shop with receipt #${escapeHtml(shortId)}.
       </p>
     </main>
     <div class="print-action">
