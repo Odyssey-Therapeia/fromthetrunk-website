@@ -1,9 +1,9 @@
 /**
  * P2-04 REPAIR — Route-level regression lock for the customer-charged amount.
  *
- * calculateOrderTotals is now the SINGLE source of order-charge math, called by
- * BOTH /api/v2/payments/create-order and /api/v2/orders. These tests assert the
- * EXACT charged + persisted numbers, so any drift fails loudly.
+ * calculateOrderTotals is now the SINGLE source of order-charge math for the
+ * supported checkout money path. These tests assert the EXACT charged +
+ * persisted numbers, so any drift fails loudly.
  *
  * CRITICAL (flag OFF): the charged total and persisted (subtotal, tax, total)
  * must equal the pre-P2-04 inline-math numbers exactly. This is live prod money.
@@ -11,8 +11,7 @@
  * Cases:
  *   payments.create-order  flag OFF  -> charges & persists locked numbers
  *   payments.create-order  flag ON   -> charges inclusive total (tax backed out)
- *   orders POST            flag OFF  -> persists locked numbers
- *   orders POST            flag ON   -> persists inclusive total
+ *   orders POST            disabled  -> cannot bypass payment/reservation flow
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -240,7 +239,7 @@ describe("create-order route — charged + persisted totals", () => {
 });
 
 // ── orders POST ────────────────────────────────────────────────────────────
-describe("orders POST route — persisted totals", () => {
+describe("orders POST route — disabled for checkout security", () => {
   const authUser = { id: "user-1", email: "buyer@example.com", role: "customer" };
 
   const validOrderBody = () => ({
@@ -262,14 +261,7 @@ describe("orders POST route — persisted totals", () => {
     createOrderMock.mockResolvedValue(makeOrder());
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("flag OFF — REGRESSION LOCK: persists exact pre-P2-04 numbers", async () => {
-    setGstFlag("false");
-    dbSelectMock.mockReturnValueOnce(makeSelectChain([makeProduct()]));
-
+  it("returns 405 and does not create an order", async () => {
     const { request } = createRouteHarness({ register: registerOrderRoutes, authUser });
     const response = await request("/", {
       method: "POST",
@@ -277,33 +269,11 @@ describe("orders POST route — persisted totals", () => {
       body: JSON.stringify(validOrderBody()),
     });
 
-    expect(response.status).toBe(201);
-
-    const persisted = createOrderMock.mock.calls[0][0] as Record<string, unknown>;
-    expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE); // 1500000
-    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING); // 15000
-    expect(persisted.taxAmountPaise).toBe(OFF_TAX); // 180000
-    expect(persisted.totalPaise).toBe(OFF_TOTAL); // 1695000
-    expect(persisted.taxRate).toBe(String(GST_RATE));
-  });
-
-  it("flag ON — persists the inclusive total (GST backed out)", async () => {
-    setGstFlag("true");
-    dbSelectMock.mockReturnValueOnce(makeSelectChain([makeProduct()]));
-
-    const { request } = createRouteHarness({ register: registerOrderRoutes, authUser });
-    const response = await request("/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(validOrderBody()),
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "ORDER_CREATION_DISABLED",
     });
-
-    expect(response.status).toBe(201);
-
-    const persisted = createOrderMock.mock.calls[0][0] as Record<string, unknown>;
-    expect(persisted.subtotalPaise).toBe(SUBTOTAL_PAISE);
-    expect(persisted.shippingCostPaise).toBe(OFF_SHIPPING);
-    expect(persisted.taxAmountPaise).toBe(ON_TAX); // 160714
-    expect(persisted.totalPaise).toBe(ON_TOTAL); // 1515000
+    expect(createOrderMock).not.toHaveBeenCalled();
+    expect(dbSelectMock).not.toHaveBeenCalled();
   });
 });

@@ -51,6 +51,13 @@ describe("getSiteOrigin", () => {
     expect(getCanonicalOrigin()).toBe("https://www.fromthetrunk.shop");
   });
 
+  it("rejects Vercel preview origins for production canonical output", () => {
+    vi.stubEnv("NEXT_PUBLIC_SERVER_URL", "https://ftt-preview.vercel.app");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getCanonicalOrigin()).toBe("https://www.fromthetrunk.shop");
+  });
+
   it("strips query strings from canonical paths", () => {
     expect(canonicalPath("/collection?fabric=silk#top")).toBe("/collection");
   });

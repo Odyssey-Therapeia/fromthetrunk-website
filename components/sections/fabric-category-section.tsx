@@ -154,8 +154,8 @@ export function FabricCategorySection() {
             </h2>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#601D1C]/70">
-              Fabric changes how a saree sits, moves, and carries memory. Start
-              with the texture that suits your moment.
+              Fabric is time made visible — soft, wearable, and never quite
+              forgotten. Start with the texture that suits your moment.
             </p>
           </div>
         </div>

@@ -1,299 +1,458 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
-  ChevronLeft,
-  ChevronRight,
-  CirclePause,
-  CirclePlay,
-  Mic2,
+  ArrowRight,
+  BadgeCheck,
+  HeartHandshake,
+  Leaf,
+  ScrollText,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ConnectDialog } from "@/components/layout/connect-dialog";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-type WhyChapter = {
-  eyebrow: string;
-  title: string;
-  body: string;
-  cue: string;
-  imageIndex: number;
+type OurWhyExperienceProps = {
+  images?: unknown[];
 };
 
-interface OurWhyExperienceProps {
-  images: string[];
+type NormalizedImage = {
+  src: string;
+  alt: string;
+};
+
+const BRAND = {
+  navy: "#141D46",
+  burgundy: "#601D1C",
+  ivory: "#FDF7F1",
+  gold: "#B39152",
+  midnight: "#0E0D0E",
+};
+
+const storyCards = [
+  {
+    icon: ScrollText,
+    title: "Memory",
+    description:
+      "A saree can hold a wedding morning, a festival evening, a first salary, or a quiet family ritual.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Craft",
+    description:
+      "We look closely at fabric, border, pallu, weave, zari, age, and the handwork that makes each piece worth preserving.",
+  },
+  {
+    icon: Leaf,
+    title: "Circular",
+    description:
+      "Choosing pre-loved keeps beauty in motion and gives heritage a future without asking the world to make more.",
+  },
+];
+
+const promiseCards = [
+  {
+    label: "01",
+    title: "We honour",
+    text: "Every saree is treated as memory, not inventory.",
+  },
+  {
+    label: "02",
+    title: "We preserve",
+    text: "Condition, provenance, craft, and care are documented before listing.",
+  },
+  {
+    label: "03",
+    title: "We re-store",
+    text: "The piece begins again with someone who will love it next.",
+  },
+];
+
+const fadeUp: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 22,
+    filter: "blur(8px)",
+  },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.7,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
+
+const stagger: Variants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.08,
+    },
+  },
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-const fallbackImages = ["/media/home-cover.png", "/media/hero-bg.png"];
+function getNestedString(
+  record: Record<string, unknown>,
+  path: string[],
+): string | null {
+  let current: unknown = record;
 
-const chapters: WhyChapter[] = [
-  {
-    eyebrow: "Memory",
-    title: "Some sarees should not end as storage.",
-    body: "A trunk can hold a wedding morning, a festival visit, a mother teaching a daughter how to pleat silk. We start there, with the emotional weight already inside the piece.",
-    cue: "Listen for the first life of the saree.",
-    imageIndex: 0,
-  },
-  {
-    eyebrow: "Proof",
-    title: "The story is beautiful only when the trust is clear.",
-    body: "Each piece is inspected, photographed, documented, and priced with context. Provenance is not decoration. It is the reason someone can choose with confidence.",
-    cue: "See authentication as part of the romance.",
-    imageIndex: 1,
-  },
-  {
-    eyebrow: "Care",
-    title: "Restoration should feel quiet, not erased.",
-    body: "We clean, repair, and prepare the saree without flattening its past. The goal is not to make it anonymous. The goal is to let it be worn again with dignity.",
-    cue: "Notice the work behind the calm.",
-    imageIndex: 2,
-  },
-  {
-    eyebrow: "Return",
-    title: "A second owner is not an ending. It is continuity.",
-    body: "From the Trunk exists so heirlooms can keep moving through real lives. Less waste, more meaning, and a more intimate way to buy luxury.",
-    cue: "Imagine the next room this piece enters.",
-    imageIndex: 3,
-  },
-];
+  for (const key of path) {
+    if (!isRecord(current)) return null;
+    current = current[key];
+  }
 
-const proofPoints = [
-  {
-    title: "Voice led",
-    body: "A guided narration can turn the page into a listening experience.",
-    Icon: Mic2,
-  },
-  {
-    title: "Image led",
-    body: "Each chapter moves through people, details, and texture.",
-    Icon: Sparkles,
-  },
-  {
-    title: "Trust led",
-    body: "Authentication and restoration stay visible without becoming heavy.",
-    Icon: ShieldCheck,
-  },
-];
+  return typeof current === "string" && current.trim().length > 0
+    ? current
+    : null;
+}
 
-export function OurWhyExperience({ images }: OurWhyExperienceProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const imagePool = useMemo(() => {
-    const merged = [...images, ...fallbackImages].filter(Boolean);
-    return merged.length ? merged : fallbackImages;
-  }, [images]);
-
-  const activeChapter = chapters[activeIndex];
-  const activeImage = imagePool[activeChapter.imageIndex % imagePool.length];
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+function normalizeImage(image: unknown, index: number): NormalizedImage | null {
+  if (typeof image === "string" && image.trim().length > 0) {
+    return {
+      src: image,
+      alt: `From the Trunk story image ${index + 1}`,
     };
-  }, []);
+  }
 
-  const moveChapter = (direction: -1 | 1) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeaking(false);
-    setActiveIndex((current) => {
-      const nextIndex = current + direction;
-      if (nextIndex < 0) return chapters.length - 1;
-      if (nextIndex >= chapters.length) return 0;
-      return nextIndex;
-    });
-  };
+  if (!isRecord(image)) return null;
 
-  const selectChapter = (index: number) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeaking(false);
-    setActiveIndex(index);
-  };
+  const src =
+    getNestedString(image, ["src"]) ??
+    getNestedString(image, ["url"]) ??
+    getNestedString(image, ["imageUrl"]) ??
+    getNestedString(image, ["media", "url"]) ??
+    getNestedString(image, ["image", "url"]) ??
+    getNestedString(image, ["sizes", "large", "url"]) ??
+    getNestedString(image, ["sizes", "card", "url"]) ??
+    getNestedString(image, ["sizes", "thumbnail", "url"]);
 
-  const toggleVoice = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  if (!src) return null;
 
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
+  const alt =
+    getNestedString(image, ["alt"]) ??
+    getNestedString(image, ["media", "alt"]) ??
+    getNestedString(image, ["image", "alt"]) ??
+    `From the Trunk story image ${index + 1}`;
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(
-      `${activeChapter.eyebrow}. ${activeChapter.title}. ${activeChapter.body}`,
-    );
-    utterance.rate = 0.86;
-    utterance.pitch = 0.92;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
-  };
+  return { src, alt };
+}
+
+export function OurWhyExperience({ images = [] }: OurWhyExperienceProps) {
+  const reduceMotion = useReducedMotion();
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  const gallery = images
+    .map((image, index) => normalizeImage(image, index))
+    .filter((image): image is NormalizedImage => Boolean(image))
+    .slice(0, 3);
 
   return (
-    <main className="overflow-hidden">
-      <section className="@container relative isolate min-h-[calc(100svh-8rem)] overflow-hidden bg-foreground text-primary-foreground">
-        <div className="absolute inset-0">
-          <Image
-            src={activeImage}
-            alt="From the Trunk saree story"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover transition-opacity duration-500"
-          />
-          <div className="absolute inset-0 bg-linear-to-r from-black/92 via-black/60 to-black/20" />
-          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/20" />
-        </div>
+    <main
+      className="relative isolate overflow-hidden text-[#141D46]"
+      style={{ backgroundColor: BRAND.ivory }}
+    >
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#FDF7F1]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(179,145,82,0.20),transparent_30%),radial-gradient(circle_at_92%_8%,rgba(20,29,70,0.12),transparent_34%),linear-gradient(180deg,#FDF7F1_0%,#F7EDE3_100%)]" />
+        <div className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-[#B39152]/10 blur-3xl" />
+        <div className="absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-[#141D46]/10 blur-3xl" />
+      </div>
 
-        <div className="relative mx-auto grid min-h-[calc(100svh-8rem)] w-full max-w-7xl items-end gap-8 px-4 py-8 @[720px]:px-6 @[960px]:grid-cols-[minmax(0,1fr)_360px] @[960px]:items-center @[960px]:py-12">
-          <div className="max-w-3xl pb-3 @[960px]:pb-0">
-            <p className="text-xs uppercase tracking-[0.44em] text-primary-foreground/70">
-              Our Why
+      <section className="mx-auto w-full max-w-7xl px-5 pb-12 pt-14 sm:px-8 lg:pb-16 lg:pt-20">
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={stagger}
+          className="grid gap-10 lg:grid-cols-[0.98fr_1.02fr] lg:items-center"
+        >
+          <motion.div variants={fadeUp} className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.44em] text-[#B39152]">
+              Our why
             </p>
-            <h1 className="mt-4 max-w-[11ch] text-balance font-serif text-5xl leading-[0.98] text-white drop-shadow-2xl @[640px]:text-7xl @[1120px]:text-8xl">
-              A saree can have another life.
+
+            <h1 className="mt-6 font-serif text-5xl font-medium leading-[0.95] tracking-[-0.045em] text-[#141D46] sm:text-6xl lg:text-[5.6rem]">
+              A saree is never just fabric.
             </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-primary-foreground/82 drop-shadow-lg @[640px]:text-xl">
-              We turn private wardrobes into a living archive: authenticated,
-              restored, narrated, and ready to be loved again.
+
+            <p className="mt-7 max-w-2xl text-base leading-8 text-[#141D46]/72 sm:text-lg">
+              It carries memory, craft, and a life that began before it reached
+              us. From the Trunk exists to honour that past and help each piece
+              find its next home with care.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild className="rounded-full px-7 py-6">
-                <Link href="/collection">Explore the Collection</Link>
-              </Button>
-              <Button
-                asChild
-                variant="heroSecondary"
-                className="rounded-full px-7 py-6"
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/collection"
+                className="group inline-flex items-center justify-center rounded-full bg-[#141D46] px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] shadow-[0_18px_48px_rgba(20,29,70,0.20)] transition duration-300 hover:-translate-y-0.5"
               >
-                <Link href="/our-team">Read the Story</Link>
-              </Button>
-            </div>
-          </div>
+                Explore the collection
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
 
-          <aside className="w-full min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/20 bg-black/35 p-4 shadow-soft backdrop-blur-md @[640px]:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-primary-foreground/55">
-                  Chapter {activeIndex + 1} of {chapters.length}
+              <button
+                type="button"
+                onClick={() => setConnectOpen(true)}
+                className="group inline-flex items-center justify-center rounded-full border border-[#141D46]/18 bg-white/55 px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#141D46] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/60 hover:text-[#601D1C]"
+              >
+                Share your saree
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="relative">
+            <Card className="relative overflow-hidden rounded-[2.25rem] border border-[#B39152]/18 bg-white/70 p-3 shadow-[0_28px_90px_rgba(20,29,70,0.12)] backdrop-blur">
+              <div className="relative min-h-[520px] overflow-hidden rounded-[1.8rem] bg-[#141D46]">
+                {gallery[0] ? (
+                  <Image
+                    src={gallery[0].src}
+                    alt={gallery[0].alt}
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 48vw, 100vw"
+                    className="object-cover opacity-82"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(179,145,82,0.28),transparent_30%),linear-gradient(135deg,#141D46,#601D1C)]" />
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-[#141D46]/82 via-[#141D46]/20 to-transparent" />
+
+                <div className="absolute inset-x-0 bottom-0 flex p-5 sm:justify-end sm:p-7 lg:p-8">
+                  <div className="w-full max-w-[22rem] rounded-[1.5rem] border border-[#FDF7F1]/14 bg-[#FDF7F1]/92 p-5 text-[#141D46] shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#B39152]">
+                      The belief
+                    </p>
+                    <p className="mt-3 font-serif text-2xl leading-tight tracking-[-0.03em] sm:text-3xl">
+                      Beautiful things deserve another beginning.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="absolute -bottom-8 -left-4 hidden w-44 overflow-hidden rounded-[1.5rem] border border-[#B39152]/18 bg-[#FDF7F1] p-2 shadow-[0_20px_60px_rgba(20,29,70,0.14)] sm:block lg:hidden xl:block">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.1rem] bg-[#601D1C]">
+                {gallery[1] ? (
+                  <Image
+                    src={gallery[1].src}
+                    alt={gallery[1].alt}
+                    fill
+                    sizes="12rem"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-[#601D1C]" />
+                )}
+              </div>
+            </div>
+
+            <div className="absolute -right-4 -top-8 hidden w-40 overflow-hidden rounded-[1.5rem] border border-[#B39152]/18 bg-[#FDF7F1] p-2 shadow-[0_20px_60px_rgba(20,29,70,0.14)] md:block">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.1rem] bg-[#141D46]">
+                {gallery[2] ? (
+                  <Image
+                    src={gallery[2].src}
+                    alt={gallery[2].alt}
+                    fill
+                    sizes="10rem"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-[#141D46]" />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:py-12">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.25 }}
+          variants={stagger}
+          className="grid gap-4 md:grid-cols-3"
+        >
+          {storyCards.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <motion.div key={card.title} variants={fadeUp}>
+                <Card className="h-full rounded-[2rem] border border-[#B39152]/16 bg-white/72 p-6 shadow-[0_18px_60px_rgba(20,29,70,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-[#B39152]/34 hover:shadow-[0_26px_80px_rgba(20,29,70,0.12)]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#141D46] text-[#B39152]">
+                    <Icon className="h-5 w-5" strokeWidth={1.65} />
+                  </div>
+
+                  <h2 className="mt-6 font-serif text-3xl tracking-[-0.03em] text-[#141D46]">
+                    {card.title}
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-7 text-[#141D46]/66">
+                    {card.description}
+                  </p>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 lg:py-16">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.22 }}
+          variants={fadeUp}
+          className="overflow-hidden rounded-[2.25rem] border border-[#141D46]/10 bg-[#141D46] text-[#FDF7F1] shadow-[0_32px_100px_rgba(20,29,70,0.24)]"
+        >
+          <div className="grid lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="relative min-h-[420px] overflow-hidden bg-[#601D1C]">
+              {gallery[1] ? (
+                <Image
+                  src={gallery[1].src}
+                  alt={gallery[1].alt}
+                  fill
+                  sizes="(min-width: 1024px) 42vw, 100vw"
+                  className="object-cover opacity-70"
+                />
+              ) : null}
+
+              <div className="absolute inset-0 bg-gradient-to-br from-[#601D1C]/92 via-[#601D1C]/76 to-[#141D46]/52" />
+
+              <div className="absolute inset-0 flex flex-col justify-end p-7 sm:p-10">
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#B39152]">
+                  Not inventory
                 </p>
-                <h2 className="mt-1 font-serif text-2xl text-white">
-                  {activeChapter.eyebrow}
+                <h2 className="mt-4 max-w-xl font-serif text-4xl leading-tight tracking-[-0.04em] sm:text-5xl">
+                  Each piece arrives with a past. We help it carry forward.
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={toggleVoice}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/14 text-white transition hover:bg-white/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
-                aria-label={isSpeaking ? "Pause voiceover" : "Play voiceover"}
-              >
-                {isSpeaking ? (
-                  <CirclePause className="h-5 w-5" />
-                ) : (
-                  <CirclePlay className="h-5 w-5" />
-                )}
-              </button>
             </div>
 
-            <div className="mt-5 space-y-3">
-              <h3 className="font-serif text-3xl leading-tight text-white">
-                {activeChapter.title}
+            <div className="bg-[#141D46] p-7 sm:p-10 lg:p-12">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#B39152]">
+                The FTT promise
+              </p>
+
+              <h3 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.04em] sm:text-5xl">
+                Not pre-owned, re-stored.
               </h3>
-              <p className="wrap-break-word text-sm leading-6 text-primary-foreground/78">
-                {activeChapter.body}
-              </p>
-              <p className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground/72">
-                {activeChapter.cue}
-              </p>
-            </div>
 
-            <div className="mt-5 grid grid-cols-4 gap-2">
-              {chapters.map((chapter, index) => (
-                <button
-                  key={chapter.eyebrow}
-                  type="button"
-                  onClick={() => selectChapter(index)}
-                  className={cn(
-                    "h-1.5 rounded-full transition",
-                    activeIndex === index ? "bg-accent" : "bg-white/30",
-                  )}
-                  aria-label={`Open ${chapter.eyebrow}`}
-                />
-              ))}
-            </div>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-[#FDF7F1]/72 sm:text-base">
+                We do not erase a saree’s first life. We document it, care for
+                it, and prepare it for someone who will love it next.
+              </p>
 
-            <div className="mt-5 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => moveChapter(-1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
-                aria-label="Previous chapter"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="hidden min-w-0 gap-2 overflow-x-auto @[520px]:flex">
-                {chapters.map((chapter, index) => (
-                  <button
-                    key={chapter.eyebrow}
-                    type="button"
-                    onClick={() => selectChapter(index)}
+              <Separator className="my-8 bg-[#FDF7F1]/12" />
+
+              <div className="space-y-4">
+                {promiseCards.map((card) => (
+                  <div
+                    key={card.title}
                     className={cn(
-                      "rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition",
-                      activeIndex === index
-                        ? "border-accent/70 bg-accent/20 text-white"
-                        : "border-white/15 bg-white/8 text-primary-foreground/62 hover:text-white",
+                      "rounded-[1.5rem] border border-[#FDF7F1]/12 bg-[#FDF7F1]/8 p-5",
+                      "transition duration-300 hover:bg-[#FDF7F1]/12",
                     )}
                   >
-                    {chapter.eyebrow}
-                  </button>
+                    <div className="flex gap-4">
+                      <span className="font-serif text-3xl leading-none text-[#B39152]">
+                        {card.label}
+                      </span>
+                      <div>
+                        <h4 className="font-serif text-2xl tracking-[-0.03em] text-[#FDF7F1]">
+                          {card.title}
+                        </h4>
+                        <p className="mt-1 text-sm leading-6 text-[#FDF7F1]/68">
+                          {card.text}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => moveChapter(1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
-                aria-label="Next chapter"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
-          </aside>
-        </div>
+          </div>
+        </motion.div>
       </section>
 
-      <section className="@container bg-background px-4 py-12 @[720px]:px-6 @[960px]:py-16">
-        <div className="mx-auto grid max-w-7xl gap-4 @[860px]:grid-cols-3">
-          {proofPoints.map(({ title, body, Icon }) => (
-            <div
-              key={title}
-              className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-soft"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
+      <section className="mx-auto w-full max-w-7xl px-5 pb-20 pt-8 sm:px-8 lg:pb-28">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.28 }}
+          variants={fadeUp}
+        >
+          <Card className="overflow-hidden rounded-[2.25rem] border border-[#B39152]/18 bg-white/78 p-6 shadow-[0_24px_80px_rgba(20,29,70,0.10)] backdrop-blur sm:p-8 lg:p-10">
+            <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[#B39152]">
+                  The choice
+                </p>
+
+                <h2 className="mt-4 max-w-2xl font-serif text-4xl leading-tight tracking-[-0.04em] text-[#141D46] sm:text-5xl">
+                  To buy pre-loved is to choose beauty with memory.
+                </h2>
+
+                <p className="mt-5 max-w-2xl text-sm leading-7 text-[#141D46]/68 sm:text-base">
+                  It is a quieter kind of luxury, one that values craft,
+                  restraint, sustainability, and the story already woven into
+                  the cloth.
+                </p>
               </div>
-              <h2 className="mt-4 font-serif text-2xl text-foreground">
-                {title}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {body}
-              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  ["One-of-one", "No two pieces carry the same story."],
+                  ["Authenticated", "Reviewed before it reaches the collection."],
+                  ["Care packed", "Wrapped to protect the textile in transit."],
+                  ["Conscious", "A more circular way to love sarees."],
+                ].map(([title, text]) => (
+                  <div
+                    key={title}
+                    className="rounded-[1.5rem] border border-[#B39152]/14 bg-[#FDF7F1] p-5"
+                  >
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#141D46] text-[#B39152]">
+                      {title === "Conscious" ? (
+                        <Leaf className="h-4 w-4" strokeWidth={1.7} />
+                      ) : title === "Authenticated" ? (
+                        <ShieldCheck className="h-4 w-4" strokeWidth={1.7} />
+                      ) : title === "Care packed" ? (
+                        <Sparkles className="h-4 w-4" strokeWidth={1.7} />
+                      ) : (
+                        <HeartHandshake className="h-4 w-4" strokeWidth={1.7} />
+                      )}
+                    </div>
+
+                    <h3 className="font-serif text-2xl tracking-[-0.03em] text-[#141D46]">
+                      {title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-[#141D46]/64">
+                      {text}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          </Card>
+        </motion.div>
       </section>
+      <ConnectDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </main>
   );
 }

@@ -51,7 +51,9 @@ export function SiteWidgets() {
 
     let cancelled = false;
 
-    fetch("/api/latest-reel", { headers: { Accept: "application/json" } })
+    fetch("/api/v2/social/latest-reel", {
+      headers: { Accept: "application/json" },
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: LatestReel | null) => {
         if (!cancelled) setLatestReel(data);
@@ -69,8 +71,10 @@ export function SiteWidgets() {
     const compute = () => {
       const hero = document.getElementById("home-hero");
       if (!hero) {
-        // No hero on this route → always visible.
-        setHeroPassed(true);
+        // On the homepage the hero can mount late (behind the intro gate), so a
+        // missing hero here does NOT mean it has been scrolled past — keep the
+        // widgets hidden. Only routes that genuinely have no hero count as passed.
+        setHeroPassed(pathname !== "/");
         return;
       }
       // Visible once the hero's bottom edge has (almost) left the top of the
@@ -78,16 +82,23 @@ export function SiteWidgets() {
       setHeroPassed(hero.getBoundingClientRect().bottom <= 96);
     };
 
-    // Defer the first run out of the effect body, then track scroll + resize.
-    const raf = requestAnimationFrame(compute);
+    compute();
+    // Poll briefly so we catch the hero once the intro gate reveals it, even if
+    // the visitor has not scrolled yet (scroll/resize alone would miss it).
+    const poll = window.setInterval(compute, 300);
+    const stopPoll = window.setTimeout(
+      () => window.clearInterval(poll),
+      8000,
+    );
     window.addEventListener("scroll", compute, { passive: true });
     window.addEventListener("resize", compute);
     return () => {
-      cancelAnimationFrame(raf);
+      window.clearInterval(poll);
+      window.clearTimeout(stopPoll);
       window.removeEventListener("scroll", compute);
       window.removeEventListener("resize", compute);
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <>

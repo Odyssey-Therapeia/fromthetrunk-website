@@ -10,6 +10,7 @@ type FilterLinkProps = {
   href: string;
   className?: string;
   children: ReactNode;
+  title?: string;
 };
 
 /**
@@ -20,13 +21,14 @@ type FilterLinkProps = {
  * scroll jump. It still renders a real `href`, so it stays crawlable and
  * middle/⌘-click open in a new tab as expected.
  */
-export function FilterLink({ href, className, children }: FilterLinkProps) {
+export function FilterLink({ href, className, children, title }: FilterLinkProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   return (
     <a
       href={href}
+      title={title}
       data-pending={isPending ? "" : undefined}
       aria-busy={isPending || undefined}
       onClick={(event) => {

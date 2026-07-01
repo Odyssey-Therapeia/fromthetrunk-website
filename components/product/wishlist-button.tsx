@@ -29,6 +29,13 @@ const fetchWishlist = async (): Promise<string[]> => {
   return (await res.json()) as string[];
 };
 
+// Signals the header heart badge (which lives outside React Query) to refresh.
+const notifyWishlistChanged = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ftt:wishlist-updated"));
+  }
+};
+
 export function WishlistButton({
   productId,
   productName,
@@ -74,6 +81,7 @@ export function WishlistButton({
     onMutate: () => setOptimisticWished(true),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      notifyWishlistChanged();
       toast.success("Saved to your trunk");
     },
     onError: () => {
@@ -96,6 +104,7 @@ export function WishlistButton({
     onMutate: () => setOptimisticWished(false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      notifyWishlistChanged();
       toast(`${productName} removed from wishlist`);
     },
     onError: () => {

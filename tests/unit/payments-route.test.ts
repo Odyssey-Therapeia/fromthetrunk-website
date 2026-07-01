@@ -40,6 +40,9 @@ const emitAnalyticsEventMock = vi.hoisted(() => vi.fn());
 
 // lib/payments/razorpay mocks
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
+const fetchRazorpayOrderMock = vi.hoisted(() => vi.fn());
+const fetchRazorpayPaymentMock = vi.hoisted(() => vi.fn());
+const fetchRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
 const verifyPaymentLinkSignatureMock = vi.hoisted(() => vi.fn());
 const verifyPaymentSignatureMock = vi.hoisted(() => vi.fn());
 const isRazorpayAuthErrorMock = vi.hoisted(() => vi.fn());
@@ -81,6 +84,9 @@ vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
   return {
     ...actual,
     createRazorpayPaymentLink: createRazorpayPaymentLinkMock,
+    fetchRazorpayOrder: fetchRazorpayOrderMock,
+    fetchRazorpayPayment: fetchRazorpayPaymentMock,
+    fetchRazorpayPaymentLink: fetchRazorpayPaymentLinkMock,
     getRazorpayPaymentLinkReferenceId: (orderId: string) =>
       `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`,
     verifyPaymentLinkSignature: verifyPaymentLinkSignatureMock,
@@ -206,6 +212,9 @@ describe("payments route — create-order", () => {
     completePaidOrderMock.mockReset();
     emitAnalyticsEventMock.mockReset();
     createRazorpayPaymentLinkMock.mockReset();
+    fetchRazorpayOrderMock.mockReset();
+    fetchRazorpayPaymentMock.mockReset();
+    fetchRazorpayPaymentLinkMock.mockReset();
     verifyPaymentLinkSignatureMock.mockReset();
     verifyPaymentSignatureMock.mockReset();
     isRazorpayAuthErrorMock.mockReset();
@@ -567,15 +576,173 @@ describe("payments route — create-order", () => {
 });
 
 // ---------------------------------------------------------------------------
+// payments/verify tests
+// ---------------------------------------------------------------------------
+
+describe("payments route — verify", () => {
+  const ORDER_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const RAZORPAY_ORDER_ID = "order_verify123";
+  const PAYMENT_ID = "pay_verify123";
+  const ORDER_TOTAL_PAISE = 75_000;
+
+  const verifyBody = (overrides: Record<string, unknown> = {}) => ({
+    orderId: ORDER_ID,
+    razorpayOrderId: RAZORPAY_ORDER_ID,
+    razorpayPaymentId: PAYMENT_ID,
+    razorpaySignature: "sig_valid",
+    ...overrides,
+  });
+
+  const verifyOrder = (overrides: Record<string, unknown> = {}) => ({
+    ...makeOrder({
+      id: ORDER_ID,
+      razorpayOrderId: RAZORPAY_ORDER_ID,
+      status: "pending",
+      userId: AUTH_USER.id,
+    }),
+    paymentId: null,
+    paymentStatus: "pending",
+    totalPaise: ORDER_TOTAL_PAISE,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    getOrderMock.mockReset();
+    completePaidOrderMock.mockReset();
+    fetchRazorpayOrderMock.mockReset();
+    fetchRazorpayPaymentMock.mockReset();
+    verifyPaymentSignatureMock.mockReset();
+
+    vi.stubEnv("NEXTAUTH_SECRET", "test-secret-key-at-least-32-chars!");
+    vi.stubEnv("RAZORPAY_KEY_SECRET", "rzp_test_key_secret");
+
+    getOrderMock.mockResolvedValue(verifyOrder());
+    verifyPaymentSignatureMock.mockReturnValue(true);
+    fetchRazorpayPaymentMock.mockResolvedValue({
+      amount: ORDER_TOTAL_PAISE,
+      captured: true,
+      created_at: 1_786_000_000,
+      currency: "INR",
+      id: PAYMENT_ID,
+      method: "upi",
+      order_id: RAZORPAY_ORDER_ID,
+      status: "captured",
+    });
+    fetchRazorpayOrderMock.mockResolvedValue({
+      amount: ORDER_TOTAL_PAISE,
+      amount_paid: ORDER_TOTAL_PAISE,
+      currency: "INR",
+      id: RAZORPAY_ORDER_ID,
+      status: "paid",
+    });
+    completePaidOrderMock.mockResolvedValue({
+      alreadyPaid: false,
+      emailsSent: true,
+      order: verifyOrder({ paymentId: PAYMENT_ID, paymentStatus: "paid", status: "confirmed" }),
+    });
+  });
+
+  it("rejects missing signature", async () => {
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+    const body = verifyBody();
+    delete (body as Record<string, unknown>).razorpaySignature;
+
+    const response = await request("/verify", {
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    expect(completePaidOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid signature", async () => {
+    verifyPaymentSignatureMock.mockReturnValue(false);
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+
+    const response = await request("/verify", {
+      body: JSON.stringify(verifyBody()),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.code).toBe("INVALID_SIGNATURE");
+    expect(fetchRazorpayPaymentMock).not.toHaveBeenCalled();
+    expect(completePaidOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects wrong Razorpay order id", async () => {
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+
+    const response = await request("/verify", {
+      body: JSON.stringify(verifyBody({ razorpayOrderId: "order_wrong" })),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.code).toBe("ORDER_ID_MISMATCH");
+    expect(completePaidOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects amount mismatch from Razorpay payment fetch", async () => {
+    fetchRazorpayPaymentMock.mockResolvedValue({
+      amount: ORDER_TOTAL_PAISE - 1,
+      captured: true,
+      currency: "INR",
+      id: PAYMENT_ID,
+      order_id: RAZORPAY_ORDER_ID,
+      status: "captured",
+    });
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+
+    const response = await request("/verify", {
+      body: JSON.stringify(verifyBody()),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.code).toBe("AMOUNT_MISMATCH");
+    expect(completePaidOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("completes order on valid captured payment", async () => {
+    const { request } = createRouteHarness({ authUser: AUTH_USER, register: registerPaymentRoutes });
+
+    const response = await request("/verify", {
+      body: JSON.stringify(verifyBody()),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(completePaidOrderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: ORDER_ID,
+        paymentId: PAYMENT_ID,
+        paymentReference: RAZORPAY_ORDER_ID,
+      })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // payment-link/callback tests
 // ---------------------------------------------------------------------------
 
 describe("payments route — payment-link/callback", () => {
   const ORDER_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const PAYMENT_LINK_ID = "plink_callback_test";
-  const PAYMENT_LINK_REF_ID = "ftt_cccccccccccc4ccc8ccccccccccccc";
+  const PAYMENT_LINK_REF_ID = "ftt_cccccccccccc4ccc8ccccccccccccccc";
   const PAYMENT_ID = "pay_callbackpayment123";
   const RAZORPAY_SIGNATURE = "valid_razorpay_sig";
+  const ORDER_TOTAL_PAISE = 50_000;
 
   /** URL params common to all callback tests */
   const callbackParams = (overrides: Record<string, string> = {}) =>
@@ -594,6 +761,8 @@ describe("payments route — payment-link/callback", () => {
     ...makeOrder({ id: ORDER_ID, razorpayOrderId: PAYMENT_LINK_ID, status: "pending" }),
     items: [{ productId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", quantity: 1 }],
     events: [],
+    paymentStatus: "pending",
+    totalPaise: ORDER_TOTAL_PAISE,
   });
 
   beforeEach(() => {
@@ -602,12 +771,32 @@ describe("payments route — payment-link/callback", () => {
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     completePaidOrderMock.mockReset();
+    fetchRazorpayPaymentMock.mockReset();
+    fetchRazorpayPaymentLinkMock.mockReset();
     verifyPaymentLinkSignatureMock.mockReset();
 
     vi.stubEnv("NEXTAUTH_SECRET", "test-secret-key-at-least-32-chars!");
     vi.stubEnv("NEXT_PUBLIC_SERVER_URL", "https://test.fromthetrunk.com");
 
     addOrderEventMock.mockResolvedValue(undefined);
+    fetchRazorpayPaymentMock.mockResolvedValue({
+      amount: ORDER_TOTAL_PAISE,
+      captured: true,
+      created_at: 1_786_000_000,
+      currency: "INR",
+      id: PAYMENT_ID,
+      method: "upi",
+      status: "captured",
+    });
+    fetchRazorpayPaymentLinkMock.mockResolvedValue({
+      amount: ORDER_TOTAL_PAISE,
+      amount_paid: ORDER_TOTAL_PAISE,
+      currency: "INR",
+      id: PAYMENT_LINK_ID,
+      reference_id: PAYMENT_LINK_REF_ID,
+      short_url: "https://rzp.io/l/test",
+      status: "paid",
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -641,7 +830,8 @@ describe("payments route — payment-link/callback", () => {
       expect.objectContaining({
         orderId: ORDER_ID,
         paymentId: PAYMENT_ID,
-        paymentMethod: "razorpay_payment_link",
+        paymentMethod: "upi",
+        paymentReference: PAYMENT_LINK_ID,
         source: "Razorpay payment link callback",
       })
     );

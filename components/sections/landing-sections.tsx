@@ -31,17 +31,7 @@ type LandingSectionsProps = {
   featuredProducts: LandingProductCard[];
   showIntroSeparator?: boolean;
   socialSection: ReactNode;
-  storyImages: LandingImage[];
 };
-
-const FALLBACK_IMAGES = [
-  "/hero/timeless.JPG",
-  "/hero/you.png",
-  "/hero/banner.png",
-  "/hero/banner1.png",
-  "/media/home-cover.png",
-  "/media/hero-bg.png",
-] as const;
 
 const fallbackProducts: LandingProductCard[] = [
   {
@@ -149,6 +139,34 @@ const storyChapters = [
   },
 ];
 
+const STORY_IMAGES: LandingImage[] = [
+  {
+    src: "/our-story/chap_1.avif",
+    alt: "A treasured saree carrying memories and milestones",
+    title: "Authenticated with provenance",
+  },
+  {
+    src: "/our-story/chap_2.avif",
+    alt: "A preserved saree rediscovered from the trunk",
+    title: "Restored with care",
+  },
+  {
+    src: "/our-story/chap_3.avif",
+    alt: "A pre-loved saree styled for a modern wardrobe",
+    title: "Styled for modern wardrobes",
+  },
+  {
+    src: "/our-story/chap_4.avif",
+    alt: "A consciously chosen heritage saree",
+    title: "Chosen one at a time",
+  },
+  {
+    src: "/our-story/chap_5.avif",
+    alt: "A re-storied saree ready to be loved all over again",
+    title: "Ready for its next story",
+  },
+];
+
 function ArrowIcon() {
   return (
     <svg
@@ -222,21 +240,6 @@ function fillProducts(products: LandingProductCard[]) {
   return merged.slice(0, 6);
 }
 
-function fillImages(images: LandingImage[]) {
-  const merged = [...images];
-  for (const [index, src] of FALLBACK_IMAGES.entries()) {
-    if (merged.length >= 5) break;
-    merged.push({
-      src,
-      alt: "Curated saree from From The Trunk",
-      title: ["Authenticated", "Restored", "Styled", "Archived", "Re-loved"][
-        index
-      ],
-    });
-  }
-  return merged.slice(0, 5);
-}
-
 function shouldBypassImageOptimizer(src: string) {
   return (
     process.env.NODE_ENV === "development" &&
@@ -256,8 +259,8 @@ export function SectionSeparator() {
   );
 }
 
-export function OurStorySection({ images }: { images: LandingImage[] }) {
-  const storyImages = fillImages(images);
+export function OurStorySection() {
+  const storyImages = STORY_IMAGES;
   const { ref, visibleText } = useTypewriter(story, 8);
   const [activeImage, setActiveImage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -313,7 +316,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
           </div>
 
           <h2 className="max-w-xl font-serif text-[clamp(2.7rem,5vw,6rem)] leading-[0.95] text-[#141D46]">
-            A next story to every saree.
+            From the Trunk: every saree still has a story left to tell.
           </h2>
 
           <p className="mt-8 min-h-40 max-w-xl text-[clamp(1rem,1.2vw,1.2rem)] leading-8 text-[#141D46]/58">
@@ -387,7 +390,7 @@ export function OurStorySection({ images }: { images: LandingImage[] }) {
         </div>
 
         <div
-          className="ftt-story-frame relative h-[32rem] overflow-hidden rounded-[1.5rem] bg-[#601D1C] shadow-2xl shadow-[#601D1C]/20 md:h-[40rem]"
+          className="ftt-story-frame relative h-[clamp(34rem,66vh,46rem)] overflow-hidden rounded-[1.5rem] bg-[#601D1C] shadow-2xl shadow-[#601D1C]/20 md:h-[clamp(42rem,74vh,54rem)]"
           data-paused={isPaused ? "true" : undefined}
           onPointerMove={handlePointerMove}
           onPointerLeave={(event) => {
@@ -888,12 +891,11 @@ export function LandingSections({
   featuredProducts,
   showIntroSeparator = true,
   socialSection,
-  storyImages,
 }: LandingSectionsProps) {
   return (
     <>
       {showIntroSeparator ? <SectionSeparator /> : null}
-      <OurStorySection images={storyImages} />
+      <OurStorySection />
       <SectionSeparator />
       {socialSection}
       <SectionSeparator />

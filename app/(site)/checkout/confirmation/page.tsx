@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  AlertTriangle,
   CheckCircle2,
+  Clock3,
   Download,
   type LucideIcon,
   Mail,
@@ -16,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
+import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
 import {
   formatOrderShortId,
   formatOrderStatusLabel,
@@ -24,15 +27,17 @@ import {
   getOrderPlacedDate,
   getShippingAddressLines,
 } from "@/lib/orders/receipt-html";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import { getViewableOrder } from "@/lib/orders/viewable-order";
 import type { Order, OrderItem } from "@/types/domain";
 import { ClearCartOnConfirmation } from "./clear-cart-on-confirmation";
+import { PaymentStatusPoller } from "./payment-status-poller";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Order Confirmed",
-  robots: { index: false, follow: false },
+  robots: PRIVATE_NOINDEX_ROBOTS,
 };
 
 type ConfirmationPageProps = {
@@ -69,23 +74,47 @@ export default async function ConfirmationPage({
   const addressLines = getShippingAddressLines(order);
   const paymentLabel = formatPaymentStatusLabel(order.paymentStatus);
   const orderStatusLabel = formatOrderStatusLabel(order.status);
-  const paymentNeedsReview = paymentStatus === "review" || order.paymentStatus !== "paid";
+  const isPaid = order.paymentStatus === "paid";
+  const isFailed = order.paymentStatus === "failed";
+  const paymentNeedsReview = paymentStatus === "review" || (!isPaid && !isFailed);
   const placedDate = getOrderPlacedDate(order);
+  const statusIcon = isPaid ? CheckCircle2 : isFailed ? AlertTriangle : Clock3;
+  const StatusIcon = statusIcon;
+  const statusTone = isPaid
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+    : isFailed
+      ? "bg-red-50 text-red-700 ring-red-200"
+      : "bg-[#B39152]/10 text-[#601D1C] ring-[#B39152]/25";
+  const statusEyebrow = isPaid
+    ? "Order confirmed"
+    : isFailed
+      ? "Payment failed"
+      : "Verifying payment";
+  const headline = isPaid
+    ? "We have your trunk ready."
+    : isFailed
+      ? "Payment was not completed."
+      : "We are checking your payment.";
+  const bodyCopy = isPaid
+    ? `Order #${shortOrderId} has been placed successfully. We will pack the pieces with their order record and send tracking once dispatch is scheduled.`
+    : isFailed
+      ? `Order #${shortOrderId} is not confirmed because the payment failed or was cancelled.`
+      : `Order #${shortOrderId} is reserved while we confirm the payment record from Razorpay.`;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-16">
-      <ClearCartOnConfirmation />
+      <ClearCartOnConfirmation enabled={isPaid} />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start">
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-ftt-border bg-ftt-card p-6 shadow-[var(--ftt-soft-shadow)] sm:p-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
-                  <CheckCircle2 aria-hidden="true" className="h-7 w-7" />
+                <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ring-1 ${statusTone}`}>
+                  <StatusIcon aria-hidden="true" className="h-7 w-7" />
                 </span>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-ftt-gold">
-                    Order confirmed
+                    {statusEyebrow}
                   </p>
                   <p className="mt-1 text-sm text-ftt-burgundy/65">
                     Receipt #{shortOrderId}
@@ -102,28 +131,41 @@ export default async function ConfirmationPage({
 
             <div className="mt-7 max-w-2xl">
               <h1 className="font-serif text-4xl leading-tight text-ftt-navy sm:text-5xl">
-                We have your trunk ready.
+                {headline}
               </h1>
               <p className="mt-4 text-base leading-7 text-ftt-burgundy/70">
-                Order #{shortOrderId} has been placed successfully. We will pack
-                the pieces with their order record and send tracking once dispatch
-                is scheduled.
+                {bodyCopy}
               </p>
               {paymentNeedsReview ? (
                 <p className="mt-3 rounded-2xl border border-[#B39152]/35 bg-[#B39152]/10 px-4 py-3 text-sm text-[#601D1C]">
-                  We received the payment handoff and are checking the payment
-                  record before dispatch.
+                  We received the payment handoff and are checking the Razorpay
+                  record before dispatch. If this does not update shortly, contact
+                  hello@fromthetrunk.shop with this order number.
                 </p>
+              ) : null}
+              {!isPaid ? (
+                <PaymentStatusPoller
+                  accessKey={accessKey}
+                  initialPaymentStatus={order.paymentStatus}
+                  orderId={order.id}
+                />
               ) : null}
             </div>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button asChild className="h-12 w-full rounded-full px-6 sm:h-11 sm:w-auto">
-                <a href={receiptHref} download>
+              {isPaid ? (
+                <Button asChild className="h-12 w-full rounded-full px-6 sm:h-11 sm:w-auto">
+                  <a href={receiptHref} download>
+                    <Download aria-hidden="true" className="h-4 w-4" />
+                    Download receipt
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="h-12 w-full rounded-full px-6 sm:h-11 sm:w-auto">
                   <Download aria-hidden="true" className="h-4 w-4" />
-                  Download receipt
-                </a>
-              </Button>
+                  Receipt pending
+                </Button>
+              )}
               <Button
                 asChild
                 variant="outline"
@@ -146,13 +188,13 @@ export default async function ConfirmationPage({
               icon={PackageCheck}
               label="Order status"
               value={orderStatusLabel}
-              helper="Your order has entered the packing queue."
+              helper={isPaid ? "Your order has entered the packing queue." : "Packing starts after payment confirmation."}
             />
             <StatusTile
               icon={ShieldCheck}
               label="Payment"
               value={paymentLabel}
-              helper={paymentNeedsReview ? "Manual check in progress." : "Payment is recorded."}
+              helper={isPaid ? "Payment is recorded." : isFailed ? "No paid receipt has been generated." : "Verification is in progress."}
             />
             <StatusTile
               icon={Truck}
@@ -222,6 +264,11 @@ export default async function ConfirmationPage({
                     <p className="mt-1 text-xs text-ftt-burgundy/60">
                       Qty {item.quantity} x {formatCurrency(item.pricePaise / 100)}
                     </p>
+                    {formatSelectedOptions(item.selectedOptions) ? (
+                      <p className="mt-1 text-xs font-semibold text-ftt-navy/70">
+                        {formatSelectedOptions(item.selectedOptions)}
+                      </p>
+                    ) : null}
                   </div>
                   <p className="shrink-0 text-right text-sm font-semibold text-ftt-navy">
                     {formatCurrency((item.pricePaise * item.quantity) / 100)}
@@ -240,17 +287,24 @@ export default async function ConfirmationPage({
               <TotalRow label="Discount code" value={order.discountCode} />
             ) : null}
             <div className="flex items-center justify-between border-t border-ftt-border pt-4 text-lg font-semibold text-ftt-navy">
-              <dt>Total paid</dt>
+              <dt>{isPaid ? "Total paid" : "Order total"}</dt>
               <dd>{formatCurrency(order.totalPaise / 100)}</dd>
             </div>
           </dl>
 
-          <Button asChild className="mt-6 h-11 w-full rounded-full">
-            <a href={receiptHref} download>
+          {isPaid ? (
+            <Button asChild className="mt-6 h-11 w-full rounded-full">
+              <a href={receiptHref} download>
+                <Download aria-hidden="true" className="h-4 w-4" />
+                Download full receipt
+              </a>
+            </Button>
+          ) : (
+            <Button disabled className="mt-6 h-11 w-full rounded-full">
               <Download aria-hidden="true" className="h-4 w-4" />
-              Download full receipt
-            </a>
-          </Button>
+              Receipt pending
+            </Button>
+          )}
         </aside>
       </section>
     </div>
@@ -260,18 +314,19 @@ export default async function ConfirmationPage({
 function GenericConfirmation() {
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-center justify-center gap-6 px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
-        <CheckCircle2 aria-hidden="true" className="h-8 w-8" />
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#B39152]/10 text-[#601D1C] ring-1 ring-[#B39152]/25">
+        <Clock3 aria-hidden="true" className="h-8 w-8" />
       </div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-ftt-gold">
-          Order confirmed
+          Order status unavailable
         </p>
         <h1 className="mt-3 font-serif text-4xl text-ftt-navy">
-          Your treasure is reserved
+          We could not load this order.
         </h1>
         <p className="mt-3 text-sm leading-6 text-ftt-burgundy/70">
-          A confirmation email with tracking details will follow shortly.
+          Sign in to view your orders, or contact hello@fromthetrunk.shop if
+          your payment has already been captured.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">

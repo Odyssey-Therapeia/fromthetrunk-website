@@ -35,7 +35,7 @@ export const heroPropsSchema = z.object({
   subtitle: z.string().max(400).optional(),
   backgroundImage: z.preprocess(
     emptyToUndefined,
-    z.string().max(2000).optional(),
+    z.string().uuid().optional(),
   ),
   primaryCtaLabel: z.string().max(60).optional(),
   primaryCtaHref: z.string().max(300).optional(),

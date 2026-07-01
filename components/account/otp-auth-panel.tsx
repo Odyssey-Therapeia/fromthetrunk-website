@@ -82,13 +82,19 @@ const fieldClass =
 const readJson = async <T,>(response: Response): Promise<T | null> =>
   response.json().catch(() => null);
 
-const otpSentMessage = (maskedEmail?: null | string) =>
-  maskedEmail
-    ? `We sent the OTP to ${maskedEmail}.`
-    : genericSentMessage;
+// Nudge users to their spam/junk folder — OTP emails commonly land there.
+const spamHint =
+  "If it's not in your inbox within a minute, please check your spam or junk folder.";
 
-const codeSentMessage = (maskedEmail?: null | string) =>
-  maskedEmail ? `Code sent to ${maskedEmail}.` : signUpSentMessage;
+const otpSentMessage = (target?: null | string) =>
+  target
+    ? `We sent the OTP to ${target}. ${spamHint}`
+    : `${genericSentMessage} ${spamHint}`;
+
+const codeSentMessage = (target?: null | string) =>
+  target
+    ? `We sent your code to ${target}. ${spamHint}`
+    : `${signUpSentMessage} ${spamHint}`;
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -198,7 +204,13 @@ function SignInOtpPanel({
       setOtp("");
       submittedOtpRef.current = "";
       setStep("verify");
-      setStatusMessage(otpSentMessage(data.maskedEmail));
+      // Show the full email the user typed (no masking). If they signed in with a
+      // mobile number we don't know their full email client-side, so fall back to
+      // the server's masked value (which stays private for phone-based lookups).
+      const shownEmail = isEmail(normalizedIdentifier)
+        ? normalizedIdentifier
+        : (data.maskedEmail ?? null);
+      setStatusMessage(otpSentMessage(shownEmail));
       window.setTimeout(() => otpRef.current?.focus(), 80);
     } finally {
       setIsStarting(false);
@@ -295,7 +307,7 @@ function SignInOtpPanel({
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="identifier"
-              className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-burgundy/65"
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-ftt-burgundy"
             >
               Email or registered mobile number
             </Label>
@@ -496,7 +508,8 @@ function SignUpOtpPanel({
       setOtp("");
       submittedOtpRef.current = "";
       setStep("verify");
-      setStatusMessage(codeSentMessage(data.maskedEmail));
+      // Sign-up always uses the email the user just typed — show it in full.
+      setStatusMessage(codeSentMessage(normalizedEmail));
       window.setTimeout(() => otpRef.current?.focus(), 80);
     } finally {
       setIsStarting(false);

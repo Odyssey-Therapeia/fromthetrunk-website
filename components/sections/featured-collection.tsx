@@ -44,6 +44,7 @@ export function FeaturedCollection({
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              quality={70}
               className="object-cover"
             />
           ) : (
@@ -75,6 +76,7 @@ export function FeaturedCollection({
             alt="Heirloom saree detail"
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 66vw"
+            quality={70}
             className="object-cover"
           />
         ) : (

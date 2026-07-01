@@ -23,7 +23,7 @@ export type OrderListItemSummary = Pick<
   | "status"
   | "totalPaise"
 > & {
-  items: Array<Pick<OrderItemRecord, "id" | "name" | "pricePaise" | "quantity">>;
+  items: Array<Pick<OrderItemRecord, "id" | "name" | "pricePaise" | "quantity" | "selectedOptions">>;
 };
 
 export type CreateOrderInput = Omit<InferInsertModel<typeof orders>, "createdAt" | "updatedAt"> & {
@@ -206,6 +206,7 @@ export const listOrderSummaries = async (options?: {
           orderId: orderItems.orderId,
           pricePaise: orderItems.pricePaise,
           quantity: orderItems.quantity,
+          selectedOptions: orderItems.selectedOptions,
         })
         .from(orderItems)
         .where(inArray(orderItems.orderId, orderIds)),
@@ -220,6 +221,7 @@ export const listOrderSummaries = async (options?: {
       name: item.name,
       pricePaise: item.pricePaise,
       quantity: item.quantity,
+      selectedOptions: item.selectedOptions,
     });
     itemsByOrderId.set(item.orderId, existing);
   }

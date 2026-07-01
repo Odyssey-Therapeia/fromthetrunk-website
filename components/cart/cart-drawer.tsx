@@ -27,12 +27,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { formatCurrency } from "@/lib/formatters";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 
 export function CartDrawer() {
   const [open, setOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const previousTotalItems = useRef<number | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
@@ -42,6 +49,24 @@ export function CartDrawer() {
   const { subtotal, totalItems } = getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
   const lastAvailabilityCheckRef = useRef(0);
+  const hasReservedCartItem = items.some((item) => Boolean(item.reservedUntil));
+  const earliestReservationExpiresAt = items.reduce<null | number>(
+    (earliest, item) => {
+      if (!item.reservedUntil) return earliest;
+      const expiresAt = new Date(item.reservedUntil).getTime();
+      if (!Number.isFinite(expiresAt)) return earliest;
+      return earliest == null || expiresAt < earliest ? expiresAt : earliest;
+    },
+    null,
+  );
+  const reservationRemainingMs =
+    earliestReservationExpiresAt == null
+      ? 0
+      : Math.max(0, earliestReservationExpiresAt - nowMs);
+  const cartHoldLabel =
+    earliestReservationExpiresAt != null && reservationRemainingMs > 0
+      ? formatCartHoldTime(reservationRemainingMs)
+      : null;
   const softEnterMotion: MotionProps = shouldReduceMotion
     ? {}
     : {
@@ -56,6 +81,7 @@ export function CartDrawer() {
       const detail = (event as CustomEvent<{ quantity?: number }>).detail;
 
       if ((detail?.quantity ?? 1) > 0) {
+        setNowMs(Date.now());
         setOpen(true);
       }
     };
@@ -118,6 +144,35 @@ export function CartDrawer() {
   }, [open, recheckCartAvailability]);
 
   useEffect(() => {
+    if (!open || !hasHydrated || !hasReservedCartItem) return;
+
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [open, hasHydrated, hasReservedCartItem]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !hasHydrated ||
+      earliestReservationExpiresAt == null ||
+      reservationRemainingMs > 0
+    ) {
+      return;
+    }
+
+    void recheckCartAvailability();
+  }, [
+    earliestReservationExpiresAt,
+    hasHydrated,
+    open,
+    recheckCartAvailability,
+    reservationRemainingMs,
+  ]);
+
+  useEffect(() => {
     const handleFocus = () => {
       if (!open) return;
       if (Date.now() - lastAvailabilityCheckRef.current < 60_000) return;
@@ -148,8 +203,16 @@ export function CartDrawer() {
       ? "Your bag is empty"
       : `${totalItems} ${totalItems === 1 ? "piece" : "pieces"} in your bag`;
 
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      setNowMs(Date.now());
+    }
+
+    setOpen(nextOpen);
+  }, []);
+
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       {/* Live region for screen readers */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {hasHydrated && totalItems > 0
@@ -184,12 +247,17 @@ export function CartDrawer() {
               From the trunk
             </p>
             <div className="flex items-end justify-between gap-4 pr-8">
-              <SheetTitle className="font-serif text-3xl font-medium leading-none text-[#141D46]">
+              <SheetTitle className="shrink-0 font-serif text-3xl font-medium leading-none text-[#141D46]">
                 Shopping Bag
               </SheetTitle>
-              <span className="rounded-full border border-[#B39152]/45 bg-[#B39152]/10 px-3 py-1 text-xs font-medium text-[#141D46]">
-                {hasHydrated ? itemLabel : "Loading"}
-              </span>
+              <div className="flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                <span className="rounded-full border border-[#B39152]/45 bg-[#B39152]/10 px-3 py-1 text-xs font-medium text-[#141D46]">
+                  {hasHydrated ? itemLabel : "Loading"}
+                </span>
+                {hasHydrated && cartHoldLabel ? (
+                  <CartHoldTimerBadge label={cartHoldLabel} />
+                ) : null}
+              </div>
             </div>
           </SheetHeader>
 
@@ -317,6 +385,41 @@ export function CartDrawer() {
         </motion.div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function formatCartHoldTime(remainingMs: number) {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function CartHoldTimerBadge({ label }: { label: string }) {
+  return (
+    <TooltipProvider delayDuration={120}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            aria-label={`Reservation hold ends in ${label}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#141D46]/20 bg-[#141D46] px-3 py-1 text-xs font-semibold text-[#FDF7F1] shadow-[0_10px_24px_rgba(20,29,70,0.14)] outline-none transition hover:bg-[#1D285C] focus-visible:ring-2 focus-visible:ring-[#B39152]/70"
+          >
+            <LockKeyhole className="h-3.5 w-3.5 text-[#B39152]" />
+            <span className="tabular-nums">Hold {label}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          align="end"
+          className="max-w-[15rem] rounded-xl border border-[#B39152]/30 bg-[#FFFCF8] px-3 py-2 text-xs leading-5 text-[#601D1C] shadow-[0_14px_34px_rgba(20,29,70,0.16)]"
+        >
+          Your reserved piece will be released after one hour. Complete checkout
+          before someone else buys it.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

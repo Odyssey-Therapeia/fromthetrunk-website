@@ -32,7 +32,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 // Saree imagery used on the right side of the cover and every chapter spread.
-const FTT_NAVBAR_LOGO = "/logo.png";
+const FTT_NAVBAR_LOGO = "/Ftt_logo_navbar.png";
 const COVER_BANNER = "/category/kanjiverram-lcp.webp";
 const COVER_CARD_IMAGE = "/category/silk-lcp.webp";
 const SAREE_IMAGES = [
@@ -262,7 +262,7 @@ export default function OurStoryPage() {
 
   if (isFramed) {
     return (
-      <main className="overflow-hidden bg-[#FDF7F1] text-[#0E0D0E]">
+      <div className="overflow-hidden bg-[#FDF7F1] text-[#0E0D0E]">
         <StoryDesktopFrame
           activeChapter={activeChapter}
           chapterNav={chapterNav}
@@ -276,12 +276,12 @@ export default function OurStoryPage() {
           reduceMotion={Boolean(reduceMotion)}
           totalPages={totalPages}
         />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="overflow-hidden bg-[#FDF7F1] text-[#0E0D0E]">
+    <div className="overflow-hidden bg-[#FDF7F1] text-[#0E0D0E]">
       <section className="relative min-h-[calc(100svh-8rem)] px-3 py-4 sm:px-5 lg:px-7 lg:py-5">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.45]"
@@ -398,6 +398,7 @@ export default function OurStoryPage() {
               </p>
             </div>
             <Progress
+              aria-label="Story progress"
               value={progress}
               className="mt-3 h-1.5 bg-[#E7DDD4] [&>div]:bg-[#B39152]"
             />
@@ -491,7 +492,7 @@ export default function OurStoryPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -790,6 +791,7 @@ function CoverPage({
         alt=""
         fill
         priority
+        fetchPriority="high"
         sizes="100vw"
         className="object-cover"
       />

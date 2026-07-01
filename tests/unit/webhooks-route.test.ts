@@ -31,6 +31,9 @@ const dbUpdateMock = vi.hoisted(() => vi.fn());
 const getOrderMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
 const completePaidOrderMock = vi.hoisted(() => vi.fn());
+const claimEventMock = vi.hoisted(() => vi.fn());
+const fetchRazorpayOrderPaymentsMock = vi.hoisted(() => vi.fn());
+const releaseReservationsByOrderMock = vi.hoisted(() => vi.fn());
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -48,9 +51,25 @@ vi.mock("@/db/queries/orders", () => ({
   addOrderEvent: addOrderEventMock,
 }));
 
+vi.mock("@/db/queries/events", () => ({
+  claimEvent: claimEventMock,
+}));
+
+vi.mock("@/db/queries/reservations", () => ({
+  releaseReservationsByOrder: releaseReservationsByOrderMock,
+}));
+
 vi.mock("@/lib/orders/complete-paid-order", () => ({
   completePaidOrder: completePaidOrderMock,
 }));
+
+vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/payments/razorpay")>();
+  return {
+    ...actual,
+    fetchRazorpayOrderPayments: fetchRazorpayOrderPaymentsMock,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Route import (must come AFTER vi.mock calls)
@@ -113,13 +132,18 @@ const createWebhookApp = () => {
  * POST a webhook event to the app with a valid HMAC signature.
  * Returns the Hono Response.
  */
-const postWebhook = (app: ReturnType<typeof createWebhookApp>, payload: object) => {
+const postWebhook = (
+  app: ReturnType<typeof createWebhookApp>,
+  payload: object,
+  eventId = "evt_test_default"
+) => {
   const body = JSON.stringify(payload);
   const sig = sign(body);
   return app.request("/razorpay", {
     body,
     headers: {
       "Content-Type": "application/json",
+      "x-razorpay-event-id": eventId,
       "x-razorpay-signature": sig,
     },
     method: "POST",
@@ -218,6 +242,9 @@ beforeEach(() => {
   getOrderMock.mockReset();
   addOrderEventMock.mockReset();
   completePaidOrderMock.mockReset();
+  claimEventMock.mockReset();
+  fetchRazorpayOrderPaymentsMock.mockReset();
+  releaseReservationsByOrderMock.mockReset();
 
   // Default: db.update chain resolves to undefined (no rows returned needed)
   dbUpdateWhereMock.mockResolvedValue([]);
@@ -226,6 +253,9 @@ beforeEach(() => {
 
   // Default: addOrderEvent resolves silently
   addOrderEventMock.mockResolvedValue(undefined);
+  claimEventMock.mockResolvedValue(true);
+  fetchRazorpayOrderPaymentsMock.mockResolvedValue([]);
+  releaseReservationsByOrderMock.mockResolvedValue(undefined);
 
   // Default: completePaidOrder resolves with a dummy success shape
   completePaidOrderMock.mockResolvedValue({
@@ -262,13 +292,22 @@ describe("webhook payment_link.paid", () => {
         payment: {
           entity: {
             id: PAYMENT_ID,
+            amount: 50000,
+            captured: true,
+            currency: "INR",
             method: "upi",
+            status: "captured",
           },
         },
         payment_link: {
           entity: {
+            amount: 50000,
+            amount_paid: 50000,
+            currency: "INR",
             id: RAZORPAY_PL_ID,
+            reference_id: "ftt_aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa",
             short_url: "https://rzp.io/l/test",
+            status: "paid",
           },
         },
       },
@@ -289,25 +328,16 @@ describe("webhook payment_link.paid", () => {
     );
   });
 
-  it("accepts duplicate webhook replay while completePaidOrder stays idempotent", async () => {
+  it("ignores duplicate webhook event id before completing again", async () => {
     const bareOrder = makeBareOrder({ razorpayOrderId: RAZORPAY_PL_ID });
     wireSelectToReturn([bareOrder]);
     getOrderMock.mockResolvedValue(makeOrder({ razorpayOrderId: RAZORPAY_PL_ID }));
-    completePaidOrderMock
-      .mockResolvedValueOnce({
-        alreadyPaid: false,
-        emailsSent: true,
-        order: makeOrder({ razorpayOrderId: RAZORPAY_PL_ID }),
-      })
-      .mockResolvedValueOnce({
-        alreadyPaid: true,
-        emailsSent: false,
-        order: makeOrder({
-          paymentStatus: "paid",
-          razorpayOrderId: RAZORPAY_PL_ID,
-          status: "confirmed",
-        }),
-      });
+    claimEventMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    completePaidOrderMock.mockResolvedValueOnce({
+      alreadyPaid: false,
+      emailsSent: true,
+      order: makeOrder({ razorpayOrderId: RAZORPAY_PL_ID }),
+    });
 
     const app = createWebhookApp();
     const payload = {
@@ -316,32 +346,35 @@ describe("webhook payment_link.paid", () => {
         payment: {
           entity: {
             id: PAYMENT_ID,
+            amount: 50000,
+            captured: true,
+            currency: "INR",
             method: "upi",
+            status: "captured",
           },
         },
         payment_link: {
           entity: {
+            amount: 50000,
+            amount_paid: 50000,
+            currency: "INR",
             id: RAZORPAY_PL_ID,
+            reference_id: "ftt_aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa",
             short_url: "https://rzp.io/l/test",
+            status: "paid",
           },
         },
       },
     };
 
-    const firstResponse = await postWebhook(app, payload);
-    const secondResponse = await postWebhook(app, payload);
+    const firstResponse = await postWebhook(app, payload, "evt_duplicate");
+    const secondResponse = await postWebhook(app, payload, "evt_duplicate");
 
     expect(firstResponse.status).toBe(200);
     expect(secondResponse.status).toBe(200);
-    expect(completePaidOrderMock).toHaveBeenCalledTimes(2);
-    expect(completePaidOrderMock).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        orderId: ORDER_ID,
-        paymentId: PAYMENT_ID,
-        source: "Razorpay payment link webhook",
-      })
-    );
+    const secondJson = await secondResponse.json();
+    expect(secondJson).toMatchObject({ duplicate: true, received: true });
+    expect(completePaidOrderMock).toHaveBeenCalledTimes(1);
   });
 
   it("does NOT call completePaidOrder when payment or paymentLink entity ids are missing", async () => {

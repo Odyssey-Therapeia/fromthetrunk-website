@@ -522,6 +522,7 @@ export function CheckoutPageClient({
           productId: item.id,
           quantity: item.quantity,
           ...(item.reservationToken ? { reservationToken: item.reservationToken } : {}),
+          ...(item.selectedOptions ? { selectedOptions: item.selectedOptions } : {}),
         })),
         shippingAddress: toOrderAddress(shippingAddress),
         shippingMethod,

@@ -24,7 +24,7 @@ import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-pick", label: "Top Pick" },
+  { href: "/collection?tags=top-viewed", label: "Top View" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
@@ -140,8 +140,8 @@ export function SiteHeader() {
           <div className="flex min-w-0 flex-1 items-center gap-4 xl:gap-10">
             <Link href="/" className="flex h-full shrink-0 items-center">
               <Image
-                src="/logo.png"
-                alt="From the Trunk"
+                src="/Ftt_logo_navbar.png"
+                alt=""
                 width={180}
                 height={100}
                 className="h-14 w-auto object-contain xl:h-[4.25rem]"

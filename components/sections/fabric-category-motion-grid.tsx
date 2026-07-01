@@ -157,6 +157,7 @@ function FabricCard({
         src={fabric.imageSrc}
         alt=""
         fill
+        fetchPriority="low"
         sizes={
           isFeature
             ? "(max-width: 1024px) 82vw, 34vw"

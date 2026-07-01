@@ -1,24 +1,37 @@
 import type { Metadata } from "next";
-import { draftMode } from "next/headers";
 
 import { OurWhyExperience } from "@/components/sections/our-why-experience";
-import { getProducts } from "@/lib/data/products";
-import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
-import type { Product } from "@/types/domain";
+import { WHY_PAGE_METADATA } from "@/lib/seo/route-metadata";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = WHY_PAGE_METADATA;
 
-export const metadata: Metadata = {
-  title: "Why We Do What We Do",
-  description:
-    "A voice led story experience about why From the Trunk restores, authenticates, and recirculates pre-loved luxury sarees.",
-};
+// Curated saree photos for the "Our Why" story, served from public/our-story/.
+// The hero composition uses the first three (big image, bottom-left and
+// top-right thumbnails). Reorder these or drop in your own files/URLs to change
+// which photos appear.
+const WHY_IMAGES = [
+  {
+    src: "/our-story/chap_1.avif",
+    alt: "A pre-loved heritage saree from From the Trunk",
+  },
+  {
+    src: "/our-story/chap_2.avif",
+    alt: "A restored silk saree styled for a modern wardrobe",
+  },
+  {
+    src: "/our-story/chap_3.avif",
+    alt: "A curated saree ready for its next chapter",
+  },
+  {
+    src: "/our-story/chap_4.avif",
+    alt: "A consciously chosen pre-loved saree",
+  },
+  {
+    src: "/our-story/chap_5.avif",
+    alt: "A re-storied saree from the From the Trunk collection",
+  },
+];
 
-export default async function WhyPage() {
-  const { isEnabled: includeDrafts } = await draftMode();
-  const result = await getProducts(10, { includeDrafts });
-  const products = (result?.docs ?? []) as Product[];
-  const images = selectStoryNarrativeImages(products);
-
-  return <OurWhyExperience images={images} />;
+export default function WhyPage() {
+  return <OurWhyExperience images={WHY_IMAGES} />;
 }

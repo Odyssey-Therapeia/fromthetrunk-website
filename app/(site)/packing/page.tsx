@@ -90,11 +90,17 @@ export default function PackingPage() {
           </h2>
           <p>
             For delivery timelines and rates, see the{" "}
-            <Link href="/shipping-policy" className="text-primary underline">
+            <Link
+              href="/policies/shipping-delivery-policy"
+              className="text-primary underline"
+            >
               shipping policy
             </Link>
             . For return eligibility after delivery, see the{" "}
-            <Link href="/return-policy" className="text-primary underline">
+            <Link
+              href="/policies/return-refund-policy"
+              className="text-primary underline"
+            >
               return policy
             </Link>
             .

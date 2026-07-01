@@ -5,11 +5,13 @@
 import { formatINR } from "@/db/money";
 import { isGstInclusive } from "@/lib/config/flags";
 import { getPublicAssetOrigin, getSiteOrigin } from "@/lib/config/site";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 
 export type EmailOrderItem = {
   name: string;
   price: number;
   quantity: number;
+  selectedOptions?: Record<string, unknown>;
 };
 
 export type EmailShippingAddress = {
@@ -27,6 +29,9 @@ export type EmailShippingAddress = {
 export type EmailOrder = {
   id: string;
   items: EmailOrderItem[];
+  paidAt?: Date | null;
+  paymentId?: null | string;
+  paymentStatus?: null | string;
   shippingAddress?: EmailShippingAddress | null;
   shippingCost?: number | null;
   subtotal: number;
@@ -55,6 +60,15 @@ const escapeHtml = (value: null | string | undefined) =>
 
 const publicAssetUrl = (path: string) =>
   `${getPublicAssetOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
+
+const formatEmailDate = (value?: Date | null) =>
+  value
+    ? new Intl.DateTimeFormat("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Kolkata",
+      }).format(value)
+    : null;
 
 const wrapper = (content: string) => `
 <!DOCTYPE html>
@@ -86,21 +100,24 @@ export function orderConfirmationEmail(order: EmailOrder): {
 } {
   const orderId = order.id.slice(0, 8).toUpperCase();
   const items = order.items ?? [];
+  const paidAt = formatEmailDate(order.paidAt ?? null);
 
   const itemRows = items
-    .map(
-      (item: EmailOrderItem) => `
+    .map((item: EmailOrderItem) => {
+      const optionLabel = formatSelectedOptions(item.selectedOptions);
+      return `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid ${brandStyles.border};font-size:14px;color:${brandStyles.text};">
         ${escapeHtml(item.name)}<br>
         <span style="font-size:12px;color:${brandStyles.muted};">Qty: ${item.quantity}</span>
+        ${optionLabel ? `<br><span style="font-size:12px;color:${brandStyles.navy};font-weight:600;">${escapeHtml(optionLabel)}</span>` : ""}
       </td>
       <td style="padding:8px 0;border-bottom:1px solid ${brandStyles.border};font-size:14px;color:${brandStyles.text};text-align:right;">
         ${formatINR(item.price * item.quantity * 100)}
       </td>
     </tr>
-  `,
-    )
+  `;
+    })
     .join("");
 
   const address = order.shippingAddress;
@@ -150,6 +167,15 @@ export function orderConfirmationEmail(order: EmailOrder): {
       </div>
     </div>
 
+    <div style="margin-top:20px;padding:16px;background:${brandStyles.bg};border-radius:12px;">
+      <p style="font-size:12px;color:${brandStyles.muted};text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Payment</p>
+      <p style="font-size:14px;color:${brandStyles.text};line-height:1.6;margin:0;">
+        Status: ${escapeHtml(order.paymentStatus ?? "paid")}<br>
+        ${order.paymentId ? `Payment ID: ${escapeHtml(order.paymentId)}<br>` : ""}
+        ${paidAt ? `Paid: ${escapeHtml(paidAt)}` : ""}
+      </p>
+    </div>
+
     ${addressBlock}
 
     <div style="text-align:center;margin-top:24px;">
@@ -180,19 +206,21 @@ export function orderPurchaseNotificationEmail(
   const address = order.shippingAddress;
   const items = order.items ?? [];
   const itemRows = items
-    .map(
-      (item) => `
+    .map((item) => {
+      const optionLabel = formatSelectedOptions(item.selectedOptions);
+      return `
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid ${brandStyles.border};font-size:14px;color:${brandStyles.text};">
             ${escapeHtml(item.name)}<br>
             <span style="font-size:12px;color:${brandStyles.muted};">Qty: ${item.quantity}</span>
+            ${optionLabel ? `<br><span style="font-size:12px;color:${brandStyles.navy};font-weight:600;">${escapeHtml(optionLabel)}</span>` : ""}
           </td>
           <td style="padding:8px 0;border-bottom:1px solid ${brandStyles.border};font-size:14px;color:${brandStyles.text};text-align:right;">
             ${formatINR(item.price * item.quantity * 100)}
           </td>
         </tr>
-      `,
-    )
+      `;
+    })
     .join("");
 
   const content = `

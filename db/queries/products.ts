@@ -23,6 +23,7 @@ import {
   productImages,
   products,
   productTags,
+  productTypes,
   tags,
 } from "@/db/schema";
 import {
@@ -36,6 +37,7 @@ import { slugify } from "@/lib/utils";
 type CollectionRecord = InferSelectModel<typeof collections>;
 type MediaRecord = InferSelectModel<typeof mediaAssets>;
 type ProductRecord = InferSelectModel<typeof products>;
+type ProductTypeRecord = InferSelectModel<typeof productTypes>;
 type TagRecord = InferSelectModel<typeof tags>;
 
 export type ProductWithRelations = ProductRecord & {
@@ -45,6 +47,8 @@ export type ProductWithRelations = ProductRecord & {
     sortOrder: number;
   }>;
   tags: TagRecord[];
+  typeName: null | string;
+  typeSlug: null | string;
 };
 
 export type PublicProductStock = Pick<
@@ -106,8 +110,15 @@ export const hydrateProducts = async (
         .filter((value): value is string => Boolean(value)),
     ),
   );
+  const typeIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.typeId)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 
-  const [collectionRows, imageRows, tagRows] = await withRetry(() =>
+  const [collectionRows, imageRows, tagRows, typeRows] = await withRetry(() =>
     Promise.all([
       timeAsync(timingSink, "hydrate-collection", () =>
         collectionIds.length > 0
@@ -139,10 +150,19 @@ export const hydrateProducts = async (
           .innerJoin(tags, eq(productTags.tagId, tags.id))
           .where(inArray(productTags.productId, productIds)),
       ),
+      timeAsync(timingSink, "hydrate-product-types", () =>
+        typeIds.length > 0
+          ? db
+              .select()
+              .from(productTypes)
+              .where(inArray(productTypes.id, typeIds))
+          : Promise.resolve([] as ProductTypeRecord[]),
+      ),
     ]),
   );
 
   const collectionById = new Map(collectionRows.map((row) => [row.id, row]));
+  const typeById = new Map(typeRows.map((row) => [row.id, row]));
   const imagesByProductId = new Map<
     string,
     Array<{
@@ -174,6 +194,8 @@ export const hydrateProducts = async (
       : null,
     images: imagesByProductId.get(row.id) ?? [],
     tags: tagsByProductId.get(row.id) ?? [],
+    typeName: row.typeId ? (typeById.get(row.typeId)?.name ?? null) : null,
+    typeSlug: row.typeId ? (typeById.get(row.typeId)?.slug ?? null) : null,
   }));
 };
 
@@ -552,6 +574,7 @@ export const duplicateProduct = async (
       .insert(products)
       .values({
         artisanId: source.artisanId,
+        attributes: source.attributes,
         collectionId: source.collectionId,
         detailsCondition: source.detailsCondition,
         detailsDesigner: source.detailsDesigner,
@@ -572,6 +595,7 @@ export const duplicateProduct = async (
         storyNarrative: source.storyNarrative,
         storyProvenance: source.storyProvenance,
         storyTitle: source.storyTitle,
+        typeId: source.typeId,
         updatedAt: new Date(),
       })
       .returning({ id: products.id }),

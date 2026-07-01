@@ -78,7 +78,7 @@ test.describe("How It Works page content", () => {
   test("shows the 5-step process", async ({ page }) => {
     await page.goto("/how-it-works", { waitUntil: "domcontentloaded" });
     await expect(
-      page.locator("h1", { hasText: "Give your saree a second story" })
+      page.locator("h1", { hasText: "A second life, handled with care" })
     ).toBeVisible();
     await expect(page.locator("h2", { hasText: "Sourcing" })).toBeVisible();
     await expect(

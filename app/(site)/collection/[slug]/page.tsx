@@ -16,11 +16,13 @@ import {
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BlousePurchaseControls } from "@/components/product/blouse-purchase-controls";
 import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { RestockNotifyButton } from "@/components/product/restock-notify-button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Accordion,
   AccordionContent,
@@ -38,8 +40,11 @@ import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { buildPdpTitle, buildPdpDescription } from "@/lib/seo/pdp-meta";
 import { getSiteOrigin } from "@/lib/config/site";
 import { absoluteUrl } from "@/lib/seo/site-url";
+import { toSeoImageUrl } from "@/lib/seo/image-urls";
+import { buildPdpGalleryImageAlt } from "@/lib/seo/image-alt";
 import { getFabricLandingForLabel } from "@/lib/seo/keyword-landing-pages";
 import { resolveProductRowStockStatus } from "@/db/inventory";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import type { Product } from "@/types/domain";
 
 interface ProductPageProps {
@@ -47,6 +52,13 @@ interface ProductPageProps {
 }
 
 type EffectiveStockStatus = "available" | "reserved" | "sold";
+
+const PDP_SUPPORT_LINKS = [
+  { href: "/how-it-works", label: "How It Works" },
+  { href: "/packing", label: "Packing" },
+  { href: "/policies/shipping-delivery-policy", label: "Shipping" },
+  { href: "/policies/return-refund-policy", label: "Returns" },
+] as const;
 
 export async function generateMetadata({
   params,
@@ -61,7 +73,7 @@ export async function generateMetadata({
   const product = rawProduct as Product;
   const displayDetails = getProductDisplayDetails(product);
   const image = resolveMediaURL(product.images?.[0]);
-  const imageUrl = image ? absoluteUrl(image) : undefined;
+  const imageUrl = toSeoImageUrl(image) ?? undefined;
   const canonical = absoluteUrl(`/collection/${product.slug}`);
 
   const pdpTitle = buildPdpTitle(product.name, displayDetails.fabric);
@@ -104,6 +116,7 @@ export default async function SareePage({ params }: ProductPageProps) {
   }
 
   const product = rawProduct as Product;
+  const isBlouse = isBlouseProduct(product);
   const effectiveStockStatus: EffectiveStockStatus = resolveProductRowStockStatus({
     reservedUntil: product.reservedUntil,
     stockStatus: product.stockStatus,
@@ -114,6 +127,9 @@ export default async function SareePage({ params }: ProductPageProps) {
   const images = (product.images ?? [])
     .map((img) => resolveMediaURL(img as unknown))
     .filter(Boolean) as string[];
+  const imageAlts = images.map((_, index) =>
+    buildPdpGalleryImageAlt(product, index),
+  );
   const tags = product.tags.map((tag) => tag.name).filter(Boolean);
   const jsonLd = productJsonLd(product);
   const breadcrumbs = breadcrumbJsonLd([
@@ -166,7 +182,11 @@ export default async function SareePage({ params }: ProductPageProps) {
         </nav>
 
         <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.58fr)] md:items-stretch md:[--pdp-panel-height:min(72vh,760px)] lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.58fr)] lg:gap-7 lg:[--pdp-panel-height:min(74vh,800px)]">
-          <ProductGallery images={images} alt={product.name} />
+          <ProductGallery
+            images={images}
+            alt={imageAlts[0] ?? product.name}
+            imageAlts={imageAlts}
+          />
 
           <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-[var(--pdp-panel-height)] lg:p-5">
               <div className="flex items-start justify-between gap-3">
@@ -175,7 +195,7 @@ export default async function SareePage({ params }: ProductPageProps) {
                     Product Dossier
                   </p>
                   <p className="mt-1 text-xs text-[#141D46]/52">
-                    Unique circular saree
+                    {isBlouse ? "Tailored blouse" : "Unique circular saree"}
                   </p>
                 </div>
                 <StockBadge stockStatus={effectiveStockStatus} />
@@ -248,23 +268,30 @@ export default async function SareePage({ params }: ProductPageProps) {
               </div>
 
               <div className="mt-4 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1">
-                    <AddToCartButton
-                      product={product}
-                      initialStatus={effectiveStockStatus}
+                {isBlouse ? (
+                  <BlousePurchaseControls
+                    product={product}
+                    initialStatus={effectiveStockStatus}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <AddToCartButton
+                        product={product}
+                        initialStatus={effectiveStockStatus}
+                      />
+                    </div>
+                    <WishlistButton
+                      productId={product.id}
+                      productName={product.name}
+                      className="h-11 w-11 shrink-0 border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1]"
                     />
                   </div>
-                  <WishlistButton
-                    productId={product.id}
-                    productName={product.name}
-                    className="h-11 w-11 shrink-0 border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1]"
-                  />
-                </div>
+                )}
 
                 {effectiveStockStatus === "available" ? (
                   <p className="text-xs leading-5 text-[#141D46]/58">
-                    Adding this piece reserves the unique saree in your bag.
+                    Adding this piece reserves the unique piece in your bag.
                     Final ownership is confirmed at checkout.
                   </p>
                 ) : (
@@ -287,6 +314,21 @@ export default async function SareePage({ params }: ProductPageProps) {
                 <TrustLine icon={<PackageCheck />} text="Packed with muslin care" />
                 <TrustLine icon={<Truck />} text="Shipping at checkout" />
               </div>
+
+              <nav
+                aria-label="Product trust and support"
+                className="mt-3 flex flex-wrap gap-2"
+              >
+                {PDP_SUPPORT_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
 
               <Accordion
                 type="single"
@@ -443,10 +485,16 @@ export default async function SareePage({ params }: ProductPageProps) {
             </p>
           </div>
           <div className="min-w-0 flex-1">
-            <AddToCartButton
-              product={product}
-              initialStatus={effectiveStockStatus}
-            />
+            {isBlouse ? (
+              <Button asChild className="w-full rounded-full py-6">
+                <a href="#blouse-size-selector">Select size</a>
+              </Button>
+            ) : (
+              <AddToCartButton
+                product={product}
+                initialStatus={effectiveStockStatus}
+              />
+            )}
           </div>
         </div>
       </div>

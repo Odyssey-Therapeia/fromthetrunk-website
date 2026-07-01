@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import nextConfig from "@/next.config";
+import { registerSecurityRoutes } from "@/api/hono/routes/security";
 import { shouldExposeApiDocs } from "@/lib/http/api-docs-policy";
 import {
   getMissingProductionTokenSecrets,
   getTokenSecret,
 } from "@/lib/security/token-secrets";
-import { POST as cspReportPost } from "@/app/api/csp-report/route";
+import { createRouteHarness } from "../helpers/route-harness";
 
 describe("Security Phase 4.2 policy helpers", () => {
   it("requires dedicated production token secrets", () => {
@@ -74,11 +75,17 @@ describe("Security Phase 4.2 policy helpers", () => {
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("https://checkout.razorpay.com");
     expect(csp).toContain("https://api.razorpay.com");
-    expect(csp).toContain("report-uri /api/csp-report");
+    expect(csp).toContain("report-uri /api/v2/security/csp-report");
   });
 
   it("accepts CSP reports without logging or persisting request bodies", async () => {
-    const response = await cspReportPost();
+    const harness = createRouteHarness({
+      register: registerSecurityRoutes,
+    });
+    const response = await harness.request("/csp-report", {
+      method: "POST",
+    });
+
     expect(response.status).toBe(204);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });

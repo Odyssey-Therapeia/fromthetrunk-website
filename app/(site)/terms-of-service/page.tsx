@@ -62,7 +62,7 @@ export default function TermsOfServicePage() {
             4. Orders & Reservations
           </h2>
           <p>
-            When you add an item to your cart, it is temporarily reserved for 30
+            When you add a saree to your cart, it is temporarily reserved for 60
             minutes. Orders are confirmed only upon successful payment. We
             reserve the right to cancel orders if payment verification fails.
           </p>

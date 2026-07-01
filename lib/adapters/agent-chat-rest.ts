@@ -12,7 +12,7 @@ class AgentChatRestAdapter implements AgentChatPort {
     thinkingEffort?: "low" | "medium" | "high" | "max";
   }) {
     return {
-      api: "/api/chat",
+      api: "/api/v2/admin/agent-chat",
       body: () => ({
         conversationId: params.conversationId,
         productId: params.productId ?? undefined,

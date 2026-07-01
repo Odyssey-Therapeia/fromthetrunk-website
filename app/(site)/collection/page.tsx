@@ -93,6 +93,7 @@ type CollectionSearchParams = {
   perPage?: string | string[];
   priceMax?: string;
   priceMin?: string;
+  sleeve?: string | string[];
   sort?: string | string[];
   tags?: string | string[];
   type?: string | string[];
@@ -138,6 +139,7 @@ type BuildUrlPatch = {
   occasions?: string[] | null;
   works?: string[] | null;
   patterns?: string[] | null;
+  sleeves?: string[] | null;
   priceMin?: number | null;
   priceMax?: number | null;
   availability?: string | null;
@@ -198,6 +200,23 @@ const parseItemsPerPage = (
 
 const humanizeFilterValue = (value: string): string =>
   displayFacetLabel(value);
+
+// Virtual tag: not a real row in the `tags` table. `/collection?tags=top-viewed`
+// is resolved dynamically by ranking products on product_view events (see the
+// catalog-search adapter's sortBy: "top-viewed" path).
+const TOP_VIEWED_TAG = "top-viewed";
+
+// Display-only label overrides for curated tag slugs, so the applied-filter chip
+// reads nicely (the virtual "top-viewed" slug has no DB name to fall back to).
+const TAG_LABEL_OVERRIDES: Record<string, string> = {
+  [TOP_VIEWED_TAG]: "Top View",
+};
+
+const resolveTagLabel = (
+  slug: string,
+  fallbackName?: string | null,
+): string =>
+  TAG_LABEL_OVERRIDES[slug] ?? fallbackName ?? humanizeFilterValue(slug);
 
 const formatRupeesFromPaise = (value: number): string =>
   `₹${Math.round(value / 100).toLocaleString("en-IN")}`;
@@ -274,7 +293,15 @@ export default async function CollectionPage({
       ? "available"
       : undefined;
   const activeTags = toArray(resolvedSearchParams?.tags);
+  // "top-viewed" is a virtual tag resolved by event-count ranking, not a real
+  // product tag — split it out so only genuine tag slugs hit the tag filter.
+  const wantsTopViewed = activeTags.includes(TOP_VIEWED_TAG);
+  const realTags = activeTags.filter((tag) => tag !== TOP_VIEWED_TAG);
+  const activeSleeves = toSlugArray(resolvedSearchParams?.sleeve);
   const isBlouseMode = activeTypes.includes("blouse");
+  // Blouses only appear via the Blouses menu (type=blouse); exclude them from
+  // the general catalog otherwise.
+  const excludeBlouseTypes = isBlouseMode ? undefined : ["blouse"];
 
   const hasFilters =
     activeTypes.length > 0 ||
@@ -283,6 +310,7 @@ export default async function CollectionPage({
     activeOccasions.length > 0 ||
     activeWorks.length > 0 ||
     activePatterns.length > 0 ||
+    activeSleeves.length > 0 ||
     typeof activePriceMin === "number" ||
     typeof activePriceMax === "number" ||
     !!activeAvailability ||
@@ -332,6 +360,8 @@ export default async function CollectionPage({
       getCachedSearchProducts({
         collectionSlug: activeCollectionSlug,
         types: activeTypes.length > 0 ? activeTypes : undefined,
+        excludeTypes: excludeBlouseTypes,
+        sleeveTypes: activeSleeves.length > 0 ? activeSleeves : undefined,
         fabrics: activeFabrics.length > 0 ? activeFabrics : undefined,
         colors: activeColors.length > 0 ? activeColors : undefined,
         occasions: activeOccasions.length > 0 ? activeOccasions : undefined,
@@ -340,7 +370,8 @@ export default async function CollectionPage({
         priceMin: activePriceMin,
         priceMax: activePriceMax,
         availabilityStatus: activeAvailability,
-        tags: activeTags.length > 0 ? activeTags : undefined,
+        tags: realTags.length > 0 ? realTags : undefined,
+        sortBy: wantsTopViewed ? "top-viewed" : undefined,
         limit: visibleLimit,
         sort: activeSort,
         includeFacets: false,
@@ -355,6 +386,7 @@ export default async function CollectionPage({
     const [result, cachedFacets] = await Promise.all([
       getCachedSearchProducts({
         collectionSlug: activeCollectionSlug,
+        excludeTypes: excludeBlouseTypes,
         limit: visibleLimit,
         sort: activeSort,
         includeFacets: false,
@@ -368,6 +400,7 @@ export default async function CollectionPage({
   } else {
     const [result, cachedFacets] = await Promise.all([
       getCachedSearchProducts({
+        excludeTypes: excludeBlouseTypes,
         limit: visibleLimit,
         sort: activeSort,
         includeFacets: false,
@@ -393,6 +426,7 @@ export default async function CollectionPage({
     const suggestionBase: CatalogSearchFilters = {
       availabilityStatus: "available",
       collectionSlug: activeCollectionSlug,
+      excludeTypes: excludeBlouseTypes,
       includeFacets: false,
       limit: suggestionLimit,
       sort: DEFAULT_PRODUCT_SORT,
@@ -506,6 +540,8 @@ export default async function CollectionPage({
     const nextWorks = "works" in patch ? (patch.works ?? []) : activeWorks;
     const nextPatterns =
       "patterns" in patch ? (patch.patterns ?? []) : activePatterns;
+    const nextSleeves =
+      "sleeves" in patch ? (patch.sleeves ?? []) : activeSleeves;
     const nextPriceMin =
       "priceMin" in patch
         ? (patch.priceMin ?? undefined)
@@ -534,6 +570,7 @@ export default async function CollectionPage({
     for (const occasion of nextOccasions) params.append("occasion", occasion);
     for (const work of nextWorks) params.append("work", work);
     for (const pattern of nextPatterns) params.append("pattern", pattern);
+    for (const sleeve of nextSleeves) params.append("sleeve", sleeve);
     if (typeof nextPriceMin === "number") {
       params.set("priceMin", String(nextPriceMin));
     }
@@ -603,7 +640,9 @@ export default async function CollectionPage({
       }
       return a.label.localeCompare(b.label);
     });
-  const typeOptions = toOptions(facets.type);
+  const typeOptions = toOptions(facets.type).filter(
+    (option) => option.value !== "blouse",
+  );
   const colorOptions = toOptions(facets.color, { color: true });
   const occasionOptions = toOptions(facets.occasion);
   const availableCount = facets.availability.available ?? 0;
@@ -627,17 +666,10 @@ export default async function CollectionPage({
     value: option.value,
   }));
   const keepFacetGroup = (options: CatalogFilterOption[]) => options.length >= 2;
-  const sleeveLengthOptions: CatalogFilterOption[] = SLEEVE_LENGTH_FILTERS.map((option) => ({
-    count: facets.tags[option.value] ?? undefined,
+  const sleeveOptions: CatalogFilterOption[] = SLEEVE_LENGTH_FILTERS.map((option) => ({
     label: option.label,
     value: option.value,
   }));
-  const sleeveLengthValues = new Set(
-    sleeveLengthOptions.map((option) => option.value),
-  );
-  const activeSleeveLengthTags = activeTags.filter((tag) =>
-    sleeveLengthValues.has(tag),
-  );
   const sareeFilterGroups: CatalogFilterGroup[] = [
     {
       key: "sort",
@@ -714,12 +746,12 @@ export default async function CollectionPage({
       title: "Sort",
     },
     {
-      key: "sleeve-length",
-      options: sleeveLengthOptions,
-      param: "tags",
-      selected: activeSleeveLengthTags,
-      selection: "single",
-      title: "Sleeve Length",
+      key: "sleeve",
+      options: sleeveOptions,
+      param: "sleeve",
+      selected: activeSleeves,
+      selection: "multi",
+      title: "Sleeve",
     },
     {
       key: "color",
@@ -805,6 +837,17 @@ export default async function CollectionPage({
     });
   }
 
+  for (const sleeve of activeSleeves) {
+    appliedFilters.push({
+      label: humanizeFilterValue(sleeve),
+      href: buildUrl({
+        sleeves: activeSleeves.filter((entry) => entry !== sleeve),
+        page: 1,
+      }),
+      kind: "sleeve",
+    });
+  }
+
   if (
     typeof activePriceMin === "number" ||
     typeof activePriceMax === "number"
@@ -827,7 +870,7 @@ export default async function CollectionPage({
   for (const tag of activeTags) {
     const details = facets.tagDetails[tag];
     appliedFilters.push({
-      label: details?.name ?? humanizeFilterValue(tag),
+      label: resolveTagLabel(tag, details?.name),
       href: buildUrl({
         tags: activeTags.filter((activeTag) => activeTag !== tag),
         page: 1,
@@ -899,7 +942,7 @@ export default async function CollectionPage({
     ...activeTags.map((tag) => {
       const details = facets.tagDetails[tag];
       return {
-        filterLabel: details?.name ?? humanizeFilterValue(tag),
+        filterLabel: resolveTagLabel(tag, details?.name),
         filterType: "tag",
         filterValue: tag,
       };
@@ -954,6 +997,8 @@ export default async function CollectionPage({
         return buildUrl({ page: 1, works: nextSelected });
       case "pattern":
         return buildUrl({ page: 1, patterns: nextSelected });
+      case "sleeve":
+        return buildUrl({ page: 1, sleeves: nextSelected });
       case "price": {
         const isActive = group.selected.includes(option.value);
         const range = parsePriceOption(option.value);
@@ -1020,6 +1065,7 @@ export default async function CollectionPage({
             id={`filter-${group.key}`}
             selectedCount={selectedCount}
             title={group.title}
+            layout={group.param === "color" ? "swatches" : "list"}
           >
             {group.param === "collection" ? (
               <FilterPill
@@ -1037,6 +1083,8 @@ export default async function CollectionPage({
                 active={group.selected.includes(option.value)}
                 count={option.count}
                 swatch={option.swatch}
+                swatchOnly={group.param === "color"}
+                label={option.label}
               >
                 {option.label}
               </FilterPill>
@@ -1052,7 +1100,7 @@ export default async function CollectionPage({
   );
 
   return (
-    <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
+    <div className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
       <TrackPageView
         eventKey={`collection_view:${activeCollectionSlug ?? "all"}:${currentPage}:${activeSort}:${activeTypes.join(",") || "all"}:${activeFabrics.join(",") || "all"}:${activeColors.join(",") || "all"}:${activeOccasions.join(",") || "all"}:${activePriceMin ?? "min-any"}:${activePriceMax ?? "max-any"}:${activeAvailability ?? "any"}:${activeTags.slice().sort().join(",")}`}
         type="collection_view"
@@ -1346,7 +1394,7 @@ export default async function CollectionPage({
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -1405,11 +1453,13 @@ function FilterSection({
   selectedCount = 0,
   title,
   children,
+  layout = "list",
 }: {
   id?: string;
   selectedCount?: number;
   title: string;
   children: ReactNode;
+  layout?: "list" | "swatches";
 }) {
   return (
     <details
@@ -1430,7 +1480,12 @@ function FilterSection({
           </span>
         ) : null}
       </summary>
-      <div className="grid gap-2 border-t border-[var(--ftt-border)]/70 p-3">
+      <div
+        className={cn(
+          "border-t border-[var(--ftt-border)]/70 p-3",
+          layout === "swatches" ? "flex flex-wrap gap-2.5" : "grid gap-2",
+        )}
+      >
         {children}
       </div>
     </details>
@@ -1444,6 +1499,8 @@ function FilterPill({
   className,
   count,
   swatch,
+  swatchOnly,
+  label,
 }: {
   href: string;
   active?: boolean;
@@ -1451,30 +1508,51 @@ function FilterPill({
   className?: string;
   count?: number;
   swatch?: string;
+  swatchOnly?: boolean;
+  label?: string;
 }) {
+  if (swatchOnly) {
+    return (
+      <FilterLink
+        href={href}
+        className={cn(
+          "group relative inline-grid place-items-center rounded-full p-0.5",
+          className,
+        )}
+      >
+        <span
+          className={cn(
+            "h-7 w-7 rounded-full border-2 transition",
+            active
+              ? "border-[var(--ftt-gold)]"
+              : "border-black/10 group-hover:border-[var(--ftt-gold)]/50",
+          )}
+          style={{ backgroundColor: swatch }}
+          aria-hidden
+        />
+        {active ? <FilterTick /> : null}
+        <span className="sr-only">{label ?? children}</span>
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--ftt-royal-navy)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#FDF7F1] opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >
+          {label}
+        </span>
+      </FilterLink>
+    );
+  }
+
   return (
     <FilterLink
       href={href}
       className={cn(
-        "group inline-flex min-h-11 min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",
+        "group relative inline-flex min-h-11 min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",
         active
-          ? "border-[var(--ftt-royal-navy)] bg-[var(--ftt-royal-navy)]/7 text-[var(--ftt-royal-navy)] shadow-sm"
+          ? "border-[var(--ftt-gold)] bg-[var(--ftt-gold)]/10 text-[var(--ftt-royal-navy)] shadow-sm"
           : "border-[var(--ftt-border)] bg-[#FDF7F1]/70 text-[var(--ftt-muted)] hover:border-[var(--ftt-gold)]/60 hover:text-[var(--ftt-royal-navy)]",
         className,
       )}
     >
-      <span
-        className={cn(
-          "grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[4px] border transition",
-          active
-            ? "border-[var(--ftt-royal-navy)] bg-[var(--ftt-royal-navy)]"
-            : "border-[var(--ftt-border)] bg-[#FDF7F1] group-hover:border-[var(--ftt-gold)]/70",
-        )}
-      >
-        {active ? (
-          <span className="h-1.5 w-1.5 rounded-[2px] bg-[var(--ftt-gold)]" />
-        ) : null}
-      </span>
       {swatch ? (
         <span
           className="h-4 w-4 shrink-0 rounded-full border border-[var(--ftt-border)]"
@@ -1486,6 +1564,26 @@ function FilterPill({
       {typeof count === "number" ? (
         <span className="text-[var(--ftt-muted)]/75">({count})</span>
       ) : null}
+      {active ? <FilterTick /> : null}
     </FilterLink>
+  );
+}
+
+function FilterTick() {
+  return (
+    <span className="pointer-events-none absolute -right-1 -top-1 z-10 grid size-4 place-items-center rounded-full bg-[var(--ftt-gold)] text-[#141D46] shadow-sm ring-2 ring-[#FDF7F1]">
+      <svg
+        viewBox="0 0 12 12"
+        className="size-2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M2.5 6.5 5 9l4.5-5" />
+      </svg>
+    </span>
   );
 }

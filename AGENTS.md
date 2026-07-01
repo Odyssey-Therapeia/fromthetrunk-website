@@ -29,7 +29,7 @@
 - Neon Postgres: multiple databases exist; the "FTT from Feb 8th" project is the legacy Payload-connected production DB; server-side Drizzle uses Neon's HTTP SQL path (`neon` + `drizzle-orm/neon-http`) instead of the WebSocket pool for more reliable queries on restrictive or flaky networks
 - Vercel deployment; preview domains follow ftt-fromthetrunk-git-{branch}-odyssey-therapeia.vercel.app
 - Local dev: npm run dev with .env.local, localhost:3000, admin at /admin; API routes `/api/v2/*` (Hono custom), `/api/payload/*` (legacy Payload, being phased out)
-- AI agent infrastructure in progress: product creation assistant using Claude (`@ai-sdk/anthropic`), admin chat UI via `@assistant-ui/react` + `@assistant-ui/react-ai-sdk`; agent kernel at `lib/ai/`, API route at `app/api/chat/route.ts`; hexagonal architecture with ports & adapters for pluggable orchestration
+- AI agent infrastructure in progress: product creation assistant using Claude (`@ai-sdk/anthropic`), admin chat UI via `@assistant-ui/react` + `@assistant-ui/react-ai-sdk`; agent kernel at `lib/ai/`, Hono route at `api/hono/routes/agent-chat.ts` mounted on `/api/v2/admin/agent-chat`; hexagonal architecture with ports & adapters for pluggable orchestration
 - Internal frontend docs being built at `docs/internal/`; `nextjs-frontend.mdc` cursor rule enforces layout, responsive, and component patterns across the frontend
 - Continual-learning index path: .cursor/hooks/state/continual-learning-index.json
 - Vercel CLI installed globally and project linked via `vercel link`; use `vercel env add` to manage secrets across production/preview/development environments

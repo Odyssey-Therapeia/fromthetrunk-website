@@ -7,7 +7,9 @@ import {
   sameOriginMutationGuard,
 } from "@/api/hono/middleware/same-origin";
 import { registerAddressRoutes } from "@/api/hono/routes/addresses";
+import { registerAdminDebugRoutes } from "@/api/hono/routes/admin-debug";
 import { registerAuthOtpRoutes } from "@/api/hono/routes/auth-otp";
+import { registerAgentChatRoutes } from "@/api/hono/routes/agent-chat";
 import { registerAdminDashboardRoutes } from "@/api/hono/routes/admin-dashboard";
 import { registerAdminImportRoutes } from "@/api/hono/routes/admin-import";
 import { registerAdminOrderRoutes } from "@/api/hono/routes/admin-orders";
@@ -27,6 +29,7 @@ import { registerCollectionRoutes } from "@/api/hono/routes/collections";
 import { registerConversationRoutes } from "@/api/hono/routes/conversations";
 import { registerCronRoutes } from "@/api/hono/routes/cron";
 import { registerGlobalRoutes } from "@/api/hono/routes/globals";
+import { registerGeoRoutes } from "@/api/hono/routes/geo";
 import { registerMediaRoutes } from "@/api/hono/routes/media";
 import { registerNewsletterRoutes } from "@/api/hono/routes/newsletter";
 import { registerOrderRoutes } from "@/api/hono/routes/orders";
@@ -34,10 +37,12 @@ import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { registerProductTypeRoutes } from "@/api/hono/routes/product-types";
 import { registerSearchRoutes } from "@/api/hono/routes/search";
+import { registerSecurityRoutes } from "@/api/hono/routes/security";
 import {
   registerAdminSiteFeedbackRoutes,
   registerSiteFeedbackRoutes,
 } from "@/api/hono/routes/site-feedback";
+import { registerSocialRoutes } from "@/api/hono/routes/social";
 import { registerUserRoutes } from "@/api/hono/routes/users";
 import { registerWishlistRoutes } from "@/api/hono/routes/wishlist";
 import { registerWebhookRoutes } from "@/api/hono/routes/webhooks";
@@ -131,6 +136,18 @@ const searchApp = new OpenAPIHono<HonoBindings>();
 registerSearchRoutes(searchApp);
 app.route("/search", searchApp);
 
+const geoApp = new OpenAPIHono<HonoBindings>();
+registerGeoRoutes(geoApp);
+app.route("/geo", geoApp);
+
+const securityApp = new OpenAPIHono<HonoBindings>();
+registerSecurityRoutes(securityApp);
+app.route("/security", securityApp);
+
+const socialApp = new OpenAPIHono<HonoBindings>();
+registerSocialRoutes(socialApp);
+app.route("/social", socialApp);
+
 const globalsApp = new OpenAPIHono<HonoBindings>();
 registerGlobalRoutes(globalsApp);
 app.route("/globals", globalsApp);
@@ -154,6 +171,14 @@ app.route("/cron", cronApp);
 const adminDashboardApp = new OpenAPIHono<HonoBindings>();
 registerAdminDashboardRoutes(adminDashboardApp);
 app.route("/admin/dashboard", adminDashboardApp);
+
+const adminDebugApp = new OpenAPIHono<HonoBindings>();
+registerAdminDebugRoutes(adminDebugApp);
+app.route("/admin/debug", adminDebugApp);
+
+const agentChatApp = new OpenAPIHono<HonoBindings>();
+registerAgentChatRoutes(agentChatApp);
+app.route("/admin/agent-chat", agentChatApp);
 
 const adminImportApp = new OpenAPIHono<HonoBindings>();
 registerAdminImportRoutes(adminImportApp);

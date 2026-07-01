@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 interface ProductGalleryProps {
   images: string[];
   alt: string;
+  imageAlts?: string[];
 }
 
-export function ProductGallery({ images, alt }: ProductGalleryProps) {
+export function ProductGallery({ images, alt, imageAlts }: ProductGalleryProps) {
   const galleryImages = useMemo(() => images.filter(Boolean), [images]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const activeIndex =
@@ -19,6 +20,7 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
       ? selectedIndex
       : 0;
   const activeImage = galleryImages[activeIndex] ?? "";
+  const activeAlt = imageAlts?.[activeIndex] ?? alt;
   const hasMultipleImages = galleryImages.length > 1;
 
   const showPrevious = () => {
@@ -58,7 +60,7 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
                   type="button"
                   onClick={() => setSelectedIndex(index)}
                   className={cn(
-                    "relative h-16 w-12 shrink-0 overflow-hidden rounded-xl border bg-[#FFFCF8] p-0.5 transition sm:h-20 sm:w-16 md:h-22 md:w-full",
+                    "relative h-16 w-12 shrink-0 overflow-hidden rounded-xl border bg-[#FFFCF8] transition sm:h-20 sm:w-16 md:h-22 md:w-full",
                     activeIndex === index
                       ? "border-[#B39152] shadow-[0_10px_24px_rgba(179,145,82,0.16)]"
                       : "border-[#E7DDD4] hover:border-[#B39152]/55",
@@ -66,15 +68,13 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
                   aria-label={`View image ${index + 1} of ${galleryImages.length}`}
                   aria-pressed={activeIndex === index}
                 >
-                  <span className="relative block h-full w-full overflow-hidden rounded-[0.65rem]">
-                    <Image
-                      src={image}
-                      alt={`${alt} thumbnail ${index + 1}`}
-                      fill
-                      sizes="88px"
-                      className="object-cover"
-                    />
-                  </span>
+                  <Image
+                    src={image}
+                    alt=""
+                    fill
+                    sizes="88px"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -83,7 +83,7 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
           <div className="order-1 relative h-[min(68vh,620px)] min-h-[27rem] overflow-hidden rounded-[1.05rem] bg-[#FDF7F1] md:order-2 md:h-full md:min-h-0">
             <Image
               src={activeImage}
-              alt={alt}
+              alt={activeAlt}
               fill
               priority
               sizes="(max-width: 767px) 100vw, (max-width: 1024px) 58vw, 54vw"

@@ -30,6 +30,9 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
   const { slug } = await params;
   const policy = getPolicyBySlug(slug);
   if (!policy) notFound();
+  const relatedPolicies = policies
+    .filter((entry) => entry.slug !== policy.slug)
+    .slice(0, 4);
 
   return (
     <div className="bg-ftt-ivory text-ftt-midnight">
@@ -122,6 +125,23 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
                 >
                   Contact customer care
                 </a>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link
+                    href="/faqs"
+                    className="rounded-full border border-ftt-gold/35 bg-ftt-card px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-ftt-burgundy transition hover:border-ftt-gold"
+                  >
+                    FAQs
+                  </Link>
+                  {relatedPolicies.map((relatedPolicy) => (
+                    <Link
+                      key={relatedPolicy.slug}
+                      href={`/policies/${relatedPolicy.slug}`}
+                      className="rounded-full border border-ftt-gold/35 bg-ftt-card px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-ftt-burgundy transition hover:border-ftt-gold"
+                    >
+                      {relatedPolicy.title}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </article>
           </div>
