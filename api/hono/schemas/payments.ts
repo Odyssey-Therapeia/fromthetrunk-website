@@ -2,7 +2,17 @@ import { z } from "@hono/zod-openapi";
 
 import { createOrderSchema } from "./orders";
 
-export const createPaymentOrderSchema = createOrderSchema;
+/**
+ * Payment reliability: create-order accepts an optional client idempotency key
+ * (`checkoutAttemptId`) and a `cartFingerprint`. A retry with the same attempt
+ * id reuses the first order + payment link instead of creating a duplicate.
+ * Both are optional so existing callers keep working. (The generic
+ * `createOrderSchema` used by /orders is intentionally left unchanged.)
+ */
+export const createPaymentOrderSchema = createOrderSchema.extend({
+  checkoutAttemptId: z.string().trim().min(1).max(128).optional(),
+  cartFingerprint: z.string().trim().min(1).max(128).optional(),
+});
 
 export const verifyPaymentSchema = z.object({
   orderId: z.string().uuid(),

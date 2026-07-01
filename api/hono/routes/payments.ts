@@ -23,6 +23,11 @@ import { validateOrderItemSelectedOptions } from "@/lib/orders/selected-options"
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 import { validateDiscountCode } from "@/lib/discounts/validate";
 import {
+  findReusablePaymentOrder,
+  recordPaymentAttempt,
+} from "@/lib/payments/checkout-idempotency";
+import { evaluatePaymentHost } from "@/lib/payments/payment-host-guard";
+import {
   calculateOrderTotals,
   createRazorpayPaymentLink,
   fetchRazorpayOrder,
@@ -304,6 +309,42 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (rateLimited) return rateLimited;
 
       const body = c.req.valid("json");
+
+      // Payment reliability: block live payments on unsafe hosts (vercel.app /
+      // localhost) so real money is never taken against a non-production origin.
+      const hostGuard = evaluatePaymentHost(c.req.url);
+      if (!hostGuard.allowed) {
+        logCreateOrder.warn("Blocked payment on unsafe host", {
+          reason: hostGuard.reason,
+        });
+        return c.json(
+          {
+            code: "PAYMENT_HOST_NOT_ALLOWED",
+            message: "Payments are not available on this domain.",
+          },
+          403,
+        );
+      }
+
+      // Payment reliability: idempotent retry. If this checkout attempt already
+      // produced a still-valid pending order + payment link, return it instead
+      // of creating a duplicate order + stock hold.
+      const checkoutAttemptId =
+        (body.checkoutAttemptId ?? c.req.header("Idempotency-Key") ?? "").trim() ||
+        null;
+      const cartFingerprint = body.cartFingerprint?.trim() || null;
+
+      if (checkoutAttemptId) {
+        const reusable = await findReusablePaymentOrder({
+          attemptId: checkoutAttemptId,
+          cartFingerprint,
+          userId: authUserOrResponse.id,
+        });
+        if (reusable) {
+          return c.json(reusable, 200);
+        }
+      }
+
       const productIds = Array.from(new Set(body.items.map((item) => item.productId)));
       const reservationTokenByProductId = new Map(
         body.items.map((item) => [
@@ -738,6 +779,8 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
 	          notes: {
 	            orderId: order.id,
 	            userId: authUserOrResponse.id,
+	            ...(checkoutAttemptId ? { checkoutAttemptId } : {}),
+	            ...(cartFingerprint ? { cartFingerprint } : {}),
 	          },
           referenceId: getRazorpayPaymentLinkReferenceId(order.id),
         });
@@ -794,6 +837,30 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         paymentLinkId: paymentLink.id,
         paymentLinkUrl: paymentLink.short_url,
       });
+
+      // Payment reliability: remember this attempt → order/link mapping so a
+      // retry/abort/refresh of the same checkout reuses it instead of creating a
+      // duplicate. Recorded only after success, so a failed create leaves no
+      // marker. Best-effort; never blocks the response.
+      if (checkoutAttemptId) {
+        try {
+          await recordPaymentAttempt({
+            attemptId: checkoutAttemptId,
+            cartFingerprint,
+            userId: authUserOrResponse.id,
+            orderId: order.id,
+            paymentLinkId: paymentLink.id,
+            paymentLinkUrl: paymentLink.short_url,
+            amountPaise: totalPaise,
+            currency: "INR",
+            expiresAt: reservedUntil,
+          });
+        } catch (attemptErr) {
+          logCreateOrder.warn("Failed to record checkout attempt (non-fatal)", {
+            err: attemptErr as Record<string, unknown>,
+          });
+        }
+      }
 
       return c.json(
         {
