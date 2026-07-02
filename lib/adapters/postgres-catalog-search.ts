@@ -556,12 +556,24 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         );
       }
 
-      // Blouse sleeve: match attributes->>'sleeve_type' against selected slugs.
-      const sleeveClause = jsonStringMatches(
-        sql`${products.attributes}->>'sleeve_type'`,
-        activeSleeves,
-      );
-      if (sleeveClause) whereClauses.push(sleeveClause);
+      // Blouse sleeve is a binary facet driven by the "sleeve" product tag:
+      //   • has the tag  → "Sleeve"
+      //   • lacks the tag → "Sleeveless"
+      // EXISTS / NOT EXISTS is a correlated semi/anti-join — cheap given the
+      // product_tags primary key and the unique tags.slug index, and it never
+      // pulls tag rows into the result set. Selecting both (or neither) applies
+      // no constraint; unknown legacy values fall through to no constraint too.
+      const wantsSleeve = activeSleeves.includes("sleeve");
+      const wantsSleeveless = activeSleeves.includes("sleeveless");
+      if (wantsSleeve !== wantsSleeveless) {
+        const hasSleeveTag = sql`exists (
+          select 1
+          from ${productTags} pt
+          join ${tags} t on t.id = pt.tag_id
+          where pt.product_id = ${products.id} and t.slug = 'sleeve'
+        )`;
+        whereClauses.push(wantsSleeve ? hasSleeveTag : sql`not ${hasSleeveTag}`);
+      }
 
       const colorClause = multiSourceFacetFilter({
         attributeExpressions: [

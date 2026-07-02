@@ -73,12 +73,11 @@ const PRICE_RANGES = [
   { label: "₹50k+", min: 5000000, max: undefined },
 ] as const;
 
-const SLEEVE_LENGTH_FILTERS = [
+// Binary blouse sleeve facet, resolved server-side from the "sleeve" product
+// tag: tagged → "Sleeve", untagged → "Sleeveless".
+const SLEEVE_FILTERS = [
   { label: "Sleeveless", value: "sleeveless" },
-  { label: "Short Sleeve", value: "short-sleeve" },
-  { label: "Elbow Sleeve", value: "elbow-sleeve" },
-  { label: "Three Quarter Sleeve", value: "three-quarter-sleeve" },
-  { label: "Full Sleeve", value: "full-sleeve" },
+  { label: "Sleeve", value: "sleeve" },
 ] as const;
 
 type CollectionSearchParams = {
@@ -521,7 +520,7 @@ export default async function CollectionPage({
 
   const activeCollectionLabel = activeCollection?.name ?? "All pieces";
   const filterDescription = isBlouseMode
-    ? "Find your blouse, refine by sleeve length and colour."
+    ? "Find your blouse, refine by sleeve and colour."
     : "Find your pre-loved saree, refine by category, fabric, colour, price, occasion, and availability.";
   const buildUrl = (patch: BuildUrlPatch = {}) => {
     const nextCollectionSlug =
@@ -666,7 +665,7 @@ export default async function CollectionPage({
     value: option.value,
   }));
   const keepFacetGroup = (options: CatalogFilterOption[]) => options.length >= 2;
-  const sleeveOptions: CatalogFilterOption[] = SLEEVE_LENGTH_FILTERS.map((option) => ({
+  const sleeveOptions: CatalogFilterOption[] = SLEEVE_FILTERS.map((option) => ({
     label: option.label,
     value: option.value,
   }));

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/api/hono/middleware/auth";
 import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import { deleteMedia, listMedia } from "@/db/queries/media";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { createMediaFromUpload, generateUploadUrl, MAX_IMAGE_BYTES } from "@/lib/media/blob-upload";
 
 const uploadRequestSchema = z.object({
@@ -56,6 +57,15 @@ export const registerMediaRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const adminOrResponse = requireAdmin(c);
       if (adminOrResponse instanceof Response) return adminOrResponse;
+
+      // Light per-admin cap on the upload-URL generator (defence-in-depth on an
+      // already admin-gated route). Generous so legitimate bulk uploads pass.
+      const rateLimited = await rateLimitResponse(
+        c.req.raw,
+        `media:upload:${adminOrResponse.id}`,
+        { limit: 60, windowSeconds: 60 }
+      );
+      if (rateLimited) return rateLimited;
 
       const body = c.req.valid("json");
       const upload = await generateUploadUrl({

@@ -23,6 +23,7 @@ import {
 } from "@/db/queries/conversations";
 import { getProduct } from "@/db/queries/products";
 import { toRupees } from "@/db/money";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { ALLOWED_MODEL_IDS, DEFAULT_MODEL_ID } from "@/lib/ports/agent-chat";
 
 type ProductAssistantUIMessage = UIMessage<
@@ -68,6 +69,16 @@ export const registerAgentChatRoutes = (app: OpenAPIHono<HonoBindings>) => {
     }
 
     const userId = authUser.id;
+
+    // Defense-in-depth cost/DoS cap for the LLM endpoint (admin-only, so this
+    // is a safety net against runaway loops, not an access control). Keyed per
+    // admin user + IP; generous enough for real interactive assistant use.
+    const rateLimited = await rateLimitResponse(c.req.raw, `agent:chat:${userId}`, {
+      limit: 30,
+      requireDurable: true,
+      windowSeconds: 60,
+    });
+    if (rateLimited) return rateLimited;
 
     let body: Record<string, unknown>;
     try {

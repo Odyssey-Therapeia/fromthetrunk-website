@@ -3,7 +3,7 @@ import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { createLogger } from "@/lib/log";
 
 import { requireAuth } from "@/api/hono/middleware/auth";
-import { errorSchema } from "@/api/hono/schemas/common";
+import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import { createPaymentOrderSchema, verifyPaymentSchema } from "@/api/hono/schemas/payments";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
@@ -877,6 +877,104 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         },
         200
       );
+    }
+  );
+
+  // Repay an unpaid/failed order. Security posture:
+  //   - auth required + rate limited + host guard (no live payments on unsafe hosts)
+  //   - owner-scoped (admin | userId match | guest-email claim) — same rule as GET order
+  //   - only pending/failed orders (never re-charge paid/refunded)
+  //   - amount is the ORDER's existing Razorpay link amount (never client-supplied):
+  //     we re-surface the order's already-created payment link instead of minting a
+  //     new one, which keeps the amount server-authoritative, avoids Razorpay's
+  //     duplicate reference_id conflict, and reuses the verified callback.
+  app.openapi(
+    createRoute({
+      method: "post",
+      path: "/orders/{id}/repay",
+      request: { params: idParamSchema },
+      responses: {
+        200: { description: "Repay payment link" },
+        403: { content: { "application/json": { schema: errorSchema } }, description: "Forbidden" },
+        404: { content: { "application/json": { schema: errorSchema } }, description: "Order not found" },
+        409: { content: { "application/json": { schema: errorSchema } }, description: "Not repayable" },
+      },
+      tags: ["Payments"],
+    }),
+    async (c) => {
+      const authUserOrResponse = requireAuth(c);
+      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+
+      const rateLimited = await rateLimitResponse(
+        c.req.raw,
+        `payment:repay:${authUserOrResponse.id}`,
+        { limit: 10, requireDurable: true, windowSeconds: 60 }
+      );
+      if (rateLimited) return rateLimited;
+
+      const hostGuard = evaluatePaymentHost(c.req.url);
+      if (!hostGuard.allowed) {
+        return c.json(
+          { code: "PAYMENT_HOST_NOT_ALLOWED", message: "Payments are not available on this domain." },
+          403
+        );
+      }
+
+      const { id } = c.req.valid("param");
+      const order = await getOrder(id);
+      if (!order) {
+        return c.json({ code: "ORDER_NOT_FOUND", message: "Order not found." }, 404);
+      }
+
+      const isAdmin = authUserOrResponse.role === "admin";
+      const isOwner = order.userId === authUserOrResponse.id;
+      const sessionEmail = authUserOrResponse.email ?? null;
+      const isEmailClaim =
+        order.userId === null &&
+        order.shippingEmail !== null &&
+        sessionEmail !== null &&
+        order.shippingEmail.toLowerCase() === sessionEmail.toLowerCase();
+      if (!isAdmin && !isOwner && !isEmailClaim) {
+        return c.json({ code: "FORBIDDEN", message: "Forbidden." }, 403);
+      }
+
+      if (order.paymentStatus === "paid") {
+        return c.json({ code: "ALREADY_PAID", message: "This order is already paid." }, 409);
+      }
+      if (order.paymentStatus === "refunded") {
+        return c.json({ code: "ORDER_REFUNDED", message: "This order has been refunded." }, 409);
+      }
+      if (!order.razorpayOrderId) {
+        return c.json(
+          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
+          409
+        );
+      }
+
+      let link: RazorpayPaymentLinkResponse;
+      try {
+        link = await fetchRazorpayPaymentLink(order.razorpayOrderId);
+      } catch {
+        return c.json(
+          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
+          409
+        );
+      }
+
+      if (link.status === "paid") {
+        return c.json(
+          { code: "ALREADY_PAID", message: "Payment was already received for this order — please refresh." },
+          409
+        );
+      }
+      if (link.status && link.status !== "created" && link.status !== "partially_paid") {
+        return c.json(
+          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
+          409
+        );
+      }
+
+      return c.json({ orderId: order.id, paymentLinkUrl: link.short_url }, 200);
     }
   );
 

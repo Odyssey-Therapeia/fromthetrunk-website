@@ -245,11 +245,25 @@ export function ProductCardCommerceRow({
       sourceCard?.setAttribute("data-ftt-cart-border", "error");
       setState("error");
       setMotionLabel("Try again");
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "This piece is no longer available.",
-      );
+
+      // Vibrate the card so the rejection is felt, then explain it.
+      if (!reduceMotion) shakeCard(sourceCard);
+
+      const code = (error as Error & { code?: string })?.code;
+      const reservedByAnother =
+        code === "PRODUCT_RESERVED" || code === "RESERVATION_CONFLICT";
+      if (reservedByAnother) {
+        toast.error("Just reserved by another buyer", {
+          description:
+            "Someone has reserved this piece to buy. Feel free to explore our other one-of-a-kind sarees.",
+        });
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "This piece is no longer available.",
+        );
+      }
 
       resetTimerRef.current = window.setTimeout(() => {
         setState("idle");
@@ -400,6 +414,23 @@ function getSourceProductCard(source: HTMLElement): HTMLElement | null {
   return source.closest<HTMLElement>("[data-ftt-product-card]");
 }
 
+/** A short horizontal shake to signal an add-to-cart rejection. */
+function shakeCard(card: HTMLElement | null) {
+  if (!card || typeof card.animate !== "function") return;
+  card.animate(
+    [
+      { transform: "translateX(0)" },
+      { transform: "translateX(-8px)" },
+      { transform: "translateX(7px)" },
+      { transform: "translateX(-5px)" },
+      { transform: "translateX(4px)" },
+      { transform: "translateX(-2px)" },
+      { transform: "translateX(0)" },
+    ],
+    { duration: 460, easing: "cubic-bezier(.36,.07,.19,.97)" },
+  );
+}
+
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return true;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -443,9 +474,11 @@ async function reserveProductIfNeeded(
       code?: string;
       message?: string;
     } | null;
-    throw new Error(
+    const reserveError = new Error(
       getAvailabilityErrorMessage(payload?.code, payload?.message),
-    );
+    ) as Error & { code?: string };
+    reserveError.code = payload?.code ?? undefined;
+    throw reserveError;
   }
 
   return (await response.json()) as {
