@@ -69,19 +69,23 @@ export function SavedAddressPicker({
             <SelectValue placeholder="Choose from your address book" />
           )}
         </SelectTrigger>
-        <SelectContent className="max-w-[calc(100vw-2rem)]">
+        <SelectContent className="max-w-[calc(100vw-2rem)] border-ftt-gold/25 bg-ftt-ivory">
           {addresses.map((address) => (
-            <SelectItem key={address.id} value={address.id} className="py-2">
+            <SelectItem
+              key={address.id}
+              value={address.id}
+              className="group py-2 text-ftt-burgundy focus:bg-ftt-burgundy focus:text-ftt-ivory data-[highlighted]:bg-ftt-burgundy data-[highlighted]:text-ftt-ivory"
+            >
               <span className="flex min-w-0 flex-col gap-0.5 text-left">
-                <span className="break-words font-semibold text-ftt-navy">
+                <span className="break-words font-semibold text-ftt-burgundy group-focus:text-ftt-ivory group-data-[highlighted]:text-ftt-ivory">
                   {addressTitle(address)}
                   {address.isDefault ? (
-                    <span className="ml-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ftt-gold">
+                    <span className="ml-2 text-[10px] font-medium uppercase tracking-[0.12em] text-ftt-gold group-focus:text-ftt-ivory group-data-[highlighted]:text-ftt-ivory">
                       Default
                     </span>
                   ) : null}
                 </span>
-                <span className="break-words text-xs font-normal text-ftt-burgundy/60">
+                <span className="break-words text-xs font-normal text-ftt-burgundy/60 group-focus:text-ftt-ivory/80 group-data-[highlighted]:text-ftt-ivory/80">
                   {addressLine(address)}
                 </span>
               </span>

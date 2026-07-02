@@ -154,7 +154,7 @@ export default async function ConfirmationPage({
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               {isPaid ? (
-                <Button asChild className="h-12 w-full rounded-full px-6 sm:h-11 sm:w-auto">
+                <Button asChild className="h-12 w-full rounded-full px-6 text-ftt-ivory sm:h-11 sm:w-auto">
                   <a href={receiptHref} download>
                     <Download aria-hidden="true" className="h-4 w-4" />
                     Download receipt
@@ -293,7 +293,7 @@ export default async function ConfirmationPage({
           </dl>
 
           {isPaid ? (
-            <Button asChild className="mt-6 h-11 w-full rounded-full">
+            <Button asChild className="mt-6 h-11 w-full rounded-full text-ftt-ivory">
               <a href={receiptHref} download>
                 <Download aria-hidden="true" className="h-4 w-4" />
                 Download full receipt

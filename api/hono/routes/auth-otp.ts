@@ -279,6 +279,28 @@ export const registerAuthOtpRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
+      // Per-IP cap across ALL identifiers (additive to the per-identifier limit
+      // below) so a single source can't spray OTP requests at many emails/phones.
+      const ipRateLimited = await timed("auth.otp.start.ipRateLimit", () =>
+        rateLimitResponse(c.req.raw, "auth:otp:start:ip", {
+          limit: 15,
+          requireDurable: true,
+          windowSeconds: 600,
+        })
+      );
+      if (ipRateLimited) {
+        await timed("auth.otp.start.securityEvent.ipRateLimited", () =>
+          securityEvent("otp_rate_limited", {
+            identifierNormalized: detected.identifierNormalized,
+            identifierType: detected.identifierType,
+            ipHash: requestIpHash,
+            metadata: { action: "start", dimension: "ip", purpose: body.purpose },
+            userAgentHash,
+          })
+        );
+        return ipRateLimited;
+      }
+
       const ratePrefix = `auth:otp:start:${body.purpose}:${detected.identifierType}:${hashToken(
         detected.identifierNormalized
       )}`;

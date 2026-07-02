@@ -5,6 +5,7 @@ import {
   normalizePhotonFeature,
   type GeoSuggestion,
 } from "@/lib/geo/photon";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { timed } from "@/lib/perf/timed";
 
 const CACHE_HEADERS = {
@@ -39,6 +40,15 @@ export const registerGeoRoutes = (app: OpenAPIHono<HonoBindings>) => {
     if (!query || query.length < 3) {
       return json({ suggestions: [] });
     }
+
+    // Per-IP cap on the upstream (photon) proxy. Generous + memory-backed (no
+    // requireDurable) so address autocomplete during checkout never hard-fails
+    // on a limiter hiccup; debounced typeahead stays well under this.
+    const rateLimited = await rateLimitResponse(c.req.raw, "geo:search", {
+      limit: 30,
+      windowSeconds: 60,
+    });
+    if (rateLimited) return rateLimited;
 
     const url = new URL("https://photon.komoot.io/api/");
     url.searchParams.set("q", query);

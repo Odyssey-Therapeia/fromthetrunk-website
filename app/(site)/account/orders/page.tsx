@@ -191,12 +191,12 @@ function OrdersTabs({
 function OrderTimelineCard({ order, index }: { order: Order; index: number }) {
   const items = order.items ?? [];
   const statusLabel = humanize(order.status);
-  const paymentLabel = humanize(order.paymentStatus);
+  const isPaid = order.paymentStatus === "paid";
 
   return (
     <Link
       href={`/account/orders/${order.id}`}
-      className="ftt-account-glow-card group block rounded-[1.5rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_58px_rgba(20,29,70,0.12)]"
+      className={`ftt-account-glow-card group block rounded-[1.5rem] border-2 ${isPaid ? "border-emerald-700" : "border-red-600"} bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_58px_rgba(20,29,70,0.12)]`}
     >
       <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
         <div className="flex items-center gap-3 md:block">
@@ -212,11 +212,22 @@ function OrderTimelineCard({ order, index }: { order: Order; index: number }) {
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="rounded-full bg-ftt-navy px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-ftt-ivory">
-              {statusLabel}
-            </Badge>
-            <Badge className="rounded-full border border-ftt-gold/35 bg-ftt-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-ftt-gold">
-              {paymentLabel}
+            {/* Single status badge: paid orders show fulfilment status; unpaid
+                orders show the payment state (Pending / Payment Failed). */}
+            <Badge
+              className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                order.paymentStatus === "failed"
+                  ? "bg-[#601D1C] text-ftt-ivory"
+                  : isPaid
+                    ? "bg-ftt-navy text-ftt-ivory"
+                    : "border border-ftt-gold/35 bg-ftt-gold/10 text-ftt-gold"
+              }`}
+            >
+              {isPaid
+                ? statusLabel
+                : order.paymentStatus === "failed"
+                  ? "Payment Failed"
+                  : "Payment Pending"}
             </Badge>
           </div>
 

@@ -151,11 +151,17 @@ describe("recordPaymentAttempt", () => {
     });
 
     expect(mocks.claimEvent).toHaveBeenCalledTimes(1);
-    const arg = mocks.claimEvent.mock.calls[0][0] as {
+    // The mock is declared with no typed params, so `.mock.calls` is an empty
+    // tuple type — cast to the known call shape (a 1-tuple of the arg) so the
+    // indexed access is type-safe without `noUncheckedIndexedAccess` friction.
+    type ClaimEventArg = {
       eventId: string;
       type: string;
       payload: Record<string, unknown>;
     };
+    const arg = (
+      mocks.claimEvent.mock.calls as unknown as [[ClaimEventArg]]
+    )[0][0];
     expect(arg.eventId).toBe("checkout_attempt:att-2");
     expect(arg.type).toBe("checkout_attempt_created");
     expect(arg.payload.orderId).toBe("ord-9");
