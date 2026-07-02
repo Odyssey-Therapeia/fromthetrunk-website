@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useUiHaptics } from "@/lib/haptics/use-ui-haptics";
 import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 
-const SLIDE_DURATION_MS = 3000;
-const SLIDE_TRANSITION_MS = 900;
+// Slower cadence: each slide holds longer and the crossfade is gentler.
+const SLIDE_DURATION_MS = 6000;
+const SLIDE_TRANSITION_MS = 1400;
 const HERO_GOLD = "#B39152";
 
 // TEMP (debugging): flip back to true to restore auto-advance.
@@ -272,7 +274,7 @@ function HeroCopy({
       className={
         isMobile
           ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_5px_22px_rgba(0,0,0,0.48)]"
-          : "drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none lg:w-[clamp(24rem,40vw,44rem)]"
+          : "drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none md:-translate-y-4 lg:w-[clamp(24rem,40vw,44rem)] lg:-translate-y-8"
       }
     >
       <p
@@ -317,6 +319,26 @@ function HeroCopy({
           {slide.description}
         </p>
       ) : null}
+      <div
+        className={
+          isMobile
+            ? "mt-6 flex flex-wrap items-center gap-3"
+            : "mt-8 flex flex-wrap items-center gap-4"
+        }
+      >
+        <Link
+          href="/collection"
+          className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-linear-to-r from-[#601D1C] to-[#141D46] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#FDF7F1] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:brightness-110"
+        >
+          Explore Collection
+        </Link>
+        <Link
+          href="/our-story"
+          className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-[#FDF7F1] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#141D46] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-white"
+        >
+          Our Story
+        </Link>
+      </div>
     </div>
   );
 }
@@ -472,9 +494,12 @@ export function HeroSection(props: HeroSectionProps) {
           <div
             key={`${slide.image}-content`}
             aria-hidden={activeImageIndex !== index}
+            inert={activeImageIndex !== index || undefined}
             className={[
               "absolute inset-0 transition-opacity ease-in-out",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
+              activeImageIndex === index
+                ? "opacity-100"
+                : "pointer-events-none opacity-0",
             ].join(" ")}
             style={{
               transitionDuration: prefersReducedMotion

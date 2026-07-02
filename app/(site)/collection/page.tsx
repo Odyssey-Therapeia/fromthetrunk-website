@@ -55,6 +55,18 @@ const COLLECTION_BANNER_IMAGES = [
     alt: "From the Trunk collection banner alternate edit",
   },
 ] as const;
+
+// Blouse-only hero banners — shown when the Blouses category is selected.
+const BLOUSE_BANNER_IMAGES = [
+  {
+    src: "/banner/blouse_banner_1.avif",
+    alt: "From the Trunk blouse collection banner",
+  },
+  {
+    src: "/banner/blouse_banner_2.avif",
+    alt: "From the Trunk blouse collection banner alternate edit",
+  },
+] as const;
 const DEFAULT_ITEMS_PER_PAGE = 10;
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50] as const;
 const MAX_COLLECTION_PAGE = 10;
@@ -208,7 +220,7 @@ const TOP_VIEWED_TAG = "top-viewed";
 // Display-only label overrides for curated tag slugs, so the applied-filter chip
 // reads nicely (the virtual "top-viewed" slug has no DB name to fall back to).
 const TAG_LABEL_OVERRIDES: Record<string, string> = {
-  [TOP_VIEWED_TAG]: "Top View",
+  [TOP_VIEWED_TAG]: "Top Viewed",
 };
 
 const resolveTagLabel = (
@@ -1158,7 +1170,9 @@ export default async function CollectionPage({
                 </p>
 
                 <h1 className="max-w-[12ch] text-balance font-serif text-4xl font-medium leading-[0.98] text-[#FDF7F1] sm:text-5xl lg:text-6xl lg:leading-[0.96]">
-                  {cms?.title ? (
+                  {isBlouseMode ? (
+                    "Blouses with a story of their own"
+                  ) : cms?.title ? (
                     cms.title
                   ) : (
                     <>
@@ -1170,8 +1184,10 @@ export default async function CollectionPage({
                 </h1>
 
                 <p className="max-w-md text-pretty text-sm leading-6 text-[#FDF7F1]/78 sm:text-base lg:leading-7">
-                  {cms?.description ??
-                    "Discover heirlooms from private wardrobes and collector trunks. Each piece is authenticated and accompanied by its story."}
+                  {isBlouseMode
+                    ? "Blouses that once completed a drape, kept and cared for. Ready to begin again with yours."
+                    : cms?.description ??
+                      "Discover heirlooms from private wardrobes and collector trunks. Each piece is authenticated and accompanied by its story."}
                 </p>
               </div>
 
@@ -1191,7 +1207,7 @@ export default async function CollectionPage({
 
           <div className="relative min-h-[300px] overflow-hidden bg-[#141D46] sm:min-h-[340px] md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
             <CollectionHeroCarousel
-              images={COLLECTION_BANNER_IMAGES}
+              images={isBlouseMode ? BLOUSE_BANNER_IMAGES : COLLECTION_BANNER_IMAGES}
               prioritizeFirst
             />
           </div>

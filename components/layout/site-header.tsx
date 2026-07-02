@@ -24,7 +24,7 @@ import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top View" },
+  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },

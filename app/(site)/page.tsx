@@ -7,8 +7,11 @@ import { FloatingReviewTab } from "@/components/sections/floating-review-tab";
 import { HeroSection } from "@/components/sections/hero-section";
 import { HomeIntroGate } from "@/components/sections/home-intro-gate";
 import {
-  LandingSections,
+  ConnectWithUsSection,
+  FeaturedProductsSection,
+  OurStorySection,
   SectionSeparator,
+  TestimonialsSection,
   type LandingProductCard,
 } from "@/components/sections/landing-sections";
 import { SocialSection } from "@/components/sections/social-section";
@@ -136,17 +139,23 @@ export default async function Home() {
   return (
     <HomeIntroGate>
       <div className="bg-[#FDF7F1]">
+        {/* Section order: hero → our story → banner → fabric → social →
+            featured (category) → testimonials → connect. */}
         <HeroSection content={heroContent} />
         <FloatingReviewTab />
-        <FabricCategorySection />
+        <OurStorySection />
         <SectionSeparator />
         <CampaignBannerSection />
         <SectionSeparator />
-        <LandingSections
-          featuredProducts={landingProducts}
-          showIntroSeparator={false}
-          socialSection={socialSection}
-        />
+        <FabricCategorySection />
+        <SectionSeparator />
+        {socialSection}
+        <SectionSeparator />
+        <FeaturedProductsSection products={landingProducts} />
+        <SectionSeparator />
+        <TestimonialsSection />
+        <SectionSeparator />
+        <ConnectWithUsSection />
       </div>
     </HomeIntroGate>
   );

@@ -158,8 +158,8 @@ export function WelcomePopup() {
               </h2>
 
               <p className="mx-auto m-0 max-w-[34ch] font-serif text-[16.5px] leading-[1.5] text-[#6B5149]">
-                Each one authenticated, restored by hand, and ready for its next
-                chapter&nbsp;— yours.
+                Each one authenticated, restored by hand, and ready to be worn
+                again by YOU!
               </p>
 
               <div
@@ -190,17 +190,17 @@ export function WelcomePopup() {
                 Grand Launch Week
               </p>
               <p className="mx-auto m-0 mb-[18px] max-w-[30ch] font-serif text-[16px] leading-[1.45] text-[#2A1714]">
-                Limited <b className="font-semibold">fortnightly drops</b> —
-                reserve your piece early.
+                Limited <b className="font-semibold">fortnightly drops</b>.
+                Reserve yours early.
               </p>
 
               <div className="mb-[18px] w-full">
                 <p className="m-0 mb-2 font-sans text-[10.5px] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
-                  Connect with us for the newsletter
+                  Join our list
                 </p>
                 <FooterNewsletterForm variant="light" />
                 <p className="m-0 mt-2 font-sans text-[11px] leading-[1.4] text-[#6B5149]">
-                  Be first to know about private drops &amp; restocks.
+                  Be the first to know about private drops &amp; restocks.
                 </p>
               </div>
 

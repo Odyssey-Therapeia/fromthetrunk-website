@@ -851,6 +851,11 @@ function CoverPage({
   onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
   reduceMotion: boolean;
 }) {
+  // The "Begin here — Meet our founders" open-book button below is commented
+  // out per request; keep `onOpen` referenced so restoring it is a one-line
+  // uncomment (and to satisfy no-unused-vars).
+  void onOpen;
+
   return (
     <div className="relative h-full overflow-hidden bg-[#141D46] p-[7%] text-[#FDF7F1]">
       {/* CoverPage artwork as the book-cover background. */}
@@ -907,6 +912,7 @@ function CoverPage({
           </motion.p>
         </motion.div>
 
+        {/* "Begin here — Meet our founders" open-book CTA — commented out per request.
         <button
           type="button"
           onMouseDown={(event) => event.stopPropagation()}
@@ -926,6 +932,7 @@ function CoverPage({
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
           </span>
         </button>
+        */}
       </div>
     </div>
   );
