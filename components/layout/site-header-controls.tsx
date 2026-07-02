@@ -21,7 +21,7 @@ import { useGuestWishlistStore } from "@/lib/store/wishlist-store";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top View" },
+  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
@@ -259,7 +259,8 @@ function SiteHeaderControlsInner() {
                   </form>
 
                   <div className="grid gap-5">
-                    {NAV_ITEMS.slice(0, 2).map((link) => (
+                    {/* Collection, Top Viewed, Blouses — the primary catalog links. */}
+                    {NAV_ITEMS.slice(0, 3).map((link) => (
                       <Link
                         key={link.href}
                         href={link.href}
@@ -270,6 +271,7 @@ function SiteHeaderControlsInner() {
                       </Link>
                     ))}
                   </div>
+                  {/* Shop By — temporarily hidden.
                   <div className="grid gap-3 border-y border-[#601D1C]/10 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
                       Shop By
@@ -285,6 +287,7 @@ function SiteHeaderControlsInner() {
                       </Link>
                     ))}
                   </div>
+                  */}
                   <div className="grid gap-3 border-y border-[#601D1C]/10 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152]">
                       About Us

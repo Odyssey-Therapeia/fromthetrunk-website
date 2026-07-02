@@ -9,7 +9,7 @@ import { NavLink, NavUnderline } from "@/components/layout/nav-link";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top View" },
+  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
   { href: "/collection?type=blouse", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
@@ -84,14 +84,16 @@ function SiteHeaderDesktopNavInner() {
         />
         <NavLink
           href="/collection?tags=top-viewed"
-          label="Top View"
+          label="Top Viewed"
           active={isTopViewedActive}
         />
+        {/* Shop By — temporarily hidden.
         <NavDropdown
           label="Shop By"
           items={SHOP_BY_ITEMS}
           active={isFilteredCollection}
         />
+        */}
         <NavLink
           href="/collection?type=blouse"
           label="Blouses"
@@ -124,7 +126,7 @@ function SiteHeaderDesktopNavFallback() {
           strong={"strong" in link && link.strong}
         />
       ))}
-      <NavDropdown label="Shop By" items={SHOP_BY_ITEMS} />
+      {/* Shop By — temporarily hidden. */}
       {NAV_ITEMS.slice(2).map((link) =>
         link.label === "About Us" ? (
           <NavDropdown key={link.href} label="About Us" items={ABOUT_ITEMS} />
