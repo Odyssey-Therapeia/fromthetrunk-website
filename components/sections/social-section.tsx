@@ -92,7 +92,7 @@ export async function SocialSection({ images }: { images: LandingImage[] }) {
             </h2>
 
             <p className="mt-7 w-full max-w-[calc(100vw-2.5rem)] text-base leading-7 text-[#601D1C]/70 sm:max-w-md">
-              Reels from our styling table, restoration notes, new arrivals,
+              Reels from our restoration notes, new arrivals,
               and the women giving old-world sarees a new life.
             </p>
 

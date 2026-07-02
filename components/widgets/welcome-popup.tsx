@@ -120,7 +120,7 @@ export function WelcomePopup() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.985 }}
             transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-            className="relative flex min-h-[472px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-3rem)] flex-col items-center justify-center overflow-y-auto rounded-[14px] border px-[46px] pb-[34px] pt-[42px] text-center max-[540px]:px-[30px] max-[540px]:pb-7 max-[540px]:pt-[38px]"
+            className="relative flex w-[min(500px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] flex-col items-center justify-center overflow-hidden rounded-[14px] border px-[clamp(22px,5vw,46px)] pb-[clamp(22px,3.6vw,34px)] pt-[clamp(30px,4.6vw,42px)] text-center"
             style={{
               borderColor: "#C7AE82",
               background:
@@ -145,26 +145,26 @@ export function WelcomePopup() {
             </button>
 
             <div className="relative z-[1] w-full">
-              <p className="m-0 mb-4 font-sans text-[11px] uppercase tracking-[0.26em] text-[#A8854D]">
+              <p className="m-0 mb-[clamp(8px,1.6vw,16px)] font-sans text-[clamp(9.5px,1.1vw,11px)] uppercase tracking-[0.26em] text-[#A8854D]">
                 Welcome to From The Trunk
               </p>
 
               <h2
                 id="ftt-welcome-heading"
-                className="m-0 mb-4 font-serif text-[39px] font-medium leading-[1.06] tracking-[0.005em] text-[#2A1714] max-[540px]:text-[33px]"
+                className="m-0 mb-[clamp(8px,1.6vw,16px)] font-serif text-[clamp(26px,4.4vw,39px)] font-medium leading-[1.06] tracking-[0.005em] text-[#2A1714]"
               >
                 Every saree has
                 <br />a <em className="font-semibold italic">past life</em>.
               </h2>
 
-              <p className="mx-auto m-0 max-w-[34ch] font-serif text-[16.5px] leading-[1.5] text-[#6B5149]">
+              <p className="mx-auto m-0 max-w-[34ch] font-serif text-[clamp(13.5px,2vw,16.5px)] leading-[1.5] text-[#6B5149]">
                 Each one authenticated, restored by hand, and ready to be worn
                 again by YOU!
               </p>
 
               <div
                 aria-hidden
-                className="mx-auto mb-[22px] mt-6 flex w-[78%] items-center justify-center gap-[14px]"
+                className="mx-auto mb-[clamp(12px,2.2vw,22px)] mt-[clamp(14px,2.6vw,24px)] flex w-[78%] items-center justify-center gap-[14px]"
               >
                 <span
                   className="h-px flex-1"
@@ -186,20 +186,20 @@ export function WelcomePopup() {
                 />
               </div>
 
-              <p className="m-0 mb-[7px] font-sans text-[10.5px] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
+              <p className="m-0 mb-[7px] font-sans text-[clamp(9.5px,1.1vw,10.5px)] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
                 Grand Launch Week
               </p>
-              <p className="mx-auto m-0 mb-[18px] max-w-[30ch] font-serif text-[16px] leading-[1.45] text-[#2A1714]">
+              <p className="mx-auto m-0 mb-[clamp(12px,1.8vw,18px)] max-w-[30ch] font-serif text-[clamp(13.5px,1.9vw,16px)] leading-[1.45] text-[#2A1714]">
                 Limited <b className="font-semibold">fortnightly drops</b>.
                 Reserve yours early.
               </p>
 
-              <div className="mb-[18px] w-full">
-                <p className="m-0 mb-2 font-sans text-[10.5px] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
+              <div className="mb-[clamp(12px,1.8vw,18px)] w-full">
+                <p className="m-0 mb-2 font-sans text-[clamp(9.5px,1.1vw,10.5px)] font-medium uppercase tracking-[0.24em] text-[#A8854D]">
                   Join our list
                 </p>
                 <FooterNewsletterForm variant="light" />
-                <p className="m-0 mt-2 font-sans text-[11px] leading-[1.4] text-[#6B5149]">
+                <p className="m-0 mt-2 font-sans text-[clamp(10px,1.2vw,11px)] leading-[1.4] text-[#6B5149]">
                   Be the first to know about private drops &amp; restocks.
                 </p>
               </div>
@@ -207,7 +207,7 @@ export function WelcomePopup() {
               <button
                 type="button"
                 onClick={explore}
-                className="group inline-flex w-full items-center justify-center gap-[10px] rounded-[7px] bg-[#15233F] px-[22px] py-[14px] font-sans text-[12.5px] font-medium uppercase tracking-[0.16em] text-[#FAF4EA] transition hover:-translate-y-px hover:bg-[#1E3157]"
+                className="group inline-flex w-full items-center justify-center gap-[10px] rounded-[7px] bg-[#15233F] px-[22px] py-[clamp(11px,1.7vw,14px)] font-sans text-[clamp(11px,1.3vw,12.5px)] font-medium uppercase tracking-[0.16em] text-[#FAF4EA] transition hover:-translate-y-px hover:bg-[#1E3157]"
                 style={{ boxShadow: "0 10px 24px -12px rgba(21,35,63,.7)" }}
               >
                 Explore the collection
@@ -220,7 +220,7 @@ export function WelcomePopup() {
               <button
                 type="button"
                 onClick={dismiss}
-                className="group mt-[14px] px-1.5 py-1 font-sans text-[12.5px] font-light tracking-[0.06em] text-[#6B5149] transition hover:text-[#2A1714]"
+                className="group mt-[clamp(10px,1.6vw,14px)] px-1.5 py-1 font-sans text-[clamp(11px,1.3vw,12.5px)] font-light tracking-[0.06em] text-[#6B5149] transition hover:text-[#2A1714]"
               >
                 <span className="border-b border-transparent pb-px transition group-hover:border-[#C7AE82]">
                   Maybe later
