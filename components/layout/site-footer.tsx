@@ -110,89 +110,11 @@ function OrnamentIcon({ className = "" }: IconProps) {
   );
 }
 
-function SearchGemIcon({ className = "" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.45"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="20" cy="20" r="10" />
-      <path d="m28 28 10 10" />
-      <path d="M16 19.5 20 15l4 4.5-4 5-4-5Z" />
-    </svg>
-  );
-}
-
-function CareIcon({ className = "" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.45"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M24 31c-5.5-3.4-10-7.2-10-12a5.4 5.4 0 0 1 9.6-3.4A5.4 5.4 0 0 1 34 19c0 4.8-4.5 8.6-10 12Z" />
-      <path d="M13 37c4 2.6 7.6 3.9 11 3.9S31 39.6 35 37" />
-      <path d="M10 30c3 2.4 4.6 5.2 5 8" />
-      <path d="M38 30c-3 2.4-4.6 5.2-5 8" />
-    </svg>
-  );
-}
-
-function SealIcon({ className = "" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.45"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M24 5 29 9l6-.5 2.5 5.5 5.5 2.5-.5 6 4 5-4 5 .5 6-5.5 2.5-2.5 5.5-6-.5-5 4-5-4-6 .5-2.5-5.5L5 38.5l.5-6-4-5 4-5-.5-6 5.5-2.5L13 8.5l6 .5 5-4Z" />
-      <path d="m18.5 24 3.8 3.8 7.2-7.4" />
-    </svg>
-  );
-}
-
-function GiftIcon({ className = "" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.45"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M9 19h30v22H9z" />
-      <path d="M9 19h30v8H9z" />
-      <path d="M24 19v22" />
-      <path d="M24 19c-5-1-8.5-4-8.5-7 0-2.2 1.7-3.8 4-3.8 2.8 0 4.5 3.8 4.5 10.8Z" />
-      <path d="M24 19c5-1 8.5-4 8.5-7 0-2.2-1.7-3.8-4-3.8-2.8 0-4.5 3.8-4.5 10.8Z" />
-    </svg>
-  );
-}
-
 function CompactArchLineArt() {
   return (
     <svg
       viewBox="0 0 280 300"
-      className="absolute left-0 top-0 h-[250px] w-[250px] text-[#B39152]/32"
+      className="absolute left-0 top-0 h-[220px] w-[220px] text-[#B39152]/32 sm:h-[245px] sm:w-[245px] md:h-[250px] md:w-[250px]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1"
@@ -280,7 +202,11 @@ function FooterGoldRail() {
           </pattern>
         </defs>
 
-        <rect width="100%" height="100%" fill="url(#ftt-compact-footer-motif)" />
+        <rect
+          width="100%"
+          height="100%"
+          fill="url(#ftt-compact-footer-motif)"
+        />
       </svg>
 
       <div className="absolute left-1/2 top-[-18px] grid h-10 w-14 -translate-x-1/2 place-items-center rounded-t-full border border-[#B39152]/65 bg-[#601D1C] shadow-[0_0_24px_rgba(179,145,82,0.16)] sm:top-[-21px] sm:h-12 sm:w-16">
@@ -289,29 +215,6 @@ function FooterGoldRail() {
     </div>
   );
 }
-
-const FOOTER_VALUES = [
-  {
-    title: "Curated with intention",
-    copy: "Handpicked with history.",
-    Icon: SearchGemIcon,
-  },
-  {
-    title: "Restored with care",
-    copy: "Preserved, repaired, loved.",
-    Icon: CareIcon,
-  },
-  {
-    title: "Authentic & trusted",
-    copy: "Quality checked. Original.",
-    Icon: SealIcon,
-  },
-  {
-    title: "Sustainable luxury",
-    copy: "Pre-loved, forever-worthy.",
-    Icon: GiftIcon,
-  },
-];
 
 function FooterMobileNav({
   footerSections,
@@ -325,7 +228,9 @@ function FooterMobileNav({
           <details key={section.title} className="group">
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B39152] marker:hidden [&::-webkit-details-marker]:hidden">
               <span>{section.title}</span>
-              <span className="text-sm transition group-open:rotate-45">＋</span>
+              <span className="text-sm transition group-open:rotate-45">
+                ＋
+              </span>
             </summary>
 
             <ul className="grid gap-1 pb-4 text-sm text-[#FDF7F1]/68">
@@ -347,6 +252,33 @@ function FooterMobileNav({
   );
 }
 
+function FooterTrunkBrand() {
+  return (
+    <div className="relative mx-auto h-[215px] w-full max-w-[360px] sm:h-[235px] md:mx-0 md:h-[250px] md:max-w-none xl:h-[270px] 2xl:h-[285px]">
+      <CompactArchLineArt />
+
+      <div className="absolute left-[190px] top-1/2 z-20 flex w-fit -translate-y-1/2 rounded-[22px] border border-[#B39152]/30 bg-[#FDF7F1] px-5 py-3 opacity-70 shadow-[0_14px_32px_rgba(0,0,0,0.25)] sm:left-[215px] md:left-[215px] xl:left-[240px] 2xl:left-[290px]">
+        <Image
+          src="/Ftt_logo_navbar.png"
+          alt="From the Trunk"
+          width={176}
+          height={70}
+          className="h-12 w-auto object-contain xl:h-14"
+        />
+      </div>
+
+      <Image
+        src="/footer/ftt-trunk-saree.webp"
+        alt=""
+        width={520}
+        height={400}
+        loading="lazy"
+        className="absolute bottom-[-4px] left-1/2 z-10 w-[300px] max-w-none -translate-x-1/2 object-contain drop-shadow-[0_24px_44px_rgba(0,0,0,0.48)] sm:w-[325px] md:left-[-30px] md:w-[315px] md:translate-x-0 xl:left-[-42px] xl:w-[330px] 2xl:left-[-60px] 2xl:w-[360px]"
+      />
+    </div>
+  );
+}
+
 export function SiteFooter({
   footerSections = DEFAULT_FOOTER_SECTIONS,
 }: {
@@ -364,63 +296,9 @@ export function SiteFooter({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(253,247,241,0.025)_1px,transparent_1px)] bg-[size:96px_96px] opacity-25" />
 
       <div className="relative mx-auto w-full max-w-[1680px] px-5 pt-8 sm:px-6 lg:px-10 2xl:px-14">
-        <div className="grid gap-7 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] 2xl:grid-cols-[640px_minmax(0,1fr)_330px] 2xl:gap-10">
-          <section
-            className="grid gap-6 max-md:text-center md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[285px_minmax(0,1fr)]"
-            aria-labelledby="footer-story-title"
-          >
-            <div className="relative hidden h-[235px] md:block xl:h-[250px] 2xl:h-[285px]">
-              <CompactArchLineArt />
-
-              <Image
-                src="/footer/ftt-trunk-saree.webp"
-                alt=""
-                width={520}
-                height={400}
-                loading="lazy"
-                className="absolute bottom-[-4px] left-[-54px] z-10 w-[315px] max-w-none object-contain drop-shadow-[0_24px_44px_rgba(0,0,0,0.48)] xl:left-[-72px] xl:w-[330px] 2xl:left-[-92px] 2xl:w-[380px]"
-              />
-            </div>
-
-            <div className="self-center">
-              <div className="flex w-fit rounded-[22px] border border-[#B39152]/30 bg-[#FDF7F1] px-4 py-2.5 shadow-[0_14px_32px_rgba(0,0,0,0.25)] max-md:mx-auto">
-                <Image
-                  src="/Ftt_logo_navbar.png"
-                  alt="From the Trunk"
-                  width={132}
-                  height={52}
-                  className="h-10 w-auto object-contain"
-                />
-              </div>
-
-              <div className="my-5 flex max-w-[230px] items-center gap-3 text-[#B39152]/75 max-md:mx-auto">
-                <span className="h-px flex-1 bg-[#B39152]/45" />
-                <OrnamentIcon className="h-3.5 w-10" />
-                <span className="h-px flex-1 bg-[#B39152]/45" />
-              </div>
-
-              <h2
-                id="footer-story-title"
-                className="max-w-[320px] font-serif text-[2rem] leading-[1.05] text-[#FDF7F1] max-md:mx-auto sm:text-[2.35rem] 2xl:text-[2.55rem]"
-              >
-                Heirloom sarees,{" "}
-                <em className="font-normal text-[#B39152]">reborn</em> for
-                today.
-              </h2>
-
-              <p className="mt-4 max-w-[295px] text-sm leading-6 text-[#FDF7F1]/68 max-md:mx-auto">
-                Every saree holds a story. We restore timeless weaves with care,
-                so they can be cherished again.
-              </p>
-
-              <Link
-                href="/our-story"
-                className="group mt-5 inline-flex items-center gap-3 border-b border-[#B39152] pb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#B39152] transition hover:text-[#FDF7F1]"
-              >
-                Our Story
-                <span className="transition group-hover:translate-x-1">✦</span>
-              </Link>
-            </div>
+        <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[400px_minmax(0,1fr)_320px] 2xl:gap-6">
+          <section aria-label="From The Trunk brand story visual">
+            <FooterTrunkBrand />
           </section>
 
           <nav
@@ -430,7 +308,7 @@ export function SiteFooter({
             {footerSections.map((section) => (
               <div
                 key={section.title}
-                className="border-l border-[#B39152]/22 pl-6"
+                className="border-l border-[#B39152]/22 pl-5"
               >
                 <div className="mb-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B39152]">
@@ -457,7 +335,7 @@ export function SiteFooter({
 
           <FooterMobileNav footerSections={footerSections} />
 
-          <section className="border-t border-[#B39152]/24 pt-5 xl:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0 2xl:pl-7 2xl:pt-0">
+          <section className="border-t border-[#B39152]/24 pt-5 lg:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0 2xl:pl-7 2xl:pt-0">
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] md:items-end 2xl:block">
               <div className="max-md:text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B39152]">
@@ -508,39 +386,15 @@ export function SiteFooter({
           </section>
         </div>
 
-        <section
-          className="relative mt-7 grid sm:grid-cols-2 xl:grid-cols-4 before:absolute before:left-1/2 before:top-0 before:h-px before:w-screen before:-translate-x-1/2 before:bg-[#B39152]/35 before:content-[''] after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-screen after:-translate-x-1/2 after:bg-[#B39152]/35 after:content-['']"
-          aria-label="From The Trunk values"
-        >
-          {FOOTER_VALUES.map(({ title, copy, Icon }, index) => {
-            const isLast = index === FOOTER_VALUES.length - 1;
-            const isSecond = index === 1;
+        {/*
+          The four value cards are commented out as requested:
+          - Curated with intention
+          - Restored with care
+          - Authentic & trusted
+          - Sustainable luxury
+        */}
 
-            return (
-              <div
-                key={title}
-                className={[
-                  "grid grid-cols-[32px_1fr] gap-3 py-4 sm:px-5 xl:grid-cols-[34px_1fr] xl:gap-4 xl:px-6",
-                  "border-b border-[#B39152]/22 sm:border-r xl:border-b-0",
-                  isSecond ? "sm:border-r-0 xl:border-r" : "",
-                  isLast ? "border-b-0 sm:border-r-0 xl:border-r-0" : "",
-                ].join(" ")}
-              >
-                <Icon className="h-7 w-7 text-[#B39152] xl:h-8 xl:w-8" />
-                <div>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#B39152] xl:text-[11px] xl:tracking-[0.2em]">
-                    {title}
-                  </h3>
-                  <p className="mt-1 text-[12.5px] leading-5 text-[#FDF7F1]/64 xl:text-[13px]">
-                    {copy}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-
-        <div className="grid grid-cols-1 items-center gap-3 py-4 text-center text-[12px] text-[#FDF7F1]/58 md:grid-cols-[1fr_auto_1fr] md:text-left">
+        <div className="mt-7 grid grid-cols-1 items-center gap-3 border-t border-[#B39152]/35 py-4 text-center text-[12px] text-[#FDF7F1]/58 md:grid-cols-[1fr_auto_1fr] md:text-left">
           <p>© {year} From The Trunk. All rights reserved.</p>
 
           <p className="text-center uppercase leading-5 tracking-[0.18em] text-[#B39152] sm:tracking-[0.24em]">

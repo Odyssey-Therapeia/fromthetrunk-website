@@ -146,7 +146,7 @@ const STORY_IMAGES: LandingImage[] = [
     title: "Authenticated with provenance",
   },
   {
-    src: "/our-story/chap_2.avif",
+    src: "/our-story/chap_7.avif",
     alt: "A preserved saree rediscovered from the trunk",
     title: "Restored with care",
   },
@@ -275,7 +275,7 @@ export function OurStorySection() {
 
     const timer = window.setInterval(() => {
       setActiveImage((current) => (current + 1) % storyImages.length);
-    }, 4200);
+    }, 3000);
 
     return () => window.clearInterval(timer);
   }, [isPaused, storyImages.length]);

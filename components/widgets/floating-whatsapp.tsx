@@ -65,7 +65,9 @@ export function FloatingWhatsApp() {
     <div
       ref={constraintsRef}
       className={cn(
-        "pointer-events-none fixed inset-0 z-60 print:hidden",
+        // Below overlays (cart/dialogs/menu at z-50+) so it never covers them,
+        // but still floating above normal page content.
+        "pointer-events-none fixed inset-0 z-40 print:hidden",
         mobileReadingPage && "max-lg:hidden",
       )}
     >
