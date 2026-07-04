@@ -259,10 +259,12 @@ function FooterTrunkBrand() {
 
       <div className="absolute left-[190px] top-1/2 z-20 flex w-fit -translate-y-1/2 rounded-[22px] border border-[#B39152]/30 bg-[#FDF7F1] px-5 py-3 opacity-70 shadow-[0_14px_32px_rgba(0,0,0,0.25)] sm:left-[215px] md:left-[215px] xl:left-[240px] 2xl:left-[290px]">
         <Image
-          src="/Ftt_logo_navbar.png"
+          src="/Ftt_logo_navbar.avif"
           alt="From the Trunk"
           width={176}
           height={70}
+          loading="lazy"
+          fetchPriority="low"
           className="h-12 w-auto object-contain xl:h-14"
         />
       </div>
@@ -273,6 +275,8 @@ function FooterTrunkBrand() {
         width={520}
         height={400}
         loading="lazy"
+        fetchPriority="low"
+        sizes="(max-width: 639px) 300px, (max-width: 767px) 325px, (max-width: 1535px) 330px, 360px"
         className="absolute bottom-[-4px] left-1/2 z-10 w-[300px] max-w-none -translate-x-1/2 object-contain drop-shadow-[0_24px_44px_rgba(0,0,0,0.48)] sm:w-[325px] md:left-[-30px] md:w-[315px] md:translate-x-0 xl:left-[-42px] xl:w-[330px] 2xl:left-[-60px] 2xl:w-[360px]"
       />
     </div>

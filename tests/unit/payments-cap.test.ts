@@ -23,6 +23,7 @@ const dbUpdateMock = vi.hoisted(() => vi.fn());
 const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
 const createOrderMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
+const getOrderByIdempotencyKeyMock = vi.hoisted(() => vi.fn());
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
 const rateLimitResponseMock = vi.hoisted(() => vi.fn());
 
@@ -39,6 +40,7 @@ vi.mock("@/db/queries/users", () => ({
 
 vi.mock("@/db/queries/orders", () => ({
   createOrder: createOrderMock,
+  getOrderByIdempotencyKey: getOrderByIdempotencyKeyMock,
   addOrderEvent: addOrderEventMock,
 }));
 
@@ -195,6 +197,7 @@ describe("payments create-order — pending-order cap", () => {
     dbUpdateSetMock.mockReset();
     dbUpdateWhereMock.mockReset();
     dbReturningMock.mockReset();
+    getOrderByIdempotencyKeyMock.mockReset();
     getOrCreateCheckoutCustomerMock.mockReset();
     createOrderMock.mockReset();
     addOrderEventMock.mockReset();

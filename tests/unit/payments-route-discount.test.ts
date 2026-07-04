@@ -27,6 +27,7 @@ const dbInsertMock = vi.hoisted(() => vi.fn());
 
 // db/queries/orders
 const getOrderMock = vi.hoisted(() => vi.fn());
+const getOrderByIdempotencyKeyMock = vi.hoisted(() => vi.fn());
 const createOrderMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
 
@@ -63,6 +64,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/db/queries/orders", () => ({
   getOrder: getOrderMock,
+  getOrderByIdempotencyKey: getOrderByIdempotencyKeyMock,
   createOrder: createOrderMock,
   addOrderEvent: addOrderEventMock,
 }));

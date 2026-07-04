@@ -18,7 +18,12 @@ import {
   websiteJsonLd,
 } from "@/lib/seo/json-ld";
 import { getSiteOrigin } from "@/lib/config/site";
-import { absoluteUrl } from "@/lib/seo/site-url";
+import {
+  DEFAULT_TWITTER_CARD,
+  OG_LOCALE,
+  SITE_NAME,
+  seoImageMetadata,
+} from "@/lib/seo/metadata";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -35,7 +40,7 @@ const sans = Jost({
 });
 
 const baseUrl = getSiteOrigin();
-const defaultOgImage = absoluteUrl("/banner/collection_banner.png");
+const defaultSocialImage = seoImageMetadata();
 
 export const metadata: Metadata = {
   title: {
@@ -47,20 +52,20 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   openGraph: {
     type: "website",
-    locale: "en_IN",
-    siteName: "From the Trunk",
+    locale: OG_LOCALE,
+    siteName: SITE_NAME,
     url: baseUrl,
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
       "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
-    images: [{ url: defaultOgImage }],
+    images: [defaultSocialImage],
   },
   twitter: {
-    card: "summary_large_image",
+    card: DEFAULT_TWITTER_CARD,
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
       "Curated collection of authenticated, pre-loved luxury sarees.",
-    images: [defaultOgImage],
+    images: [defaultSocialImage],
   },
   robots: {
     index: true,

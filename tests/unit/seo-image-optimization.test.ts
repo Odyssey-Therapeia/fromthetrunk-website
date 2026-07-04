@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import nextConfig from "@/next.config";
@@ -20,6 +23,8 @@ describe("SEO image optimization policy", () => {
     expect(toSeoImageUrl("http://localhost:3000/media/saree.jpg")).toBeNull();
     expect(toSeoImageUrl("https://127.0.0.1/media/saree.jpg")).toBeNull();
     expect(toSeoImageUrl("https://ftt-preview.vercel.app/media/saree.jpg")).toBeNull();
+    expect(toSeoImageUrl("https://images.unsplash.com/photo-1")).toBeNull();
+    expect(toSeoImageUrl("https://plus.unsplash.com/premium-photo-1")).toBeNull();
     expect(toSeoImageUrl("data:image/png;base64,abc")).toBeNull();
   });
 
@@ -28,6 +33,7 @@ describe("SEO image optimization policy", () => {
       images: [
         { media: { url: "https://cdn.example.com/a.webp" } },
         { media: { url: "https://cdn.example.com/a.webp" } },
+        { media: { url: "https://images.unsplash.com/photo-1" } },
         { media: { url: "http://localhost:3000/private.jpg" } },
       ],
     };
@@ -48,5 +54,42 @@ describe("SEO image optimization policy", () => {
         }),
       ]),
     );
+  });
+
+  it("keeps Unsplash out of Next Image config and CSP image sources", async () => {
+    const remotePatterns = JSON.stringify(nextConfig.images?.remotePatterns);
+    const headers = await nextConfig.headers?.();
+    const csp = headers
+      ?.flatMap((entry) => entry.headers)
+      .find((header) => header.key === "Content-Security-Policy-Report-Only")
+      ?.value;
+
+    expect(remotePatterns).not.toContain("unsplash");
+    expect(csp).not.toContain("unsplash");
+  });
+
+  it("keeps Unsplash out of production-facing fallback source files", () => {
+    const sourceFiles = [
+      "components/sections/brand-story-teaser.tsx",
+      "lib/story-narrative-images.ts",
+      "lib/data/sarees.ts",
+    ];
+
+    for (const sourceFile of sourceFiles) {
+      const source = readFileSync(join(process.cwd(), sourceFile), "utf8");
+      expect(source).not.toContain("images.unsplash.com");
+      expect(source).not.toContain("plus.unsplash.com");
+    }
+  });
+
+  it("loads the shared navbar logo eagerly because it is the mobile LCP image", () => {
+    const source = readFileSync(
+      join(process.cwd(), "components/layout/site-header-server.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain('src="/Ftt_logo_navbar.avif"');
+    expect(source).toContain('loading="eager"');
+    expect(source).toContain('fetchPriority="high"');
   });
 });

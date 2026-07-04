@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { isGstInclusive } from "@/lib/config/flags";
 import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { applyDiscountToPaise, type ValidatedDiscount } from "@/lib/discounts/validate";
+import { isLiveRazorpayMode, isUnsafeLiveHost } from "@/lib/payments/payment-host-guard";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
 export const RAZORPAY_PAYMENT_LINK_HOLD_MINUTES = 30;
@@ -112,6 +113,32 @@ export type CreateRazorpayPaymentLinkInput = {
 export const getRazorpayPaymentLinkReferenceId = (orderId: string) =>
   `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`;
 
+const PRODUCTION_PAYMENT_HOST = "www.fromthetrunk.shop";
+
+const normalizeHostname = (hostname: string) => hostname.trim().toLowerCase();
+
+export function shouldNotifyRazorpayCustomer({
+  callbackUrl,
+}: {
+  callbackUrl: string;
+}): boolean {
+  if (!isLiveRazorpayMode()) return false;
+
+  let url: URL;
+  try {
+    url = new URL(callbackUrl);
+  } catch {
+    return false;
+  }
+
+  const hostname = normalizeHostname(url.hostname);
+  return (
+    url.protocol === "https:" &&
+    hostname === PRODUCTION_PAYMENT_HOST &&
+    !isUnsafeLiveHost(url.host)
+  );
+}
+
 export async function createRazorpayPaymentLink({
   amountPaise,
   callbackUrl,
@@ -124,6 +151,7 @@ export async function createRazorpayPaymentLink({
   const razorpay = getRazorpayInstance();
   const expiresAt =
     expireBy ?? new Date(Date.now() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000);
+  const notifyCustomer = shouldNotifyRazorpayCustomer({ callbackUrl });
 
   const paymentLink = await razorpay.paymentLink.create({
     accept_partial: false,
@@ -140,11 +168,11 @@ export async function createRazorpayPaymentLink({
     expire_by: Math.floor(expiresAt.getTime() / 1000),
     notes,
     notify: {
-      email: true,
-      sms: Boolean(customer.contact),
+      email: notifyCustomer,
+      sms: notifyCustomer && Boolean(customer.contact),
     },
     reference_id: referenceId,
-    reminder_enable: true,
+    reminder_enable: notifyCustomer,
   });
 
   return paymentLink as RazorpayPaymentLinkResponse;

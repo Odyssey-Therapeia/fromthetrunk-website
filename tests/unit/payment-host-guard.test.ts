@@ -90,4 +90,13 @@ describe("payment-host-guard", () => {
     setTest();
     expect(isLiveRazorpayMode()).toBe(false);
   });
+
+  it("treats a live public key as live mode even when the server key is test", () => {
+    process.env.RAZORPAY_KEY_ID = "rzp_test_example";
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID = "rzp_live_example";
+    delete process.env.ALLOW_UNSAFE_LIVE_PAYMENTS;
+
+    expect(isLiveRazorpayMode()).toBe(true);
+    expect(evaluatePaymentHost("http://localhost:3000/x").allowed).toBe(false);
+  });
 });

@@ -98,7 +98,7 @@ function redactString(value: string): string {
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
     .replace(/\+?[1-9][\d\s().-]{7,}\d/g, "[redacted-phone]")
     .replace(
-      /(authorization|cookie|otp|challengeToken|loginTicket|registrationToken|razorpay[^:=\s]*|api[_-]?secret|secret|password)\s*[:=]\s*["']?[^"',\s}]+/gi,
+      /(authorization|cookie|otp|challengeToken|loginTicket|registrationToken|token|razorpay[^:=\s]*|api[_-]?secret|secret|password)\s*[:=]\s*["']?[^"',\s}]+/gi,
       "$1=[redacted]"
     );
 }

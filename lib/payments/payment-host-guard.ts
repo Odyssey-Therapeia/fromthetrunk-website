@@ -16,11 +16,16 @@
 
 const LIVE_KEY_PREFIX = "rzp_live_";
 
+export function isLiveRazorpayKey(keyId: string | null | undefined): boolean {
+  return Boolean(keyId?.startsWith(LIVE_KEY_PREFIX));
+}
+
 /** True when the configured Razorpay key is a LIVE key. */
 export function isLiveRazorpayMode(): boolean {
-  const keyId =
-    process.env.RAZORPAY_KEY_ID ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
-  return keyId.startsWith(LIVE_KEY_PREFIX);
+  return (
+    isLiveRazorpayKey(process.env.RAZORPAY_KEY_ID) ||
+    isLiveRazorpayKey(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)
+  );
 }
 
 function normalizeHost(host: string): string {

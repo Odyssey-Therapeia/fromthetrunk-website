@@ -17,7 +17,12 @@ export const revalidate = 60;
 export async function generateMetadata(): Promise<Metadata> {
   if (!config) return { title: "Blouses" };
   const { totalDocs } = await getKeywordLandingProducts(config);
-  return keywordLandingMetadata(config, totalDocs);
+  const metadata = keywordLandingMetadata(config, totalDocs);
+
+  return {
+    ...metadata,
+    robots: { index: false, follow: true },
+  };
 }
 
 export default async function BlousesPage() {

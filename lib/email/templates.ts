@@ -77,7 +77,7 @@ const wrapper = (content: string) => `
 <body style="margin:0;padding:0;background:${brandStyles.bg};font-family:'Georgia',serif;">
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;margin-bottom:24px;">
-      <img src="${escapeHtml(publicAssetUrl("/Ftt_logo_navbar.png"))}" width="132" height="73" alt="From the Trunk" style="display:block;width:132px;max-width:70%;height:auto;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
+      <img src="${escapeHtml(publicAssetUrl("/Ftt_logo_navbar.avif"))}" width="132" height="73" alt="From the Trunk" style="display:block;width:132px;max-width:70%;height:auto;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
       <p style="font-size:12px;color:${brandStyles.muted};margin:4px 0 0;letter-spacing:0.1em;">
         Pre-loved luxury sarees with provenance
       </p>

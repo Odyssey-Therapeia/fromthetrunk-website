@@ -8,6 +8,7 @@ import {
   keywordLandingPages,
 } from "@/lib/seo/keyword-landing-pages";
 import { productSeoImageUrls } from "@/lib/seo/image-urls";
+import { shouldIncludeProductInSeo } from "@/lib/seo/product-indexing";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
+      url: absoluteUrl("/sell-your-saree"),
+      lastModified: STATIC_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.65,
+    },
+    {
       url: absoluteUrl("/packing"),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
@@ -86,7 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const productPages: MetadataRoute.Sitemap = products
-    .filter((product) => product.slug && product.stockStatus !== "sold")
+    .filter(shouldIncludeProductInSeo)
     .map((product) => {
       const images = productSeoImageUrls(product);
 

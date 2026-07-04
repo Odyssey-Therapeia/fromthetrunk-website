@@ -18,7 +18,9 @@ vi.mock("@/db/queries/products", () => ({
         id: "p_available",
         name: "Available Saree",
         slug: "available-saree",
+        status: "published",
         stockStatus: "available",
+        pricePaise: 1250000,
         updatedAt: "2026-05-01T00:00:00.000Z",
         images: [],
       },
@@ -26,12 +28,38 @@ vi.mock("@/db/queries/products", () => ({
         id: "p_sold",
         name: "Sold Saree",
         slug: "sold-saree",
+        status: "published",
         stockStatus: "sold",
+        pricePaise: 1250000,
+        updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [],
+      },
+      {
+        id: "p_blouse_qa",
+        name: "StretchFit Blouse",
+        slug: "stretchfit-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 100,
+        storyTitle: "Untitled Product",
+        typeSlug: "blouse",
+        updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [],
+      },
+      {
+        id: "p_blouse_real",
+        name: "Cerise Silk Blouse",
+        slug: "cerise-silk-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "Tailored silk blouse",
+        typeSlug: "blouse",
         updatedAt: "2026-05-01T00:00:00.000Z",
         images: [],
       },
     ],
-    totalCount: 2,
+    totalCount: 4,
   }),
 }));
 
@@ -152,12 +180,14 @@ describe("SEO Phase 1 technical cleanup", () => {
     expect(text).toContain("https://www.fromthetrunk.shop/policies/return-refund-policy");
     expect(text).toContain("https://www.fromthetrunk.shop/why");
     expect(text).toContain("https://www.fromthetrunk.shop/collection/available-saree");
+    expect(text).toContain("https://www.fromthetrunk.shop/collection/cerise-silk-blouse");
 
     expect(text).not.toContain("https://www.fromthetrunk.shop/privacy-policy");
     expect(text).not.toContain("https://www.fromthetrunk.shop/terms-of-service");
     expect(text).not.toContain("https://www.fromthetrunk.shop/shipping-policy");
     expect(text).not.toContain("https://www.fromthetrunk.shop/return-policy");
     expect(text).not.toContain("https://www.fromthetrunk.shop/collection/sold-saree");
+    expect(text).not.toContain("https://www.fromthetrunk.shop/collection/stretchfit-blouse");
     expect(text).not.toContain("https://www.fromthetrunk.shop/cart");
     expect(text).not.toContain("https://www.fromthetrunk.shop/checkout");
     expect(text).not.toContain("https://www.fromthetrunk.shop/account");

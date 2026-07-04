@@ -12,10 +12,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  getAvailabilityErrorMessage,
-  isAvailabilityErrorCode,
-  type AvailabilityErrorCode,
-} from "@/lib/cart/availability-errors";
+  getOneOfOneConflictCopy,
+  isOneOfOneConflictCode,
+  type OneOfOneConflictCode,
+  type OneOfOneConflictCopy,
+} from "@/lib/checkout/one-of-one-conflict-copy";
 import { getCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
 
 type CreatePaymentOrderResponse = {
@@ -95,7 +96,8 @@ type StartPaymentArgs = {
   description: string;
   onPaid: (confirmationPath: string) => void;
   onAvailabilityError?: (error: {
-    code: AvailabilityErrorCode;
+    code: OneOfOneConflictCode;
+    copy: OneOfOneConflictCopy;
     productId?: string;
     message: string;
   }) => void;
@@ -175,17 +177,15 @@ export function useCheckoutPayment() {
           details?: { productId?: string };
           message?: string;
         } | null;
-        if (isAvailabilityErrorCode(errorData?.code)) {
-          const message = getAvailabilityErrorMessage(
-            errorData?.code,
-            errorData?.message,
-          );
+        if (isOneOfOneConflictCode(errorData?.code)) {
+          const copy = getOneOfOneConflictCopy(errorData?.code);
           onAvailabilityError?.({
-            code: errorData.code,
-            message,
+            code: copy.code,
+            copy,
+            message: copy.message,
             productId: errorData.details?.productId,
           });
-          throw new Error(message);
+          throw new Error(copy.message);
         }
 
         throw new Error(errorData?.message || "Unable to create order.");

@@ -37,6 +37,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/db/queries/orders", () => ({
   getOrder: getOrderMock,
+  getOrderByIdempotencyKey: vi.fn(),
   createOrder: createOrderMock,
   listOrders: listOrdersMock,
   addOrderEvent: addOrderEventMock,
