@@ -22,10 +22,13 @@ describe("Instagram link fix", () => {
 
 describe("Contact and review capture", () => {
   const connectDialog = readSource("components/layout/connect-dialog.tsx");
+  const contactWizard = readSource("components/contact/contact-wizard.tsx");
   const floatingReview = readSource("components/sections/floating-review-tab.tsx");
 
   it("connect dialog submits to the contact API instead of mailto", () => {
-    expect(connectDialog).toContain("/api/v2/contact/submit");
+    // The dialog is now a shell around the ContactWizard, which owns the submit.
+    expect(connectDialog).toContain("ContactWizard");
+    expect(contactWizard).toContain("/api/v2/contact/submit");
     expect(connectDialog).not.toContain("window.location.href = `mailto:");
   });
 

@@ -86,7 +86,7 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "From the Trunk",
     url: getCanonicalOrigin(),
-    logo: absoluteUrl("/Ftt_logo_navbar.png"),
+    logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     sameAs: ["https://www.instagram.com/from.thetrunk/"],
     description:
       "Curated collection of authenticated, pre-loved luxury sarees with provenance.",
@@ -109,7 +109,7 @@ export function websiteJsonLd(): Record<string, unknown> {
     publisher: {
       "@type": "Organization",
       name: "From the Trunk",
-      logo: absoluteUrl("/Ftt_logo_navbar.png"),
+      logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     },
   };
 }

@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { Button } from "@/components/ui/button";
 
-const storyImage =
-  "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=2000&auto=format&fit=crop";
+const storyImage = "/footer/ftt-trunk-saree.webp";
 
 export function BrandStoryTeaser() {
   return (

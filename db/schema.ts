@@ -385,6 +385,8 @@ export const orders = pgTable(
     paymentMethod: text("payment_method"),
     paymentId: text("payment_id"),
     razorpayOrderId: text("razorpay_order_id"),
+    idempotencyKey: text("idempotency_key"),
+    cartFingerprint: text("cart_fingerprint"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     shippingName: text("shipping_name"),
     shippingLine1: text("shipping_line1"),
@@ -473,6 +475,9 @@ export const orders = pgTable(
     razorpayOrderUnique: uniqueIndex("orders_razorpay_order_id_unique")
       .on(table.razorpayOrderId)
       .where(sql`${table.razorpayOrderId} is not null`),
+    idempotencyKeyUnique: uniqueIndex("orders_idempotency_key_unique")
+      .on(table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
     paymentIdUnique: uniqueIndex("orders_payment_id_unique")
       .on(table.paymentId)
       .where(sql`${table.paymentId} is not null`),

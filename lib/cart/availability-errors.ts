@@ -1,8 +1,15 @@
+import {
+  getOneOfOneConflictCopy,
+  isOneOfOneConflictCode,
+} from "@/lib/checkout/one-of-one-conflict-copy";
+
 export const availabilityErrorMessages = {
-  PRODUCT_RESERVED: "This piece has just been reserved.",
-  PRODUCT_SOLD: "This saree has found its next home.",
-  RESERVATION_CONFLICT: "This piece has just been reserved.",
-  RESERVATION_EXPIRED: "Your reservation expired. Please add it again if still available.",
+  INVALID_PRODUCT_IDS: getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE").message,
+  PRODUCT_RESERVED: getOneOfOneConflictCopy("PRODUCT_RESERVED").message,
+  PRODUCT_SOLD: getOneOfOneConflictCopy("PRODUCT_SOLD").message,
+  PRODUCT_UNAVAILABLE: getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE").message,
+  RESERVATION_CONFLICT: getOneOfOneConflictCopy("PRODUCT_RESERVED").message,
+  RESERVATION_EXPIRED: getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE").message,
 } as const;
 
 export type AvailabilityErrorCode = keyof typeof availabilityErrorMessages;
@@ -17,6 +24,9 @@ export function getAvailabilityErrorMessage(
   code: null | string | undefined,
   fallback = "This piece is no longer available."
 ): string {
+  if (isOneOfOneConflictCode(code)) {
+    return getOneOfOneConflictCopy(code).message;
+  }
   if (isAvailabilityErrorCode(code)) return availabilityErrorMessages[code];
   return fallback;
 }

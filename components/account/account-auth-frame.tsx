@@ -69,7 +69,7 @@ export function AccountAuthFrame({
               </Badge>
 
               <Image
-                src="/Ftt_logo_navbar.png"
+                src="/Ftt_logo_navbar.avif"
                 alt="From the Trunk"
                 width={180}
                 height={100}

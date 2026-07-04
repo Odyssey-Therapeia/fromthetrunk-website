@@ -149,6 +149,23 @@ describe("keyword landing page architecture", () => {
 });
 
 describe("blouse landing guard", () => {
+  it("keeps the blouse landing page noindex even when QA blouse products exist", async () => {
+    vi.resetModules();
+    vi.doMock("@/components/seo/keyword-product-landing-page", () => ({
+      getKeywordLandingProducts: vi
+        .fn()
+        .mockResolvedValue({ products: [{ id: "p_blouse_qa" }], totalDocs: 5 }),
+      KeywordProductLandingPage: () => null,
+    }));
+
+    const page = await import("@/app/(site)/blouses/page");
+    await expect(page.generateMetadata()).resolves.toMatchObject({
+      robots: { index: false, follow: true },
+    });
+
+    vi.doUnmock("@/components/seo/keyword-product-landing-page");
+  });
+
   it("does not render the blouse page when blouse scope has no products", async () => {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({

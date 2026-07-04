@@ -10,67 +10,40 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { policies } from "@/lib/legal/policies";
+import { FAQ_ITEMS, faqJsonLd } from "@/lib/seo/faq-content";
 import { safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = publicPageMetadata({
-  title: "FAQs & Policies",
-  description:
-    "Answers to common questions about From the Trunk: how we source, authenticate, and ship pre-loved luxury sarees, plus our privacy, returns, shipping, authentication, and customer-care policies.",
+const faqDescription =
+  "Answers to common questions about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one checkout at From the Trunk.";
+
+const faqSocialDescription =
+  "Explore answers about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one pieces.";
+
+const faqBaseMetadata = publicPageMetadata({
+  title: "FAQs — Pre-Loved Sarees, Care & Selling | From the Trunk",
+  description: faqDescription,
   path: "/faqs",
+  image: {
+    alt: "From the Trunk FAQ guide for authenticated pre-loved sarees",
+  },
 });
 
-const FAQ_ITEMS = [
-  {
-    question: "What is From the Trunk?",
-    answer:
-      "From the Trunk is a curated marketplace for authenticated, pre-loved luxury sarees. We source forgotten treasures from homes across India, meticulously restore them, and give them a second life with a new custodian.",
+export const metadata: Metadata = {
+  ...faqBaseMetadata,
+  title: {
+    absolute: "FAQs — Pre-Loved Sarees, Care & Selling | From the Trunk",
   },
-  {
-    question: "How do we authenticate the sarees?",
-    answer:
-      "Every piece undergoes a rigorous 360° condition check. We inspect for tears, stains, zari integrity, and fabric quality before listing. Only pieces that pass our quality threshold make it to the collection.",
+  openGraph: {
+    ...(faqBaseMetadata.openGraph ?? {}),
+    title: "FAQs — From the Trunk",
+    description: faqSocialDescription,
   },
-  {
-    question: "Are the sarees really pre-loved?",
-    answer:
-      "Yes. Every saree on From the Trunk has been owned and loved before. We believe pre-loved pieces carry unique provenance and character that new sarees simply cannot replicate.",
+  twitter: {
+    ...(faqBaseMetadata.twitter ?? {}),
+    title: "FAQs — From the Trunk",
+    description: faqSocialDescription,
   },
-  {
-    question: "Do you offer returns?",
-    answer:
-      "We accept returns within 7 days of delivery if the piece is significantly different from its description. Because each saree is unique, we encourage you to reach out to us before initiating a return.",
-  },
-  {
-    question: "How do you ship the sarees?",
-    answer:
-      "We ship all sarees carefully wrapped in tissue wrap, packed in our signature recycled saree cloth bag, and carefully nestled in our brand box. We ship across PAN India only, with no international shipping. Orders are dispatched through Shiprocket and/or DTDC.",
-  },
-  {
-    question: "Can I sell my sarees through From the Trunk?",
-    answer:
-      "Yes! We welcome submissions from custodians who wish to pass on their sarees. Reach out to us at hello@fromthetrunk.shop with photos and provenance details.",
-  },
-  {
-    question: "How do I care for my saree?",
-    answer:
-      "Dry clean only. Store them in a breathable muslin or cotton cloth bag and keep it away from direct sunlight and humidity. Avoid plastic storage as it can trap moisture and damage the fabric.",
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer:
-      "We accept all major credit and debit cards, UPI, net banking, and wallets via our secure payment gateway. All transactions are processed in INR.",
-  },
-] as const;
-
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ_ITEMS.map((item) => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: { "@type": "Answer", text: item.answer },
-  })),
 };
 
 export default function FaqsPage() {
@@ -171,6 +144,19 @@ export default function FaqsPage() {
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 {item.answer}
               </p>
+              {item.links?.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="inline-flex items-center rounded-full border border-ftt-gold/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftt-burgundy transition hover:bg-ftt-gold/10"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

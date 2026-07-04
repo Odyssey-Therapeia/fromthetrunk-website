@@ -287,6 +287,17 @@ function SignInOtpPanel({
     submitOtpOnce(next);
   };
 
+  // Enumeration-safe heuristic: flag input that clearly looks like a phone
+  // number so we can warn "the code goes to email, not SMS" — WITHOUT asking the
+  // server whether that specific number is registered (which would leak account
+  // existence). Shown for any phone-like value; never blocks submission, since a
+  // linked mobile number is a valid sign-in identifier.
+  const trimmedIdentifier = identifier.trim();
+  const identifierLooksLikePhone =
+    trimmedIdentifier.length > 0 &&
+    !isEmail(trimmedIdentifier) &&
+    /^[+\d][\d\s().-]{4,}$/.test(trimmedIdentifier);
+
   return (
     <div
       className={cn(
@@ -328,6 +339,18 @@ function SignInOtpPanel({
             <p className="text-xs leading-5 text-ftt-burgundy/55">
               Email sign-in sends the OTP to that email. Mobile number sign-in sends the OTP to the email linked to that account.
             </p>
+
+            {identifierLooksLikePhone ? (
+              <p
+                role="status"
+                className="rounded-xl border border-ftt-gold/45 bg-ftt-gold/10 px-3 py-2 text-xs leading-5 text-ftt-burgundy/80"
+              >
+                This looks like a mobile number. Your one-time code is sent to your{" "}
+                <span className="font-semibold text-ftt-burgundy">email</span>, never
+                by SMS — a number only works if it&apos;s already linked to an
+                account. New here? Enter your email instead.
+              </p>
+            ) : null}
           </div>
 
           <ErrorMessage message={errorMessage} />

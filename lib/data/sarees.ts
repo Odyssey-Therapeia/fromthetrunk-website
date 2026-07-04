@@ -30,8 +30,8 @@ export const sarees: Saree[] = [
     price: 28500,
     originalPrice: 46000,
     images: [
-      "https://images.unsplash.com/photo-1641699862936-be9f49b1c38d?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610030469839-f909584b43f1?q=80&w=1800&auto=format&fit=crop",
+      "/category/silk.JPG",
+      "/hero/timeless.JPG",
     ],
     story: {
       title: "A midnight garden in Banaras",
@@ -57,8 +57,8 @@ export const sarees: Saree[] = [
     price: 22400,
     originalPrice: 39000,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/flagged/photo-1551854716-8b811be39e7e?q=80&w=1800&auto=format&fit=crop",
+      "/hero/banner1.png",
+      "/category/Cotton_Silk.JPG",
     ],
     story: {
       title: "The saree worn at sunrise",
@@ -84,8 +84,8 @@ export const sarees: Saree[] = [
     price: 19800,
     originalPrice: 34000,
     images: [
-      "https://images.unsplash.com/photo-1727430228383-aa1fb59db8bf?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=1800&auto=format&fit=crop",
+      "/category/Organza.JPG",
+      "/media/home-cover.png",
     ],
     story: {
       title: "Lotus petals in morning fog",
@@ -111,8 +111,8 @@ export const sarees: Saree[] = [
     price: 32000,
     originalPrice: 52000,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610189012906-4c0aa9b9781e?q=80&w=1800&auto=format&fit=crop",
+      "/category/kanjiverram.jpg",
+      "/category/kanji_mix.JPG",
     ],
     story: {
       title: "Temple bells & silk borders",
@@ -138,8 +138,8 @@ export const sarees: Saree[] = [
     price: 15600,
     originalPrice: 26000,
     images: [
-      "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1641699862936-be9f49b1c38d?q=80&w=1800&auto=format&fit=crop",
+      "/category/Chiffon.JPG",
+      "/hero/banner.png",
     ],
     story: {
       title: "A river of teal",
@@ -165,8 +165,8 @@ export const sarees: Saree[] = [
     price: 29200,
     originalPrice: 48000,
     images: [
-      "https://images.unsplash.com/photo-1610189012906-4c0aa9b9781e?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1800&auto=format&fit=crop",
+      "/hero/you.png",
+      "/category/silk.JPG",
     ],
     story: {
       title: "Double ikat in saffron glow",
@@ -192,8 +192,8 @@ export const sarees: Saree[] = [
     price: 17500,
     originalPrice: 30000,
     images: [
-      "https://images.unsplash.com/flagged/photo-1551854716-8b811be39e7e?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1727430228383-aa1fb59db8bf?q=80&w=1800&auto=format&fit=crop",
+      "/category/C0010T01.JPG",
+      "/category/Kota_Cotton.jpg",
     ],
     story: {
       title: "Rose petals & raw silk",
@@ -219,8 +219,8 @@ export const sarees: Saree[] = [
     price: 34800,
     originalPrice: 56000,
     images: [
-      "https://images.unsplash.com/photo-1610030469839-f909584b43f1?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1800&auto=format&fit=crop",
+      "/hero/3.png",
+      "/hero/4.png",
     ],
     story: {
       title: "Velvet nights in Old Delhi",
@@ -246,8 +246,8 @@ export const sarees: Saree[] = [
     price: 85000,
     originalPrice: 112000,
     images: [
-      "https://images.unsplash.com/photo-1618901185975-d59f7091bcfe?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1800&auto=format&fit=crop",
+      "/hero/5.png",
+      "/hero/6.png",
     ],
     story: {
       title: "A midnight motif in antique gold",
@@ -273,8 +273,8 @@ export const sarees: Saree[] = [
     price: 72000,
     originalPrice: 98000,
     images: [
-      "https://images.unsplash.com/photo-1610189012906-4c0aa9b9781e?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610030469839-f909584b43f1?q=80&w=1800&auto=format&fit=crop",
+      "/hero/banner1.png",
+      "/hero/timeless.JPG",
     ],
     story: {
       title: "City lights in tissue silk",
@@ -300,8 +300,8 @@ export const sarees: Saree[] = [
     price: 58000,
     originalPrice: 84000,
     images: [
-      "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1641699862936-be9f49b1c38d?q=80&w=1800&auto=format&fit=crop",
+      "/hero/1.png",
+      "/hero/2.png",
     ],
     story: {
       title: "Gota blooms in soft light",
@@ -327,8 +327,8 @@ export const sarees: Saree[] = [
     price: 95000,
     originalPrice: 125000,
     images: [
-      "https://images.unsplash.com/photo-1727430228383-aa1fb59db8bf?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1800&auto=format&fit=crop",
+      "/category/georgette.jpg",
+      "/banner/newbanner3.png",
     ],
     story: {
       title: "Sequin work with a regal glow",
@@ -354,8 +354,8 @@ export const sarees: Saree[] = [
     price: 45000,
     originalPrice: 68000,
     images: [
-      "https://images.unsplash.com/photo-1615886753866-79396abc446e?q=80&w=1800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1610189025857-f42fe6e8dd91?q=80&w=1800&auto=format&fit=crop",
+      "/category/cotton.JPG",
+      "/footer/ftt-trunk-saree.webp",
     ],
     story: {
       title: "A handwoven Chanderi glow",

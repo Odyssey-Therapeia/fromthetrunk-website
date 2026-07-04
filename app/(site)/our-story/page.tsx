@@ -32,7 +32,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 // Saree imagery used on the right side of the cover and every chapter spread.
-const FTT_NAVBAR_LOGO = "/Ftt_logo_navbar.png";
+const FTT_NAVBAR_LOGO = "/Ftt_logo_navbar.avif";
 const COVER_BANNER = "/category/kanjiverram-lcp.webp";
 const COVER_CARD_IMAGE = "/category/silk-lcp.webp";
 const SAREE_IMAGES = [

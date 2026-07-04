@@ -3,10 +3,11 @@
  *
  * These tests verify:
  *  1. The proxy consults the redirect resolver and issues the right HTTP status.
- *  2. The product-detail pass-through and auth-protection behavior is unchanged.
+ *  2. Product-detail 404 preflight and auth-protection behavior are preserved.
  *  3. The redirect is additive — it does not alter the money path.
  *
- * We mock @/db/queries/products to prove productSlugExists is not consulted and
+ * We mock @/db/queries/products for PDP existence checks, @/db/queries/content
+ * for CMS existence checks, and
  * @/lib/content/redirect-resolver (for resolveRedirect) at the lowest level —
  * NOT @/proxy itself.
  */
@@ -16,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getTokenMock = vi.hoisted(() => vi.fn());
 const productSlugExistsMock = vi.hoisted(() => vi.fn());
+const dbSelectPageBySlugMock = vi.hoisted(() => vi.fn());
 const resolveRedirectMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next-auth/jwt", () => ({
@@ -24,6 +26,10 @@ vi.mock("next-auth/jwt", () => ({
 
 vi.mock("@/db/queries/products", () => ({
   productSlugExists: productSlugExistsMock,
+}));
+
+vi.mock("@/db/queries/content", () => ({
+  dbSelectPageBySlug: dbSelectPageBySlugMock,
 }));
 
 vi.mock("@/lib/content/redirect-resolver", () => ({
@@ -36,6 +42,10 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
+    dbSelectPageBySlugMock.mockResolvedValue({
+      status: "published",
+      publishedVersionId: "version-1",
+    });
     resolveRedirectMock.mockResolvedValue(null); // default: no redirect
     getTokenMock.mockResolvedValue(null);
   });
@@ -63,9 +73,7 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("does not call resolveRedirect or the database for /collection/:slug paths", async () => {
-    // Product detail pages now resolve 404s in the page itself so the proxy
-    // does not add a DB round trip before every PDP render.
+  it("checks product existence but still skips redirect consultation for /collection/:slug paths", async () => {
     productSlugExistsMock.mockResolvedValue(true);
     resolveRedirectMock.mockResolvedValue(null);
 
@@ -74,7 +82,9 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(productSlugExistsMock).toHaveBeenCalledWith("my-saree", {
+      includeDrafts: false,
+    });
     expect(resolveRedirectMock).not.toHaveBeenCalled();
   });
 });
@@ -83,19 +93,25 @@ describe("proxy.ts — auth behavior unchanged (money path regression)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
+    dbSelectPageBySlugMock.mockResolvedValue({
+      status: "published",
+      publishedVersionId: "version-1",
+    });
     resolveRedirectMock.mockResolvedValue(null);
     getTokenMock.mockResolvedValue(null);
   });
 
-  it("lets the PDP handle missing product slugs instead of doing a proxy DB lookup", async () => {
+  it("rewrites missing product slugs to a real 404 before the PDP streams", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/missing-saree")
     );
 
-    expect(response.status).toBe(200);
-    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(404);
+    expect(productSlugExistsMock).toHaveBeenCalledWith("missing-saree", {
+      includeDrafts: false,
+    });
   });
 
   it("still redirects unauthenticated users from /account/* (existing behavior preserved)", async () => {
@@ -125,6 +141,10 @@ describe("proxy.ts — MONEY PATH: /checkout and /cart never redirected", () => 
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
+    dbSelectPageBySlugMock.mockResolvedValue({
+      status: "published",
+      publishedVersionId: "version-1",
+    });
     // Even if the resolver would return a redirect, the proxy should NOT apply it
     // for /checkout or /cart paths.
     resolveRedirectMock.mockResolvedValue({ toPath: "/somewhere", status: 301 });

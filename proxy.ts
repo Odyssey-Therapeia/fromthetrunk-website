@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
+import { isReservedSlug } from "@/lib/content/reserved-slugs";
 
 /**
  * Proxy handles:
@@ -18,7 +19,7 @@ import { resolveRedirect } from "@/lib/content/redirect-resolver";
  * The auth-protection logic is unchanged.
  * Redirect paths excluded from consultation:
  *   - /api/* (Hono API routes — never redirect)
- *   - /collection/:slug (PDP route handles product 404)
+ *   - /collection/:slug (product existence is checked before redirects)
  *   - /account/* (auth protection runs instead)
  *   - Next.js internals (_next/*)
  */
@@ -45,6 +46,8 @@ const publicAssetPrefixes = [
 ];
 
 const publicAssetPaths = new Set([
+  "/404",
+  "/_not-found",
   "/apple-icon.svg",
   "/apple-touch-icon.png",
   "/favicon.ico",
@@ -54,6 +57,8 @@ const publicAssetPaths = new Set([
   "/robots.txt",
   "/sitemap.xml",
 ]);
+
+const DRAFT_MODE_COOKIE = "__prerender_bypass";
 
 const isProtected = (pathname: string) =>
   protectedPaths.some((prefix) => pathname.startsWith(prefix));
@@ -97,10 +102,52 @@ const withProxyTiming = <T extends NextResponse>(
   return response;
 };
 
+const rewriteNotFound = (request: NextRequest, startedAt: number) =>
+  withProxyTiming(
+    NextResponse.rewrite(new URL("/404", request.url), { status: 404 }),
+    startedAt,
+  );
+
+const getPathSegments = (pathname: string) =>
+  pathname.split("/").filter(Boolean);
+
+const getCollectionProductSlug = (pathname: string): string | null => {
+  const segments = getPathSegments(pathname);
+  if (segments.length !== 2 || segments[0] !== "collection") {
+    return null;
+  }
+
+  return segments[1] ?? null;
+};
+
+const getCmsSlugCandidate = (pathname: string): string | null => {
+  const segments = getPathSegments(pathname);
+  if (segments.length === 0 || isReservedSlug(segments[0])) {
+    return null;
+  }
+
+  return segments.join("/");
+};
+
+const publicProductSlugExists = async (slug: string): Promise<boolean> => {
+  const { productSlugExists } = await import("@/db/queries/products");
+  return productSlugExists(slug, { includeDrafts: false });
+};
+
+const publishedCmsPageExists = async (slug: string): Promise<boolean> => {
+  const { dbSelectPageBySlug } = await import("@/db/queries/content");
+  const row = await dbSelectPageBySlug(slug);
+
+  return Boolean(
+    row && row.status === "published" && row.publishedVersionId,
+  );
+};
+
 export async function proxy(request: NextRequest) {
   const startedAt = performance.now();
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
+  const isDraftModeRequest = request.cookies.has(DRAFT_MODE_COOKIE);
 
   if (isPublicAssetPath(pathname)) {
     return withProxyTiming(response, startedAt);
@@ -120,6 +167,17 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // ─── Public 404 preflight ──────────────────────────────────────
+  // Missing product/CMS slugs must reach Next's not-found route before any
+  // streamed app shell locks the HTTP status as 200. Draft-mode requests pass
+  // through so preview flows can still resolve unpublished content in-page.
+  if (!isDraftModeRequest) {
+    const productSlug = getCollectionProductSlug(pathname);
+    if (productSlug && !(await publicProductSlugExists(productSlug))) {
+      return rewriteNotFound(request, startedAt);
+    }
+  }
+
   // ─── P3-09: Managed redirects ───────────────────────────────────
   // Additive: only runs for paths not already handled by product-404 or auth.
   // Never alters /api/*, /account/*, /collection/*, or Next.js internals.
@@ -131,6 +189,13 @@ export async function proxy(request: NextRequest) {
         NextResponse.redirect(destination, { status: redirect.status }),
         startedAt,
       );
+    }
+
+    if (!isDraftModeRequest) {
+      const cmsSlug = getCmsSlugCandidate(pathname);
+      if (cmsSlug && !(await publishedCmsPageExists(cmsSlug))) {
+        return rewriteNotFound(request, startedAt);
+      }
     }
   }
 

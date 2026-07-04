@@ -241,6 +241,21 @@ export const getOrder = async (orderId: string): Promise<OrderWithRelations | nu
   return hydrated ?? null;
 };
 
+export const getOrderByIdempotencyKey = async (
+  idempotencyKey: string
+): Promise<OrderWithRelations | null> => {
+  const [row] = await withRetry(() =>
+    db
+      .select()
+      .from(orders)
+      .where(eq(orders.idempotencyKey, idempotencyKey))
+      .limit(1)
+  );
+  if (!row) return null;
+  const [hydrated] = await hydrateOrders([row]);
+  return hydrated ?? null;
+};
+
 export const createOrder = async (input: CreateOrderInput): Promise<OrderWithRelations> => {
   const {
     initialEvent,

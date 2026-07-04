@@ -7,6 +7,8 @@ const baseOrder = {
   createdAt: new Date("2026-06-26T10:49:25.701Z"),
   discountCode: "LAUNCH",
   discountId: null,
+  idempotencyKey: null,
+  cartFingerprint: null,
   events: [],
   id: "14ad266a-8682-4579-8265-ca21aa374b65",
   internalNote: null,

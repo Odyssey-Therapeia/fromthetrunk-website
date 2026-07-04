@@ -178,9 +178,11 @@ describe("SEO Phase 2B schema and sitemap guardrails", () => {
 
   it("sitemap source still excludes sold/draft products and query routes", () => {
     const source = readSource("app/sitemap.ts");
+    const productIndexingSource = readSource("lib/seo/product-indexing.ts");
 
     expect(source).toContain("includeDrafts: false");
-    expect(source).toContain('product.stockStatus !== "sold"');
+    expect(source).toContain("shouldIncludeProductInSeo");
+    expect(productIndexingSource).toContain('product.stockStatus === "sold"');
     expect(source).not.toContain('"?');
     expect(source).not.toContain("/cart");
     expect(source).not.toContain("/checkout");

@@ -16,6 +16,7 @@
 
 import { listProducts } from "@/db/queries/products";
 import { getSiteOrigin } from "@/lib/config/site";
+import { shouldIncludeProductInSeo } from "@/lib/seo/product-indexing";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export async function GET(): Promise<Response> {
     "## Products",
     "",
     ...products
-      .filter((p) => p.slug && p.stockStatus !== "sold")
+      .filter(shouldIncludeProductInSeo)
       .map((p) => `- [${p.name}](${origin}/collection/${p.slug})`),
   ];
 

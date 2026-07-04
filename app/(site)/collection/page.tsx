@@ -31,7 +31,6 @@ import type {
   CatalogSearchFilters,
 } from "@/lib/ports/catalog-search";
 import {
-  CANONICAL_FABRIC_FILTERS,
   colorSwatch,
   displayFacetLabel,
   normalizeColorSlug,
@@ -618,39 +617,9 @@ export default async function CollectionPage({
         value,
       }));
 
-  const fabricOptions = Array.from(
-    new Set([
-      ...CANONICAL_FABRIC_FILTERS,
-      ...Object.keys(facets.fabric).filter(Boolean),
-    ]),
-  )
-    .map((value) => ({
-      count: facets.fabric[value] ?? 0,
-      label: displayFacetLabel(value),
-      value,
-    }))
-    .sort((a, b) => {
-      const countDelta = b.count - a.count;
-      if (countDelta !== 0) return countDelta;
-      const canonicalDelta =
-        CANONICAL_FABRIC_FILTERS.indexOf(
-          a.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
-        ) -
-        CANONICAL_FABRIC_FILTERS.indexOf(
-          b.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
-        );
-      if (
-        CANONICAL_FABRIC_FILTERS.includes(
-          a.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
-        ) &&
-        CANONICAL_FABRIC_FILTERS.includes(
-          b.value as (typeof CANONICAL_FABRIC_FILTERS)[number],
-        )
-      ) {
-        return canonicalDelta;
-      }
-      return a.label.localeCompare(b.label);
-    });
+  // Fabric options come from the DISTINCT fabric values found on products
+  // (attributes.fabric / details_fabric), same as colours — nothing hardcoded.
+  const fabricOptions = toOptions(facets.fabric);
   const typeOptions = toOptions(facets.type).filter(
     (option) => option.value !== "blouse",
   );

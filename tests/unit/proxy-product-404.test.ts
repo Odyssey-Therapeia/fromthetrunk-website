@@ -14,30 +14,34 @@ vi.mock("@/db/queries/products", () => ({
 
 import { proxy } from "@/proxy";
 
-describe("proxy product detail pass-through", () => {
+describe("proxy product detail 404 preflight", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
   });
 
-  it("lets the product detail page handle missing slugs without a proxy DB lookup", async () => {
+  it("rewrites missing product slugs to the branded 404 render route", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/missing-saree")
     );
 
-    expect(response.status).toBe(200);
-    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(404);
+    expect(productSlugExistsMock).toHaveBeenCalledWith("missing-saree", {
+      includeDrafts: false,
+    });
   });
 
-  it("allows existing product detail slugs through without a proxy DB lookup", async () => {
+  it("allows existing product detail slugs through after the existence check", async () => {
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/published-saree")
     );
 
     expect(response.status).toBe(200);
-    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(productSlugExistsMock).toHaveBeenCalledWith("published-saree", {
+      includeDrafts: false,
+    });
   });
 
   it("does not block draft preview product links before the page can read draft mode", async () => {
@@ -60,7 +64,7 @@ describe("proxy product detail pass-through", () => {
       new NextRequest("https://www.fromthetrunk.shop/collection/%E0%A4%A")
     );
 
-    expect(response.status).toBe(200);
-    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(404);
+    expect(productSlugExistsMock).toHaveBeenCalledTimes(1);
   });
 });

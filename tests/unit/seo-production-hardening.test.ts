@@ -7,7 +7,9 @@ vi.mock("@/db/queries/products", () => ({
         id: "p_available",
         name: "Available Saree",
         slug: "available-saree",
+        status: "published",
         stockStatus: "available",
+        pricePaise: 1250000,
         updatedAt: "2026-05-01T00:00:00.000Z",
         images: [
           { media: { url: "/media/available-one.webp" } },
@@ -18,12 +20,40 @@ vi.mock("@/db/queries/products", () => ({
         id: "p_sold",
         name: "Sold Saree",
         slug: "sold-saree",
+        status: "published",
         stockStatus: "sold",
+        pricePaise: 1250000,
         updatedAt: "2026-05-01T00:00:00.000Z",
         images: [{ media: { url: "/media/sold.webp" } }],
       },
+      {
+        id: "p_blouse_qa",
+        name: "StretchFit Blouse",
+        slug: "stretchfit-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 100,
+        storyTitle: "Untitled Product",
+        typeSlug: "blouse",
+        updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [{ media: { url: "/media/blouse-test.webp" } }],
+        tags: [{ name: "Blouse", slug: "blouse" }],
+      },
+      {
+        id: "p_blouse_real",
+        name: "Cerise Silk Blouse",
+        slug: "cerise-silk-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "Tailored silk blouse",
+        typeSlug: "blouse",
+        updatedAt: "2026-05-01T00:00:00.000Z",
+        images: [{ media: { url: "/media/cerise-blouse.webp" } }],
+        tags: [{ name: "Blouse", slug: "blouse" }],
+      },
     ],
-    totalCount: 2,
+    totalCount: 4,
   }),
 }));
 
@@ -95,6 +125,12 @@ describe("SEO production hardening", () => {
     expect(urls).not.toContain(
       "https://www.fromthetrunk.shop/collection/sold-saree",
     );
+    expect(urls).not.toContain(
+      "https://www.fromthetrunk.shop/collection/stretchfit-blouse",
+    );
+    expect(urls).toContain(
+      "https://www.fromthetrunk.shop/collection/cerise-silk-blouse",
+    );
     expect(urls.some((url) => url.includes("?collection="))).toBe(false);
     expect(urls.some((url) => url.includes("localhost"))).toBe(false);
     expect(urls.some((url) => url.includes("vercel.app"))).toBe(false);
@@ -109,6 +145,16 @@ describe("SEO production hardening", () => {
     expect(
       entries.some((entry) => entry.images?.some((image) => image.includes("sold.webp"))),
     ).toBe(false);
+    expect(
+      entries.some((entry) =>
+        entry.images?.some((image) => image.includes("blouse-test.webp")),
+      ),
+    ).toBe(false);
+    expect(
+      entries.some((entry) =>
+        entry.images?.some((image) => image.includes("cerise-blouse.webp")),
+      ),
+    ).toBe(true);
   });
 
   it("robots disallows private, API, checkout, cart, and search surfaces", async () => {
@@ -135,6 +181,129 @@ describe("SEO production hardening", () => {
     expect(hasCollectionFilterParams({ fabric: ["", "cotton"] })).toBe(true);
   });
 
+  it("keeps QA, placeholder, and one-rupee products out of SEO surfaces", async () => {
+    const {
+      isQaOrPlaceholderProduct,
+      isQaTestProduct,
+      isSeoEligibleProduct,
+      productSeoRobots,
+      shouldEmitProductJsonLd,
+      shouldIncludeProductInSeo,
+    } = await import("@/lib/seo/product-indexing");
+
+    expect(
+      shouldIncludeProductInSeo({
+        name: "Gold Tissue Saree",
+        slug: "gold-tissue-saree",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 1250000,
+      }),
+    ).toBe(true);
+    expect(
+      isQaOrPlaceholderProduct({
+        name: "StretchFit Blouse",
+        slug: "stretchfit-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 100,
+        storyTitle: "Untitled Product",
+        typeSlug: "blouse",
+      }),
+    ).toBe(true);
+    expect(
+      isQaTestProduct({
+        name: "Placeholder Blouse",
+        slug: "placeholder-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "QA testing blouse",
+        typeSlug: "blouse",
+      }),
+    ).toBe(true);
+    expect(
+      shouldIncludeProductInSeo({
+        name: "StretchFit Blouse",
+        slug: "stretchfit-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 100,
+        storyTitle: "Untitled Product",
+        typeSlug: "blouse",
+      }),
+    ).toBe(false);
+    expect(
+      isSeoEligibleProduct({
+        name: "Cerise Silk Blouse",
+        slug: "cerise-silk-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "Tailored silk blouse",
+        typeSlug: "blouse",
+      }),
+    ).toBe(true);
+    expect(
+      shouldIncludeProductInSeo({
+        name: "Cerise Silk Blouse",
+        slug: "cerise-silk-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "Tailored silk blouse",
+        typeSlug: "blouse",
+      }),
+    ).toBe(true);
+    expect(
+      productSeoRobots({
+        name: "Cerise Silk Blouse",
+        slug: "cerise-silk-blouse",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 99900,
+        storyTitle: "Tailored silk blouse",
+        typeSlug: "blouse",
+      }),
+    ).toEqual({ index: true, follow: true });
+    expect(
+      shouldIncludeProductInSeo({
+        name: "Gold Tissue Saree",
+        slug: "gold-tissue-saree",
+        status: "published",
+        stockStatus: "sold",
+        pricePaise: 1250000,
+      }),
+    ).toBe(false);
+    expect(
+      shouldEmitProductJsonLd({
+        name: "Gold Tissue Saree",
+        slug: "gold-tissue-saree",
+        status: "published",
+        stockStatus: "sold",
+        pricePaise: 1250000,
+      }),
+    ).toBe(true);
+    expect(
+      productSeoRobots({
+        name: "Gold Tissue Saree",
+        slug: "gold-tissue-saree",
+        status: "published",
+        stockStatus: "sold",
+        pricePaise: 1250000,
+      }),
+    ).toEqual({ index: true, follow: true });
+    expect(
+      productSeoRobots({
+        name: "Untitled Product",
+        slug: "untitled-product",
+        status: "published",
+        stockStatus: "available",
+        pricePaise: 100,
+      }),
+    ).toEqual({ index: false, follow: true });
+  });
+
   it("product JSON-LD includes all image URLs, identifiers, and OutOfStock for sold products", async () => {
     const { productJsonLd } = await import("@/lib/seo/json-ld");
     const product = {
@@ -145,6 +314,7 @@ describe("SEO production hardening", () => {
       images: [
         { media: { url: "https://cdn.example.com/one.jpg" } },
         { media: { url: "/media/two.jpg" } },
+        { media: { url: "https://images.unsplash.com/photo-1" } },
       ],
       pricePaise: 1250000,
       stockStatus: "sold",
@@ -163,6 +333,7 @@ describe("SEO production hardening", () => {
       "https://cdn.example.com/one.jpg",
       "https://www.fromthetrunk.shop/media/two.jpg",
     ]);
+    expect(JSON.stringify(jsonLd)).not.toContain("unsplash");
     expect(offers.availability).toBe("https://schema.org/OutOfStock");
     expect(offers.url).toBe(
       "https://www.fromthetrunk.shop/collection/gold-tissue-saree",

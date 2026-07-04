@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { createHash, randomUUID } from "crypto";
 import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { createLogger } from "@/lib/log";
 
@@ -7,7 +8,13 @@ import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import { createPaymentOrderSchema, verifyPaymentSchema } from "@/api/hono/schemas/payments";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
-import { addOrderEvent, createOrder, getOrder } from "@/db/queries/orders";
+import {
+  addOrderEvent,
+  createOrder,
+  getOrder,
+  getOrderByIdempotencyKey,
+  type OrderWithRelations,
+} from "@/db/queries/orders";
 import { insertReservation, releaseReservationsByProducts } from "@/db/queries/reservations";
 import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
 import { getCollectionProductIds } from "@/db/queries/collections";
@@ -45,6 +52,8 @@ import { timed, timedRows } from "@/lib/perf/timed";
 
 const logCreateOrder = createLogger("payments:create-order");
 const logPaymentLinkCallback = createLogger("payments:payment-link-callback");
+const CHECKOUT_IN_PROGRESS_RETRY_SECONDS = 2;
+const ORDERS_IDEMPOTENCY_UNIQUE_INDEX = "orders_idempotency_key_unique";
 
 const availabilityErrorMessages = {
   PRODUCT_RESERVED: "This piece has just been reserved.",
@@ -67,6 +76,198 @@ const availabilityError = (
   },
   message: availabilityErrorMessages[code],
 });
+
+const checkoutInProgressBody = {
+  code: "CHECKOUT_IN_PROGRESS",
+  message: "Your secure checkout is still being prepared. Please wait a moment and try again.",
+};
+
+const checkoutAttemptNotReusableBody = {
+  code: "CHECKOUT_ATTEMPT_NOT_REUSABLE",
+  message: "Unable to reuse this checkout attempt. Please try again.",
+};
+
+const checkoutCartChangedBody = {
+  code: "CHECKOUT_CART_CHANGED",
+  message: "Checkout details changed. Please try again.",
+};
+
+const asErrorRecord = (error: unknown): Record<string, unknown> | null =>
+  typeof error === "object" && error !== null ? error as Record<string, unknown> : null;
+
+const isOrderIdempotencyConflict = (error: unknown) => {
+  const record = asErrorRecord(error);
+  const cause = asErrorRecord(record?.cause);
+  const code = record?.code ?? cause?.code;
+  const constraint = record?.constraint ?? cause?.constraint;
+  const message = String(record?.message ?? cause?.message ?? "");
+  return (
+    code === "23505" &&
+    (constraint === ORDERS_IDEMPOTENCY_UNIQUE_INDEX ||
+      message.includes(ORDERS_IDEMPOTENCY_UNIQUE_INDEX) ||
+      message.includes("idempotency_key"))
+  );
+};
+
+const stableCheckoutFingerprint = (value: unknown) =>
+  createHash("sha256")
+    .update(JSON.stringify(value))
+    .digest("hex");
+
+const normalizeFingerprintText = (value: null | string | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+const buildServerCartFingerprint = ({
+  discountAmountPaise,
+  discountCode,
+  discountId,
+  giftFrom,
+  giftMessage,
+  isGift,
+  items,
+  shippingAddress,
+  shippingCostPaise,
+  shippingMethod,
+  subtotalPaise,
+  taxAmountPaise,
+  totalPaise,
+}: {
+  discountAmountPaise: number;
+  discountCode?: null | string;
+  discountId?: null | string;
+  giftFrom?: null | string;
+  giftMessage?: null | string;
+  isGift: boolean;
+  items: Array<{
+    pricePaise: number;
+    productId: string;
+    quantity: number;
+    selectedOptions: Record<string, string>;
+  }>;
+  shippingAddress: {
+    city: string;
+    country: string;
+    email: string;
+    line1: string;
+    line2?: string;
+    name: string;
+    phone?: string;
+    postalCode: string;
+    state?: string;
+  };
+  shippingCostPaise: number;
+  shippingMethod: string;
+  subtotalPaise: number;
+  taxAmountPaise: number;
+  totalPaise: number;
+}) =>
+  stableCheckoutFingerprint({
+    discount: {
+      amountPaise: discountAmountPaise,
+      code: normalizeFingerprintText(discountCode),
+      id: discountId ?? null,
+    },
+    gift: {
+      from: normalizeFingerprintText(giftFrom),
+      isGift,
+      message: normalizeFingerprintText(giftMessage),
+    },
+    items: items
+      .map((item) => ({
+        pricePaise: item.pricePaise,
+        productId: item.productId,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions,
+      }))
+      .sort((a, b) => a.productId.localeCompare(b.productId)),
+    shippingAddress: {
+      city: normalizeFingerprintText(shippingAddress.city),
+      country: normalizeFingerprintText(shippingAddress.country),
+      email: normalizeFingerprintText(shippingAddress.email),
+      line1: normalizeFingerprintText(shippingAddress.line1),
+      line2: normalizeFingerprintText(shippingAddress.line2),
+      name: normalizeFingerprintText(shippingAddress.name),
+      phone: normalizeFingerprintText(shippingAddress.phone),
+      postalCode: normalizeFingerprintText(shippingAddress.postalCode),
+      state: normalizeFingerprintText(shippingAddress.state),
+    },
+    shippingMethod,
+    totals: {
+      shippingCostPaise,
+      subtotalPaise,
+      taxAmountPaise,
+      totalPaise,
+    },
+  });
+
+const paymentLinkUrlFromOrderEvents = (order: OrderWithRelations) => {
+  for (const event of order.events) {
+    const payload = asErrorRecord(event.payload);
+    const paymentLinkUrl = payload?.paymentLinkUrl;
+    if (typeof paymentLinkUrl === "string" && paymentLinkUrl.length > 0) {
+      return paymentLinkUrl;
+    }
+  }
+  return null;
+};
+
+const orderHoldStillValid = (order: OrderWithRelations, nowMs = Date.now()) =>
+  order.createdAt.getTime() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000 > nowMs;
+
+const reusableOrderResponse = (
+  order: OrderWithRelations,
+  paymentLinkUrl: string,
+) => ({
+  amountPaise: order.totalPaise,
+  amount: order.totalPaise,
+  currency: "INR",
+  orderAccessToken: createOrderAccessToken(order.id),
+  order_id: order.razorpayOrderId,
+  orderId: order.id,
+  paymentLinkId: order.razorpayOrderId,
+  paymentLinkUrl,
+  razorpayKeyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? process.env.RAZORPAY_KEY_ID,
+  razorpayOrderId: order.razorpayOrderId,
+  reused: true,
+});
+
+const resolveClaimedCheckoutAttempt = async ({
+  attemptId,
+  cartFingerprint,
+  userId,
+}: {
+  attemptId: string;
+  cartFingerprint: string;
+  userId: string;
+}) => {
+  const existing = await getOrderByIdempotencyKey(attemptId);
+  if (!existing) {
+    return { kind: "progress" as const };
+  }
+  if (existing.userId !== userId) {
+    return { kind: "progress" as const };
+  }
+  if (existing.cartFingerprint && existing.cartFingerprint !== cartFingerprint) {
+    return { kind: "cartChanged" as const };
+  }
+  if (existing.paymentStatus !== "pending") {
+    return { kind: "notReusable" as const };
+  }
+  if (!orderHoldStillValid(existing)) {
+    return { kind: "notReusable" as const };
+  }
+  if (!existing.razorpayOrderId) {
+    return { kind: "progress" as const };
+  }
+  const paymentLinkUrl = paymentLinkUrlFromOrderEvents(existing);
+  if (!paymentLinkUrl) {
+    return { kind: "progress" as const };
+  }
+  return {
+    kind: "reusable" as const,
+    response: reusableOrderResponse(existing, paymentLinkUrl),
+  };
+};
 
 const paymentLinkCallbackSchema = z.object({
   orderId: z.string().uuid().optional(),
@@ -332,18 +533,6 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const checkoutAttemptId =
         (body.checkoutAttemptId ?? c.req.header("Idempotency-Key") ?? "").trim() ||
         null;
-      const cartFingerprint = body.cartFingerprint?.trim() || null;
-
-      if (checkoutAttemptId) {
-        const reusable = await findReusablePaymentOrder({
-          attemptId: checkoutAttemptId,
-          cartFingerprint,
-          userId: authUserOrResponse.id,
-        });
-        if (reusable) {
-          return c.json(reusable, 200);
-        }
-      }
 
       const productIds = Array.from(new Set(body.items.map((item) => item.productId)));
       const reservationTokenByProductId = new Map(
@@ -379,12 +568,28 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const typeById = new Map(typeRows.map((type) => [type.id, type]));
       const now = new Date();
       const validReservationTokens = new Map<string, Date>();
+      let claimedCheckoutAttemptOrderPromise: Promise<OrderWithRelations | null> | null = null;
+      const getClaimedCheckoutAttemptOrder = () => {
+        if (!checkoutAttemptId) return Promise.resolve(null);
+        claimedCheckoutAttemptOrderPromise ??= getOrderByIdempotencyKey(checkoutAttemptId);
+        return claimedCheckoutAttemptOrderPromise;
+      };
+      const isClaimedCheckoutAttemptProduct = async (productId: string) => {
+        const claimedOrder = await getClaimedCheckoutAttemptOrder();
+        return Boolean(
+          claimedOrder &&
+            claimedOrder.userId === authUserOrResponse.id &&
+            claimedOrder.paymentStatus === "pending" &&
+            orderHoldStillValid(claimedOrder) &&
+            claimedOrder.items.some((item) => item.productId === productId),
+        );
+      };
       for (const productId of productIds) {
         const product = productById.get(productId);
         if (!product) {
           return c.json(
             {
-              code: "INVALID_PRODUCT_IDS",
+              code: "PRODUCT_UNAVAILABLE",
               details: { productId },
               message: "One or more products are unavailable.",
             },
@@ -424,15 +629,19 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           product.reservedUntil != null &&
           Math.abs(product.reservedUntil.getTime() - reservationToken.reservedUntil.getTime()) <
             1000;
+        const activeReservationBelongsToAttempt =
+          isActiveReserved && checkoutAttemptId
+            ? await isClaimedCheckoutAttemptProduct(productId)
+            : false;
 
-        if (isActiveReserved && !reservationToken) {
+        if (isActiveReserved && !reservationToken && !activeReservationBelongsToAttempt) {
           return c.json(
             availabilityError("PRODUCT_RESERVED", productId, product.name),
             409
           );
         }
 
-        if (isActiveReserved && !hasMatchingReservationToken) {
+        if (isActiveReserved && !hasMatchingReservationToken && !activeReservationBelongsToAttempt) {
           return c.json(
             availabilityError("RESERVATION_CONFLICT", productId, product.name),
             409
@@ -570,6 +779,35 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       const shippingName = body.shippingAddress.name;
       const emailLower = body.shippingAddress.email.toLowerCase();
+      const isGiftOrder = body.isGift ?? false;
+      const giftFrom = isGiftOrder ? body.giftFrom?.trim() || null : null;
+      const giftMessage = isGiftOrder ? body.giftMessage?.trim() || null : null;
+      const serverCartFingerprint = buildServerCartFingerprint({
+        discountAmountPaise,
+        discountCode: validatedDiscount?.code ?? null,
+        discountId: validatedDiscount?.id ?? null,
+        giftFrom,
+        giftMessage,
+        isGift: isGiftOrder,
+        items: normalizedItems,
+        shippingAddress: body.shippingAddress,
+        shippingCostPaise,
+        shippingMethod: body.shippingMethod,
+        subtotalPaise,
+        taxAmountPaise,
+        totalPaise,
+      });
+
+      if (checkoutAttemptId) {
+        const reusable = await findReusablePaymentOrder({
+          attemptId: checkoutAttemptId,
+          cartFingerprint: serverCartFingerprint,
+          userId: authUserOrResponse.id,
+        });
+        if (reusable) {
+          return c.json(reusable, 200);
+        }
+      }
 
 	      // Cap check: max 3 live pending payment links per authenticated customer.
 	      // Race window exists; durable limiting is P2-06.
@@ -596,41 +834,67 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-	      const order = await timed("payments.createOrder.createOrder", () => createOrder({
-        items: normalizedItems,
-        paymentGateway: "razorpay",
-        paymentStatus: "pending",
-        razorpayOrderId: null,
-        shippingCity: body.shippingAddress.city,
-        shippingCostPaise,
-        shippingCountry: body.shippingAddress.country,
-        shippingEmail: emailLower,
-        shippingLine1: body.shippingAddress.line1,
-        shippingLine2: body.shippingAddress.line2 ?? null,
-        shippingMethod: body.shippingMethod,
-        shippingName,
-        shippingPhone: body.shippingAddress.phone ?? null,
-        shippingPostalCode: body.shippingAddress.postalCode,
-        shippingState: body.shippingAddress.state ?? null,
-        status: "pending",
-        subtotalPaise,
-        taxAmountPaise,
-        taxRate: String(GST_RATE),
-        totalPaise,
-	        userId: authUserOrResponse.id,
-        // P6-02: Persist discount association so completePaidOrder can
-        // increment usageCount atomically on payment confirmation.
-        discountId: validatedDiscount?.id ?? null,
-        discountCode: validatedDiscount?.code ?? null,
-        isGift: body.isGift ?? false,
-        giftFrom: body.isGift ? body.giftFrom?.trim() || null : null,
-        giftMessage: body.isGift ? body.giftMessage?.trim() || null : null,
-      }));
+      let order: OrderWithRelations;
+      try {
+        order = await timed("payments.createOrder.createOrder", () => createOrder({
+          cartFingerprint: checkoutAttemptId ? serverCartFingerprint : null,
+          idempotencyKey: checkoutAttemptId,
+          items: normalizedItems,
+          paymentGateway: "razorpay",
+          paymentStatus: "pending",
+          razorpayOrderId: null,
+          shippingCity: body.shippingAddress.city,
+          shippingCostPaise,
+          shippingCountry: body.shippingAddress.country,
+          shippingEmail: emailLower,
+          shippingLine1: body.shippingAddress.line1,
+          shippingLine2: body.shippingAddress.line2 ?? null,
+          shippingMethod: body.shippingMethod,
+          shippingName,
+          shippingPhone: body.shippingAddress.phone ?? null,
+          shippingPostalCode: body.shippingAddress.postalCode,
+          shippingState: body.shippingAddress.state ?? null,
+          status: "pending",
+          subtotalPaise,
+          taxAmountPaise,
+          taxRate: String(GST_RATE),
+          totalPaise,
+          userId: authUserOrResponse.id,
+          // P6-02: Persist discount association so completePaidOrder can
+          // increment usageCount atomically on payment confirmation.
+          discountId: validatedDiscount?.id ?? null,
+          discountCode: validatedDiscount?.code ?? null,
+          isGift: isGiftOrder,
+          giftFrom,
+          giftMessage,
+        }));
+      } catch (error) {
+        if (!checkoutAttemptId || !isOrderIdempotencyConflict(error)) {
+          throw error;
+        }
+
+        const resolution = await resolveClaimedCheckoutAttempt({
+          attemptId: checkoutAttemptId,
+          cartFingerprint: serverCartFingerprint,
+          userId: authUserOrResponse.id,
+        });
+        if (resolution.kind === "reusable") {
+          return c.json(resolution.response, 200);
+        }
+        if (resolution.kind === "cartChanged") {
+          return c.json(checkoutCartChangedBody, 409);
+        }
+        if (resolution.kind === "notReusable") {
+          return c.json(checkoutAttemptNotReusableBody, 409);
+        }
+        c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+        return c.json(checkoutInProgressBody, 409);
+      }
 
       // Fire-and-forget: order_created event — emitted immediately after order is persisted.
       // emitAnalyticsEvent() never throws; errors are caught + logged inside.
       void emitAnalyticsEvent({
-        event_id: crypto.randomUUID(),
+          event_id: randomUUID(),
         type: "order_created",
         payload: {
           orderId: order.id,
@@ -776,11 +1040,11 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           },
           description: toPaymentDescription(order.id, normalizedItems),
           expireBy: reservedUntil,
-	          notes: {
-	            orderId: order.id,
-	            userId: authUserOrResponse.id,
+          notes: {
+            orderId: order.id,
+            userId: authUserOrResponse.id,
 	            ...(checkoutAttemptId ? { checkoutAttemptId } : {}),
-	            ...(cartFingerprint ? { cartFingerprint } : {}),
+	            ...(checkoutAttemptId ? { cartFingerprint: serverCartFingerprint } : {}),
 	          },
           referenceId: getRazorpayPaymentLinkReferenceId(order.id),
         });
@@ -846,7 +1110,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         try {
           await recordPaymentAttempt({
             attemptId: checkoutAttemptId,
-            cartFingerprint,
+            cartFingerprint: serverCartFingerprint,
             userId: authUserOrResponse.id,
             orderId: order.id,
             paymentLinkId: paymentLink.id,

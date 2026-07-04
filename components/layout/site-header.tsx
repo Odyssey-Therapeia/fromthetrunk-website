@@ -140,10 +140,12 @@ export function SiteHeader() {
           <div className="flex min-w-0 flex-1 items-center gap-4 xl:gap-10">
             <Link href="/" className="flex h-full shrink-0 items-center">
               <Image
-                src="/Ftt_logo_navbar.png"
+                src="/Ftt_logo_navbar.avif"
                 alt=""
                 width={180}
                 height={100}
+                loading="eager"
+                fetchPriority="high"
                 className="h-14 w-auto object-contain xl:h-[4.25rem]"
                 sizes="180px"
               />

@@ -42,6 +42,17 @@ import { getSiteOrigin } from "@/lib/config/site";
 import { absoluteUrl } from "@/lib/seo/site-url";
 import { toSeoImageUrl } from "@/lib/seo/image-urls";
 import { buildPdpGalleryImageAlt } from "@/lib/seo/image-alt";
+import {
+  productSeoRobots,
+  isSeoEligibleProduct,
+  shouldEmitProductJsonLd,
+} from "@/lib/seo/product-indexing";
+import {
+  DEFAULT_TWITTER_CARD,
+  OG_LOCALE,
+  SITE_NAME,
+  seoImageMetadata,
+} from "@/lib/seo/metadata";
 import { getFabricLandingForLabel } from "@/lib/seo/keyword-landing-pages";
 import { resolveProductRowStockStatus } from "@/db/inventory";
 import { isBlouseProduct } from "@/lib/products/product-type";
@@ -72,16 +83,41 @@ export async function generateMetadata({
 
   const product = rawProduct as Product;
   const displayDetails = getProductDisplayDetails(product);
+  const isEligibleForProductSocialPreview = isSeoEligibleProduct(product);
+  const primaryImage = product.images?.[0] as
+    | {
+        media?: {
+          alt?: null | string;
+          height?: null | number;
+          width?: null | number;
+        };
+      }
+    | undefined;
   const image = resolveMediaURL(product.images?.[0]);
-  const imageUrl = toSeoImageUrl(image) ?? undefined;
+  const imageUrl =
+    isEligibleForProductSocialPreview ? (toSeoImageUrl(image) ?? undefined) : undefined;
   const canonical = absoluteUrl(`/collection/${product.slug}`);
 
-  const pdpTitle = buildPdpTitle(product.name, displayDetails.fabric);
-  const pdpDescription = buildPdpDescription(
-    product.name,
-    displayDetails.fabric,
-    product.storyNarrative,
-    product.storyTitle,
+  const pdpTitle = isEligibleForProductSocialPreview
+    ? buildPdpTitle(product.name, displayDetails.fabric)
+    : "From the Trunk Product";
+  const pdpDescription = isEligibleForProductSocialPreview
+    ? buildPdpDescription(
+        product.name,
+        displayDetails.fabric,
+        product.storyNarrative,
+        product.storyTitle,
+      )
+    : "Explore authenticated pre-loved luxury sarees from From the Trunk.";
+  const socialImage = seoImageMetadata(
+    imageUrl
+      ? {
+          url: imageUrl,
+          width: primaryImage?.media?.width,
+          height: primaryImage?.media?.height,
+          alt: primaryImage?.media?.alt ?? buildPdpGalleryImageAlt(product, 0),
+        }
+      : undefined,
   );
 
   return {
@@ -90,18 +126,21 @@ export async function generateMetadata({
     alternates: {
       canonical,
     },
+    robots: productSeoRobots(product),
     openGraph: {
       title: pdpTitle,
       description: pdpDescription,
       type: "website",
       url: canonical,
-      images: imageUrl ? [{ url: imageUrl }] : undefined,
+      siteName: SITE_NAME,
+      locale: OG_LOCALE,
+      images: [socialImage],
     },
     twitter: {
-      card: "summary_large_image",
+      card: DEFAULT_TWITTER_CARD,
       title: pdpTitle,
       description: pdpDescription,
-      images: imageUrl ? [imageUrl] : undefined,
+      images: [socialImage],
     },
   };
 }
@@ -117,6 +156,7 @@ export default async function SareePage({ params }: ProductPageProps) {
 
   const product = rawProduct as Product;
   const isBlouse = isBlouseProduct(product);
+  const includeProductSeo = shouldEmitProductJsonLd(product);
   const effectiveStockStatus: EffectiveStockStatus = resolveProductRowStockStatus({
     reservedUntil: product.reservedUntil,
     stockStatus: product.stockStatus,
@@ -131,7 +171,7 @@ export default async function SareePage({ params }: ProductPageProps) {
     buildPdpGalleryImageAlt(product, index),
   );
   const tags = product.tags.map((tag) => tag.name).filter(Boolean);
-  const jsonLd = productJsonLd(product);
+  const jsonLd = includeProductSeo ? productJsonLd(product) : null;
   const breadcrumbs = breadcrumbJsonLd([
     { name: "Home", url: getSiteOrigin() },
     { name: "Collection", url: absoluteUrl("/collection") },
@@ -147,10 +187,12 @@ export default async function SareePage({ params }: ProductPageProps) {
 
   return (
     <main className="bg-[#FDF7F1] pb-24 text-[#0E0D0E] md:pb-0">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
-      />
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+        />
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbs) }}

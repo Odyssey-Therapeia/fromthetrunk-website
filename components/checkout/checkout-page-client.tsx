@@ -10,7 +10,6 @@ import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { trackOncePerSession } from "@/lib/analytics/client";
-import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import {
   GST_RATE,
   type ShippingMethod,
@@ -27,6 +26,10 @@ import {
   toSavedAddressPayload,
   validateAddressForm,
 } from "@/lib/checkout/address-form";
+import {
+  getOneOfOneConflictCopy,
+  type OneOfOneConflictCopy,
+} from "@/lib/checkout/one-of-one-conflict-copy";
 import { type CheckoutStep, STEP_COPY } from "@/lib/checkout/steps";
 import { clearCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
 import { useCheckoutPayment } from "@/lib/checkout/use-checkout-payment";
@@ -148,6 +151,13 @@ export function CheckoutPageClient({
   const [giftMessage, setGiftMessage] = useState("");
   const [giftFrom, setGiftFrom] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [checkoutConflict, setCheckoutConflict] =
+    useState<OneOfOneConflictCopy | null>(null);
+
+  const showCheckoutConflict = useCallback((copy: OneOfOneConflictCopy) => {
+    setCheckoutConflict(copy);
+    toast.error(copy.title);
+  }, []);
 
   const recheckCheckoutAvailability = useCallback(async () => {
     if (!hasItems) return true;
@@ -155,7 +165,7 @@ export function CheckoutPageClient({
 
     for (const item of items) {
       if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
-        toast.error(getAvailabilityErrorMessage("RESERVATION_EXPIRED"));
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE"));
         removeItem(item.id);
         isStillAvailable = false;
         continue;
@@ -175,7 +185,7 @@ export function CheckoutPageClient({
       if (!stock) continue;
 
       if (stock.stockStatus === "sold") {
-        toast.error(getAvailabilityErrorMessage("PRODUCT_SOLD"));
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_SOLD"));
         removeItem(item.id);
         isStillAvailable = false;
         continue;
@@ -190,17 +200,25 @@ export function CheckoutPageClient({
               new Date(item.reservedUntil).getTime(),
           ) > 1000);
       if (heldByAnotherBuyer) {
-        toast.error(getAvailabilityErrorMessage("PRODUCT_RESERVED"));
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_RESERVED"));
         removeItem(item.id);
         isStillAvailable = false;
       }
     }
 
     return isStillAvailable;
-  }, [hasItems, items, removeItem]);
+  }, [hasItems, items, removeItem, showCheckoutConflict]);
 
   useEffect(() => {
-    void recheckCheckoutAvailability();
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) void recheckCheckoutAvailability();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [recheckCheckoutAvailability]);
 
   const addressesQuery = useQuery({
@@ -333,6 +351,7 @@ export function CheckoutPageClient({
   };
 
   const handleRemoveItem = (id: string) => {
+    setCheckoutConflict(null);
     removeItem(id);
     toast("Removed from your trunk.");
   };
@@ -489,83 +508,85 @@ export function CheckoutPageClient({
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     try {
-    if (!hasItems) return;
-    if (!isAuthenticated) {
-      toast.error("Sign in or create an account to continue checkout.");
-      return;
-    }
-    if (!agreedToTerms) {
-      toast.error(
-        "Please confirm you have read and agree to the Terms & Policies.",
-      );
-      return;
-    }
-
-    const availabilityOk = await recheckCheckoutAvailability();
-    if (!availabilityOk) return;
-
-    const shipErrors = validateAddressForm(shippingAddress);
-    if (hasErrors(shipErrors)) {
-      setShippingErrors(shipErrors);
-      goToStep("shipping");
-      focusFirstAddressError(shipErrors);
-      return;
-    }
-    if (!billingSameAsShipping) {
-      const billErrors = validateAddressForm(billingAddress);
-      if (hasErrors(billErrors)) {
-        setBillingErrors(billErrors);
-        goToStep("billing");
-        focusFirstAddressError(billErrors);
+      setCheckoutConflict(null);
+      if (!hasItems) return;
+      if (!isAuthenticated) {
+        toast.error("Sign in or create an account to continue checkout.");
         return;
       }
-    }
+      if (!agreedToTerms) {
+        toast.error(
+          "Please confirm you have read and agree to the Terms & Policies.",
+        );
+        return;
+      }
 
-    await Promise.allSettled([
-      saveShippingToAccount(),
-      saveBillingToAccount(),
-    ]);
+      const availabilityOk = await recheckCheckoutAvailability();
+      if (!availabilityOk) return;
 
-    await payment.startPayment({
-      payload: {
-        items: items.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          ...(item.reservationToken ? { reservationToken: item.reservationToken } : {}),
-          ...(item.selectedOptions ? { selectedOptions: item.selectedOptions } : {}),
-        })),
-        shippingAddress: toOrderAddress(shippingAddress),
-        shippingMethod,
-        ...(discountApplied ? { discountCode: discountApplied.code } : {}),
-        ...(isGift
-          ? {
-              isGift: true,
-              ...(giftFrom.trim() ? { giftFrom: giftFrom.trim() } : {}),
-              ...(includeGiftMessage && giftMessage.trim()
-                ? { giftMessage: giftMessage.trim() }
-                : {}),
-            }
-          : {}),
-      },
-      prefill: {
-        name: fullName(shippingAddress),
-        email: shippingAddress.email,
-        contact: shippingAddress.phone,
-      },
-      description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
-      onAvailabilityError: ({ code, productId, message }) => {
-        toast.error(getAvailabilityErrorMessage(code, message));
-        if (productId) {
-          removeItem(productId);
+      const shipErrors = validateAddressForm(shippingAddress);
+      if (hasErrors(shipErrors)) {
+        setShippingErrors(shipErrors);
+        goToStep("shipping");
+        focusFirstAddressError(shipErrors);
+        return;
+      }
+      if (!billingSameAsShipping) {
+        const billErrors = validateAddressForm(billingAddress);
+        if (hasErrors(billErrors)) {
+          setBillingErrors(billErrors);
+          goToStep("billing");
+          focusFirstAddressError(billErrors);
+          return;
         }
-      },
-      onPaid: (path) => {
-        clearCheckoutAttempt();
-        clearCart();
-        toast.success("Order placed successfully!");
-        router.push(path);
-      },
-    });
+      }
+
+      await Promise.allSettled([
+        saveShippingToAccount(),
+        saveBillingToAccount(),
+      ]);
+
+      await payment.startPayment({
+        payload: {
+          items: items.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            ...(item.reservationToken ? { reservationToken: item.reservationToken } : {}),
+            ...(item.selectedOptions ? { selectedOptions: item.selectedOptions } : {}),
+          })),
+          shippingAddress: toOrderAddress(shippingAddress),
+          shippingMethod,
+          ...(discountApplied ? { discountCode: discountApplied.code } : {}),
+          ...(isGift
+            ? {
+                isGift: true,
+                ...(giftFrom.trim() ? { giftFrom: giftFrom.trim() } : {}),
+                ...(includeGiftMessage && giftMessage.trim()
+                  ? { giftMessage: giftMessage.trim() }
+                  : {}),
+              }
+            : {}),
+        },
+        prefill: {
+          name: fullName(shippingAddress),
+          email: shippingAddress.email,
+          contact: shippingAddress.phone,
+        },
+        description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
+        onAvailabilityError: ({ code, productId }) => {
+          const copy = getOneOfOneConflictCopy(code);
+          showCheckoutConflict(copy);
+          if (copy.removeProduct && productId) {
+            removeItem(productId);
+          }
+        },
+        onPaid: (path) => {
+          clearCheckoutAttempt();
+          clearCart();
+          toast.success("Order placed successfully!");
+          router.push(path);
+        },
+      });
     } finally {
       // On the payment-link redirect path the page is already navigating away;
       // on the modal path isSubmitting keeps the button disabled. Releasing the
@@ -573,6 +594,7 @@ export function CheckoutPageClient({
       submitLockRef.current = false;
     }
   };
+  const payBlockedByConflict = checkoutConflict?.blockPayment ?? false;
 
   const handleCheckoutAuthSuccess = async () => {
     goToStep("shipping");
@@ -598,7 +620,8 @@ export function CheckoutPageClient({
           Loading your bag…
         </div>
       ) : !hasItems ? (
-        <div className="mt-8">
+        <div className="mt-8 space-y-6">
+          <CheckoutConflictNotice conflict={checkoutConflict} />
           <EmptyCart featuredPicks={featuredPicks} />
         </div>
       ) : !isAuthenticated ? (
@@ -623,6 +646,7 @@ export function CheckoutPageClient({
                 onRemoveItem={handleRemoveItem}
                 disabled={isSubmitting}
                 error={error}
+                conflict={checkoutConflict}
                 discount={{
                   code: discountCode,
                   onCodeChange: setDiscountCode,
@@ -839,7 +863,7 @@ export function CheckoutPageClient({
                     onSecondary={() => goToStep("packaging")}
                     primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
                     onPrimary={handlePay}
-                    disabledPrimary={!hasItems || isSubmitting || !agreedToTerms}
+                    disabledPrimary={!hasItems || isSubmitting || !agreedToTerms || payBlockedByConflict}
                     primaryLoading={isSubmitting}
                   />
                 </>
@@ -860,6 +884,7 @@ export function CheckoutPageClient({
                 onRemoveItem={handleRemoveItem}
                 disabled={isSubmitting}
                 error={error}
+                conflict={checkoutConflict}
                 discount={{
                   code: discountCode,
                   onCodeChange: setDiscountCode,
@@ -885,5 +910,33 @@ export function CheckoutPageClient({
     <main className="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-12 lg:py-14">
       {content}
     </main>
+  );
+}
+
+function CheckoutConflictNotice({
+  conflict,
+}: {
+  conflict: OneOfOneConflictCopy | null;
+}) {
+  if (!conflict) return null;
+
+  return (
+    <div
+      aria-live="polite"
+      className="mx-auto max-w-2xl rounded-2xl border border-ftt-burgundy/20 bg-ftt-card p-5 text-sm text-ftt-burgundy shadow-[var(--ftt-soft-shadow)]"
+    >
+      <p className="font-serif text-lg text-ftt-navy">{conflict.title}</p>
+      <p className="mt-2 leading-6 text-ftt-burgundy/75">
+        {conflict.message}
+      </p>
+      {conflict.ctaHref ? (
+        <Link
+          href={conflict.ctaHref}
+          className="mt-3 inline-flex rounded-full border border-ftt-burgundy/30 bg-ftt-ivory px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ftt-burgundy transition hover:bg-ftt-burgundy hover:text-ftt-ivory"
+        >
+          {conflict.ctaLabel}
+        </Link>
+      ) : null}
+    </div>
   );
 }

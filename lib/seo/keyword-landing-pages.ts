@@ -1,6 +1,7 @@
 import type { ProductWithRelations } from "@/db/queries/products";
 import { normalizeFacetSlug } from "@/lib/catalog/filter-taxonomy";
 import type { CatalogSearchFilters } from "@/lib/ports/catalog-search";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
 export type KeywordLandingType =
@@ -292,6 +293,11 @@ export const keywordLandingPages = [
     ],
     faq: [
       {
+        question: "How do I sell my old saree?",
+        answer:
+          "If you have sarees sitting unworn — silks, chiffons, designer pieces, or heirlooms — we would love to hear about them. Reach out to us through From the Trunk, and we will guide you through the process. If the piece is a good fit, your saree can find a new home with someone who will truly wear it.",
+      },
+      {
         question: "What sarees can I submit?",
         answer:
           "We review clean, wearable sarees with strong craft, fabric, condition, or story value. Final acceptance depends on condition and fit with the current collection.",
@@ -443,28 +449,16 @@ export function keywordLandingMetadata(
   productCount = 0,
 ) {
   const indexable = isKeywordLandingIndexable(config, productCount);
-  const canonical = absoluteUrl(config.canonicalPath);
 
   return {
-    title: config.title,
-    description: config.description,
-    alternates: { canonical },
+    ...publicPageMetadata({
+      title: config.title,
+      description: config.description,
+      path: config.canonicalPath,
+    }),
     robots: indexable
       ? { index: true, follow: true }
       : { index: false, follow: true },
-    openGraph: {
-      title: config.title,
-      description: config.description,
-      type: "website" as const,
-      url: canonical,
-      images: [{ url: absoluteUrl("/banner/collection_banner.png") }],
-    },
-    twitter: {
-      card: "summary_large_image" as const,
-      title: config.title,
-      description: config.description,
-      images: [absoluteUrl("/banner/collection_banner.png")],
-    },
   };
 }
 
@@ -540,7 +534,7 @@ export function keywordGuideJsonLd(config: KeywordLandingConfig) {
     publisher: {
       "@type": "Organization",
       name: "From the Trunk",
-      logo: absoluteUrl("/Ftt_logo_navbar.png"),
+      logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     },
   };
 }

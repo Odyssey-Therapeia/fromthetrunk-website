@@ -1,9 +1,11 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getSelectedSizeLabel } from "@/lib/catalog/blouse-size-chart";
+import type { OneOfOneConflictCopy } from "@/lib/checkout/one-of-one-conflict-copy";
 import { formatCurrency } from "@/lib/formatters";
 import type { ShippingMethod } from "@/lib/config/order-pricing";
 import type { CartItem } from "@/lib/store/cart-store";
@@ -28,6 +30,7 @@ type OrderSummaryProps = {
   total: number;
   discount: DiscountState;
   onRemoveItem: (id: string) => void;
+  conflict?: OneOfOneConflictCopy | null;
   disabled?: boolean;
   error?: string | null;
 };
@@ -44,6 +47,7 @@ export function OrderSummary({
   taxAmount,
   taxRateLabel,
   total,
+  conflict,
   discount,
   onRemoveItem,
   disabled,
@@ -148,7 +152,29 @@ export function OrderSummary({
             </span>
           </div>
 
-          {error ? (
+          {conflict ? (
+            <div
+              aria-live="polite"
+              className="rounded-2xl border border-ftt-burgundy/20 bg-ftt-burgundy/8 p-4 text-sm text-ftt-burgundy"
+            >
+              <p className="font-serif text-base text-ftt-navy">
+                {conflict.title}
+              </p>
+              <p className="mt-2 leading-6 text-ftt-burgundy/75">
+                {conflict.message}
+              </p>
+              {conflict.ctaHref ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 border-ftt-burgundy/30 bg-ftt-ivory text-ftt-burgundy hover:bg-ftt-burgundy hover:text-ftt-ivory"
+                >
+                  <Link href={conflict.ctaHref}>{conflict.ctaLabel}</Link>
+                </Button>
+              ) : null}
+            </div>
+          ) : error ? (
             <p className="rounded-xl bg-destructive/10 p-3 text-center text-sm font-medium text-destructive">
               {error}
             </p>

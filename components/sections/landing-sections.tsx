@@ -4,13 +4,13 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+
+import { ContactWizard } from "@/components/contact/contact-wizard";
 
 export type LandingImage = {
   alt: string;
@@ -703,52 +703,6 @@ export function TestimonialsSection() {
 }
 
 export function ConnectWithUsSection() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [website, setWebsite] = useState(""); // honeypot
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<"error" | "idle" | "success">("idle");
-  const startedAtRef = useRef(0);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-    setStatus("idle");
-
-    try {
-      const response = await fetch("/api/v2/contact/submit", {
-        body: JSON.stringify({
-          clientSubmissionId:
-            typeof crypto !== "undefined" && "randomUUID" in crypto
-              ? crypto.randomUUID()
-              : undefined,
-          email,
-          message,
-          name,
-          pagePath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-          startedAt: startedAtRef.current || undefined,
-          website,
-        }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-
-      if (!response.ok) throw new Error("Contact submission failed.");
-
-      setName("");
-      setEmail("");
-      setMessage("");
-      setStatus("success");
-    } catch {
-      setStatus("error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <section
       id="connect"
@@ -799,88 +753,10 @@ export function ConnectWithUsSection() {
         </div>
 
         <div className="flex min-w-0 items-center justify-center rounded-[1.75rem] border border-[#B39152]/22 bg-[#FFFCF8] p-4 shadow-[0_22px_60px_rgba(20,29,70,0.12)] sm:p-6 md:p-8">
-          <form
-            onFocusCapture={() => {
-              if (!startedAtRef.current) startedAtRef.current = Date.now();
-            }}
-            onSubmit={handleSubmit}
+          <ContactWizard
+            surface="landing"
             className="mx-auto w-full max-w-xl rounded-[1.5rem] border border-[#601D1C]/10 bg-[#FDF7F1] p-5 text-[#141D46] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] sm:p-6 md:p-8"
-          >
-            <div className="grid gap-4 sm:gap-5">
-              <input
-                tabIndex={-1}
-                autoComplete="off"
-                value={website}
-                onChange={(event) => setWebsite(event.target.value)}
-                name="website"
-                className="hidden"
-                aria-hidden="true"
-              />
-              <label className="grid gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                  Name
-                </span>
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  className="w-full rounded-full border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                  placeholder="Your name"
-                />
-              </label>
-              <label className="grid gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                  Email
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  className="w-full rounded-full border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                  placeholder="you@example.com"
-                />
-              </label>
-              <label className="grid gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#141D46]">
-                  Message
-                </span>
-                <textarea
-                  rows={5}
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  required
-                  className="w-full resize-none rounded-3xl border border-[#141D46]/15 bg-[#FFFCF8] px-4 py-3.5 outline-none transition focus:border-[#B39152] sm:px-5 sm:py-4"
-                  placeholder="Tell us what you are looking for..."
-                />
-              </label>
-
-              <div aria-live="polite" className="min-h-5 text-sm leading-6">
-                {status === "success" ? (
-                  <p className="text-[#141D46]">
-                    Thanks for reaching out. We&rsquo;ve received your request.
-                    Our team will contact you shortly.
-                  </p>
-                ) : null}
-                {status === "error" ? (
-                  <p className="text-[#601D1C]">
-                    We couldn&rsquo;t send this right now. Please try again.
-                  </p>
-                ) : null}
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#141D46] px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] transition hover:bg-[#0E0D0E] disabled:cursor-not-allowed disabled:opacity-70 sm:py-4"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                ) : null}
-                {isSubmitting ? "Sending..." : "Send Message"}
-              </button>
-            </div>
-          </form>
+          />
         </div>
       </div>
     </section>

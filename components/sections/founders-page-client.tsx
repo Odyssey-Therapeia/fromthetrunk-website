@@ -999,7 +999,7 @@ function FounderStoryPage({
         animate="show"
         custom={reduceMotion}
         variants={rowStagger}
-        className="relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-[#B39152]/24 bg-[#FDF7F1] p-4 lg:p-5"
+        className="relative flex h-full flex-col overflow-y-auto overscroll-contain rounded-[1.25rem] border border-[#B39152]/24 bg-[#FDF7F1] p-4 [scrollbar-width:thin] lg:p-5"
       >
         <motion.div custom={reduceMotion} variants={pageEnter}>
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">

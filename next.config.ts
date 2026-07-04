@@ -10,7 +10,7 @@ const cspReportOnly = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://images.unsplash.com https://plus.unsplash.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com https://www.google-analytics.com",
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com https://www.google-analytics.com",
   "font-src 'self' data:",
   "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
@@ -40,14 +40,6 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
     qualities: [70, 75, 80, 82, 85],
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "plus.unsplash.com",
-      },
       {
         protocol: "https",
         hostname: "**.public.blob.vercel-storage.com",

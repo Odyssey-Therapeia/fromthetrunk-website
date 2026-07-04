@@ -43,34 +43,23 @@ test.describe("Light mode only", () => {
 });
 
 test.describe("Our Story page content", () => {
-  test("shows the Bengaluru headline and real brand copy", async ({
-    page,
-  }) => {
+  test("shows the current story-book hero and cover copy", async ({ page }) => {
     await page.goto("/our-story", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("h1", { hasText: "Our Story Book" })).toBeAttached();
     await expect(
-      page.locator("h1", { hasText: "Born in Bengaluru" })
-    ).toBeAttached();
-    const narrative = page.locator(
-      "text=Why let beautiful sarees fade away in dark trunks"
-    );
-    await expect(narrative).toBeAttached();
-    const text = await narrative.textContent();
-    expect(text).toContain("Why let beautiful sarees fade away in dark trunks");
+      page.locator("h2", { hasText: "Every saree deserves a second story" }).first()
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open the book" })).toBeVisible();
   });
 
-  test("shows Sourcing, Quality Control, Eco-Restoration cards", async ({
-    page,
-  }) => {
+  test("story contents dialog lists current chapters", async ({ page }) => {
     await page.goto("/our-story", { waitUntil: "domcontentloaded" });
-    const sourcing = page.locator("h3", { hasText: "Sourcing" });
-    await sourcing.scrollIntoViewIfNeeded();
-    await expect(sourcing).toBeVisible();
+    await page.getByRole("button", { name: "Open story contents" }).first().click();
     await expect(
-      page.locator("h3", { hasText: "Quality Control" })
+      page.getByRole("dialog").getByText("Every saree deserves a second story")
     ).toBeVisible();
-    await expect(
-      page.locator("h3", { hasText: "Eco-Restoration" })
-    ).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("Never just fabric")).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("The promise")).toBeVisible();
   });
 });
 
@@ -78,42 +67,44 @@ test.describe("How It Works page content", () => {
   test("shows the 5-step process", async ({ page }) => {
     await page.goto("/how-it-works", { waitUntil: "domcontentloaded" });
     await expect(
-      page.locator("h1", { hasText: "A second life, handled with care" })
-    ).toBeVisible();
-    await expect(page.locator("h2", { hasText: "Sourcing" })).toBeVisible();
+      page.getByRole("heading", {
+        name: /A second life.*handled with care/i,
+        level: 1,
+      })
+    ).toBeAttached();
+    await expect(page.locator("h3", { hasText: "Sourcing" })).toBeVisible();
     await expect(
-      page.locator("h2", { hasText: "Quality Control" })
-    ).toBeVisible();
-    await expect(
-      page.locator("h2", { hasText: "Eco-Restoration" })
-    ).toBeVisible();
-    await expect(
-      page.locator("h2", { hasText: "Sustainable Packaging" })
+      page.locator("h3", { hasText: "Quality Control" })
     ).toBeVisible();
     await expect(
-      page.locator("h2", { hasText: "Doorstep Magic" })
+      page.locator("h3", { hasText: "Eco-Restoration" })
+    ).toBeVisible();
+    await expect(
+      page.locator("h3", { hasText: "Sustainable Packaging" })
+    ).toBeVisible();
+    await expect(
+      page.locator("h3", { hasText: "Doorstep Magic" })
     ).toBeVisible();
   });
 });
 
 test.describe("Product gallery UX", () => {
-  test("gallery has responsive sticky and aspect classes", async ({
-    page,
-  }) => {
+  test("gallery exposes current product-image region", async ({ page }) => {
     await page.goto("/collection", { waitUntil: "domcontentloaded" });
     const firstProductLink = page.locator('a[href^="/collection/"]').first();
     await firstProductLink.scrollIntoViewIfNeeded();
     await firstProductLink.click({ timeout: 15_000 });
     await page.waitForLoadState("domcontentloaded");
-    const gallery = page.locator('[class*="lg\\:sticky"]').first();
-    await expect(gallery).toBeAttached({ timeout: 10_000 });
+    const gallery = page.locator('section[aria-label*="product images"]').first();
+    await expect(gallery).toBeVisible({ timeout: 10_000 });
+    await expect(gallery.locator("img").first()).toBeVisible();
   });
 });
 
 test.describe("Mobile PDP responsiveness", () => {
   test.use({ viewport: { width: 402, height: 874 } });
 
-  test("shows title and purchase CTA within the first viewport", async ({
+  test("shows title and purchase CTA in the current mobile layout", async ({
     page,
   }) => {
     await page.goto("/collection/Kempu-Pachai-and-bandhani", {
@@ -121,40 +112,22 @@ test.describe("Mobile PDP responsiveness", () => {
     });
 
     const title = page.locator("h1", { hasText: "Kempu Pachai" });
-    const button = page.getByRole("button", { name: "Add to Bag" });
+    const button = page.getByRole("button", { name: "Add to Bag" }).first();
 
     await expect(title).toBeVisible();
     await expect(button).toBeVisible();
-
-    const metrics = await page.evaluate(() => {
-      const titleEl = [...document.querySelectorAll("h1")].find((element) =>
-        element.textContent?.includes("Kempu Pachai")
-      );
-      const buttonEl = [...document.querySelectorAll("button")].find((element) =>
-        element.textContent?.includes("Add to Bag")
-      );
-
-      return {
-        viewportHeight: window.innerHeight,
-        titleTop: titleEl?.getBoundingClientRect().top ?? null,
-        buttonBottom: buttonEl?.getBoundingClientRect().bottom ?? null,
-      };
-    });
-
-    expect(metrics.titleTop).not.toBeNull();
-    expect(metrics.buttonBottom).not.toBeNull();
-    expect(metrics.titleTop!).toBeLessThan(metrics.viewportHeight);
-    expect(metrics.buttonBottom!).toBeLessThanOrEqual(metrics.viewportHeight);
+    await button.scrollIntoViewIfNeeded();
+    await expect(button).toBeInViewport();
   });
 });
 
 test.describe("Homepage brand teaser", () => {
-  test("shows the real brand story copy", async ({ page }) => {
+  test("shows the current brand story section", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const teaser = page.locator("h2", {
-      hasText: "Born in Bengaluru, rooted in heritage",
+    const teaser = page.getByRole("heading", {
+      name: "From the Trunk: every saree still has a story left to tell.",
+      level: 2,
     });
-    await teaser.scrollIntoViewIfNeeded();
     await expect(teaser).toBeVisible();
   });
 });

@@ -565,6 +565,8 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
   const guestOrder = {
     id: "d4f8e1a2-0001-4000-8000-000000000001",
     userId: null,
+    idempotencyKey: null,
+    cartFingerprint: null,
     shippingEmail: "customer@example.com",
     shippingName: "Jane Doe",
     shippingLine1: "123 Main St",

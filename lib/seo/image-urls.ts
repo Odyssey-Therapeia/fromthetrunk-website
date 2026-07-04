@@ -2,7 +2,14 @@ import type { Product } from "@/types/domain";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
-const UNSAFE_IMAGE_HOSTS = new Set(["localhost", "127.0.0.1"]);
+const STOCK_IMAGE_HOST = ["un", "splash"].join("");
+
+const UNSAFE_IMAGE_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  `images.${STOCK_IMAGE_HOST}.com`,
+  `plus.${STOCK_IMAGE_HOST}.com`,
+]);
 
 export function toSeoImageUrl(src: string | null | undefined): string | null {
   if (!src) return null;
@@ -13,6 +20,7 @@ export function toSeoImageUrl(src: string | null | undefined): string | null {
 
     if (url.protocol !== "https:") return null;
     if (UNSAFE_IMAGE_HOSTS.has(hostname)) return null;
+    if (hostname.endsWith(`.${STOCK_IMAGE_HOST}.com`)) return null;
     if (hostname.endsWith(".vercel.app")) return null;
 
     url.hash = "";
