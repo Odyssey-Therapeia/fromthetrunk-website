@@ -4,9 +4,10 @@
  * A pure function that rejects any slug that would collide with an existing
  * top-level route segment in the app. Derived from actual route directories:
  *
- *   app/(site)/ top-level dirs: account, cart, checkout, collection,
- *     how-it-works, our-story, packing, privacy-policy, return-policy,
- *     search, shipping-policy, terms-of-service, why
+ *   app/(site)/ top-level dirs: account, blouses, cart, checkout, collection,
+ *     faqs, founders, guides, how-it-works, our-story, our-team, packing,
+ *     policies, privacy-policy, return-policy, search, sell-your-saree,
+ *     shipping-policy, terms-of-service, why
  *
  *   app/(admin)/admin/ top-level dirs (the admin namespace): admin
  *
@@ -20,13 +21,20 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "account",
   "cart",
   "checkout",
+  "blouses",
   "collection",
+  "faqs",
+  "founders",
+  "guides",
   "how-it-works",
   "our-story",
+  "our-team",
   "packing",
+  "policies",
   "privacy-policy",
   "return-policy",
   "search",
+  "sell-your-saree",
   "shipping-policy",
   "terms-of-service",
   "why",

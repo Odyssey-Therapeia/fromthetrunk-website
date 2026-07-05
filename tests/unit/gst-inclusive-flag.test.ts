@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ValidatedDiscount } from "@/lib/discounts/validate";
 
-import { GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
+import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
 
 // calculateOrderTotals operates in PAISE (the unit the charging routes carry).
 // SHIPPING_TIERS are rupee tiers, so paise equivalents are scaled by 100.
@@ -87,14 +87,17 @@ describe("calculateOrderTotals — flag OFF (regression lock, exclusive pricing)
     ); // 1730000
   });
 
-  it("free shipping above threshold — numbers must match pre-P2-04 exactly", async () => {
+  it("shipping above threshold — free only when ENABLE_FREE_SHIPPING", async () => {
     const { calculateOrderTotals } = await import("@/lib/payments/razorpay");
     const subtotalPaise = 3_000_000; // 30000 INR
     const result = calculateOrderTotals(subtotalPaise, "standard");
+    const expectedShipping = ENABLE_FREE_SHIPPING ? 0 : STANDARD_PAISE;
 
-    expect(result.shippingCostPaise).toBe(0);
-    expect(result.taxAmountPaise).toBe(Math.round(subtotalPaise * GST_RATE)); // 360000
-    expect(result.totalPaise).toBe(subtotalPaise + Math.round(subtotalPaise * GST_RATE)); // 3360000
+    expect(result.shippingCostPaise).toBe(expectedShipping);
+    expect(result.taxAmountPaise).toBe(Math.round(subtotalPaise * GST_RATE));
+    expect(result.totalPaise).toBe(
+      subtotalPaise + expectedShipping + Math.round(subtotalPaise * GST_RATE),
+    );
   });
 
   it("express shipping for small order — numbers must match pre-P2-04 exactly", async () => {
@@ -119,21 +122,24 @@ describe("calculateOrderTotals — flag OFF (regression lock, exclusive pricing)
     expect(result.totalPaise).toBe(STANDARD_PAISE); // 50000
   });
 
-  it("exact free-threshold amount — numbers must match pre-P2-04 exactly", async () => {
+  it("exact free-threshold amount — free only when ENABLE_FREE_SHIPPING", async () => {
     const { calculateOrderTotals } = await import("@/lib/payments/razorpay");
     const subtotalPaise = SHIPPING_TIERS.freeThreshold * 100; // 2500000 paise (25000 INR)
     const result = calculateOrderTotals(subtotalPaise, "standard");
+    const expectedShipping = ENABLE_FREE_SHIPPING ? 0 : STANDARD_PAISE;
 
-    expect(result.shippingCostPaise).toBe(0);
-    expect(result.taxAmountPaise).toBe(Math.round(subtotalPaise * GST_RATE)); // 300000
-    expect(result.totalPaise).toBe(subtotalPaise + Math.round(subtotalPaise * GST_RATE)); // 2800000
+    expect(result.shippingCostPaise).toBe(expectedShipping);
+    expect(result.taxAmountPaise).toBe(Math.round(subtotalPaise * GST_RATE));
+    expect(result.totalPaise).toBe(
+      subtotalPaise + expectedShipping + Math.round(subtotalPaise * GST_RATE),
+    );
   });
 
-  it("free express shipping above threshold — numbers must match pre-P2-04 exactly", async () => {
+  it("express above threshold — free only when ENABLE_FREE_SHIPPING", async () => {
     const { calculateOrderTotals } = await import("@/lib/payments/razorpay");
     const result = calculateOrderTotals(3_000_000, "express");
 
-    expect(result.shippingCostPaise).toBe(0);
+    expect(result.shippingCostPaise).toBe(ENABLE_FREE_SHIPPING ? 0 : EXPRESS_PAISE);
   });
 });
 
@@ -170,12 +176,13 @@ describe("calculateOrderTotals — flag ON (GST-inclusive pricing)", () => {
     expect(result.taxAmountPaise).toBe(expectedGstComponent); // ~321429 for 3000000 @ 12%
   });
 
-  it("shipping tiers are unchanged — free above threshold", async () => {
+  it("shipping above threshold — inclusive, free only when ENABLE_FREE_SHIPPING", async () => {
     const { calculateOrderTotals } = await import("@/lib/payments/razorpay");
     const result = calculateOrderTotals(3_000_000, "standard");
+    const expectedShipping = ENABLE_FREE_SHIPPING ? 0 : STANDARD_PAISE;
 
-    expect(result.shippingCostPaise).toBe(0);
-    expect(result.totalPaise).toBe(3_000_000); // no GST added, shipping free
+    expect(result.shippingCostPaise).toBe(expectedShipping);
+    expect(result.totalPaise).toBe(3_000_000 + expectedShipping); // inclusive: no GST on top
   });
 
   it("shipping tiers are unchanged — standard paid below threshold", async () => {

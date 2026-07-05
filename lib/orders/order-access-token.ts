@@ -1,7 +1,11 @@
 import crypto from "crypto";
 
+import { getTokenSecret } from "@/lib/security/token-secrets";
+
 const getOrderAccessSecret = () =>
-  process.env.NEXTAUTH_SECRET || process.env.PAYLOAD_SECRET || process.env.ADMIN_API_SECRET;
+  getTokenSecret("ORDER_ACCESS_TOKEN_SECRET", {
+    purpose: "order access tokens",
+  });
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 

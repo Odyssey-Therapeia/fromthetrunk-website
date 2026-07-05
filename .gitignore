@@ -51,6 +51,32 @@ test-results/
 # Sensitive internal docs
 /docs/finance/
 
+# Generated phase/audit/planning markdown files
+/*_AUDIT.md
+/*_DIAGNOSIS.md
+/*_DISCOVERY.md
+/*_PLAN.md
+/*_QA.md
+/*_REPORT.md
+/*_REQUEST.md
+/*_CHECKLIST.md
+/*_GUIDE.md
+/AUTH_OTP_*.md
+/CACHE_INVALIDATION_PLAN.md
+/COMMERCE_AUTH_*.md
+/CONTACT_REVIEW_CAPTURE_REPORT.md
+/CSP_ENFORCEMENT_PLAN.md
+/DB_CONNECTION_SCALE_PLAN.md
+/DESIGN_PAYMENT_OUTBOX.md
+/FINAL_PHASE_*.md
+/LIVE_SMOKE_TEST_PLAN.md
+/LOAD_TEST_PLAN_*.md
+/PERF_*.md
+/SECURITY.md
+/SECURITY_FIX_PHASE_*.md
+/SEO_*.csv
+/SEO_*.md
+
 # lock files (keep package-lock.json for reproducible builds)
 bun.lock
 

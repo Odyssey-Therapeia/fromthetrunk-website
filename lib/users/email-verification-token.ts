@@ -15,10 +15,12 @@
 
 import crypto from "crypto";
 
+import { getTokenSecret } from "@/lib/security/token-secrets";
+
 const getSecret = () =>
-  process.env.NEXTAUTH_SECRET ||
-  process.env.PAYLOAD_SECRET ||
-  process.env.ADMIN_API_SECRET;
+  getTokenSecret("EMAIL_VERIFICATION_TOKEN_SECRET", {
+    purpose: "email verification tokens",
+  });
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 

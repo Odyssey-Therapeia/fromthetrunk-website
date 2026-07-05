@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
 
+import { CartHeroShell } from "@/components/cart/cart-hero-shell";
 import { CartPageClient } from "@/components/cart/cart-page-client";
-import { getFeaturedProducts, getProducts } from "@/lib/data/products";
-import type { Product } from "@/types/domain";
-
-export const dynamic = "force-dynamic";
+import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
 
 export const metadata: Metadata = {
   title: "Shopping Bag",
-  robots: { index: false, follow: false },
+  robots: PRIVATE_NOINDEX_ROBOTS,
 };
 
 export default async function CartPage() {
-  const featured = await getFeaturedProducts(3);
-  const docs = featured.docs.length ? featured.docs : (await getProducts(3)).docs;
-
-  return <CartPageClient featuredPicks={docs as Product[]} />;
+  return (
+    <main className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
+      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:py-12">
+        <CartHeroShell />
+        <CartPageClient
+          embedded
+          showHero={false}
+          featuredPicks={[]}
+        />
+      </div>
+    </main>
+  );
 }

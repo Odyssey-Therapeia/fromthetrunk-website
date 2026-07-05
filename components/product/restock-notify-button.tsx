@@ -94,12 +94,12 @@ export function RestockNotifyButton({
           Notify me if it returns
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Notify me if it returns</DialogTitle>
           <DialogDescription>
             We&apos;ll send you a message if <strong>{productName}</strong> becomes
-            available again. One-of-one pieces occasionally return from
+            available again. Unique pieces occasionally return from
             consignment.
           </DialogDescription>
         </DialogHeader>

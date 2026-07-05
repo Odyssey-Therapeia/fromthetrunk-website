@@ -70,9 +70,17 @@ export const GST_RATE = parseRateEnv(
   0.12
 );
 
+/**
+ * Free shipping is DISABLED — every order is charged the standard shipping rate
+ * regardless of subtotal. Flip to `true` to re-enable the free-shipping
+ * threshold below in BOTH the client estimate (isFreeShipping) and the server
+ * charge (toShippingCostPaise).
+ */
+export const ENABLE_FREE_SHIPPING: boolean = false;
+
 /** Shipping cost tiers in INR. */
 export const SHIPPING_TIERS = {
-  /** Free shipping threshold in INR. */
+  /** Free-shipping threshold in INR (only applies when ENABLE_FREE_SHIPPING). */
   freeThreshold: parseNumberEnv(
     "NEXT_PUBLIC_FTT_SHIPPING_FREE_THRESHOLD",
     process.env.NEXT_PUBLIC_FTT_SHIPPING_FREE_THRESHOLD,
@@ -81,7 +89,7 @@ export const SHIPPING_TIERS = {
   standard: parseNumberEnv(
     "NEXT_PUBLIC_FTT_SHIPPING_STANDARD",
     process.env.NEXT_PUBLIC_FTT_SHIPPING_STANDARD,
-    500,
+    250,
     {
       allowZero: false,
     }
@@ -89,7 +97,7 @@ export const SHIPPING_TIERS = {
   express: parseNumberEnv(
     "NEXT_PUBLIC_FTT_SHIPPING_EXPRESS",
     process.env.NEXT_PUBLIC_FTT_SHIPPING_EXPRESS,
-    1200,
+    600,
     {
       allowZero: false,
     }

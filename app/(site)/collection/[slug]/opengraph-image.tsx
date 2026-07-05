@@ -18,6 +18,7 @@ import { ImageResponse } from "next/og";
 
 import { getProductBySlug } from "@/lib/data/products";
 import { extractPdpOgData } from "@/lib/seo/og-data";
+import { isSeoEligibleProduct } from "@/lib/seo/product-indexing";
 import { getSiteOrigin } from "@/lib/config/site";
 import type { Product } from "@/types/domain";
 
@@ -37,7 +38,7 @@ export default async function OGImage({ params }: Props) {
   const rawProduct = await getProductBySlug(slug);
   const product = rawProduct as Product | null;
 
-  if (!product) {
+  if (!product || !isSeoEligibleProduct(product)) {
     // Fallback: site-level branded image
     return new ImageResponse(
       <div

@@ -38,23 +38,27 @@ export const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
     links: [
       { href: "/collection", label: "The Collection" },
       { href: "/our-story", label: "Our Story" },
+      { href: "/why", label: "Our Why" },
       { href: "/how-it-works", label: "How It Works" },
+      { href: "/faqs", label: "FAQs" },
+      { href: "/sell-your-saree", label: "Sell Your Saree" },
+      { href: "/our-team", label: "Our Team" },
     ],
   },
   {
     title: "Customer Care",
     links: [
-      { href: "/shipping-policy", label: "Shipping" },
+      { href: "/policies/shipping-delivery-policy", label: "Shipping" },
       { href: "/packing", label: "Packing" },
-      { href: "/return-policy", label: "Returns & Refunds" },
+      { href: "/policies/return-refund-policy", label: "Returns & Refunds" },
       { href: "/how-it-works", label: "Authentication" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { href: "/privacy-policy", label: "Privacy Policy" },
-      { href: "/terms-of-service", label: "Terms of Service" },
+      { href: "/policies/privacy-policy", label: "Privacy Policy" },
+      { href: "/policies/terms-of-service", label: "Terms of Service" },
     ],
   },
 ];

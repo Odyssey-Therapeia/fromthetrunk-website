@@ -1,10 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { Heart, Sparkles } from "lucide-react";
 
 import { ProductCard } from "@/components/product/product-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/types/domain";
 
@@ -14,7 +17,10 @@ const fetchWishlist = async (): Promise<Product[]> => {
   const wishlistIds = (await wishlistResponse.json()) as string[];
   if (wishlistIds.length === 0) return [];
 
-  const productsResponse = await fetch("/api/v2/products?includeDrafts=true&limit=500");
+  const params = new URLSearchParams({
+    ids: wishlistIds.join(","),
+  });
+  const productsResponse = await fetch(`/api/v2/products?${params.toString()}`);
   if (!productsResponse.ok) return [];
   const products = (await productsResponse.json()) as Product[];
   const productById = new Map(products.map((product) => [product.id, product]));
@@ -27,9 +33,6 @@ const fetchWishlist = async (): Promise<Product[]> => {
 export default function WishlistPage() {
   const { data: session, status } = useSession();
 
-  // Key ["wishlist","products"] — returns Product[].
-  // Distinct from ["wishlist","ids"] used by WishlistButton (returns string[]).
-  // Both are refreshed when ["wishlist"] prefix is invalidated.
   const { data: products, isLoading, isError } = useQuery({
     queryKey: ["wishlist", "products"],
     queryFn: fetchWishlist,
@@ -37,17 +40,16 @@ export default function WishlistPage() {
   });
 
   if (status === "loading") {
-    return <p className="text-sm text-muted-foreground">Loading session...</p>;
+    return <WishlistState message="Loading your saved pieces..." />;
   }
 
   if (!session?.user?.id) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
-        Please sign in to view your wishlist.{" "}
-        <Button asChild variant="link" className="px-0">
+      <WishlistState message="Please sign in to view your wishlist.">
+        <Button asChild className="mt-4 rounded-full bg-ftt-navy text-ftt-ivory">
           <Link href="/account/sign-in">Sign in</Link>
         </Button>
-      </div>
+      </WishlistState>
     );
   }
 
@@ -55,34 +57,81 @@ export default function WishlistPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="font-serif text-2xl text-foreground">Wishlist</h2>
-        <p className="text-sm text-muted-foreground">
-          Pieces you&apos;ve saved for later. One of a kind, don&apos;t wait too long.
-        </p>
+      <div className="overflow-hidden rounded-[1.75rem] border border-ftt-border bg-ftt-card shadow-[0_18px_50px_rgba(20,29,70,0.09)]">
+        <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_260px] md:items-end">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-ftt-gold">
+              Wishlist
+            </p>
+            <h2 className="mt-2 font-serif text-[clamp(2.4rem,5vw,4.75rem)] leading-[0.94] text-ftt-navy">
+              Pieces you are thinking about.
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-ftt-burgundy/60">
+              Save a saree while you decide. Every piece is unique, so this
+              is a quiet place to compare what still feels like yours.
+            </p>
+          </div>
+
+          <div className="rounded-[1.35rem] bg-ftt-navy p-5 text-ftt-ivory">
+            <Heart className="size-5 text-ftt-gold" />
+            <p className="mt-8 font-serif text-4xl leading-none">
+              {items.length}
+            </p>
+            <p className="mt-2 text-xs uppercase tracking-[0.2em] text-ftt-ivory/58">
+              Saved piece{items.length === 1 ? "" : "s"}
+            </p>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading wishlist...</p>
+        <WishlistState message="Loading wishlist..." />
       ) : isError ? (
-        <p className="text-sm text-destructive">Unable to load wishlist.</p>
+        <WishlistState message="Unable to load wishlist right now." />
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">
-          <p>No saved pieces yet.</p>
-          <p className="mt-2">
-            Tap the heart icon on any saree to save it here.
+        <div className="ftt-account-glow-card rounded-[1.75rem] border border-dashed border-ftt-border bg-ftt-card p-8 text-center shadow-sm">
+          <div className="mx-auto grid size-14 place-items-center rounded-full bg-ftt-navy text-ftt-gold">
+            <Sparkles className="size-5" />
+          </div>
+          <Badge className="mt-5 rounded-full border border-ftt-gold/35 bg-ftt-gold/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.22em] text-ftt-gold">
+            Waiting for a favourite
+          </Badge>
+          <h3 className="mx-auto mt-5 max-w-xl font-serif text-[clamp(2rem,4vw,3.65rem)] leading-none text-ftt-navy">
+            Your saved trunk is still empty.
+          </h3>
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-ftt-burgundy/60">
+            Tap the heart on any saree to keep it here while you choose your
+            next heirloom.
           </p>
-          <Button asChild className="mt-4 rounded-full" variant="outline">
-            <Link href="/collection">Browse the Collection</Link>
+          <Button
+            asChild
+            className="mt-6 rounded-full bg-ftt-navy px-7 text-ftt-ivory hover:bg-ftt-midnight"
+          >
+            <Link href="/collection">Browse the collection</Link>
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-3">
           {items.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function WishlistState({
+  message,
+  children,
+}: {
+  message: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-dashed border-ftt-border bg-ftt-card p-6 text-sm leading-6 text-ftt-burgundy/60 shadow-sm">
+      {message}
+      {children}
     </div>
   );
 }

@@ -200,8 +200,8 @@ function assertValidProductOfferWithImage(
   expect((parsed.name as string).length).toBeGreaterThan(0);
 
   // image — required (for products with images)
-  expect(typeof parsed.image).toBe("string");
-  expect((parsed.image as string).length).toBeGreaterThan(0);
+  expect(Array.isArray(parsed.image)).toBe(true);
+  expect((parsed.image as string[]).length).toBeGreaterThan(0);
 
   // offers — required block
   const offers = parsed.offers as Record<string, unknown>;
@@ -218,7 +218,7 @@ function assertValidProductOfferWithImage(
   // availability — required, must be one of the schema.org URIs
   const validAvailabilities = [
     "https://schema.org/InStock",
-    "https://schema.org/SoldOut",
+    "https://schema.org/OutOfStock",
     "https://schema.org/LimitedAvailability",
   ];
   expect(validAvailabilities).toContain(offers.availability);
@@ -254,7 +254,7 @@ function assertValidProductOffer(
   // availability — required, must be one of the schema.org URIs
   const validAvailabilities = [
     "https://schema.org/InStock",
-    "https://schema.org/SoldOut",
+    "https://schema.org/OutOfStock",
     "https://schema.org/LimitedAvailability",
   ];
   expect(validAvailabilities).toContain(offers.availability);
@@ -292,10 +292,10 @@ describe("P5-06: AEO schema completeness audit", () => {
       expect(offers.availability).toBe("https://schema.org/InStock");
     });
 
-    it("sold fixture → SoldOut availability", () => {
+    it("sold fixture → OutOfStock availability", () => {
       const parsed = JSON.parse(safeJsonLd(productJsonLd(fixtureSold))) as Record<string, unknown>;
       const offers = parsed.offers as Record<string, unknown>;
-      expect(offers.availability).toBe("https://schema.org/SoldOut");
+      expect(offers.availability).toBe("https://schema.org/OutOfStock");
     });
 
     it("reserved fixture → LimitedAvailability", () => {
@@ -355,7 +355,7 @@ describe("P5-06: AEO schema completeness audit", () => {
         safeJsonLd(productJsonLd(fixtureAvailable))
       ) as Record<string, unknown>;
       // The mock resolveMediaURL returns the url from media object
-      expect(parsed.image).toBe("https://cdn.example.com/a.jpg");
+      expect(parsed.image).toEqual(["https://cdn.example.com/a.jpg"]);
     });
 
     it("MUTATION PROOF — removing image support from builder omits image field (fixture without images has no image)", () => {
@@ -378,7 +378,7 @@ describe("P5-06: AEO schema completeness audit", () => {
       // image is missing — this MUST NOT satisfy the image assertion
       expect(parsed.image).toBeUndefined();
       // Confirm it would fail assertValidProductOfferWithImage's image check
-      expect(typeof parsed.image).not.toBe("string");
+      expect(Array.isArray(parsed.image)).toBe(false);
     });
   });
 
@@ -435,7 +435,7 @@ describe("P5-06: AEO schema completeness audit", () => {
 
       const validAvailabilities = [
         "https://schema.org/InStock",
-        "https://schema.org/SoldOut",
+        "https://schema.org/OutOfStock",
         "https://schema.org/LimitedAvailability",
       ];
       // availability is undefined → NOT in validAvailabilities

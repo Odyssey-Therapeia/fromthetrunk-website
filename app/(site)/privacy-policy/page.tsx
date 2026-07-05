@@ -1,25 +1,26 @@
 import type { Metadata } from "next";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Privacy Policy",
   description:
     "How From the Trunk collects, uses, and protects your personal information.",
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-10 px-6 py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
         <h1 className="font-serif text-4xl text-foreground">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: February 2026
+          Last updated: June 29, 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">

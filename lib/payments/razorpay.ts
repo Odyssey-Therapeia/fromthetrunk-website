@@ -2,8 +2,9 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 
 import { isGstInclusive } from "@/lib/config/flags";
-import { GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
+import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { applyDiscountToPaise, type ValidatedDiscount } from "@/lib/discounts/validate";
+import { isLiveRazorpayMode, isUnsafeLiveHost } from "@/lib/payments/payment-host-guard";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
 export const RAZORPAY_PAYMENT_LINK_HOLD_MINUTES = 30;
@@ -58,7 +59,40 @@ export type RazorpayPaymentLinkResponse = {
   amount_paid?: number;
   currency?: string;
   id: string;
+  reference_id?: string;
+  payments?: Array<{
+    amount?: number | string;
+    method?: string;
+    payment_id?: string;
+    plink_id?: string;
+    status?: string;
+  }> | {
+    amount?: number | string;
+    method?: string;
+    payment_id?: string;
+    plink_id?: string;
+    status?: string;
+  } | null;
   short_url: string;
+  status?: string;
+};
+
+export type RazorpayPaymentResponse = {
+  amount?: number;
+  captured?: boolean;
+  created_at?: number;
+  currency?: string;
+  id: string;
+  method?: string;
+  order_id?: null | string;
+  status?: string;
+};
+
+export type RazorpayOrderResponse = {
+  amount?: number;
+  amount_paid?: number;
+  currency?: string;
+  id: string;
   status?: string;
 };
 
@@ -79,6 +113,32 @@ export type CreateRazorpayPaymentLinkInput = {
 export const getRazorpayPaymentLinkReferenceId = (orderId: string) =>
   `ftt_${orderId.replace(/-/g, "").slice(0, 32)}`;
 
+const PRODUCTION_PAYMENT_HOST = "www.fromthetrunk.shop";
+
+const normalizeHostname = (hostname: string) => hostname.trim().toLowerCase();
+
+export function shouldNotifyRazorpayCustomer({
+  callbackUrl,
+}: {
+  callbackUrl: string;
+}): boolean {
+  if (!isLiveRazorpayMode()) return false;
+
+  let url: URL;
+  try {
+    url = new URL(callbackUrl);
+  } catch {
+    return false;
+  }
+
+  const hostname = normalizeHostname(url.hostname);
+  return (
+    url.protocol === "https:" &&
+    hostname === PRODUCTION_PAYMENT_HOST &&
+    !isUnsafeLiveHost(url.host)
+  );
+}
+
 export async function createRazorpayPaymentLink({
   amountPaise,
   callbackUrl,
@@ -91,6 +151,7 @@ export async function createRazorpayPaymentLink({
   const razorpay = getRazorpayInstance();
   const expiresAt =
     expireBy ?? new Date(Date.now() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000);
+  const notifyCustomer = shouldNotifyRazorpayCustomer({ callbackUrl });
 
   const paymentLink = await razorpay.paymentLink.create({
     accept_partial: false,
@@ -107,14 +168,43 @@ export async function createRazorpayPaymentLink({
     expire_by: Math.floor(expiresAt.getTime() / 1000),
     notes,
     notify: {
-      email: true,
-      sms: Boolean(customer.contact),
+      email: notifyCustomer,
+      sms: notifyCustomer && Boolean(customer.contact),
     },
     reference_id: referenceId,
-    reminder_enable: true,
+    reminder_enable: notifyCustomer,
   });
 
   return paymentLink as RazorpayPaymentLinkResponse;
+}
+
+export async function fetchRazorpayPayment(
+  paymentId: string
+): Promise<RazorpayPaymentResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.payments.fetch(paymentId) as Promise<RazorpayPaymentResponse>;
+}
+
+export async function fetchRazorpayOrder(
+  orderId: string
+): Promise<RazorpayOrderResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.orders.fetch(orderId) as Promise<RazorpayOrderResponse>;
+}
+
+export async function fetchRazorpayOrderPayments(
+  orderId: string
+): Promise<RazorpayPaymentResponse[]> {
+  const razorpay = getRazorpayInstance();
+  const result = await razorpay.orders.fetchPayments(orderId);
+  return (result.items ?? []) as RazorpayPaymentResponse[];
+}
+
+export async function fetchRazorpayPaymentLink(
+  paymentLinkId: string
+): Promise<RazorpayPaymentLinkResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.paymentLink.fetch(paymentLinkId) as Promise<RazorpayPaymentLinkResponse>;
 }
 
 /**
@@ -188,7 +278,7 @@ export function toShippingCostPaise(
   shippingMethod: ShippingMethod = "standard"
 ): number {
   const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
-  if (subtotalPaise >= freeThresholdPaise) return 0;
+  if (ENABLE_FREE_SHIPPING && subtotalPaise >= freeThresholdPaise) return 0;
   return SHIPPING_TIERS[shippingMethod] * 100;
 }
 

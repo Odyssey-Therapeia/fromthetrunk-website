@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 
 import { errorResponse } from "@/lib/http/error-response";
 import { verifyBearerSecret } from "@/lib/http/verify-secret";
+import { timeAsync } from "@/lib/perf/server-timing";
 
 import type { AuthUser, HonoBindings } from "../types";
 
@@ -23,12 +24,15 @@ const toAuthUser = (token: Record<string, unknown>): AuthUser | null => {
 };
 
 export const authMiddleware: MiddlewareHandler<HonoBindings> = async (c, next) => {
-  const token = await getToken({
-    // getToken only reads headers/cookies, so we can pass the original Hono request
-    // through directly and avoid cloning/proxy issues in serverless runtimes.
-    req: c.req.raw as unknown as NextRequest,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+  const timings = c.get("perfTimings");
+  const token = await timeAsync(timings, "auth-session", () =>
+    getToken({
+      // getToken only reads headers/cookies, so we can pass the original Hono request
+      // through directly and avoid cloning/proxy issues in serverless runtimes.
+      req: c.req.raw as unknown as NextRequest,
+      secret: process.env.NEXTAUTH_SECRET,
+    }),
+  );
 
   const authUser = token ? toAuthUser(token as Record<string, unknown>) : null;
   c.set("authUser", authUser);

@@ -1,47 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  CheckCircle,
-  Circle,
-  Truck,
-  CreditCard,
-  ShieldCheck,
-  Lock,
-  ShoppingCart,
-  CheckCircle2,
-} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { trackOncePerSession } from "@/lib/analytics/client";
 import {
   GST_RATE,
-  SHIPPING_TIERS,
   type ShippingMethod,
 } from "@/lib/config/order-pricing";
+import { computeCheckoutEstimate } from "@/lib/checkout/estimate";
 import {
-  computeCheckoutEstimate,
-  isFreeShipping,
-} from "@/lib/checkout/estimate";
-import { formatCurrency } from "@/lib/formatters";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+  type AddressFieldErrors,
+  type AddressForm,
+  emptyAddress,
+  fullName,
+  hasErrors,
+  savedAddressToForm,
+  toOrderAddress,
+  toSavedAddressPayload,
+  validateAddressForm,
+} from "@/lib/checkout/address-form";
+import {
+  getOneOfOneConflictCopy,
+  type OneOfOneConflictCopy,
+} from "@/lib/checkout/one-of-one-conflict-copy";
+import { type CheckoutStep, STEP_COPY } from "@/lib/checkout/steps";
+import { clearCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
+import { useCheckoutPayment } from "@/lib/checkout/use-checkout-payment";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { cn } from "@/lib/utils";
 import type { Address, Product } from "@/types/domain";
+
+import { BillingStep } from "./billing-step";
+import { CheckoutAuthGate } from "./checkout-auth-gate";
+import { CheckoutAddressForm } from "./checkout-address-form";
+import { CheckoutProgress } from "./checkout-progress";
+import { CheckoutStepActions } from "./checkout-step-actions";
+import { EmptyCart } from "./empty-cart";
+import { GiftOptions } from "./gift-options";
+import { OrderSummary } from "./order-summary";
+import { PackagingStep } from "./packaging-step";
+import { ReviewStep } from "./review-step";
+import { SavedAddressPicker } from "./saved-address-picker";
 
 const fetchAddresses = async (): Promise<Address[]> => {
   const response = await fetch("/api/v2/addresses");
@@ -49,184 +55,227 @@ const fetchAddresses = async (): Promise<Address[]> => {
   return (await response.json()) as Address[];
 };
 
-interface CheckoutPageClientProps {
+const saveCheckbox =
+  "border-ftt-navy data-[state=checked]:border-ftt-navy data-[state=checked]:bg-ftt-navy";
+
+const normalizeAddressPart = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+const ADDRESS_ERROR_FIELD_ORDER: Array<keyof AddressForm> = [
+  "fullName",
+  "email",
+  "phone",
+  "line1",
+  "apartment",
+  "floorNumber",
+  "building",
+  "area",
+  "landmark",
+  "city",
+  "state",
+  "postalCode",
+  "country",
+];
+
+// Identity of an address for de-duplication: same street line, city, and PIN.
+const addressDedupeKey = (parts: {
+  line1?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+}) =>
+  [parts.line1, parts.city, parts.postalCode]
+    .map(normalizeAddressPart)
+    .join("|");
+
+export function CheckoutPageClient({
+  embedded = false,
+  featuredPicks,
+}: {
+  embedded?: boolean;
   featuredPicks: Product[];
-}
-
-interface FormErrors {
-  [key: string]: string | undefined;
-}
-
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => {
-      open: () => void;
-      on: (
-        event: "payment.failed",
-        handler: (response: RazorpayFailureResponse) => void,
-      ) => void;
-    };
-  }
-}
-
-type CreatePaymentOrderResponse = {
-  amount?: number;
-  amountPaise: number;
-  currency: string;
-  orderAccessToken?: string;
-  order_id?: string;
-  orderId: string;
-  paymentLinkId?: string;
-  paymentLinkUrl?: string;
-  razorpayKeyId?: string;
-  razorpayOrderId: string;
-};
-
-type RazorpaySuccessResponse = {
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
-  razorpay_signature?: string;
-};
-
-type RazorpayFailureResponse = {
-  error?: {
-    description?: string;
-    reason?: string;
-  };
-};
-
-type RazorpayOptions = {
-  amount: number;
-  currency: string;
-  description: string;
-  handler: (response: RazorpaySuccessResponse) => Promise<void>;
-  key: string;
-  modal: {
-    ondismiss: () => void;
-  };
-  name: string;
-  order_id: string;
-  prefill: {
-    contact: string;
-    email: string;
-    name: string;
-  };
-  theme: {
-    color: string;
-  };
-};
-
-export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
+}) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const { data: session, status: sessionStatus } = useSession();
+  const isAuthenticated = Boolean(session?.user?.id);
+
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
   const clearCart = useCartStore((state) => state.clearCart);
+  const removeItem = useCartStore((state) => state.removeItem);
   const { subtotal } = getCartTotals(items);
   const hasItems = hasHydrated && items.length > 0;
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isPaymentScriptReady, setIsPaymentScriptReady] = useState(false);
-  const [paymentScriptError, setPaymentScriptError] = useState<string | null>(
-    null,
-  );
-  const [shippingMethod, setShippingMethod] =
-    useState<ShippingMethod>("standard");
 
-  const { data: savedAddresses } = useQuery({
-    queryKey: ["checkout-addresses"],
-    queryFn: fetchAddresses,
-    enabled: Boolean(session?.user?.id),
-  });
-
-  const handleAddressSelect = (addressId: string) => {
-    const address = savedAddresses?.find((a) => a.id === addressId);
-    if (!address) return;
-    setForm((prev) => ({
-      ...prev,
-      firstName: (address.name ?? "").split(" ")[0] ?? "",
-      lastName: (address.name ?? "").split(" ").slice(1).join(" ") ?? "",
-      phone: address.phone ?? "",
-      address: address.line1 ?? "",
-      city: address.city ?? "",
-      state: address.state ?? "",
-      postal: address.postalCode ?? "",
-      country: address.country ?? "",
-    }));
-    toast("Address pre-filled from your saved addresses.");
-  };
-
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: session?.user?.email ?? "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    postal: "",
-    country: "India",
-  });
+  const payment = useCheckoutPayment();
+  const { isSubmitting, error } = payment;
 
   useEffect(() => {
-    if (session?.user?.email) {
-      setForm((prev) => ({ ...prev, email: session.user.email ?? "" }));
-    }
-  }, [session?.user?.email]);
+    if (!hasItems) return;
 
-  useEffect(() => {
-    if (window.Razorpay) {
-      const readyTimer = window.setTimeout(() => {
-        setIsPaymentScriptReady(true);
-      }, 0);
-      return () => window.clearTimeout(readyTimer);
-    }
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    const productIds = items.map((item) => item.id).sort();
 
-    const scriptSrc = "https://checkout.razorpay.com/v1/checkout.js";
-    let script = document.querySelector<HTMLScriptElement>(
-      `script[src="${scriptSrc}"]`,
+    trackOncePerSession(
+      `checkout_started:${productIds.join(",")}:${itemCount}`,
+      "checkout_started",
+      {
+        itemCount,
+        productIds,
+        source: "checkout_page",
+        subtotalPaise: Math.round(subtotal * 100),
+      },
     );
-    const wasExistingScript = Boolean(script);
+  }, [hasItems, items, subtotal]);
 
-    if (!script) {
-      script = document.createElement("script");
-      script.src = scriptSrc;
-      script.async = true;
-      document.body.appendChild(script);
-    }
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
+  const [shippingAddress, setShippingAddress] = useState<AddressForm>(() =>
+    emptyAddress(session?.user?.email ?? ""),
+  );
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [billingAddress, setBillingAddress] = useState<AddressForm>(() =>
+    emptyAddress(session?.user?.email ?? ""),
+  );
+  const [saveShippingAddress, setSaveShippingAddress] = useState(true);
+  const [saveBillingAddress, setSaveBillingAddress] = useState(false);
+  const [saveLabelKind, setSaveLabelKind] = useState<
+    "Home" | "Office" | "Other"
+  >("Home");
+  const [customSaveLabel, setCustomSaveLabel] = useState("");
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("standard");
+  const [shippingErrors, setShippingErrors] = useState<AddressFieldErrors>({});
+  const [billingErrors, setBillingErrors] = useState<AddressFieldErrors>({});
+  // Gifting paused for launch — flip to true to bring the gift step back.
+  const ENABLE_GIFTING: boolean = false;
+  const [isGift, setIsGift] = useState(false);
+  const [includeGiftMessage, setIncludeGiftMessage] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("");
+  const [giftFrom, setGiftFrom] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [checkoutConflict, setCheckoutConflict] =
+    useState<OneOfOneConflictCopy | null>(null);
 
-    const handleLoad = () => {
-      setPaymentScriptError(null);
-      setIsPaymentScriptReady(true);
-    };
-    const handleError = () => {
-      setIsPaymentScriptReady(false);
-      setPaymentScriptError(
-        "Payment system could not load. Please refresh and try again.",
-      );
-    };
-
-    script.addEventListener("load", handleLoad);
-    script.addEventListener("error", handleError);
-
-    return () => {
-      script.removeEventListener("load", handleLoad);
-      script.removeEventListener("error", handleError);
-      if (!wasExistingScript && script.parentElement) {
-        script.parentElement.removeChild(script);
-      }
-    };
+  const showCheckoutConflict = useCallback((copy: OneOfOneConflictCopy) => {
+    setCheckoutConflict(copy);
+    toast.error(copy.title);
   }, []);
 
-  const canCheckout = true;
+  const recheckCheckoutAvailability = useCallback(async () => {
+    if (!hasItems) return true;
+    let isStillAvailable = true;
 
-  // P6-02: Discount code state. The client NEVER computes the discount amount —
-  // it enters a code and calls the server to validate + get the authoritative total.
+    for (const item of items) {
+      if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE"));
+        removeItem(item.id);
+        isStillAvailable = false;
+        continue;
+      }
+
+      if (!item.slug) continue;
+
+      const response = await fetch(`/api/v2/products/${encodeURIComponent(item.slug)}/stock`, {
+        headers: { Accept: "application/json" },
+      }).catch(() => null);
+      if (!response?.ok) continue;
+
+      const stock = (await response.json().catch(() => null)) as {
+        reservedUntil?: null | string;
+        stockStatus?: "available" | "reserved" | "sold";
+      } | null;
+      if (!stock) continue;
+
+      if (stock.stockStatus === "sold") {
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_SOLD"));
+        removeItem(item.id);
+        isStillAvailable = false;
+        continue;
+      }
+
+      const heldByAnotherBuyer =
+        stock.stockStatus === "reserved" &&
+        (!item.reservedUntil ||
+          !stock.reservedUntil ||
+          Math.abs(
+            new Date(stock.reservedUntil).getTime() -
+              new Date(item.reservedUntil).getTime(),
+          ) > 1000);
+      if (heldByAnotherBuyer) {
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_RESERVED"));
+        removeItem(item.id);
+        isStillAvailable = false;
+      }
+    }
+
+    return isStillAvailable;
+  }, [hasItems, items, removeItem, showCheckoutConflict]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) void recheckCheckoutAvailability();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [recheckCheckoutAvailability]);
+
+  const addressesQuery = useQuery({
+    queryKey: ["addresses"],
+    queryFn: fetchAddresses,
+    enabled: isAuthenticated,
+  });
+  const savedAddresses = addressesQuery.data;
+
+  const authRefreshRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      authRefreshRef.current = false;
+      return;
+    }
+    if (authRefreshRef.current) return;
+
+    authRefreshRef.current = true;
+    void queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    void addressesQuery.refetch();
+  }, [addressesQuery, isAuthenticated, queryClient]);
+
+  // Seed name + email from the account once the session loads (sessions resolve
+  // after the first client render). Done during render with a guard — the
+  // React-sanctioned alternative to a sync-in-effect — never clobbering input.
+  const sessionEmail = session?.user?.email ?? "";
+  const sessionName = session?.user?.name ?? "";
+  const [profileSeeded, setProfileSeeded] = useState(false);
+  if ((sessionEmail || sessionName) && !profileSeeded) {
+    setProfileSeeded(true);
+    const seed = (prev: AddressForm): AddressForm => ({
+      ...prev,
+      email: prev.email || sessionEmail,
+      fullName: prev.fullName || sessionName,
+    });
+    setShippingAddress(seed);
+    setBillingAddress(seed);
+    setGiftFrom((prev) => prev || sessionName);
+  }
+
+  // Auto-fill the saved default address (name, phone, full address) once the
+  // address book loads, so a returning customer never re-enters their details.
+  const [addressSeeded, setAddressSeeded] = useState(false);
+  if (savedAddresses && savedAddresses.length > 0 && !addressSeeded) {
+    setAddressSeeded(true);
+    const preferred =
+      savedAddresses.find((address) => address.isDefault) ?? savedAddresses[0];
+    setShippingAddress((prev) =>
+      savedAddressToForm(preferred, prev.email || sessionEmail),
+    );
+  }
+
+  // ── Discount (server-authoritative; client only displays the amount) ──────
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState<{
     code: string;
-    amountPaise: number; // server-returned discount amount (display only)
+    amountPaise: number;
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
@@ -234,41 +283,31 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
   const handleValidateDiscount = async () => {
     const trimmedCode = discountCode.trim().toUpperCase();
     if (!trimmedCode) return;
-
     setDiscountError(null);
     setIsValidatingDiscount(true);
-
     try {
-      // Call server: send a preview request with items + code to get the
-      // server-computed discount amount. We use the validate-discount endpoint
-      // (separate from create-order) so no order is created at this stage.
       const res = await fetch("/api/v2/discounts/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: trimmedCode,
-          // subtotalPaise is in rupees on the client (cart-store uses rupees)
           subtotalPaise: Math.round(subtotal * 100),
           itemProductIds: items.map((item) => item.id),
         }),
       });
-
       const data = (await res.json()) as {
         discountAmountPaise?: number;
         message?: string;
       };
-
       if (!res.ok) {
         setDiscountError(data.message ?? "Invalid discount code.");
         setDiscountApplied(null);
         return;
       }
-
       setDiscountApplied({
         code: trimmedCode,
         amountPaise: data.discountAmountPaise ?? 0,
       });
-      setDiscountError(null);
       toast.success(`Discount code ${trimmedCode} applied.`);
     } catch {
       setDiscountError("Unable to validate discount code. Please try again.");
@@ -283,19 +322,6 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
     setDiscountError(null);
   };
 
-  // The summary below is a PRE-CHECKOUT estimate, rendered before the order
-  // exists. It mirrors the server's flag-OFF (GST-exclusive) math, which is the
-  // behaviour in every current environment. We deliberately do NOT read the
-  // GST-inclusive flag here: FTT_FEATURE_GST_INCLUSIVE has no NEXT_PUBLIC_
-  // prefix, so it is always false in the browser — branching on it would render
-  // an "incl. GST" label over an exclusive total whenever the server flag is ON.
-  // P6-02: when a discount is applied, the server has already told us the
-  // discountAmountPaise; we reduce the displayed subtotal accordingly. Shipping
-  // AND GST are evaluated on the DISCOUNTED subtotal — mirroring the server's
-  // calculateOrderTotals order-of-operations (razorpay.ts:225-229) — so the
-  // displayed total matches the Razorpay charge. See lib/checkout/estimate.ts.
-  // The final authoritative total is always computed server-side at order
-  // creation time.
   const discountAmountRupees = discountApplied
     ? discountApplied.amountPaise / 100
     : 0;
@@ -305,741 +331,612 @@ export function CheckoutPageClient({ featuredPicks }: CheckoutPageClientProps) {
       shippingMethod,
       discountAmount: discountAmountRupees,
     });
-  const taxRateLabel = new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: 2,
-    style: "percent",
-  }).format(GST_RATE);
+  const taxRateLabel = useMemo(
+    () =>
+      new Intl.NumberFormat("en-IN", {
+        maximumFractionDigits: 2,
+        style: "percent",
+      }).format(GST_RATE),
+    [],
+  );
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
+  const resolvedBilling = billingSameAsShipping ? shippingAddress : billingAddress;
 
-    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      newErrors.email = "Invalid email address";
-    if (!form.address.trim()) newErrors.address = "Street address is required";
-    if (!form.city.trim()) newErrors.city = "City is required";
-    if (!form.postal.trim()) newErrors.postal = "Postal code is required";
-    if (!form.country.trim()) newErrors.country = "Country is required";
-    if (!form.phone.trim()) newErrors.phone = "Phone number is required";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleAddressSelect = (addressId: string) => {
+    const address = savedAddresses?.find((item) => item.id === addressId);
+    if (!address) return;
+    setShippingAddress(savedAddressToForm(address, shippingAddress.email));
+    setShippingErrors({});
+    toast.success("Address added from your saved trunk.");
   };
 
-  const handleSubmit = async () => {
-    if (!canCheckout || !hasItems) return;
-    if (!validateForm()) return;
+  const handleRemoveItem = (id: string) => {
+    setCheckoutConflict(null);
+    removeItem(id);
+    toast("Removed from your trunk.");
+  };
 
-    setIsSubmitting(true);
-    setError(null);
+  // Addresses are saved to the account as soon as the customer advances past
+  // each step (not at payment), so the address book fills even if checkout is
+  // abandoned. The refs make each save idempotent across back-and-forth.
+  const savedShippingRef = useRef(false);
+  const savedBillingRef = useRef(false);
+  // Synchronous double-submit guard. `isSubmitting` only flips inside
+  // startPayment (after two awaited network phases in handlePay), so a rapid
+  // double-click could otherwise issue two concurrent create-order POSTs.
+  const submitLockRef = useRef(false);
 
+  const scrollCheckoutToTop = useCallback(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        top: 0,
+      });
+    });
+  }, []);
+
+  const goToStep = useCallback(
+    (step: CheckoutStep) => {
+      setCurrentStep(step);
+      scrollCheckoutToTop();
+    },
+    [scrollCheckoutToTop],
+  );
+
+  const focusFirstAddressError = useCallback((errors: AddressFieldErrors) => {
+    const firstField = ADDRESS_ERROR_FIELD_ORDER.find((field) => errors[field]);
+    if (!firstField) return;
+
+    window.setTimeout(() => {
+      const field = document.querySelector<HTMLElement>(
+        `[data-checkout-field="${firstField}"]`,
+      );
+      if (!field) return;
+
+      field.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      });
+      window.setTimeout(() => field.focus({ preventScroll: true }), 120);
+    }, 80);
+  }, []);
+
+  // True when an identical address is already in the customer's address book,
+  // so we skip the save instead of creating a duplicate.
+  const isAddressAlreadySaved = (form: AddressForm) => {
+    const key = addressDedupeKey(form);
+    return (savedAddresses ?? []).some(
+      (address) => addressDedupeKey(address) === key,
+    );
+  };
+
+  const saveShippingToAccount = async () => {
+    if (!session?.user?.id || !saveShippingAddress || savedShippingRef.current) {
+      return;
+    }
+    if (isAddressAlreadySaved(shippingAddress)) {
+      savedShippingRef.current = true;
+      return;
+    }
+    savedShippingRef.current = true;
     try {
-      const orderPayload: {
-        items: Array<{ productId: string; quantity: number }>;
-        shippingAddress: {
-          name: string;
-          line1: string;
-          city: string;
-          state: string;
-          postalCode: string;
-          country: string;
-          phone: string;
-          email: string;
-        };
-        shippingMethod: string;
-        discountCode?: string;
-      } = {
-        items: items.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-        })),
-        shippingAddress: {
-          name: `${form.firstName} ${form.lastName}`.trim(),
-          line1: form.address,
-          city: form.city,
-          state: form.state,
-          postalCode: form.postal,
-          country: form.country,
-          phone: form.phone,
-          email: form.email,
-        },
-        shippingMethod,
-        // P6-02: only send code if one is validated — server validates + applies.
-        ...(discountApplied ? { discountCode: discountApplied.code } : {}),
-      };
-
-      const createResponse = await fetch("/api/v2/payments/create-order", {
+      const res = await fetch("/api/v2/addresses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderPayload),
+        body: JSON.stringify(
+          toSavedAddressPayload(shippingAddress, {
+            label:
+              saveLabelKind === "Other"
+                ? customSaveLabel.trim() || "Other"
+                : saveLabelKind,
+            isDefault: true,
+          }),
+        ),
       });
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => null);
-        throw new Error(errorData?.message || "Unable to create order.");
-      }
-
-      const orderData =
-        (await createResponse.json()) as CreatePaymentOrderResponse;
-      if (orderData.paymentLinkUrl) {
-        window.location.assign(orderData.paymentLinkUrl);
-        return;
-      }
-
-      if (paymentScriptError) {
-        throw new Error(paymentScriptError);
-      }
-
-      if (!isPaymentScriptReady || !window.Razorpay) {
-        throw new Error(
-          "Payment system is still loading. Please try again in a moment.",
-        );
-      }
-
-      const razorpayKeyId =
-        orderData.razorpayKeyId ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-      if (!razorpayKeyId) {
-        throw new Error("Razorpay key is not configured.");
-      }
-
-      const options: RazorpayOptions = {
-        key: razorpayKeyId,
-        amount: orderData.amountPaise,
-        currency: orderData.currency,
-        name: "FTT Luxury Group",
-        description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
-        order_id: orderData.razorpayOrderId,
-        prefill: {
-          name: `${form.firstName} ${form.lastName}`.trim(),
-          email: form.email,
-          contact: form.phone,
-        },
-        theme: {
-          color: "#4B2626",
-        },
-        handler: async (response) => {
-          try {
-            const {
-              razorpay_order_id: razorpayOrderId,
-              razorpay_payment_id: razorpayPaymentId,
-              razorpay_signature: razorpaySignature,
-            } = response;
-
-            if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-              throw new Error(
-                "Razorpay returned an incomplete payment response.",
-              );
-            }
-
-            const verifyResponse = await fetch("/api/v2/payments/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                orderId: orderData.orderId,
-                razorpayOrderId,
-                razorpayPaymentId,
-                razorpaySignature,
-              }),
-            });
-
-            if (!verifyResponse.ok) {
-              const errorData = await verifyResponse.json().catch(() => null);
-              throw new Error(
-                errorData?.message || "Payment verification failed.",
-              );
-            }
-
-            clearCart();
-            toast.success("Order placed successfully!");
-            const confirmationPath = orderData.orderAccessToken
-              ? `/checkout/confirmation?orderId=${orderData.orderId}&key=${orderData.orderAccessToken}`
-              : `/checkout/confirmation?orderId=${orderData.orderId}`;
-            router.push(confirmationPath);
-          } catch {
-            setError(
-              "Payment was received but verification failed. Please contact support.",
-            );
-            setIsSubmitting(false);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setIsSubmitting(false);
-            toast("Payment was cancelled.");
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (response) => {
-        const message =
-          response.error?.description ||
-          response.error?.reason ||
-          "Payment failed. Please try again.";
-        setError(message);
-        setIsSubmitting(false);
-      });
-      rzp.open();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to process payment.",
-      );
-      setIsSubmitting(false);
+      if (res.ok) toast.success("Address saved to your trunk.");
+      else savedShippingRef.current = false; // allow a later retry
+    } catch {
+      savedShippingRef.current = false;
     }
   };
 
-  const renderField = (
-    id: string,
-    label: string,
-    value: string,
-    type = "text",
-    placeholder = "",
-    span = 1,
-  ) => (
-    <div
-      className={`flex flex-col gap-2.5 ${span > 1 ? `md:col-span-${span}` : ""}`}
-    >
-      <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        placeholder={placeholder || label}
-        value={value}
-        onChange={(event) =>
-          setForm((prev) => ({ ...prev, [id]: event.target.value }))
+  const saveBillingToAccount = async () => {
+    if (
+      !session?.user?.id ||
+      billingSameAsShipping ||
+      !saveBillingAddress ||
+      savedBillingRef.current
+    ) {
+      return;
+    }
+    if (isAddressAlreadySaved(billingAddress)) {
+      savedBillingRef.current = true;
+      return;
+    }
+    savedBillingRef.current = true;
+    try {
+      const res = await fetch("/api/v2/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          toSavedAddressPayload(billingAddress, {
+            label: "Billing",
+            isDefault: false,
+          }),
+        ),
+      });
+      if (!res.ok) savedBillingRef.current = false;
+    } catch {
+      savedBillingRef.current = false;
+    }
+  };
+
+  const goToBilling = () => {
+    const errors = validateAddressForm(shippingAddress);
+    setShippingErrors(errors);
+    if (hasErrors(errors)) {
+      focusFirstAddressError(errors);
+      return;
+    }
+    void saveShippingToAccount();
+    goToStep("billing");
+  };
+
+  const goToPackaging = () => {
+    if (billingSameAsShipping) {
+      goToStep("packaging");
+      return;
+    }
+    const errors = validateAddressForm(billingAddress);
+    setBillingErrors(errors);
+    if (hasErrors(errors)) {
+      focusFirstAddressError(errors);
+      return;
+    }
+    void saveBillingToAccount();
+    goToStep("packaging");
+  };
+
+  const handlePay = async () => {
+    // Block re-entry for the whole handler (covers the pre-startPayment awaited
+    // phases where isSubmitting has not yet flipped) — no duplicate create-order.
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    try {
+      setCheckoutConflict(null);
+      if (!hasItems) return;
+      if (!isAuthenticated) {
+        toast.error("Sign in or create an account to continue checkout.");
+        return;
+      }
+      if (!agreedToTerms) {
+        toast.error(
+          "Please confirm you have read and agree to the Terms & Policies.",
+        );
+        return;
+      }
+
+      const availabilityOk = await recheckCheckoutAvailability();
+      if (!availabilityOk) return;
+
+      const shipErrors = validateAddressForm(shippingAddress);
+      if (hasErrors(shipErrors)) {
+        setShippingErrors(shipErrors);
+        goToStep("shipping");
+        focusFirstAddressError(shipErrors);
+        return;
+      }
+      if (!billingSameAsShipping) {
+        const billErrors = validateAddressForm(billingAddress);
+        if (hasErrors(billErrors)) {
+          setBillingErrors(billErrors);
+          goToStep("billing");
+          focusFirstAddressError(billErrors);
+          return;
         }
-        disabled={!canCheckout || isSubmitting}
-        className={`w-full rounded-xl border border-border bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all p-4 text-foreground placeholder:text-foreground/30 ${errors[id] ? "border-destructive focus:ring-destructive focus:border-destructive" : ""}`}
-      />
-      {errors[id] && <p className="text-xs text-destructive">{errors[id]}</p>}
-    </div>
+      }
+
+      await Promise.allSettled([
+        saveShippingToAccount(),
+        saveBillingToAccount(),
+      ]);
+
+      await payment.startPayment({
+        payload: {
+          items: items.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            ...(item.reservationToken ? { reservationToken: item.reservationToken } : {}),
+            ...(item.selectedOptions ? { selectedOptions: item.selectedOptions } : {}),
+          })),
+          shippingAddress: toOrderAddress(shippingAddress),
+          shippingMethod,
+          ...(discountApplied ? { discountCode: discountApplied.code } : {}),
+          ...(isGift
+            ? {
+                isGift: true,
+                ...(giftFrom.trim() ? { giftFrom: giftFrom.trim() } : {}),
+                ...(includeGiftMessage && giftMessage.trim()
+                  ? { giftMessage: giftMessage.trim() }
+                  : {}),
+              }
+            : {}),
+        },
+        prefill: {
+          name: fullName(shippingAddress),
+          email: shippingAddress.email,
+          contact: shippingAddress.phone,
+        },
+        description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
+        onAvailabilityError: ({ code, productId }) => {
+          const copy = getOneOfOneConflictCopy(code);
+          showCheckoutConflict(copy);
+          if (copy.removeProduct && productId) {
+            removeItem(productId);
+          }
+        },
+        onPaid: (path) => {
+          clearCheckoutAttempt();
+          clearCart();
+          toast.success("Order placed successfully!");
+          router.push(path);
+        },
+      });
+    } finally {
+      // On the payment-link redirect path the page is already navigating away;
+      // on the modal path isSubmitting keeps the button disabled. Releasing the
+      // ref here re-enables retry after an error or a dismissed modal.
+      submitLockRef.current = false;
+    }
+  };
+  const payBlockedByConflict = checkoutConflict?.blockPayment ?? false;
+
+  const handleCheckoutAuthSuccess = async () => {
+    goToStep("shipping");
+    await queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    await addressesQuery.refetch();
+    router.refresh();
+  };
+
+  const content = (
+    <>
+      {!embedded ? (
+        <Link
+          href="/cart"
+          className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-ftt-burgundy transition hover:text-ftt-burgundy"
+        >
+          <ChevronLeft className="size-4" />
+          Back to cart
+        </Link>
+      ) : null}
+
+      {!hasHydrated ? (
+        <div className="mt-8 rounded-3xl border border-ftt-border bg-ftt-card p-8 text-center text-sm text-ftt-burgundy/60 shadow-[var(--ftt-soft-shadow)]">
+          Loading your bag…
+        </div>
+      ) : !hasItems ? (
+        <div className="mt-8 space-y-6">
+          <CheckoutConflictNotice conflict={checkoutConflict} />
+          <EmptyCart featuredPicks={featuredPicks} />
+        </div>
+      ) : !isAuthenticated ? (
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-7 xl:col-span-8">
+            <CheckoutAuthGate
+              isCheckingSession={sessionStatus === "loading"}
+              onSuccess={handleCheckoutAuthSuccess}
+            />
+          </div>
+
+          <div className="lg:col-span-5 xl:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              <OrderSummary
+                items={items}
+                subtotal={subtotal}
+                shippingMethod={shippingMethod}
+                shippingCost={shippingCost}
+                taxAmount={taxAmount}
+                taxRateLabel={taxRateLabel}
+                total={total}
+                onRemoveItem={handleRemoveItem}
+                disabled={isSubmitting}
+                error={error}
+                conflict={checkoutConflict}
+                discount={{
+                  code: discountCode,
+                  onCodeChange: setDiscountCode,
+                  applied: discountApplied,
+                  error: discountError,
+                  isValidating: isValidatingDiscount,
+                  onApply: () => void handleValidateDiscount(),
+                  onRemove: handleRemoveDiscount,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="flex flex-col gap-5 lg:col-span-7 xl:col-span-8">
+            <CheckoutProgress
+              currentStep={currentStep}
+              onStepChange={goToStep}
+            />
+
+            <div key={currentStep} className="ftt-step-enter space-y-4">
+              {currentStep === "shipping" ? (
+                <>
+                  <SavedAddressPicker
+                    addresses={savedAddresses ?? []}
+                    onSelect={handleAddressSelect}
+                  />
+                  <CheckoutAddressForm
+                    eyebrow={STEP_COPY.shipping.eyebrow}
+                    heading={STEP_COPY.shipping.heading}
+                    description={STEP_COPY.shipping.description}
+                    value={shippingAddress}
+                    onChange={setShippingAddress}
+                    errors={shippingErrors}
+                    disabled={isSubmitting}
+                    withPlaceSearch
+                  />
+                  <div className="rounded-3xl border border-ftt-border bg-ftt-card p-4">
+                    <label className="flex cursor-pointer items-center gap-3 text-sm text-ftt-burgundy/70">
+                      <Checkbox
+                        checked={saveShippingAddress}
+                        onCheckedChange={(value) =>
+                          setSaveShippingAddress(value === true)
+                        }
+                        className={saveCheckbox}
+                      />
+                      Save this address to my trunk
+                    </label>
+                    {saveShippingAddress ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ftt-border/70 pt-3">
+                        <span className="text-xs font-medium text-ftt-burgundy/55">
+                          Save as
+                        </span>
+                        {(["Home", "Office", "Other"] as const).map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => setSaveLabelKind(kind)}
+                            className={cn(
+                              "rounded-full border px-4 py-1.5 text-xs font-semibold transition",
+                              saveLabelKind === kind
+                                ? "border-ftt-navy bg-ftt-navy text-ftt-ivory"
+                                : "border-ftt-border bg-ftt-ivory text-ftt-burgundy/70 hover:border-ftt-gold",
+                            )}
+                          >
+                            {kind}
+                          </button>
+                        ))}
+                        {saveLabelKind === "Other" ? (
+                          <input
+                            value={customSaveLabel}
+                            onChange={(event) =>
+                              setCustomSaveLabel(event.target.value)
+                            }
+                            placeholder="Name this address"
+                            maxLength={40}
+                            className="h-8 min-w-40 flex-1 rounded-full border border-ftt-border bg-ftt-ivory px-3.5 text-xs text-ftt-navy outline-none transition placeholder:text-ftt-burgundy/35 focus:border-ftt-gold focus:ring-2 focus:ring-ftt-gold/20"
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <CheckoutStepActions
+                    primaryLabel="Continue to billing"
+                    onPrimary={goToBilling}
+                  />
+                </>
+              ) : null}
+
+              {currentStep === "billing" ? (
+                <>
+                  <BillingStep
+                    sameAsShipping={billingSameAsShipping}
+                    onSameAsShippingChange={setBillingSameAsShipping}
+                    billingAddress={billingAddress}
+                    onBillingChange={setBillingAddress}
+                    billingErrors={billingErrors}
+                    saveBillingAddress={saveBillingAddress}
+                    onSaveBillingChange={setSaveBillingAddress}
+                    disabled={isSubmitting}
+                  />
+                  <CheckoutStepActions
+                    secondaryLabel="Back to shipping"
+                    onSecondary={() => goToStep("shipping")}
+                    primaryLabel="Choose packaging"
+                    onPrimary={goToPackaging}
+                  />
+                </>
+              ) : null}
+
+              {currentStep === "packaging" ? (
+                <>
+                  <PackagingStep
+                    shippingMethod={shippingMethod}
+                    onChange={setShippingMethod}
+                    effectiveSubtotal={effectiveSubtotal}
+                  />
+                  {/* Gift selection paused — kept intact; flip ENABLE_GIFTING to re-enable. */}
+                  {ENABLE_GIFTING ? (
+                    <GiftOptions
+                      isGift={isGift}
+                      onGiftChange={setIsGift}
+                      includeMessage={includeGiftMessage}
+                      onIncludeMessageChange={setIncludeGiftMessage}
+                      giftMessage={giftMessage}
+                      onGiftMessageChange={setGiftMessage}
+                      senderName={giftFrom}
+                      onSenderNameChange={setGiftFrom}
+                      disabled={isSubmitting}
+                    />
+                  ) : null}
+                  <CheckoutStepActions
+                    secondaryLabel="Back to billing"
+                    onSecondary={() => goToStep("billing")}
+                    primaryLabel="Review order"
+                    onPrimary={() => goToStep("review")}
+                  />
+                </>
+              ) : null}
+
+              {currentStep === "review" ? (
+                <>
+                  <ReviewStep
+                    shippingAddress={shippingAddress}
+                    billingAddress={resolvedBilling}
+                    billingSameAsShipping={billingSameAsShipping}
+                    shippingMethod={shippingMethod}
+                    isGift={isGift}
+                    giftMessage={
+                      isGift && includeGiftMessage ? giftMessage.trim() : ""
+                    }
+                    giftFrom={isGift ? giftFrom.trim() : ""}
+                  />
+
+                  <div className="rounded-3xl border border-ftt-border bg-ftt-card p-5 text-sm shadow-[var(--ftt-soft-shadow)]">
+                    <p className="font-serif text-base text-ftt-navy">
+                      Returns & unique pieces
+                    </p>
+                    <p className="mt-2 leading-6 text-ftt-burgundy/70">
+                      Returns are accepted only within{" "}
+                      <span className="font-semibold text-ftt-navy">
+                        7 days of delivery
+                      </span>{" "}
+                      and must be initiated by you. As every saree is pre-loved
+                      and unique, please review our{" "}
+                      <Link
+                        href="/policies/return-refund-policy"
+                        className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                      >
+                        Return Policy
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/policies/terms-of-service"
+                        className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                      >
+                        Terms &amp; Conditions
+                      </Link>{" "}
+                      before placing your order.
+                    </p>
+
+                    <label className="mt-4 flex cursor-pointer items-start gap-3 text-ftt-burgundy/80">
+                      <Checkbox
+                        checked={agreedToTerms}
+                        onCheckedChange={(value) =>
+                          setAgreedToTerms(value === true)
+                        }
+                        className={cn(saveCheckbox, "mt-0.5")}
+                        aria-label="Agree to Terms and Policies"
+                      />
+                      <span>
+                        I have read and agree to the{" "}
+                        <Link
+                          href="/policies/terms-of-service"
+                          className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                        >
+                          Terms &amp; Conditions
+                        </Link>{" "}
+                        and{" "}
+                        <Link
+                          href="/policies"
+                          className="font-semibold text-ftt-burgundy underline underline-offset-2 hover:text-ftt-navy"
+                        >
+                          Policies
+                        </Link>{" "}
+                        of From the Trunk.
+                      </span>
+                    </label>
+                  </div>
+
+                  <CheckoutStepActions
+                    secondaryLabel="Back to packaging"
+                    onSecondary={() => goToStep("packaging")}
+                    primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
+                    onPrimary={handlePay}
+                    disabledPrimary={!hasItems || isSubmitting || !agreedToTerms || payBlockedByConflict}
+                    primaryLoading={isSubmitting}
+                  />
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 xl:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              <OrderSummary
+                items={items}
+                subtotal={subtotal}
+                shippingMethod={shippingMethod}
+                shippingCost={shippingCost}
+                taxAmount={taxAmount}
+                taxRateLabel={taxRateLabel}
+                total={total}
+                onRemoveItem={handleRemoveItem}
+                disabled={isSubmitting}
+                error={error}
+                conflict={checkoutConflict}
+                discount={{
+                  code: discountCode,
+                  onCodeChange: setDiscountCode,
+                  applied: discountApplied,
+                  error: discountError,
+                  isValidating: isValidatingDiscount,
+                  onApply: () => void handleValidateDiscount(),
+                  onRemove: handleRemoveDiscount,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 
+  if (embedded) {
+    return content;
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="max-w-7xl mx-auto w-full px-6 py-12 lg:px-20 grow">
-        {!hasHydrated ? (
-          <div className="rounded-[24px] border border-border/60 bg-card/70 p-8 text-center text-sm text-foreground/60 shadow-soft">
-            Loading your bag...
-          </div>
-        ) : hasItems ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Left Column: Checkout Form */}
-            <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-10">
-              {/* Progress Component */}
-              <div className="bg-card p-8 rounded-[24px] shadow-soft border border-border/20">
-                <div className="flex items-end justify-between mb-6">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-[0.15em]">
-                      Step 02 of 03
-                    </span>
-                    <h2 className="text-2xl font-serif font-bold text-foreground">
-                      Shipping & Payment
-                    </h2>
-                  </div>
-                  <span className="text-xs text-foreground/60 font-medium italic">
-                    66% Complete
-                  </span>
-                </div>
-                <div className="w-full bg-border/20 h-2 rounded-full overflow-hidden">
-                  <div className="bg-primary h-full w-2/3 transition-all duration-700 ease-in-out"></div>
-                </div>
-                <div className="flex justify-between mt-6">
-                  <div className="flex items-center gap-2 text-primary">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
-                      Shipping
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-primary">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
-                      Payment
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-foreground/60">
-                    <Circle className="w-4 h-4" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">
-                      Review
-                    </span>
-                  </div>
-                </div>
-              </div>
+    <main className="mx-auto w-full max-w-7xl grow px-4 py-10 sm:px-6 lg:px-12 lg:py-14">
+      {content}
+    </main>
+  );
+}
 
-              {/* Shipping Form Section */}
-              <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
-                <div className="flex items-center gap-3 mb-8 text-foreground">
-                  <Truck className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold">
-                    Shipping Details
-                  </h3>
-                </div>
+function CheckoutConflictNotice({
+  conflict,
+}: {
+  conflict: OneOfOneConflictCopy | null;
+}) {
+  if (!conflict) return null;
 
-                {savedAddresses && savedAddresses.length > 0 && (
-                  <div className="mb-8 p-4 bg-accent/5 border border-accent/20 rounded-xl">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70">
-                      Pre-fill from saved address
-                    </Label>
-                    <Select onValueChange={handleAddressSelect}>
-                      <SelectTrigger className="mt-2 bg-transparent border-border">
-                        <SelectValue placeholder="Choose a saved address..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {savedAddresses.map((addr) => {
-                          const savedAddressLabel =
-                            addr.label ||
-                            addr.name ||
-                            addr.line1 ||
-                            "Saved address";
-                          return (
-                            <SelectItem key={addr.id} value={addr.id}>
-                              {savedAddressLabel}
-                              {addr.city ? `, ${addr.city}` : ""}
-                              {addr.isDefault ? " (Default)" : ""}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {renderField("firstName", "First Name", form.firstName)}
-                  {renderField("lastName", "Last Name", form.lastName)}
-                  {renderField(
-                    "email",
-                    "Email Address",
-                    form.email,
-                    "email",
-                    "john@example.com",
-                    2,
-                  )}
-                  {renderField(
-                    "phone",
-                    "Phone Number",
-                    form.phone,
-                    "tel",
-                    "+91 98765 43210",
-                    2,
-                  )}
-                  {renderField(
-                    "address",
-                    "Address Line 1",
-                    form.address,
-                    "text",
-                    "123 Modern Way",
-                    2,
-                  )}
-                  {renderField(
-                    "city",
-                    "City",
-                    form.city,
-                    "text",
-                    "San Francisco",
-                  )}
-                  {renderField(
-                    "state",
-                    "State",
-                    form.state,
-                    "text",
-                    "California",
-                  )}
-                  {renderField(
-                    "postal",
-                    "Postal Code",
-                    form.postal,
-                    "text",
-                    "94103",
-                  )}
-                  {renderField(
-                    "country",
-                    "Country",
-                    form.country,
-                    "text",
-                    "India",
-                  )}
-                </div>
-              </section>
-
-              {/* Shipping Method Section */}
-              <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
-                <div className="flex items-center gap-3 mb-8">
-                  <Truck className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold text-foreground">
-                    Shipping Method
-                  </h3>
-                </div>
-                <div className="space-y-4">
-                  <label
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "standard" ? "border-primary bg-primary/5" : "border-border"}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value="standard"
-                        checked={shippingMethod === "standard"}
-                        onChange={() => setShippingMethod("standard")}
-                        className="accent-primary w-4 h-4"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-foreground">
-                          Standard Delivery
-                        </p>
-                        <p className="text-xs text-foreground/60 mt-1">
-                          5 to 7 business days
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-foreground">
-                      {isFreeShipping(effectiveSubtotal)
-                        ? "Complimentary"
-                        : formatCurrency(SHIPPING_TIERS.standard)}
-                    </span>
-                  </label>
-                  <label
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-6 transition ${shippingMethod === "express" ? "border-primary bg-primary/5" : "border-border"}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value="express"
-                        checked={shippingMethod === "express"}
-                        onChange={() => setShippingMethod("express")}
-                        className="accent-primary w-4 h-4"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-foreground">
-                          Express Delivery
-                        </p>
-                        <p className="text-xs text-foreground/60 mt-1">
-                          2 to 3 business days
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-foreground">
-                      {isFreeShipping(effectiveSubtotal)
-                        ? "Complimentary"
-                        : formatCurrency(SHIPPING_TIERS.express)}
-                    </span>
-                  </label>
-                </div>
-              </section>
-
-              {/* Payment Method Section (Replaces fake CC fields with info) */}
-              <section className="bg-card p-10 rounded-[24px] shadow-soft border border-border/20">
-                <div className="flex items-center gap-3 mb-8">
-                  <CreditCard className="w-6 h-6 text-accent" />
-                  <h3 className="text-xl font-serif font-bold text-foreground">
-                    Secure Payment
-                  </h3>
-                </div>
-
-                <div className="flex flex-col items-center justify-center py-10 px-6 border border-dashed border-border/60 rounded-xl bg-background/50 text-center gap-4">
-                  <div className="p-4 bg-primary/5 rounded-full text-primary">
-                    <ShieldCheck className="w-8 h-8" />
-                  </div>
-                  <h4 className="font-bold text-foreground">
-                    Payment Handled by Razorpay
-                  </h4>
-                  <p className="text-sm text-foreground/60 max-w-sm">
-                    You will continue to Razorpay&apos;s secure payment link to
-                    complete your purchase. We support credit cards, UPI,
-                    netbanking, and wallets.
-                  </p>
-                </div>
-              </section>
-            </div>
-
-            {/* Right Column: Order Summary */}
-            <div className="lg:col-span-5 xl:col-span-4">
-              <div className="sticky top-26 space-y-8">
-                <div className="bg-card rounded-[24px] shadow-lift border border-border/20 overflow-hidden">
-                  <div className="p-8 border-b border-border/40 bg-background/50">
-                    <h3 className="text-2xl font-serif font-bold text-foreground">
-                      Order Summary
-                    </h3>
-                  </div>
-                  <div className="p-8 space-y-6">
-                    {/* Cart Items */}
-                    <div className="space-y-6">
-                      {items.map((item) => (
-                        <div key={item.id} className="flex gap-5">
-                          <div className="h-24 w-24 shrink-0 bg-background rounded-2xl overflow-hidden p-2 flex items-center justify-center border border-border/30">
-                            {item.image ? (
-                              <Image
-                                src={item.image}
-                                alt={item.name}
-                                width={80}
-                                height={80}
-                                className="w-full h-full object-cover mix-blend-multiply rounded-lg"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[8px] text-foreground/60 uppercase tracking-widest">
-                                No Image
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col justify-center">
-                            <p className="text-sm font-bold text-foreground">
-                              {item.name}
-                            </p>
-                            <p className="text-[11px] text-foreground/50 mt-1 uppercase tracking-widest">
-                              Qty: {item.quantity}
-                            </p>
-                            <p className="text-sm font-bold text-primary mt-2">
-                              {formatCurrency(item.price)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <hr className="border-border/40" />
-
-                    {/* P6-02: Discount code entry */}
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70">
-                        Discount code
-                      </p>
-                      {discountApplied ? (
-                        <div className="flex items-center justify-between rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
-                          <div>
-                            <span className="text-xs font-bold font-mono text-accent tracking-widest">
-                              {discountApplied.code}
-                            </span>
-                            <p className="text-[10px] text-accent/80 mt-0.5">
-                              Saving{" "}
-                              {formatCurrency(
-                                discountApplied.amountPaise / 100,
-                              )}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveDiscount}
-                            className="text-[10px] text-foreground/50 hover:text-foreground uppercase tracking-widest underline underline-offset-2"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Input
-                            value={discountCode}
-                            onChange={(e) => {
-                              setDiscountCode(e.target.value.toUpperCase());
-                              setDiscountError(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter")
-                                void handleValidateDiscount();
-                            }}
-                            placeholder="Enter code"
-                            className="font-mono uppercase text-sm rounded-xl border-border bg-transparent focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                            disabled={isValidatingDiscount || isSubmitting}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => void handleValidateDiscount()}
-                            disabled={
-                              !discountCode.trim() ||
-                              isValidatingDiscount ||
-                              isSubmitting
-                            }
-                            className="rounded-xl shrink-0"
-                          >
-                            {isValidatingDiscount ? (
-                              <span className="text-[10px] uppercase tracking-widest">
-                                ...
-                              </span>
-                            ) : (
-                              <span className="text-[10px] uppercase tracking-widest">
-                                Apply
-                              </span>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                      {discountError && (
-                        <p className="text-xs text-destructive font-medium">
-                          {discountError}
-                        </p>
-                      )}
-                    </div>
-
-                    <hr className="border-border/40" />
-
-                    {/* Calculations */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-foreground/60">Subtotal</span>
-                        <span className="font-medium text-foreground">
-                          {formatCurrency(subtotal)}
-                        </span>
-                      </div>
-                      {discountApplied && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-accent">
-                            Discount ({discountApplied.code})
-                          </span>
-                          <span className="font-bold text-accent">
-                            -{formatCurrency(discountApplied.amountPaise / 100)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-sm">
-                        <span className="text-foreground/60">Shipping</span>
-                        <span className="font-bold text-accent tracking-wider">
-                          {shippingCost === 0
-                            ? "COMPLIMENTARY"
-                            : formatCurrency(shippingCost)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-foreground/60">
-                          {`Estimated Tax (${taxRateLabel})`}
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {formatCurrency(taxAmount)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <hr className="border-border/40" />
-
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-lg font-serif font-bold text-foreground">
-                        Total
-                      </span>
-                      <span className="text-3xl font-serif font-bold text-primary">
-                        {formatCurrency(total)}
-                      </span>
-                    </div>
-
-                    {error && (
-                      <p className="text-sm text-destructive font-medium bg-destructive/10 p-3 rounded-lg text-center">
-                        {error}
-                      </p>
-                    )}
-
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!hasItems || isSubmitting}
-                      className="w-full bg-primary hover:bg-[#3c0c0f] text-primary-foreground font-bold py-5 rounded-full shadow-lg shadow-primary/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                    >
-                      <span className="uppercase tracking-[0.15em] text-[10px]">
-                        {isSubmitting ? "Processing..." : "Complete your order"}
-                      </span>
-                      <Lock className="w-4 h-4" />
-                    </button>
-
-                    <p className="text-[9px] text-center text-foreground/50 mt-6 uppercase tracking-[0.2em] font-bold">
-                      Secure SSL Encrypted Gateway
-                    </p>
-                  </div>
-                </div>
-
-                {/* Trust Badge */}
-                <div className="bg-primary/5 border border-primary/10 rounded-[24px] p-8 flex items-start gap-6">
-                  <ShieldCheck className="text-primary w-8 h-8 shrink-0" />
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-[11px] font-bold text-primary uppercase tracking-[0.15em]">
-                      FTT Buyer Assurance
-                    </h4>
-                    <p className="text-xs text-foreground/70 leading-relaxed italic">
-                      Premium protection for your acquisitions. We ensure
-                      complete satisfaction or a full reconciliation securely
-                      via our payment partners.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-10">
-            <div className="rounded-[24px] border border-dashed border-border/70 bg-card/60 p-12 text-center shadow-soft max-w-2xl mx-auto">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-foreground font-bold">
-                Your bag is empty
-              </p>
-              <h2 className="mt-4 font-serif text-3xl text-foreground font-bold">
-                Add a treasure to continue
-              </h2>
-              <p className="mt-4 text-sm text-foreground/70 leading-relaxed">
-                Browse our curated collection of luxury items and return here to
-                complete your acquisition.
-              </p>
-              <Button
-                asChild
-                className="mt-8 rounded-full px-10 py-6 bg-primary hover:bg-[#3c0c0f] text-primary-foreground"
-              >
-                <Link
-                  href="/collection"
-                  className="uppercase tracking-[0.15em] text-[10px] font-bold"
-                >
-                  Explore the Collection
-                </Link>
-              </Button>
-            </div>
-
-            <section className="space-y-8 pt-10">
-              <div className="space-y-3 text-center">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
-                  Featured Picks
-                </p>
-                <h2 className="font-serif text-3xl text-foreground font-bold">
-                  Treasures to begin with
-                </h2>
-              </div>
-              <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-                {featuredPicks.map((product, index) => {
-                  const imageSrc = resolveMediaURL(product.images?.[0]);
-                  return (
-                    <Link
-                      key={product.id}
-                      href={`/collection/${product.slug}`}
-                      className="group flex flex-col items-center gap-5 rounded-[24px] border border-border/40 bg-card p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-lift"
-                    >
-                      <div className="relative h-40 w-full overflow-hidden rounded-3xl bg-background">
-                        {imageSrc ? (
-                          <Image
-                            src={imageSrc}
-                            alt={product.name}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                            loading={index === 0 ? "eager" : "lazy"}
-                            className="object-cover transition duration-700 group-hover:scale-105 mix-blend-multiply"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-bold">
-                            No image
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-2 text-center">
-                        <p className="font-serif text-lg font-bold text-foreground">
-                          {product.name}
-                        </p>
-                        <p className="text-sm font-bold text-primary">
-                          {formatCurrency(product.pricePaise / 100)}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
-        )}
-      </main>
+  return (
+    <div
+      aria-live="polite"
+      className="mx-auto max-w-2xl rounded-2xl border border-ftt-burgundy/20 bg-ftt-card p-5 text-sm text-ftt-burgundy shadow-[var(--ftt-soft-shadow)]"
+    >
+      <p className="font-serif text-lg text-ftt-navy">{conflict.title}</p>
+      <p className="mt-2 leading-6 text-ftt-burgundy/75">
+        {conflict.message}
+      </p>
+      {conflict.ctaHref ? (
+        <Link
+          href={conflict.ctaHref}
+          className="mt-3 inline-flex rounded-full border border-ftt-burgundy/30 bg-ftt-ivory px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ftt-burgundy transition hover:bg-ftt-burgundy hover:text-ftt-ivory"
+        >
+          {conflict.ctaLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }

@@ -12,6 +12,7 @@
 import type { Product } from "@/types/domain";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
+import { toSeoImageUrl } from "@/lib/seo/image-urls";
 
 export type PdpOgData = {
   /** The OG title: product name + fabric shorthand. */
@@ -28,9 +29,9 @@ export type PdpOgData = {
  */
 export function extractPdpOgData(product: Product): PdpOgData {
   const displayDetails = getProductDisplayDetails(product);
-  const imageUrl = resolveMediaURL(product.images?.[0]) ?? null;
+  const imageUrl = toSeoImageUrl(resolveMediaURL(product.images?.[0]));
 
-  const title = `${product.name} — ${displayDetails.fabric}`;
+  const title = `${product.name}: ${displayDetails.fabric}`;
 
   return {
     title,

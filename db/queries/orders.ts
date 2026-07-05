@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNull, or,
 import { db, withRetry } from "@/db";
 import { getFirstRow, requireFirstRow } from "@/db/results";
 import { orderEvents, orderItems, orders } from "@/db/schema";
+import { timedRows } from "@/lib/perf/timed";
 
 type OrderEventRecord = InferSelectModel<typeof orderEvents>;
 type OrderItemRecord = InferSelectModel<typeof orderItems>;
@@ -11,6 +12,18 @@ type OrderRecord = InferSelectModel<typeof orders>;
 export type OrderWithRelations = OrderRecord & {
   events: OrderEventRecord[];
   items: OrderItemRecord[];
+};
+
+export type OrderListItemSummary = Pick<
+  OrderRecord,
+  | "createdAt"
+  | "id"
+  | "paymentStatus"
+  | "placedAt"
+  | "status"
+  | "totalPaise"
+> & {
+  items: Array<Pick<OrderItemRecord, "id" | "name" | "pricePaise" | "quantity" | "selectedOptions">>;
 };
 
 export type CreateOrderInput = Omit<InferInsertModel<typeof orders>, "createdAt" | "updatedAt"> & {
@@ -26,19 +39,25 @@ const hydrateOrders = async (rows: OrderRecord[]): Promise<OrderWithRelations[]>
   if (rows.length === 0) return [];
 
   const orderIds = rows.map((row) => row.id);
-  const [itemsRows, eventRows] = await withRetry(() =>
-    Promise.all([
-      db
-        .select()
-        .from(orderItems)
-        .where(inArray(orderItems.orderId, orderIds)),
-      db
-        .select()
-        .from(orderEvents)
-        .where(inArray(orderEvents.orderId, orderIds))
-        .orderBy(desc(orderEvents.createdAt)),
-    ])
-  );
+  const [itemsRows, eventRows] = await Promise.all([
+    timedRows("orders.hydrate.items", () =>
+      withRetry(() =>
+        db
+          .select()
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds)),
+      ),
+    ),
+    timedRows("orders.hydrate.events", () =>
+      withRetry(() =>
+        db
+          .select()
+          .from(orderEvents)
+          .where(inArray(orderEvents.orderId, orderIds))
+          .orderBy(desc(orderEvents.createdAt)),
+      ),
+    ),
+  ]);
 
   const itemsByOrderId = new Map<string, OrderItemRecord[]>();
   const eventsByOrderId = new Map<string, OrderEventRecord[]>();
@@ -108,22 +127,129 @@ export const listOrders = async (options?: {
 
   const whereClause = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
 
-  const rows = await withRetry(() =>
-    db
-      .select()
-      .from(orders)
-      .where(whereClause)
-      .orderBy(desc(orders.createdAt))
-      .limit(limit)
-      .offset(offset)
+  const rows = await timedRows("orders.list.rows", () =>
+    withRetry(() =>
+      db
+        .select()
+        .from(orders)
+        .where(whereClause)
+        .orderBy(desc(orders.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ),
   );
 
   return hydrateOrders(rows);
 };
 
+export const listOrderSummaries = async (options?: {
+  limit?: number;
+  offset?: number;
+  status?: OrderRecord["status"];
+  userId?: string;
+  userEmail?: string;
+}): Promise<OrderListItemSummary[]> => {
+  const {
+    limit = 50,
+    offset = 0,
+    status,
+    userId,
+    userEmail,
+  } = options ?? {};
+
+  const boundedLimit = Math.min(Math.max(limit, 1), 100);
+  const boundedOffset = Math.max(offset, 0);
+  const filters = [];
+  if (status) filters.push(eq(orders.status, status));
+
+  if (userId && userEmail) {
+    filters.push(
+      or(
+        eq(orders.userId, userId),
+        and(isNull(orders.userId), eq(orders.shippingEmail, userEmail.toLowerCase()))
+      )
+    );
+  } else if (userId) {
+    filters.push(eq(orders.userId, userId));
+  }
+
+  const whereClause = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
+
+  const rows = await timedRows("orders.list.summaryRows", () =>
+    withRetry(() =>
+      db
+        .select({
+          createdAt: orders.createdAt,
+          id: orders.id,
+          paymentStatus: orders.paymentStatus,
+          placedAt: orders.placedAt,
+          status: orders.status,
+          totalPaise: orders.totalPaise,
+        })
+        .from(orders)
+        .where(whereClause)
+        .orderBy(desc(orders.createdAt), desc(orders.id))
+        .limit(boundedLimit)
+        .offset(boundedOffset),
+    ),
+  );
+
+  if (rows.length === 0) return [];
+
+  const orderIds = rows.map((row) => row.id);
+  const itemRows = await timedRows("orders.list.summaryItems", () =>
+    withRetry(() =>
+      db
+        .select({
+          id: orderItems.id,
+          name: orderItems.name,
+          orderId: orderItems.orderId,
+          pricePaise: orderItems.pricePaise,
+          quantity: orderItems.quantity,
+          selectedOptions: orderItems.selectedOptions,
+        })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds)),
+    ),
+  );
+
+  const itemsByOrderId = new Map<string, OrderListItemSummary["items"]>();
+  for (const item of itemRows) {
+    const existing = itemsByOrderId.get(item.orderId) ?? [];
+    existing.push({
+      id: item.id,
+      name: item.name,
+      pricePaise: item.pricePaise,
+      quantity: item.quantity,
+      selectedOptions: item.selectedOptions,
+    });
+    itemsByOrderId.set(item.orderId, existing);
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    items: itemsByOrderId.get(row.id) ?? [],
+  }));
+};
+
 export const getOrder = async (orderId: string): Promise<OrderWithRelations | null> => {
   const [row] = await withRetry(() =>
     db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+  );
+  if (!row) return null;
+  const [hydrated] = await hydrateOrders([row]);
+  return hydrated ?? null;
+};
+
+export const getOrderByIdempotencyKey = async (
+  idempotencyKey: string
+): Promise<OrderWithRelations | null> => {
+  const [row] = await withRetry(() =>
+    db
+      .select()
+      .from(orders)
+      .where(eq(orders.idempotencyKey, idempotencyKey))
+      .limit(1)
   );
   if (!row) return null;
   const [hydrated] = await hydrateOrders([row]);

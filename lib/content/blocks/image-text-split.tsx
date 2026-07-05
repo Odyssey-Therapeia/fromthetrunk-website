@@ -4,6 +4,9 @@
  * Side-by-side image + rich text, with configurable image position and background.
  * propsSchema validated on SAVE and on RENDER (defense in depth via renderBlock).
  * Renderer: RSC, theme tokens only — no raw hex or arbitrary px.
+ *
+ * Image refs are validated as media UUIDs. Old or unresolved media refs are
+ * ignored by the renderer instead of being passed into next/image.
  */
 
 import { z } from "zod";
@@ -14,18 +17,39 @@ import { sanitizeCmsHtml } from "@/lib/content/sanitize-html";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
+const emptyToUndefined = (value: unknown) =>
+  value === "" || value === null ? undefined : value;
+
+const getSafeImageSrc = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const resolved = resolveMediaURL({ media: { url: trimmed } });
+  if (!resolved) return undefined;
+
+  if (
+    resolved.startsWith("/") ||
+    resolved.startsWith("http://") ||
+    resolved.startsWith("https://")
+  ) {
+    return resolved;
+  }
+
+  return undefined;
+};
+
 export const imageTextSplitPropsSchema = z.object({
   eyebrow: z.string().max(80).optional(),
   heading: z.string().max(200),
   body: z.string().max(2000),
-  image: z.string().uuid(),
+  image: z.preprocess(emptyToUndefined, z.string().uuid()),
   imageAlt: z.string().max(200).optional(),
   imagePosition: z.enum(["left", "right"]).default("right"),
   ctaLabel: z.string().max(60).optional(),
   ctaHref: z.string().max(300).optional(),
-  background: z
-    .enum(["transparent", "secondary", "muted"])
-    .default("transparent"),
+  background: z.enum(["transparent", "secondary", "muted"]).default("transparent"),
 });
 
 export type ImageTextSplitBlockProps = z.infer<
@@ -40,11 +64,12 @@ const bgClass: Record<string, string> = {
 
 function ImageTextSplitRenderer(props: Record<string, unknown>) {
   const p = props as ImageTextSplitBlockProps;
-  const imageUrl = resolveMediaURL({ media: { url: p.image } });
+  const imageUrl = getSafeImageSrc(p.image);
   const isImageLeft = p.imagePosition === "left";
+  const backgroundClass = bgClass[p.background] ?? bgClass.transparent;
 
   return (
-    <section className={`w-full py-16 ${bgClass[p.background]}`}>
+    <section className={`w-full py-16 ${backgroundClass}`}>
       <div
         className={`mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 md:flex-row md:gap-16 ${
           isImageLeft ? "md:flex-row" : "md:flex-row-reverse"

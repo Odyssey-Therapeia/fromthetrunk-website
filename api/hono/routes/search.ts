@@ -3,6 +3,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { errorSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import { semanticSearchProducts } from "@/lib/ai/embeddings";
+import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { searchProducts } from "@/lib/ports/catalog-search";
 
 const searchQuerySchema = z.object({
@@ -38,6 +39,14 @@ export const registerSearchRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Search"],
     }),
     async (c) => {
+      // Public keyword search: moderate per-IP cap, memory-backed so normal
+      // product browsing is never hard-blocked by a limiter hiccup.
+      const rateLimited = await rateLimitResponse(c.req.raw, "search:keyword", {
+        limit: 60,
+        windowSeconds: 60,
+      });
+      if (rateLimited) return rateLimited;
+
       const query = c.req.valid("query");
       const limit = Math.min(query.limit ?? 12, 50);
 
@@ -81,6 +90,14 @@ export const registerSearchRoutes = (app: OpenAPIHono<HonoBindings>) => {
       tags: ["Search"],
     }),
     async (c) => {
+      // Semantic search is expensive (embeddings) → stricter, durable per-IP cap.
+      const rateLimited = await rateLimitResponse(c.req.raw, "search:semantic", {
+        limit: 10,
+        requireDurable: true,
+        windowSeconds: 60,
+      });
+      if (rateLimited) return rateLimited;
+
       const body = c.req.valid("json");
       const results = await semanticSearchProducts(body.query, body.limit ?? 12);
       return c.json(

@@ -24,6 +24,7 @@ const sendEmailMock = vi.hoisted(() => vi.fn());
 
 // db.update chain: .set().where().returning()
 const returningMock = vi.hoisted(() => vi.fn());
+const productReturningMock = vi.hoisted(() => vi.fn());
 const whereMock = vi.hoisted(() => vi.fn());
 const setMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.hoisted(() => vi.fn());
@@ -37,7 +38,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/db/schema", () => ({
   orders: { id: "id", paymentStatus: "paymentStatus" },
-  products: { id: "id" },
+  products: { id: "id", slug: "slug", stockStatus: "stockStatus" },
   reservations: { id: "id", orderId: "orderId", productId: "productId" },
   events: { eventId: "eventId" },
 }));
@@ -71,7 +72,9 @@ vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => ({ _and: args }),
   eq: (col: unknown, val: unknown) => ({ _eq: [col, val] }),
   inArray: (col: unknown, vals: unknown) => ({ _inArray: [col, vals] }),
+  isNull: (col: unknown) => ({ _isNull: col }),
   ne: (col: unknown, val: unknown) => ({ _ne: [col, val] }),
+  or: (...args: unknown[]) => ({ _or: args }),
 }));
 
 vi.mock("@/lib/analytics/emit", () => ({
@@ -129,6 +132,7 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
     setMock.mockReset();
     whereMock.mockReset();
     returningMock.mockReset();
+    productReturningMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
@@ -139,8 +143,18 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
     emitAnalyticsEventMock.mockResolvedValue(undefined);
 
     updateMock.mockReturnValue({ set: setMock });
-    setMock.mockReturnValue({ where: whereMock });
-    whereMock.mockReturnValue({ returning: returningMock });
+    setMock.mockImplementation((values: Record<string, unknown>) => {
+      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
+      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
+
+      return {
+        where: (...args: unknown[]) => {
+          whereMock(...args);
+          return { returning: activeReturningMock };
+        },
+      };
+    });
+    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
 
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
     orderConfirmationEmailMock.mockReturnValue({ subject: "Order confirmed", html: "<p>confirmed</p>" });

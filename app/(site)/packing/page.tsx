@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Packing",
   description:
     "How From the Trunk prepares, protects, and dispatches each saree order.",
-};
+  path: "/packing",
+});
 
 export default function PackingPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Customer Care
         </p>
@@ -20,9 +21,9 @@ export default function PackingPage() {
           Packing
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: April 2026
+          Last updated: June 29, 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
@@ -89,11 +90,17 @@ export default function PackingPage() {
           </h2>
           <p>
             For delivery timelines and rates, see the{" "}
-            <Link href="/shipping-policy" className="text-primary underline">
+            <Link
+              href="/policies/shipping-delivery-policy"
+              className="text-primary underline"
+            >
               shipping policy
             </Link>
             . For return eligibility after delivery, see the{" "}
-            <Link href="/return-policy" className="text-primary underline">
+            <Link
+              href="/policies/return-refund-policy"
+              className="text-primary underline"
+            >
               return policy
             </Link>
             .

@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
 import { SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { formatCurrency } from "@/lib/formatters";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Shipping Policy",
   description:
     "Shipping rates, delivery timelines, and packaging details for From the Trunk orders.",
-};
+  path: "/shipping-policy",
+});
 
 export default function ShippingPolicyPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
@@ -22,9 +23,9 @@ export default function ShippingPolicyPage() {
           Shipping Policy
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: April 2026
+          Last updated: June 29, 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
@@ -69,17 +70,19 @@ export default function ShippingPolicyPage() {
             </table>
           </div>
           <p className="text-xs text-trunk-gold">
-            Free shipping on all orders above{" "}
-            {formatCurrency(SHIPPING_TIERS.freeThreshold)}.
+            All orders are dispatched through Shiprocket and/or DTDC.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">Packaging</h2>
-          <p>Every saree is carefully packaged to preserve its condition:</p>
+          <p>
+            Every saree is carefully wrapped in tissue wrap, packed in our
+            signature recycled saree cloth bag, and nestled in our brand box.
+          </p>
           <ul className="list-disc space-y-1 pl-6">
-            <li>Wrapped in acid-free tissue paper</li>
-            <li>Placed in a protective muslin cloth bag</li>
+            <li>Wrapped in protective tissue wrap</li>
+            <li>Placed in a recycled saree cloth bag</li>
             <li>Accompanied by a story card and care instructions</li>
             <li>Shipped in a sturdy branded box</li>
           </ul>
@@ -105,15 +108,8 @@ export default function ShippingPolicyPage() {
             International Shipping
           </h2>
           <p>
-            We currently ship within India. International shipping will be
-            available soon. Contact us at{" "}
-            <a
-              href="mailto:hello@fromthetrunk.shop"
-              className="text-primary underline"
-            >
-              hello@fromthetrunk.shop
-            </a>{" "}
-            for special requests.
+            We currently ship across PAN India only. International shipping is
+            not available.
           </p>
         </section>
       </div>

@@ -23,6 +23,7 @@ const updateProductsBatchMock = vi.hoisted(() => vi.fn());
 const bulkAddProductsToCollectionMock = vi.hoisted(() => vi.fn());
 const bulkRemoveProductsFromCollectionMock = vi.hoisted(() => vi.fn());
 const bulkSetProductTagsMock = vi.hoisted(() => vi.fn());
+const getProductsByIdsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/products", () => ({
   updateProductsBatch: updateProductsBatchMock,
@@ -34,7 +35,7 @@ vi.mock("@/db/queries/products", () => ({
   duplicateProduct: vi.fn(),
   updateProduct: vi.fn(),
   getProductBySlug: vi.fn(),
-  getProductsByIds: vi.fn(),
+  getProductsByIds: getProductsByIdsMock,
   listProducts: vi.fn(),
   deriveQuantityAvailable: vi.fn(),
 }));
@@ -61,6 +62,10 @@ vi.mock("@/lib/config/flags", () => ({
   isInventoryV2: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/data/products", () => ({
+  getTimedPublicProductBySlug: vi.fn(),
+}));
+
 import { registerProductRoutes } from "@/api/hono/routes/products";
 import { createRouteHarness } from "../helpers/route-harness";
 
@@ -85,6 +90,8 @@ describe("POST /products/bulk-edit — status update", () => {
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
     bulkSetProductTagsMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("updates status for ALL N selected products (mutation proof: updateProductsBatch called with all IDs)", async () => {
@@ -183,6 +190,8 @@ describe("POST /products/bulk-edit — collection membership", () => {
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
     bulkSetProductTagsMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("adds ALL N products to a collection (mutation proof: bulkAddProductsToCollection called with all IDs)", async () => {
@@ -247,6 +256,8 @@ describe("POST /products/bulk-edit — tag operations", () => {
     bulkSetProductTagsMock.mockReset();
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("adds tags for ALL N selected products (mutation proof: bulkSetProductTags called for all)", async () => {
@@ -310,6 +321,8 @@ describe("POST /products/bulk-edit — partial failure reporting", () => {
     bulkSetProductTagsMock.mockReset();
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("reports partial failures from updateProductsBatch without swallowing errors", async () => {

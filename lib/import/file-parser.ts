@@ -89,6 +89,10 @@ function parseCsvRecords(text: string): string[][] {
   }
 
   // Flush the final field/row if the input didn't end with a newline.
+  if (inQuotes) {
+    throw new Error("Malformed CSV: quoted field is not closed");
+  }
+
   if (rowNonEmpty || field.length > 0 || inQuotes) {
     row.push(field);
     records.push(row);

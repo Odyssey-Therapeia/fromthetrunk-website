@@ -43,9 +43,10 @@ const bgClass: Record<string, string> = {
 
 function NewsletterSignupRenderer(props: Record<string, unknown>) {
   const p = props as NewsletterSignupBlockProps;
+  const backgroundClass = bgClass[p.background] ?? bgClass.card;
 
   return (
-    <section className={`w-full px-6 py-12 ${bgClass[p.background]}`}>
+    <section className={`w-full px-6 py-12 ${backgroundClass}`}>
       <div className="mx-auto max-w-6xl">
         {/*
           Newsletter is a "use client" component. It handles:

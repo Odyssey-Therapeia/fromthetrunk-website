@@ -24,6 +24,10 @@ export function ScrollReveal({ children, className, delay = 0 }: ScrollRevealPro
 
     if (prefersReducedMotion) return;
 
+    if (!elementRef.current) return;
+    const rect = elementRef.current.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.9) return;
+
     gsap.registerPlugin(ScrollTrigger);
 
     const ctx = gsap.context(() => {

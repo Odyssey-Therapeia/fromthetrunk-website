@@ -7,9 +7,10 @@ const defaultPaths = [
   "/checkout",
   "/our-story",
   "/how-it-works",
-  "/privacy-policy",
-  "/shipping-policy",
-  "/return-policy",
+  "/policies/privacy-policy",
+  "/policies/terms-of-service",
+  "/policies/shipping-delivery-policy",
+  "/policies/return-refund-policy",
   "/packing",
 ];
 

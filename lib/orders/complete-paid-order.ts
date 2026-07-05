@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { addOrderEvent, getOrder } from "@/db/queries/orders";
@@ -13,9 +13,11 @@ import {
   type EmailOrder,
 } from "@/lib/email/templates";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { revalidateProductsCache } from "@/lib/cache/product-cache";
 
 type CompletePaidOrderInput = {
   orderId: string;
+  paidAt?: Date;
   paymentId: string;
   paymentMethod?: null | string;
   paymentReference?: null | string;
@@ -29,7 +31,11 @@ const toEmailOrder = (order: NonNullable<Awaited<ReturnType<typeof getOrder>>>):
     name: item.name,
     price: item.pricePaise / 100,
     quantity: item.quantity,
+    selectedOptions: item.selectedOptions,
   })),
+  paidAt: order.paidAt,
+  paymentId: order.paymentId,
+  paymentStatus: order.paymentStatus,
   shippingAddress: {
     city: order.shippingCity,
     country: order.shippingCountry,
@@ -83,23 +89,42 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
     throw new Error("Order not found.");
   }
 
+  if (existing.paymentId && existing.paymentId !== input.paymentId) {
+    throw new Error("PAYMENT_ID_MISMATCH");
+  }
+
+  const paidAt = input.paidAt ?? new Date();
+
   // Atomic conditional claim: only the first concurrent caller gets rows back.
-  // If this UPDATE matches zero rows the order was already paid — return early.
+  // Mark the payment as paid first, but do not confirm fulfilment until the
+  // reserved one-of-one products are successfully moved to sold.
   const rows = await db
     .update(orders)
     .set({
+      paidAt,
       paymentId: input.paymentId,
       paymentMethod: input.paymentMethod ?? "razorpay",
       paymentStatus: "paid",
-      status: "confirmed",
       updatedAt: new Date(),
     })
-    .where(and(eq(orders.id, input.orderId), ne(orders.paymentStatus, "paid")))
+    .where(
+      and(
+        eq(orders.id, input.orderId),
+        ne(orders.paymentStatus, "paid"),
+        or(isNull(orders.paymentId), eq(orders.paymentId, input.paymentId))
+      )
+    )
     .returning({ id: orders.id });
 
   if (rows.length === 0) {
     // Loser path: another call already completed this order.
     const current = await getOrder(input.orderId);
+    if (current?.paymentId && current.paymentId !== input.paymentId) {
+      throw new Error("PAYMENT_ID_MISMATCH");
+    }
+    if (current?.paymentStatus !== "paid") {
+      throw new Error("PAYMENT_CLAIM_CONFLICT");
+    }
     return {
       alreadyPaid: true as const,
       emailsSent: false,
@@ -107,13 +132,14 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
     };
   }
 
-  // Winner path: this call owns completion — update stock, emit event, send emails.
+  // Winner path: this call owns completion — update stock, confirm the order,
+  // emit event, and send emails.
   const productIds = existing.items
     .map((item) => item.productId)
     .filter((id): id is string => Boolean(id));
 
   if (productIds.length > 0) {
-    await db
+    const soldRows = await db
       .update(products)
       .set({
         reservedUntil: null,
@@ -123,11 +149,31 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
         quantityAvailable: 0,
         updatedAt: new Date(),
       })
-      .where(inArray(products.id, productIds));
+      .where(and(inArray(products.id, productIds), eq(products.stockStatus, "reserved")))
+      .returning({ slug: products.slug });
+    const soldProducts = soldRows ?? [];
+    if (soldProducts.length !== productIds.length) {
+      await addOrderEvent(input.orderId, "Payment completion inventory conflict", existing.status ?? "pending", {
+        code: "PRODUCT_SOLD",
+        requestedProductIds: productIds,
+        soldCount: soldProducts.length,
+      });
+      throw new Error("PRODUCT_SOLD");
+    }
+
+    revalidateProductsCache(soldProducts.map((product) => product.slug));
 
     // Dual-write: release reservation rows now that the order is paid
     await releaseReservationsByOrder(input.orderId);
   }
+
+  await db
+    .update(orders)
+    .set({
+      status: "confirmed",
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, input.orderId));
 
   await addOrderEvent(input.orderId, `${input.source} payment confirmed`, "confirmed", {
     paymentId: input.paymentId,

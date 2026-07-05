@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
+import { OrderPaymentActions } from "@/components/account/order-payment-actions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
+import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import type { Order, OrderItem } from "@/types/domain";
 
 const fetchOrder = async (id: string): Promise<Order> => {
@@ -79,6 +81,17 @@ export default function OrderDetailPage() {
         </Button>
       </div>
 
+      {/* Unpaid / failed → repay (+ reorder). Rendered above the timeline so it's
+          the first thing a customer sees on an incomplete order. */}
+      {order.paymentStatus === "pending" || order.paymentStatus === "failed" ? (
+        <div className="rounded-2xl border border-[#601D1C]/15 bg-card/70 p-6 shadow-soft">
+          <p className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            {order.paymentStatus === "failed" ? "Payment Failed" : "Payment Pending"}
+          </p>
+          <OrderPaymentActions orderId={order.id} paymentStatus={order.paymentStatus} />
+        </div>
+      ) : null}
+
       {/* Order timeline */}
       <div className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-soft">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4">
@@ -94,7 +107,7 @@ export default function OrderDetailPage() {
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
                       isActive
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary text-ftt-ivory"
                         : "bg-muted text-muted-foreground"
                     } ${isCurrent ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                   >
@@ -130,7 +143,12 @@ export default function OrderDetailPage() {
             <div key={index} className="flex items-center justify-between text-sm">
               <div>
                 <p className="font-medium text-foreground">{item.name}</p>
-                <p className="text-xs text-muted-foreground">Qty: {item.quantity}, one of a kind</p>
+                {formatSelectedOptions(item.selectedOptions) ? (
+                  <p className="text-xs font-semibold text-foreground/70">
+                    {formatSelectedOptions(item.selectedOptions)}
+                  </p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">Qty: {item.quantity}, unique</p>
               </div>
               <p className="font-semibold text-foreground">
                 {formatCurrency((item.pricePaise * item.quantity) / 100)}

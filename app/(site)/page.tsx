@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { draftMode } from "next/headers";
 
 import { CampaignBannerSection } from "@/components/sections/campaign-banner-section";
 import { FabricCategorySection } from "@/components/sections/fabric-category-section";
@@ -8,9 +7,14 @@ import { FloatingReviewTab } from "@/components/sections/floating-review-tab";
 import { HeroSection } from "@/components/sections/hero-section";
 import { HomeIntroGate } from "@/components/sections/home-intro-gate";
 import {
-  LandingSections,
+  ConnectWithUsSection,
+  FeaturedProductsSection,
+  OurStorySection,
+  SectionSeparator,
+  TestimonialsSection,
   type LandingProductCard,
 } from "@/components/sections/landing-sections";
+import { SocialSection } from "@/components/sections/social-section";
 import { isBlocksHomepage } from "@/lib/config/flags";
 import {
   getFeaturedProducts,
@@ -20,22 +24,24 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
 import type { Product } from "@/types/domain";
 import type { HomePageContent } from "@/types/site-content";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "From the Trunk | Pre-Loved Luxury Sarees with Provenance",
   description:
-    "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance, a story woven in silk, and careful restoration.",
-};
+    "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance, a story woven in silk, and careful restoration.",
+  path: "/",
+});
 
 const homeCoverImage = "/media/home-cover.png";
 
 export default async function Home() {
-  const { isEnabled: includeDrafts } = await draftMode();
+  const includeDrafts = false;
 
   // ── FLAG ON: render homepage via the block-content engine ──────────────────
   // When FTT_FEATURE_BLOCKS_HOMEPAGE=true, the homepage is rendered by mapping
@@ -128,19 +134,28 @@ export default async function Home() {
         "Ready for its next story",
       ][index] ?? "Curated with care",
   }));
+  const socialSection = await SocialSection({ images: storyImages });
 
   return (
     <HomeIntroGate>
-      <div className="bg-[#F8F4EF]">
+      <div className="bg-[#FDF7F1]">
+        {/* Section order: hero → our story → banner → fabric → social →
+            featured (category) → testimonials → connect. */}
         <HeroSection content={heroContent} />
         <FloatingReviewTab />
-        <FabricCategorySection />
+        <OurStorySection />
+        <SectionSeparator />
         <CampaignBannerSection />
-        <LandingSections
-          featuredProducts={landingProducts}
-          showIntroSeparator={false}
-          storyImages={storyImages}
-        />
+        <SectionSeparator />
+        <FabricCategorySection />
+        <SectionSeparator />
+        {socialSection}
+        <SectionSeparator />
+        <FeaturedProductsSection products={landingProducts} />
+        <SectionSeparator />
+        <TestimonialsSection />
+        <SectionSeparator />
+        <ConnectWithUsSection />
       </div>
     </HomeIntroGate>
   );

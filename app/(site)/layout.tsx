@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Cormorant_Garamond, Inter } from "next/font/google";
+import { Cormorant_Garamond, Jost } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -11,8 +11,19 @@ import { SiteFooterServer } from "@/components/layout/site-footer-server";
 import { SiteHeaderServer } from "@/components/layout/site-header-server";
 import { ThemeStyler } from "@/components/layout/theme-styler";
 import { Providers } from "@/components/providers";
-import { organizationJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
+import { SiteWidgets } from "@/components/widgets/site-widgets";
+import {
+  organizationJsonLd,
+  safeJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo/json-ld";
 import { getSiteOrigin } from "@/lib/config/site";
+import {
+  DEFAULT_TWITTER_CARD,
+  OG_LOCALE,
+  SITE_NAME,
+  seoImageMetadata,
+} from "@/lib/seo/metadata";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -21,13 +32,15 @@ const serif = Cormorant_Garamond({
   display: "swap",
 });
 
-const sans = Inter({
+const sans = Jost({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
 
 const baseUrl = getSiteOrigin();
+const defaultSocialImage = seoImageMetadata();
 
 export const metadata: Metadata = {
   title: {
@@ -35,21 +48,24 @@ export const metadata: Metadata = {
     template: "%s | From the Trunk",
   },
   description:
-    "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance and a story woven in silk.",
+    "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
   metadataBase: new URL(baseUrl),
   openGraph: {
     type: "website",
-    locale: "en_IN",
-    siteName: "From the Trunk",
+    locale: OG_LOCALE,
+    siteName: SITE_NAME,
+    url: baseUrl,
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
-      "Curated collection of authenticated, pre-loved luxury sarees. Each one-of-a-kind piece comes with provenance and a story woven in silk.",
+      "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
+    images: [defaultSocialImage],
   },
   twitter: {
-    card: "summary_large_image",
+    card: DEFAULT_TWITTER_CARD,
     title: "From the Trunk | Pre-Loved Luxury Sarees",
     description:
       "Curated collection of authenticated, pre-loved luxury sarees.",
+    images: [defaultSocialImage],
   },
   robots: {
     index: true,
@@ -65,7 +81,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
@@ -87,6 +103,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             __html: safeJsonLd(organizationJsonLd()),
           }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLd(websiteJsonLd()),
+          }}
+        />
         {/* Skip to content link for keyboard navigation */}
         <a
           href="#main-content"
@@ -94,13 +116,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to main content
         </a>
+        <SiteHeaderServer />
         <Providers>
-          <SiteHeaderServer />
           <main id="main-content" className="min-h-[70vh]" role="main">
             {children}
           </main>
-          <SiteFooterServer />
         </Providers>
+        <SiteFooterServer />
+        <SiteWidgets />
         <Analytics />
         <SpeedInsights />
         {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (

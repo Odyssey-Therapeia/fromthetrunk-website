@@ -67,7 +67,7 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
       primaryCtaLabel: "Explore the Collection",
       primaryCtaHref: "/collection",
       secondaryCtaLabel: "Read the Story",
-      secondaryCtaHref: "/our-story",
+      secondaryCtaHref: "/our-team",
       infoCardEyebrow: "New Arrivals",
       infoCardTitle: "Curated designer sarees from the 1980s-2000s.",
       infoCardBody: "Limited drops every fortnight. Reserve your piece early.",
@@ -88,7 +88,7 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
       beats: [
         {
           paragraphs: [
-            "There’s something quietly powerful about a saree. It carries more than fabric — it holds memories, milestones, and moments that once meant everything.",
+            "There’s something quietly powerful about a saree. It carries more than fabric, it holds memories, milestones, and moments that once meant everything.",
             "In so many homes, these beautiful pieces lie tucked away, preserved but forgotten.",
           ],
           layout: "image-right",
@@ -101,14 +101,14 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
         },
         {
           paragraphs: [
-            "By giving your pre-loved sarees a second life, you’re not just clearing space — you’re passing on heritage, emotion, and craftsmanship.",
+            "By giving your pre-loved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship.",
             "Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
           ],
           layout: "image-left",
         },
         {
           paragraphs: [
-            "And in doing so, you’re also making a conscious, sustainable choice — reducing waste while celebrating timeless fashion.",
+            "And in doing so, you’re also making a conscious, sustainable choice, reducing waste while celebrating timeless fashion.",
           ],
           layout: "full-bleed",
         },

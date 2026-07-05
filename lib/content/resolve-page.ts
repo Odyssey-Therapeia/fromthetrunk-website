@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 
 import type { ContentStore, Page, PageVersion } from "@/lib/ports/content-store";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
+import { absoluteUrl } from "@/lib/seo/site-url";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,9 +79,13 @@ export async function resolveMetadata(
   return {
     title,
     description,
+    alternates: {
+      canonical: absoluteUrl(`/${slug}`),
+    },
     openGraph: {
       title,
       ...(description ? { description } : {}),
+      url: absoluteUrl(`/${slug}`),
     },
   };
 }

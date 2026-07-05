@@ -17,6 +17,9 @@
 import { z } from "zod";
 import type { FormSchema } from "@/lib/forms/types";
 
+const emptyToUndefined = (value: unknown) =>
+  value === "" || value === null ? undefined : value;
+
 // ── Hero block schema ─────────────────────────────────────────────────────────
 // Mirrors heroPropsSchema from lib/content/blocks/hero.tsx
 
@@ -100,11 +103,11 @@ export const heroEditorSchema: FormSchema = {
       },
     },
     backgroundImage: {
-      zod: z.string().uuid().optional(),
+      zod: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
       meta: {
         type: "image-ref",
         label: "Background image",
-        description: "UUID of the media asset used as the hero background.",
+        description: "Media URL used as the hero background.",
       },
     },
     infoCardEyebrow: {
@@ -351,11 +354,11 @@ export const imageTextSplitEditorSchema: FormSchema = {
       },
     },
     image: {
-      zod: z.string().uuid(),
+      zod: z.preprocess(emptyToUndefined, z.string().uuid()),
       meta: {
         type: "image-ref",
         label: "Image",
-        description: "UUID of the media asset displayed beside the text.",
+        description: "Media URL displayed beside the text.",
       },
     },
     imageAlt: {
@@ -419,32 +422,43 @@ export const imageTextSplitEditorSchema: FormSchema = {
 export const storyEditorialEditorSchema: FormSchema = {
   fields: {
     beats: {
-      zod: z.array(
-        z.object({
-          paragraphs: z.array(z.string().max(600)).min(1).max(4),
-          image: z.string().uuid().optional(),
-          imageAlt: z.string().max(200).optional(),
-          layout: z.enum([
-            "image-right",
-            "image-left",
-            "text-only-dark",
-            "full-bleed",
-          ]),
-        })
-      ).min(1).max(6),
-      meta: {
-        type: "list-of-group",
-        label: "Beats",
-        description: "Editorial beats (sections) in the narrative.",
-        itemSchema: {
-          fields: {
-            layout: {
-              zod: z.enum([
+      zod: z
+        .array(
+          z.object({
+            paragraphs: z.array(z.string().max(600)).min(1).max(4),
+            image: z.preprocess(
+              emptyToUndefined,
+              z.string().uuid().optional(),
+            ),
+            imageAlt: z.string().max(200).optional(),
+            layout: z
+              .enum([
                 "image-right",
                 "image-left",
                 "text-only-dark",
                 "full-bleed",
-              ]),
+              ])
+              .default("image-right"),
+          }),
+        )
+        .min(1)
+        .max(6),
+      meta: {
+        type: "list-of-group",
+        label: "Beats",
+        description:
+          "Editorial beats in the narrative. Empty beats are ignored on render.",
+        itemSchema: {
+          fields: {
+            layout: {
+              zod: z
+                .enum([
+                  "image-right",
+                  "image-left",
+                  "text-only-dark",
+                  "full-bleed",
+                ])
+                .default("image-right"),
               meta: {
                 type: "select",
                 label: "Layout",
@@ -463,15 +477,19 @@ export const storyEditorialEditorSchema: FormSchema = {
                 type: "list-of-text",
                 label: "Paragraphs",
                 placeholder: "Write a paragraph…",
-                description: "Text paragraphs for this beat (1–4). Each row is one paragraph.",
+                description:
+                  "Text paragraphs for this beat. Empty rows are ignored on render.",
               },
             },
             image: {
-              zod: z.string().uuid().optional(),
+              zod: z.preprocess(
+                emptyToUndefined,
+                z.string().uuid().optional(),
+              ),
               meta: {
                 type: "image-ref",
                 label: "Image",
-                description: "Optional image for this beat.",
+                description: "Optional media URL for this beat.",
               },
             },
             imageAlt: {
@@ -488,12 +506,13 @@ export const storyEditorialEditorSchema: FormSchema = {
       },
     },
     climaxLines: {
-      zod: z.array(z.string().max(200)).max(6).optional(),
+      zod: z.array(z.string().max(200)).max(6).default([]),
       meta: {
         type: "list-of-text",
         label: "Climax lines",
         placeholder: "e.g. Every saree holds a story.",
-        description: "Optional finale text lines shown on a dark background (max 6). Each row is one line.",
+        description:
+          "Optional finale text lines shown on a dark background. Empty rows are ignored on render.",
       },
     },
     ctaLabel: {
@@ -502,7 +521,8 @@ export const storyEditorialEditorSchema: FormSchema = {
         type: "text",
         label: "CTA label",
         placeholder: "e.g. Explore the collection",
-        description: "Label for the optional call-to-action below the narrative.",
+        description:
+          "Label for the optional call-to-action below the narrative.",
       },
     },
     ctaHref: {
@@ -541,12 +561,15 @@ export const faqEditorSchema: FormSchema = {
       },
     },
     items: {
-      zod: z.array(
-        z.object({
-          question: z.string().max(300),
-          answer: z.string().max(2000),
-        })
-      ).min(1).max(20),
+      zod: z
+        .array(
+          z.object({
+            question: z.string().max(300),
+            answer: z.string().max(2000),
+          }),
+        )
+        .min(1)
+        .max(20),
       meta: {
         type: "list-of-group",
         label: "FAQ items",
@@ -568,7 +591,8 @@ export const faqEditorSchema: FormSchema = {
                 type: "rich-text",
                 label: "Answer",
                 placeholder: "Write the answer here…",
-                description: "The answer (rich text, sanitized on render; max 2000 chars).",
+                description:
+                  "The answer (rich text, sanitized on render; max 2000 chars).",
               },
             },
           },
@@ -655,7 +679,8 @@ export const announcementBarEditorSchema: FormSchema = {
         type: "list-of-text",
         label: "Messages",
         placeholder: "e.g. Complimentary styling consult",
-        description: "One or more announcement messages shown in the bar (1–5). Each row is one message.",
+        description:
+          "One or more announcement messages shown in the bar (1–5). Each row is one message.",
       },
     },
     ctaLabel: {
@@ -677,7 +702,10 @@ export const announcementBarEditorSchema: FormSchema = {
       },
     },
     background: {
-      zod: z.enum(["primary", "accent", "foreground"]).default("primary"),
+      zod: z.preprocess(
+        emptyToUndefined,
+        z.enum(["primary", "accent", "foreground"]).default("primary"),
+      ),
       meta: {
         type: "select",
         label: "Background",
@@ -724,25 +752,37 @@ export const spacerEditorSchema: FormSchema = {
 
 // ── Trust-signals block schema ────────────────────────────────────────────────
 // Mirrors trustSignalsPropsSchema from lib/content/blocks/trust-signals.tsx.
-// The propsSchema models stats as a fixed 3-tuple; the editor surfaces it as a
+// The propsSchema requires 3 stats; the editor surfaces it as a
 // list-of-group of {value, label}. Icons are fixed per slot (not editable).
 
 export const trustSignalsEditorSchema: FormSchema = {
   fields: {
     stats: {
       zod: z
-        .array(
+        .tuple([
           z.object({
             value: z.string().max(40),
             label: z.string().max(80),
-          })
-        )
-        .length(3),
+          }),
+          z.object({
+            value: z.string().max(40),
+            label: z.string().max(80),
+          }),
+          z.object({
+            value: z.string().max(40),
+            label: z.string().max(80),
+          }),
+        ])
+        .default([
+          { value: "200+", label: "Authenticated Sarees" },
+          { value: "50+", label: "Happy Collectors" },
+          { value: "100%", label: "Provenance Verified" },
+        ]),
       meta: {
         type: "list-of-group",
         label: "Stats",
         description:
-          "Three trust stats. Each has a value and a label (icons are fixed per slot).",
+          "Up to three trust stats. Each has a value and a label. Empty rows are ignored on render.",
         itemSchema: {
           fields: {
             value: {
@@ -799,7 +839,7 @@ export const howItWorksEditorSchema: FormSchema = {
           z.object({
             title: z.string().max(80),
             description: z.string().max(400),
-          })
+          }),
         )
         .min(1)
         .max(6),

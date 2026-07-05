@@ -28,17 +28,19 @@ import {
 } from "@/db/queries/wishlist";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 
+const MAX_WISHLIST_MERGE_ITEMS = 100;
+
 const wishlistMutationSchema = z.object({
   productId: z.string().uuid(),
 });
 
 const wishlistNotifySchema = z.object({
   productId: z.string().uuid(),
-  email: z.string().email(),
+  email: z.string().trim().email().max(320),
 });
 
 const wishlistMergeSchema = z.object({
-  productIds: z.array(z.string().uuid()),
+  productIds: z.array(z.string().uuid()).max(MAX_WISHLIST_MERGE_ITEMS),
 });
 
 export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
@@ -87,11 +89,22 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Wishlist"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `wishlist:add:${authUserOrResponse.id}`,
+	        {
+	          limit: 60,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
 
       const [existingProduct] = await db
         .select({ id: products.id, name: products.name })
@@ -150,11 +163,22 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Wishlist"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `wishlist:delete:${authUserOrResponse.id}`,
+	        {
+	          limit: 60,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
 
       await removeFromWishlist(authUserOrResponse.id, body.productId);
 
@@ -209,6 +233,7 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       // Mirrors newsletter.ts:32-36 — 3 requests per 60 s per IP.
       const rateLimited = await rateLimitResponse(c.req.raw, "restock:notify", {
         limit: 3,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;
@@ -282,13 +307,46 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Wishlist"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
-      await mergeGuestWishlist(authUserOrResponse.id, body.productIds);
-      return c.json({ success: true }, 200);
-    }
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `wishlist:merge:${authUserOrResponse.id}`,
+	        {
+	          limit: 10,
+	          requireDurable: true,
+	          windowSeconds: 5 * 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
+	      const productIds = Array.from(new Set(body.productIds));
+	      if (productIds.length === 0) return c.json({ success: true }, 200);
+
+	      const existingProducts = await db
+	        .select({ id: products.id })
+	        .from(products)
+	        .where(
+	          and(
+	            inArray(products.id, productIds),
+	            inArray(products.status, ["draft", "published"])
+	          )
+	        );
+	      if (existingProducts.length !== productIds.length) {
+	        return c.json(
+	          {
+	            code: "INVALID_PRODUCT_IDS",
+	            message: "One or more products are unavailable.",
+	          },
+	          400
+	        );
+	      }
+
+	      await mergeGuestWishlist(authUserOrResponse.id, productIds);
+	      return c.json({ success: true }, 200);
+	    }
   );
 };

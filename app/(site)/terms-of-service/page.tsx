@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Terms of Service",
   description:
     "Terms and conditions governing use of the From the Trunk platform.",
-};
+  path: "/terms-of-service",
+});
 
 export default function TermsOfServicePage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-10 px-6 py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
@@ -19,9 +20,9 @@ export default function TermsOfServicePage() {
           Terms of Service
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: February 2026
+          Last updated: June 29, 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
@@ -37,7 +38,7 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">2. Products</h2>
           <p>
-            All sarees listed on From the Trunk are pre-loved, one-of-a-kind
+            All sarees listed on From the Trunk are pre-loved, unique
             pieces. Product descriptions, images, and provenance details are
             provided to the best of our knowledge. Minor variations from
             descriptions are inherent to vintage and pre-loved items.
@@ -61,7 +62,7 @@ export default function TermsOfServicePage() {
             4. Orders & Reservations
           </h2>
           <p>
-            When you add an item to your cart, it is temporarily reserved for 30
+            When you add a saree to your cart, it is temporarily reserved for 60
             minutes. Orders are confirmed only upon successful payment. We
             reserve the right to cancel orders if payment verification fails.
           </p>

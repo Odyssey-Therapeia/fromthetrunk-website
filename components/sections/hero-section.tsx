@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useUiHaptics } from "@/lib/haptics/use-ui-haptics";
 import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 
-const SLIDE_DURATION_MS = 8500;
-const SLIDE_TRANSITION_MS = 1600;
-const HERO_GOLD = "#C18D39";
+// Slower cadence: each slide holds longer and the crossfade is gentler.
+const SLIDE_DURATION_MS = 6000;
+const SLIDE_TRANSITION_MS = 1400;
+const HERO_GOLD = "#B39152";
 
 // TEMP (debugging): flip back to true to restore auto-advance.
 const AUTOPLAY_ENABLED = true;
@@ -21,6 +24,7 @@ type HeadlinePart = {
 type Slide = {
   image: string;
   mobileImage: string;
+  fallbackBackground: string;
   imagePosition?: string;
   tabletImagePosition?: string;
   mobileImagePosition?: string;
@@ -36,12 +40,14 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    image: "/hero/3.png",
-    mobileImage: "/hero/mobile_1.png",
+    image: "/hero/3-lcp.webp",
+    mobileImage: "/hero/mobile_1-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 24% 44%, rgba(179,145,82,0.30), transparent 32%), linear-gradient(135deg, #601D1C 0%, #141D46 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
     mobileImagePosition: "center 80%",
-    eyebrow: "From the Trunk",
+    eyebrow: "FROM THE TRUNK",
     headline: [
       { text: "Crafted for the " },
       { text: "FEARLESS", accent: true },
@@ -53,15 +59,17 @@ const slides: Slide[] = [
     ],
     description: "Handcrafted pieces for women who lead with confidence.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(7.5rem,16vh,10rem)] md:justify-start md:pb-0",
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0",
   },
   {
-    image: "/hero/4.png",
-    mobileImage: "/hero/mobile_2.png",
+    image: "/hero/4-lcp.webp",
+    mobileImage: "/hero/mobile_2-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 24% 44%, rgba(179,145,82,0.28), transparent 34%), linear-gradient(135deg, #141D46 0%, #050816 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
-    mobileImagePosition: "center top",
-    eyebrow: "HERITAGE IN MOTION",
+    mobileImagePosition: "center 80%",
+    eyebrow: "FROM THE TRUNK",
     headline: [{ text: "TIMELESS", accent: true }, { text: " by design." }],
     mobileHeadline: [
       [{ text: "TIMELESS", accent: true }],
@@ -69,15 +77,18 @@ const slides: Slide[] = [
     ],
     description:
       "Created to be cherished today, tomorrow, and for generations.",
-    mobileCopyClassName: "justify-start pt-[clamp(3rem,7vh,5rem)] md:pt-16",
+    mobileCopyClassName:
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
-    image: "/hero/5.png",
-    mobileImage: "/hero/mobile_3.png",
+    image: "/hero/5-lcp.webp",
+    mobileImage: "/hero/mobile_3-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 25% 42%, rgba(179,145,82,0.24), transparent 34%), linear-gradient(135deg, #2F1A2B 0%, #601D1C 48%, #141D46 100%)",
     imagePosition: "center center",
     tabletImagePosition: "56% center",
-    mobileImagePosition: "center top",
-    eyebrow: "The Final statement",
+    mobileImagePosition: "center 80%",
+    eyebrow: "FROM THE TRUNK",
     headline: [
       { text: "Beautiful " },
       { text: "YOU", accent: true },
@@ -88,15 +99,18 @@ const slides: Slide[] = [
       [{ text: "YOU", accent: true }, { text: "." }],
     ],
     description: "Every weave becomes a story when you wear it.",
-    mobileCopyClassName: "justify-start pt-[clamp(3rem,7vh,5rem)] md:pt-16",
+    mobileCopyClassName:
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
-    image: "/hero/6.png",
-    mobileImage: "/hero/mobile_4.png",
+    image: "/hero/6-lcp.webp",
+    mobileImage: "/hero/mobile_4-lcp.webp",
+    fallbackBackground:
+      "radial-gradient(circle at 25% 42%, rgba(179,145,82,0.24), transparent 34%), linear-gradient(135deg, #141D46 0%, #30151D 100%)",
     imagePosition: "center center",
     tabletImagePosition: "58% center",
-    mobileImagePosition: "center top",
-    eyebrow: "Curated Drop",
+    mobileImagePosition: "center 80%",
+    eyebrow: "THE FINAL STATEMENT",
     headline: [
       { text: "FROM THE " },
       { text: "TRUNK", accent: true },
@@ -116,10 +130,95 @@ const slides: Slide[] = [
     headlineClassName:
       "md:!text-[clamp(2.45rem,4.7vw,4.35rem)] lg:!text-[clamp(3.2rem,5.15vw,6.35rem)]",
     mobileCopyClassName:
-      "justify-start pt-[clamp(2.75rem,6vh,4.25rem)] md:pt-16",
+      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
     mobileHeadlineClassName: "!text-[clamp(2.65rem,11vw,4rem)] !leading-[0.92]",
   },
 ];
+
+type HeroViewport = "mobile" | "tablet" | "desktop";
+
+function getHeroViewport(): HeroViewport {
+  if (typeof window === "undefined") return "desktop";
+  if (window.innerWidth < 768) return "mobile";
+  if (window.innerWidth < 1024) return "tablet";
+  return "desktop";
+}
+
+function useHeroViewport() {
+  const [viewport, setViewport] = useState<HeroViewport>("desktop");
+
+  useEffect(() => {
+    const updateViewport = () => setViewport(getHeroViewport());
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport, { passive: true });
+
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  return viewport;
+}
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return prefersReducedMotion;
+}
+
+function HeroSlideImage({
+  index,
+  slide,
+  viewport,
+  onFirstImageReady,
+}: {
+  index: number;
+  slide: Slide;
+  viewport: HeroViewport;
+  onFirstImageReady: () => void;
+}) {
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
+  const isFirstSlide = index === 0;
+  const isMobile = viewport === "mobile";
+  const imageSrc = isMobile ? slide.mobileImage : slide.image;
+  const objectPosition = isMobile
+    ? (slide.mobileImagePosition ?? "center center")
+    : viewport === "tablet"
+      ? (slide.tabletImagePosition ?? slide.imagePosition ?? "center center")
+      : (slide.imagePosition ?? "center center");
+
+  if (failedImageSrc === imageSrc) return null;
+
+  return (
+    <Image
+      src={imageSrc}
+      alt=""
+      fill
+      priority={isFirstSlide}
+      loading={isFirstSlide ? undefined : "lazy"}
+      fetchPriority={isFirstSlide ? "high" : "auto"}
+      sizes="100vw"
+      className="object-cover"
+      style={{ objectPosition }}
+      onLoad={isFirstSlide ? onFirstImageReady : undefined}
+      onError={() => {
+        setFailedImageSrc(imageSrc);
+        if (isFirstSlide) {
+          onFirstImageReady();
+        }
+      }}
+    />
+  );
+}
 
 interface HeroSectionProps {
   content?: unknown;
@@ -174,8 +273,8 @@ function HeroCopy({
     <div
       className={
         isMobile
-          ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_4px_18px_rgba(0,0,0,0.35)]"
-          : "drop-shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none lg:w-[clamp(24rem,40vw,44rem)]"
+          ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_5px_22px_rgba(0,0,0,0.48)]"
+          : "drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none md:-translate-y-4 lg:w-[clamp(24rem,40vw,44rem)] lg:-translate-y-8"
       }
     >
       <p
@@ -190,8 +289,8 @@ function HeroCopy({
       <span
         className={
           isMobile
-            ? "mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#C18D39] via-[#C18D39]/70 to-transparent"
-            : "mb-6 mt-4 block h-px w-32 bg-linear-to-r from-[#C18D39] via-[#C18D39]/70 to-transparent"
+            ? "mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
+            : "mb-6 mt-4 block h-px w-32 bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
         }
         aria-hidden="true"
       />
@@ -213,13 +312,33 @@ function HeroCopy({
         <p
           className={
             isMobile
-              ? "mt-5 w-full max-w-[min(84vw,24rem)] font-sans text-[clamp(1rem,3.75vw,1.22rem)] leading-[1.55] text-white/86"
-              : "mt-6 w-auto max-w-[clamp(18rem,34vw,30rem)] text-[clamp(0.95rem,1vw,1.25rem)] leading-[1.65] text-white/84 lg:max-w-[clamp(22rem,36vw,36rem)]"
+              ? "mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88"
+              : "mt-6 w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
           }
         >
           {slide.description}
         </p>
       ) : null}
+      <div
+        className={
+          isMobile
+            ? "mt-6 flex flex-wrap items-center gap-3"
+            : "mt-8 flex flex-wrap items-center gap-4"
+        }
+      >
+        <Link
+          href="/collection"
+          className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-linear-to-r from-[#601D1C] to-[#141D46] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#FDF7F1] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:brightness-110"
+        >
+          Explore Collection
+        </Link>
+        <Link
+          href="/our-story"
+          className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-[#FDF7F1] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#141D46] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-white"
+        >
+          Our Story
+        </Link>
+      </div>
     </div>
   );
 }
@@ -228,10 +347,13 @@ export function HeroSection(props: HeroSectionProps) {
   void props;
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [initialHeroImageReady, setInitialHeroImageReady] = useState(false);
+  const viewport = useHeroViewport();
   const lockedRef = useRef(false);
   const unlockTimeoutRef = useRef<number | null>(null);
   const { nudge } = useUiHaptics();
   const isIntroReady = useHomeIntroReady();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const changeSlide = useCallback(
     (nextIndex: number) => {
@@ -246,9 +368,9 @@ export function HeroSection(props: HeroSectionProps) {
 
       unlockTimeoutRef.current = window.setTimeout(() => {
         lockedRef.current = false;
-      }, SLIDE_TRANSITION_MS);
+      }, prefersReducedMotion ? 0 : SLIDE_TRANSITION_MS);
     },
-    [activeImageIndex],
+    [activeImageIndex, prefersReducedMotion],
   );
 
   const nextSlide = useCallback(() => {
@@ -260,7 +382,12 @@ export function HeroSection(props: HeroSectionProps) {
   }, [activeImageIndex, changeSlide]);
 
   useEffect(() => {
-    if (!AUTOPLAY_ENABLED || !isIntroReady) {
+    if (
+      prefersReducedMotion ||
+      !AUTOPLAY_ENABLED ||
+      !isIntroReady ||
+      !initialHeroImageReady
+    ) {
       return;
     }
 
@@ -269,7 +396,13 @@ export function HeroSection(props: HeroSectionProps) {
     }, SLIDE_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeImageIndex, isIntroReady, nextSlide]);
+  }, [
+    activeImageIndex,
+    initialHeroImageReady,
+    isIntroReady,
+    nextSlide,
+    prefersReducedMotion,
+  ]);
 
   useEffect(() => {
     if (isIntroReady) {
@@ -295,56 +428,34 @@ export function HeroSection(props: HeroSectionProps) {
   return (
     <section
       id="home-hero"
-      className="relative h-[calc(100svh-9.125rem)] min-h-136 overflow-hidden text-white md:h-[min(calc(100svh-6.625rem),60vw)] md:min-h-144 lg:h-[min(calc(100svh-6.625rem),56.25vw)] lg:min-h-152 xl:min-h-160 2xl:min-h-168h-[clamp(2rem,1.6rem+1.7vw,3.25rem)]"
+      className="relative h-[calc(100svh-9.125rem)] min-h-120 overflow-hidden text-white md:h-[min(calc(100svh-6.625rem),60vw)] md:min-h-144 lg:h-[min(calc(100svh-6.625rem),56.25vw)] lg:min-h-152 xl:min-h-160 2xl:min-h-168"
     >
       <div className="absolute inset-0">
-        {slides.map((slide, index) => (
-          <div
-            key={`${slide.image}-tablet`}
-            aria-hidden={activeImageIndex !== index}
-            className={[
-              "absolute inset-0 hidden bg-cover opacity-0 transition-opacity ease-in-out md:block lg:hidden",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
-            ].join(" ")}
-            style={{
-              backgroundImage: `url("${slide.image}")`,
-              backgroundPosition:
-                slide.tabletImagePosition ??
-                slide.imagePosition ??
-                "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          />
-        ))}
         {slides.map((slide, index) => (
           <div
             key={slide.image}
             aria-hidden={activeImageIndex !== index}
             className={[
-              "absolute inset-0 hidden bg-cover opacity-0 transition-opacity ease-in-out lg:block",
+              "absolute inset-0 opacity-0 transition-opacity ease-in-out",
               activeImageIndex === index ? "opacity-100" : "opacity-0",
             ].join(" ")}
             style={{
-              backgroundImage: `url("${slide.image}")`,
-              backgroundPosition: slide.imagePosition ?? "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
+              background: slide.fallbackBackground,
+              transitionDuration: prefersReducedMotion
+                ? "0ms"
+                : `${SLIDE_TRANSITION_MS}ms`,
             }}
-          />
-        ))}
-        {slides.map((slide, index) => (
-          <div
-            key={`${slide.image}-mobile`}
-            aria-hidden={activeImageIndex !== index}
-            className={[
-              "absolute inset-0 bg-cover bg-center opacity-0 transition-opacity ease-in-out md:hidden",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
-            ].join(" ")}
-            style={{
-              backgroundImage: `url("${slide.mobileImage}")`,
-              backgroundPosition: slide.mobileImagePosition ?? "center center",
-              transitionDuration: `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          />
+          >
+            {activeImageIndex === index ? (
+              <HeroSlideImage
+                index={index}
+                slide={slide}
+                viewport={viewport}
+                onFirstImageReady={() => setInitialHeroImageReady(true)}
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,6,20,0.72),rgba(3,6,20,0.24)_48%,rgba(3,6,20,0.46))] md:bg-[linear-gradient(90deg,rgba(3,6,20,0.64),rgba(3,6,20,0.18)_48%,rgba(3,6,20,0.36))]" />
+          </div>
         ))}
       </div>
 
@@ -355,7 +466,7 @@ export function HeroSection(props: HeroSectionProps) {
           previousSlide();
         }}
         aria-label="Previous slide"
-        className="absolute left-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#aa8657] hover:bg-[#3c0c0f]/80 hover:text-[#aa8657] md:left-8 md:top-auto md:bottom-10 md:translate-y-0"
+        className="absolute left-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/80 hover:text-[#B39152] md:left-8 md:top-auto md:bottom-10 md:translate-y-0"
       >
         <ChevronLeft
           className="h-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)] w-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)]"
@@ -370,7 +481,7 @@ export function HeroSection(props: HeroSectionProps) {
           nextSlide();
         }}
         aria-label="Next slide"
-        className="absolute right-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#aa8657] hover:bg-[#3c0c0f]/80 hover:text-[#aa8657] md:right-8 md:top-auto md:bottom-10 md:translate-y-0"
+        className="absolute right-4 top-1/2 z-30 flex h-[clamp(2rem,1.6rem+1.7vw,3.25rem)] w-[clamp(2rem,1.6rem+1.7vw,3.25rem)] -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/25 text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/80 hover:text-[#B39152] md:right-8 md:top-auto md:bottom-10 md:translate-y-0"
       >
         <ChevronRight
           className="h-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)] w-[clamp(1.05rem,0.85rem+0.85vw,1.5rem)]"
@@ -383,11 +494,18 @@ export function HeroSection(props: HeroSectionProps) {
           <div
             key={`${slide.image}-content`}
             aria-hidden={activeImageIndex !== index}
+            inert={activeImageIndex !== index || undefined}
             className={[
               "absolute inset-0 transition-opacity ease-in-out",
-              activeImageIndex === index ? "opacity-100" : "opacity-0",
+              activeImageIndex === index
+                ? "opacity-100"
+                : "pointer-events-none opacity-0",
             ].join(" ")}
-            style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+            style={{
+              transitionDuration: prefersReducedMotion
+                ? "0ms"
+                : `${SLIDE_TRANSITION_MS}ms`,
+            }}
           >
             <div
               className={[
@@ -426,7 +544,7 @@ export function HeroSection(props: HeroSectionProps) {
             className={[
               "h-0.75 rounded-full transition-all duration-500",
               activeImageIndex === index
-                ? "w-12 bg-[#C18D39]"
+                ? "w-12 bg-[#B39152]"
                 : "w-7 bg-white/35 hover:bg-white/60",
             ].join(" ")}
           />

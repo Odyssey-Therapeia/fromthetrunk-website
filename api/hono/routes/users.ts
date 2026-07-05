@@ -20,6 +20,7 @@ import { addresses, users } from "@/db/schema";
 import { sendEmail } from "@/lib/email/send";
 import { emailChangeVerificationEmail, welcomeEmail } from "@/lib/email/templates";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
+import { serializeAdminUserForClient, serializeUserForClient } from "@/lib/users/serialize";
 import { getSiteOrigin } from "@/lib/config/site";
 import {
   createEmailVerificationToken,
@@ -44,7 +45,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         limit: 200,
         offset: 0,
       });
-      return c.json(users, 200);
+	      return c.json(users.map(serializeAdminUserForClient), 200);
     }
   );
 
@@ -104,7 +105,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         "Failed to create admin user."
       );
 
-      return c.json(created, 201);
+	      return c.json(serializeAdminUserForClient(created), 201);
     }
   );
 
@@ -136,6 +137,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const rateLimited = await rateLimitResponse(c.req.raw, "auth:signup", {
         limit: 5,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;
@@ -186,7 +188,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
           html: emailTemplate.html,
         }).catch(() => undefined);
 
-        return c.json(upgraded, 201);
+	        return c.json(serializeUserForClient(upgraded), 201);
       }
 
       const passwordHash = await bcrypt.hash(body.password, 12);
@@ -211,7 +213,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         html: emailTemplate.html,
       }).catch(() => undefined);
 
-      return c.json(created, 201);
+	      return c.json(serializeUserForClient(created), 201);
     }
   );
 
@@ -237,7 +239,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "USER_NOT_FOUND", message: "User not found." }, 404);
       }
 
-      return c.json(user, 200);
+	      return c.json(serializeUserForClient(user), 200);
     }
   );
 
@@ -270,11 +272,22 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Users"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `users:password:${authUserOrResponse.id}`,
+	        {
+	          limit: 5,
+	          requireDurable: true,
+	          windowSeconds: 10 * 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
       const user = await getUserById(authUserOrResponse.id);
       if (!user) {
         return c.json({ code: "USER_NOT_FOUND", message: "User not found." }, 404);
@@ -340,11 +353,22 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Users"],
     }),
-    async (c) => {
-      const adminOrResponse = requireAdmin(c);
-      if (adminOrResponse instanceof Response) return adminOrResponse;
+	    async (c) => {
+	      const adminOrResponse = requireAdmin(c);
+	      if (adminOrResponse instanceof Response) return adminOrResponse;
 
-      const { id } = c.req.valid("param");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `users:admin-password:${adminOrResponse.id}`,
+	        {
+	          limit: 10,
+	          requireDurable: true,
+	          windowSeconds: 10 * 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const user = await getUserById(id);
       if (!user) {
@@ -399,11 +423,22 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       tags: ["Users"],
     }),
-    async (c) => {
-      const authUserOrResponse = requireAuth(c);
-      if (authUserOrResponse instanceof Response) return authUserOrResponse;
+	    async (c) => {
+	      const authUserOrResponse = requireAuth(c);
+	      if (authUserOrResponse instanceof Response) return authUserOrResponse;
 
-      const body = c.req.valid("json");
+	      const rateLimited = await rateLimitResponse(
+	        c.req.raw,
+	        `users:profile:${authUserOrResponse.id}`,
+	        {
+	          limit: 30,
+	          requireDurable: true,
+	          windowSeconds: 60,
+	        }
+	      );
+	      if (rateLimited) return rateLimited;
+
+	      const body = c.req.valid("json");
       if (body.defaultAddressId) {
         const [existingAddress] = await db
           .select({ id: addresses.id })
@@ -439,7 +474,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "USER_NOT_FOUND", message: "User not found." }, 404);
       }
 
-      return c.json(updated, 200);
+	      return c.json(serializeUserForClient(updated), 200);
     }
   );
 
@@ -474,6 +509,7 @@ export const registerUserRoutes = (app: OpenAPIHono<HonoBindings>) => {
     async (c) => {
       const rateLimited = await rateLimitResponse(c.req.raw, "email-change:request", {
         limit: 5,
+        requireDurable: true,
         windowSeconds: 60,
       });
       if (rateLimited) return rateLimited;

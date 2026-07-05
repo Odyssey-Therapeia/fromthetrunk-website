@@ -205,7 +205,7 @@ describe("createLogger", () => {
     });
   });
 
-  describe("never throws", () => {
+	  describe("never throws", () => {
     it("does not throw when msg is empty string", () => {
       const log = createLogger("test:safe");
       expect(() => log.error("")).not.toThrow();
@@ -246,6 +246,53 @@ describe("createLogger", () => {
         }),
       ];
       await expect(Promise.all(tasks)).resolves.not.toThrow();
-    });
-  });
+	  });
+
+	  describe("redaction", () => {
+	    it("redacts Drizzle-style SQL params and customer PII from Error output", () => {
+	      vi.stubEnv("NODE_ENV", "production");
+	      const log = createLogger("test:redaction");
+	      const err = new Error(
+	        "Failed query: insert into orders values (...) params: Jane Buyer,+919999999999,jane@example.com,12 Heritage Lane"
+	      );
+
+	      log.error("db failed", { err });
+
+	      const written = stdoutSpy.mock.calls[0][0] as string;
+	      const parsed = JSON.parse(written.trim()) as {
+	        err: { message: string; stack: string };
+	      };
+	      const serialized = JSON.stringify(parsed);
+	      expect(serialized).toContain("[redacted-sql-params]");
+	      expect(serialized).not.toContain("jane@example.com");
+	      expect(serialized).not.toContain("+919999999999");
+	      expect(parsed.err.message).not.toContain("12 Heritage Lane");
+	    });
+
+	    it("redacts auth tokens, cookies, authorization headers, and raw bodies", () => {
+	      vi.stubEnv("NODE_ENV", "production");
+	      const log = createLogger("test:redaction");
+
+	      log.warn("blocked", {
+	        authorization: "Bearer secret-token",
+	        body: { email: "buyer@example.com" },
+	        challengeToken: "challenge-secret",
+	        cookie: "next-auth.session-token=secret",
+	        loginTicket: "login-secret",
+	        registrationToken: "registration-secret",
+	      });
+
+	      const written = stdoutSpy.mock.calls[0][0] as string;
+	      const parsed = JSON.parse(written.trim()) as Record<string, unknown>;
+	      expect(parsed.authorization).toBe("[redacted]");
+	      expect(parsed.body).toBe("[redacted]");
+	      expect(parsed.challengeToken).toBe("[redacted]");
+	      expect(parsed.cookie).toBe("[redacted]");
+	      expect(parsed.loginTicket).toBe("[redacted]");
+	      expect(parsed.registrationToken).toBe("[redacted]");
+	      expect(JSON.stringify(parsed)).not.toContain("buyer@example.com");
+	      expect(JSON.stringify(parsed)).not.toContain("secret-token");
+	    });
+	  });
+	});
 });

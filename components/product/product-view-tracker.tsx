@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+
+import { trackOncePerSession } from "@/lib/analytics/client";
 import { trackRecentlyViewed } from "@/lib/store/recently-viewed";
 
 interface ProductViewTrackerProps {
@@ -24,6 +26,13 @@ export function ProductViewTracker({
 }: ProductViewTrackerProps) {
   useEffect(() => {
     trackRecentlyViewed({ id, slug, name, price, image });
+
+    trackOncePerSession(`product_view:${id}`, "product_view", {
+      pricePaise: Math.round(price * 100),
+      productId: id,
+      slug,
+      source: "pdp",
+    });
   }, [id, slug, name, price, image]);
 
   return null;

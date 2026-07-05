@@ -1,18 +1,40 @@
 import { z } from "@hono/zod-openapi";
 
+export const PUBLIC_PRODUCTS_MAX_LIMIT = 100;
+export const ADMIN_PRODUCTS_MAX_LIMIT = 500;
+export const PRODUCT_IDS_MAX = 100;
+
+const optionalNonNegativeInt = z
+  .string()
+  .optional()
+  .transform((value) => {
+    if (!value) return undefined;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  });
+
 export const listProductsQuerySchema = z.object({
+  ids: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      return Array.from(
+        new Set(
+          value
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean),
+        ),
+      ).slice(0, PRODUCT_IDS_MAX);
+    })
+    .pipe(z.array(z.string().uuid()).max(PRODUCT_IDS_MAX).optional()),
   includeDrafts: z
     .string()
     .optional()
     .transform((value) => value === "true"),
-  limit: z
-    .string()
-    .optional()
-    .transform((value) => (value ? Number(value) : undefined)),
-  offset: z
-    .string()
-    .optional()
-    .transform((value) => (value ? Number(value) : undefined)),
+  limit: optionalNonNegativeInt,
+  offset: optionalNonNegativeInt,
 });
 
 export const productInputSchema = z.object({

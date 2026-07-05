@@ -10,10 +10,17 @@
  */
 
 import type { ProductWithRelations } from "@/db/queries/products";
+import type { CatalogAvailability } from "@/lib/catalog/filter-taxonomy";
+import type { ProductSortOption } from "@/lib/products/sort";
 
 // ── Filter input ─────────────────────────────────────────────────────────────
 
 export type CatalogSearchFilters = {
+  /**
+   * Collection slug. When present, search must be restricted to the same
+   * manual + smart + legacy membership union used by collection render paths.
+   */
+  collectionSlug?: string;
   /**
    * P6-03: Free-text search term.
    * Matched case-insensitively (ILIKE) against:
@@ -28,18 +35,56 @@ export type CatalogSearchFilters = {
    * The port signature is unchanged — only the adapter implementation changes.
    */
   query?: string;
-  /** Product type slug (matches productTypes.slug via typeId FK). */
+  /** Product type slug (legacy single-value alias; matches productTypes.slug via typeId FK). */
   type?: string;
-  /** Fabric attribute value (matches attributes->>'fabric'). */
+  /** Product type slugs. OR within this group. */
+  types?: string[];
+  /** Product type slugs to EXCLUDE — e.g. hide blouses from the default catalog. */
+  excludeTypes?: string[];
+  /** Blouse `attributes.sleeve_type` slugs. OR within this group. */
+  sleeveTypes?: string[];
+  /** Fabric attribute value (legacy single-value alias). */
   fabric?: string;
+  /** Fabric/material slugs. OR within this group. */
+  fabrics?: string[];
+  /** Colour slugs. OR within this group. */
+  colors?: string[];
+  /** Occasion slugs. OR within this group. */
+  occasions?: string[];
+  /** Work / border / craft slugs. OR within this group. */
+  works?: string[];
+  /** Pattern / motif slugs. OR within this group. */
+  patterns?: string[];
   /** Price lower bound in paise (inclusive). */
   priceMin?: number;
   /** Price upper bound in paise (inclusive). */
   priceMax?: number;
-  /** When true: only products where stockStatus = 'available' OR quantityAvailable > 0. */
+  /** Legacy boolean alias. When true, maps to availabilityStatus = 'available'. */
   availability?: boolean;
+  /** Stock status filter. */
+  availabilityStatus?: CatalogAvailability;
   /** Tag slugs — products must belong to ALL provided tags (AND). */
   tags?: string[];
+  /**
+   * Virtual ordering that can't be expressed via `sort`.
+   *   "top-viewed" → rank the matching (already-filtered) products by
+   *   product_view event count over the last 30 days, most-viewed first,
+   *   omitting products with zero views. Overrides `sort`.
+   */
+  sortBy?: "top-viewed";
+  /** Maximum product rows to hydrate and return. */
+  limit?: number;
+  /** Product offset for paged catalog views. */
+  offset?: number;
+  /** SQL-backed product sort for paged catalog views. */
+  sort?: ProductSortOption;
+  /** When true, skip product fetch/hydration and return only facet counts. */
+  facetsOnly?: boolean;
+  /**
+   * When false, skip facet GROUP BY queries and return empty facet maps.
+   * Use this when a caller fetches cached facets separately.
+   */
+  includeFacets?: boolean;
 };
 
 // ── Facet output ─────────────────────────────────────────────────────────────
@@ -47,18 +92,28 @@ export type CatalogSearchFilters = {
 /**
  * Facet counts per dimension.
  * Each entry maps a dimension value to the number of PUBLISHED products
- * matching that value (across the full unfiltered catalog, not the current
- * result set — static counts for UI filters).
+ * matching that value. Counts are static for the active collection scope when
+ * one is provided, not narrowed by the other active filters.
  */
 export type CatalogFacets = {
   /** Fabric attribute values → count. */
   fabric: Record<string, number>;
+  /** Colour values → count. */
+  color: Record<string, number>;
+  /** Occasion values → count. */
+  occasion: Record<string, number>;
+  /** Work / border / craft values → count. */
+  work: Record<string, number>;
+  /** Pattern / motif values → count. */
+  pattern: Record<string, number>;
   /** Product type slugs → count. */
   type: Record<string, number>;
   /** Availability states → count (keys: 'available', 'reserved', 'sold'). */
   availability: Record<string, number>;
   /** Tag slugs → count. */
   tags: Record<string, number>;
+  /** Tag slug → display metadata for grouping storefront filters. */
+  tagDetails: Record<string, { category: string; name: string }>;
 };
 
 // ── Port interface ────────────────────────────────────────────────────────────
@@ -66,7 +121,11 @@ export type CatalogFacets = {
 export interface CatalogSearchPort {
   searchProducts(
     filters: CatalogSearchFilters
-  ): Promise<{ products: ProductWithRelations[]; facets: CatalogFacets }>;
+  ): Promise<{
+    products: ProductWithRelations[];
+    facets: CatalogFacets;
+    totalDocs: number;
+  }>;
 }
 
 // ── Factory ──────────────────────────────────────────────────────────────────
@@ -101,5 +160,9 @@ export function _resetCatalogSearchInstance(): void {
  */
 export const searchProducts = (
   filters: CatalogSearchFilters
-): Promise<{ products: ProductWithRelations[]; facets: CatalogFacets }> =>
+): Promise<{
+  products: ProductWithRelations[];
+  facets: CatalogFacets;
+  totalDocs: number;
+}> =>
   getCatalogSearch().searchProducts(filters);

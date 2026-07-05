@@ -35,17 +35,27 @@ let _instance: RateLimiterPort | null = null;
  * Returns the singleton rate-limiter adapter.
  *
  * Selection rules (evaluated once at module initialisation):
- *  1. UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN both present → Upstash adapter.
+ *  1. A durable Redis REST URL + token both present → Upstash adapter. Accepts
+ *     either this project's own names (UPSTASH_REDIS_REST_*) OR the names
+ *     Vercel's Upstash / KV integration injects (KV_REST_API_URL / KV_REST_API_TOKEN),
+ *     so no manual env-var aliasing is needed on Vercel.
  *  2. Otherwise → in-memory adapter (default; identical behaviour to the
  *     original lib/http/rate-limit.ts checkRateLimit).
  *
  * Call sites do NOT need to know which adapter is active.
  */
+function readDurableRedisCreds(): { url?: string; token?: string } {
+  return {
+    url: process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL,
+    token:
+      process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN,
+  };
+}
+
 export function getRateLimiter(): RateLimiterPort {
   if (_instance) return _instance;
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const { url, token } = readDurableRedisCreds();
 
   if (url && token) {
     _instance = createUpstashRateLimiter(url, token);
@@ -54,6 +64,11 @@ export function getRateLimiter(): RateLimiterPort {
   }
 
   return _instance;
+}
+
+export function isDurableRateLimiterConfigured(): boolean {
+  const { url, token } = readDurableRedisCreds();
+  return Boolean(url && token);
 }
 
 /**

@@ -6,11 +6,37 @@ import { Button } from "@/components/ui/button";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import type { BlockRegistryEntry } from "@/lib/content/blocks/registry";
 
+const emptyToUndefined = (value: unknown) =>
+  value === "" || value === null ? undefined : value;
+
+const getSafeImageSrc = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  const resolved = resolveMediaURL({ media: { url: trimmed } });
+  if (!resolved) return undefined;
+
+  if (
+    resolved.startsWith("/") ||
+    resolved.startsWith("http://") ||
+    resolved.startsWith("https://")
+  ) {
+    return resolved;
+  }
+
+  return undefined;
+};
+
 export const heroPropsSchema = z.object({
   eyebrow: z.string().max(80).optional(),
   headline: z.string().max(200),
   subtitle: z.string().max(400).optional(),
-  backgroundImage: z.string().uuid().optional(),
+  backgroundImage: z.preprocess(
+    emptyToUndefined,
+    z.string().uuid().optional(),
+  ),
   primaryCtaLabel: z.string().max(60).optional(),
   primaryCtaHref: z.string().max(300).optional(),
   secondaryCtaLabel: z.string().max(60).optional(),
@@ -25,9 +51,7 @@ export type HeroBlockProps = z.infer<typeof heroPropsSchema>;
 
 function HeroRenderer(props: Record<string, unknown>) {
   const p = props as HeroBlockProps;
-  const bgImageUrl = p.backgroundImage
-    ? resolveMediaURL({ media: { url: p.backgroundImage } })
-    : null;
+  const bgImageUrl = getSafeImageSrc(p.backgroundImage);
 
   const minHeightClass: Record<string, string> = {
     "60vh": "min-h-[60vh]",
@@ -98,9 +122,9 @@ function HeroRenderer(props: Record<string, unknown>) {
 
         {(p.infoCardEyebrow || p.infoCardTitle || p.infoCardBody) && (
           <div className="max-w-md">
-            <div className="rounded-2xl border border-white/25 bg-white/15 p-6 text-sm text-amber-50/80 shadow-soft backdrop-blur-md">
+            <div className="rounded-2xl border border-white/25 bg-white/15 p-6 text-sm text-[#FDF7F1]/80 shadow-soft backdrop-blur-md">
               {p.infoCardEyebrow && (
-                <p className="text-xs uppercase tracking-widest text-amber-100/60">
+                <p className="text-xs uppercase tracking-widest text-[#FDF7F1]/62">
                   {p.infoCardEyebrow}
                 </p>
               )}
@@ -110,7 +134,7 @@ function HeroRenderer(props: Record<string, unknown>) {
                 </p>
               )}
               {p.infoCardBody && (
-                <p className="mt-2 text-amber-100/70">{p.infoCardBody}</p>
+                <p className="mt-2 text-[#FDF7F1]/72">{p.infoCardBody}</p>
               )}
             </div>
           </div>

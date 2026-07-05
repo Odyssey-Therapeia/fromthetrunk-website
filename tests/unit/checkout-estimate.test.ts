@@ -16,6 +16,7 @@ import {
   computeCheckoutEstimate,
   isFreeShipping,
 } from "@/lib/checkout/estimate";
+import { ENABLE_FREE_SHIPPING, SHIPPING_TIERS } from "@/lib/config/order-pricing";
 
 const TIERS = { freeThreshold: 10000, standard: 99, express: 199 };
 const RATE = 0.1;
@@ -33,15 +34,16 @@ describe("computeCheckoutEstimate", () => {
     expect(e.total).toBe(5599);
   });
 
-  it("at/above free-ship threshold, no discount → free shipping", () => {
+  it("at/above free-ship threshold → free only when ENABLE_FREE_SHIPPING", () => {
     const e = computeCheckoutEstimate({
       subtotal: 10000,
       shippingMethod: "standard",
       gstRate: RATE,
       shippingTiers: TIERS,
     });
-    expect(e.shippingCost).toBe(0);
-    expect(e.total).toBe(11000);
+    const expectedShipping = ENABLE_FREE_SHIPPING ? 0 : TIERS.standard;
+    expect(e.shippingCost).toBe(expectedShipping);
+    expect(e.total).toBe(10000 + expectedShipping + Math.round(10000 * RATE));
   });
 
   it("MUTATION PROOF: a discount that drops below the threshold RE-CHARGES shipping", () => {
@@ -101,20 +103,20 @@ describe("computeCheckoutEstimate", () => {
   });
 
   it("uses the real config defaults when tiers/rate are omitted", () => {
-    // GST_RATE default 0.12, freeThreshold 25000, standard 500.
+    // GST_RATE default 0.12; small order (below threshold) so shipping is charged.
     const e = computeCheckoutEstimate({
       subtotal: 1000,
       shippingMethod: "standard",
     });
-    expect(e.shippingCost).toBe(500);
+    expect(e.shippingCost).toBe(SHIPPING_TIERS.standard);
     expect(e.taxAmount).toBe(120);
-    expect(e.total).toBe(1620);
+    expect(e.total).toBe(1000 + SHIPPING_TIERS.standard + 120);
   });
 });
 
 describe("isFreeShipping", () => {
-  it("is true at/above the threshold and false below it", () => {
-    expect(isFreeShipping(10000, TIERS)).toBe(true);
+  it("is true at/above threshold only when ENABLE_FREE_SHIPPING", () => {
+    expect(isFreeShipping(10000, TIERS)).toBe(ENABLE_FREE_SHIPPING);
     expect(isFreeShipping(9999, TIERS)).toBe(false);
   });
 });

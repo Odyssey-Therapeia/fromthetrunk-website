@@ -44,6 +44,7 @@ export function FeaturedCollection({
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              quality={70}
               className="object-cover"
             />
           ) : (
@@ -63,7 +64,7 @@ export function FeaturedCollection({
     name: "The Trunk Promise",
     description:
       "Each saree is authenticated, restored, and documented with provenance.",
-    href: "/our-story",
+    href: "/our-team",
     cta: "Discover our curation",
     className: "h-full",
     layoutClassName: "lg:col-span-2 lg:row-span-1",
@@ -75,6 +76,7 @@ export function FeaturedCollection({
             alt="Heirloom saree detail"
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 66vw"
+            quality={70}
             className="object-cover"
           />
         ) : (

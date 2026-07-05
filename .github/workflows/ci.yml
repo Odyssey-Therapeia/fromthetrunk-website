@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint-typecheck, test]
     env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/ftt
+      DATABASE_URL: ${{ secrets.FTT_CI_DATABASE_URL }}
       PAYLOAD_SECRET: ci-build-secret-placeholder
       NEXTAUTH_SECRET: ci-build-secret-placeholder
       NEXT_PUBLIC_SERVER_URL: http://localhost:3000

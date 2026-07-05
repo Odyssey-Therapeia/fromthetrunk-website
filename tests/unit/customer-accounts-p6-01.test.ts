@@ -103,6 +103,7 @@ describe("createEmailVerificationToken / verifyEmailVerificationToken", () => {
 
 vi.mock("@/db/queries/orders", () => ({
   listOrders: vi.fn().mockResolvedValue([]),
+  listOrderSummaries: vi.fn().mockResolvedValue([]),
   getOrder: vi.fn().mockResolvedValue(null),
   createOrder: vi.fn(),
   updateOrderStatus: vi.fn(),
@@ -124,6 +125,7 @@ vi.mock("@/lib/email/send", () => ({
 }));
 
 vi.mock("@/lib/config/site", () => ({
+  getPublicAssetOrigin: () => "https://fromthetrunk.com",
   getSiteOrigin: () => "https://fromthetrunk.com",
 }));
 
@@ -164,9 +166,9 @@ describe("GET /orders — auth gate", () => {
     expect(response.status).toBe(200);
   });
 
-  it("passes userId and userEmail to listOrders for a customer", async () => {
-    const { listOrders } = await import("@/db/queries/orders");
-    const mockListOrders = vi.mocked(listOrders);
+  it("passes userId and userEmail to listOrderSummaries for a customer", async () => {
+    const { listOrderSummaries } = await import("@/db/queries/orders");
+    const mockListOrders = vi.mocked(listOrderSummaries);
     mockListOrders.mockClear();
 
     const { createRouteHarness } = await import("../helpers/route-harness");
@@ -188,8 +190,8 @@ describe("GET /orders — auth gate", () => {
   });
 
   it("MUTATION-PROOF: admin call does NOT pass userId (sees all orders)", async () => {
-    const { listOrders } = await import("@/db/queries/orders");
-    const mockListOrders = vi.mocked(listOrders);
+    const { listOrderSummaries } = await import("@/db/queries/orders");
+    const mockListOrders = vi.mocked(listOrderSummaries);
     mockListOrders.mockClear();
 
     const { createRouteHarness } = await import("../helpers/route-harness");
@@ -563,6 +565,8 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
   const guestOrder = {
     id: "d4f8e1a2-0001-4000-8000-000000000001",
     userId: null,
+    idempotencyKey: null,
+    cartFingerprint: null,
     shippingEmail: "customer@example.com",
     shippingName: "Jane Doe",
     shippingLine1: "123 Main St",
@@ -583,6 +587,7 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
     paymentGateway: null,
     paymentMethod: null,
     paymentId: null,
+    paidAt: null,
     razorpayOrderId: null,
     reminderSentAt: null,
     discountId: null,
@@ -591,6 +596,9 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
     refundedAt: null,
     refundId: null,
     refundedAmountPaise: null,
+    isGift: false,
+    giftFrom: null,
+    giftMessage: null,
     trackingNumber: null,
     trackingCarrier: null,
     internalNote: null,

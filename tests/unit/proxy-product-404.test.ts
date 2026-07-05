@@ -14,13 +14,13 @@ vi.mock("@/db/queries/products", () => ({
 
 import { proxy } from "@/proxy";
 
-describe("proxy product detail 404 guard", () => {
+describe("proxy product detail 404 preflight", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productSlugExistsMock.mockResolvedValue(true);
   });
 
-  it("returns a real 404 before product detail pages stream missing slugs", async () => {
+  it("rewrites missing product slugs to the branded 404 render route", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
@@ -28,13 +28,12 @@ describe("proxy product detail 404 guard", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(response.headers.get("x-robots-tag")).toBe("noindex");
     expect(productSlugExistsMock).toHaveBeenCalledWith("missing-saree", {
       includeDrafts: false,
     });
   });
 
-  it("allows existing product detail slugs through", async () => {
+  it("allows existing product detail slugs through after the existence check", async () => {
     const response = await proxy(
       new NextRequest("https://www.fromthetrunk.shop/collection/published-saree")
     );
@@ -58,7 +57,7 @@ describe("proxy product detail 404 guard", () => {
     expect(productSlugExistsMock).not.toHaveBeenCalled();
   });
 
-  it("handles malformed slug encoding without throwing", async () => {
+  it("passes malformed slug encoding through without throwing", async () => {
     productSlugExistsMock.mockResolvedValue(false);
 
     const response = await proxy(
@@ -66,8 +65,6 @@ describe("proxy product detail 404 guard", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(productSlugExistsMock).toHaveBeenCalledWith("", {
-      includeDrafts: false,
-    });
+    expect(productSlugExistsMock).toHaveBeenCalledTimes(1);
   });
 });

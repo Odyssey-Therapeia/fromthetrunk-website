@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 
-import { ScrollReveal } from "@/components/animations/scroll-reveal";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Return Policy",
   description: "Return and refund policy for purchases from From the Trunk.",
-};
+  path: "/return-policy",
+});
 
 export default function ReturnPolicyPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-12 lg:py-16">
-      <ScrollReveal className="space-y-4">
+      <div className="space-y-4">
         <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
           Legal
         </p>
@@ -18,14 +19,14 @@ export default function ReturnPolicyPage() {
           Return & Refund Policy
         </h1>
         <p className="text-sm text-muted-foreground">
-          Last updated: April 2026
+          Last updated: June 29, 2026
         </p>
-      </ScrollReveal>
+      </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-muted-foreground">
         <section className="space-y-3">
           <h2 className="font-serif text-xl text-foreground">
-            One-of-a-Kind Pieces
+            Unique Pieces
           </h2>
           <p>
             Every saree in our collection is a unique, pre-loved piece. Because

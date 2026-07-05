@@ -23,17 +23,21 @@ import {
   productImages,
   products,
   productTags,
+  productTypes,
   tags,
 } from "@/db/schema";
 import {
   DEFAULT_PRODUCT_SORT,
   type ProductSortOption,
 } from "@/lib/products/sort";
+import { revalidateProductsCache } from "@/lib/cache/product-cache";
+import { timeAsync, type TimingSink } from "@/lib/perf/server-timing";
 import { slugify } from "@/lib/utils";
 
 type CollectionRecord = InferSelectModel<typeof collections>;
 type MediaRecord = InferSelectModel<typeof mediaAssets>;
 type ProductRecord = InferSelectModel<typeof products>;
+type ProductTypeRecord = InferSelectModel<typeof productTypes>;
 type TagRecord = InferSelectModel<typeof tags>;
 
 export type ProductWithRelations = ProductRecord & {
@@ -43,7 +47,14 @@ export type ProductWithRelations = ProductRecord & {
     sortOrder: number;
   }>;
   tags: TagRecord[];
+  typeName: null | string;
+  typeSlug: null | string;
 };
+
+export type PublicProductStock = Pick<
+  ProductRecord,
+  "id" | "reservedUntil" | "slug" | "stockStatus" | "updatedAt"
+>;
 
 export type ListProductsOptions = {
   includeDrafts?: boolean;
@@ -87,6 +98,7 @@ const getProductSortOrder = (sort: ProductSortOption): SQL<unknown>[] => {
 /** @internal exported for use by the postgres-catalog-search adapter (P4-04) */
 export const hydrateProducts = async (
   rows: ProductRecord[],
+  timingSink?: TimingSink,
 ): Promise<ProductWithRelations[]> => {
   if (rows.length === 0) return [];
 
@@ -98,37 +110,59 @@ export const hydrateProducts = async (
         .filter((value): value is string => Boolean(value)),
     ),
   );
+  const typeIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.typeId)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 
-  const [collectionRows, imageRows, tagRows] = await withRetry(() =>
+  const [collectionRows, imageRows, tagRows, typeRows] = await withRetry(() =>
     Promise.all([
-      collectionIds.length > 0
-        ? db
-            .select()
-            .from(collections)
-            .where(inArray(collections.id, collectionIds))
-        : Promise.resolve([] as CollectionRecord[]),
-      db
-        .select({
-          productId: productImages.productId,
-          sortOrder: productImages.sortOrder,
-          media: mediaAssets,
-        })
-        .from(productImages)
-        .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
-        .where(inArray(productImages.productId, productIds))
-        .orderBy(asc(productImages.sortOrder)),
-      db
-        .select({
-          productId: productTags.productId,
-          tag: tags,
-        })
-        .from(productTags)
-        .innerJoin(tags, eq(productTags.tagId, tags.id))
-        .where(inArray(productTags.productId, productIds)),
+      timeAsync(timingSink, "hydrate-collection", () =>
+        collectionIds.length > 0
+          ? db
+              .select()
+              .from(collections)
+              .where(inArray(collections.id, collectionIds))
+          : Promise.resolve([] as CollectionRecord[]),
+      ),
+      timeAsync(timingSink, "hydrate-images", () =>
+        db
+          .select({
+            productId: productImages.productId,
+            sortOrder: productImages.sortOrder,
+            media: mediaAssets,
+          })
+          .from(productImages)
+          .innerJoin(mediaAssets, eq(productImages.mediaId, mediaAssets.id))
+          .where(inArray(productImages.productId, productIds))
+          .orderBy(asc(productImages.sortOrder)),
+      ),
+      timeAsync(timingSink, "hydrate-tags", () =>
+        db
+          .select({
+            productId: productTags.productId,
+            tag: tags,
+          })
+          .from(productTags)
+          .innerJoin(tags, eq(productTags.tagId, tags.id))
+          .where(inArray(productTags.productId, productIds)),
+      ),
+      timeAsync(timingSink, "hydrate-product-types", () =>
+        typeIds.length > 0
+          ? db
+              .select()
+              .from(productTypes)
+              .where(inArray(productTypes.id, typeIds))
+          : Promise.resolve([] as ProductTypeRecord[]),
+      ),
     ]),
   );
 
   const collectionById = new Map(collectionRows.map((row) => [row.id, row]));
+  const typeById = new Map(typeRows.map((row) => [row.id, row]));
   const imagesByProductId = new Map<
     string,
     Array<{
@@ -160,6 +194,8 @@ export const hydrateProducts = async (
       : null,
     images: imagesByProductId.get(row.id) ?? [],
     tags: tagsByProductId.get(row.id) ?? [],
+    typeName: row.typeId ? (typeById.get(row.typeId)?.name ?? null) : null,
+    typeSlug: row.typeId ? (typeById.get(row.typeId)?.slug ?? null) : null,
   }));
 };
 
@@ -235,6 +271,7 @@ export const getProduct = async (
 export const getProductBySlug = async (
   slug: string,
   options: Pick<ListProductsOptions, "includeDrafts"> = {},
+  timingSink?: TimingSink,
 ): Promise<null | ProductWithRelations> => {
   const candidates = [...new Set([slug, slugify(slug)])];
 
@@ -243,14 +280,47 @@ export const getProductBySlug = async (
       eq(products.slug, candidate),
       ...(options.includeDrafts ? [] : [eq(products.status, "published")]),
     ]);
-    const [row] = await withRetry(() =>
-      db.select().from(products).where(whereClause).limit(1),
+    const [row] = await timeAsync(timingSink, "db-product-query", () =>
+      withRetry(() => db.select().from(products).where(whereClause).limit(1)),
     );
     if (row) {
-      const [hydrated] = await hydrateProducts([row]);
+      const [hydrated] = await hydrateProducts([row], timingSink);
       return hydrated ?? null;
     }
   }
+  return null;
+};
+
+export const getPublicProductStockBySlug = async (
+  slug: string,
+  timingSink?: TimingSink,
+): Promise<null | PublicProductStock> => {
+  const candidates = [...new Set([slug, slugify(slug)])];
+
+  for (const candidate of candidates) {
+    const [row] = await timeAsync(timingSink, "db-stock-query", () =>
+      withRetry(() =>
+        db
+          .select({
+            id: products.id,
+            reservedUntil: products.reservedUntil,
+            slug: products.slug,
+            stockStatus: products.stockStatus,
+            updatedAt: products.updatedAt,
+          })
+          .from(products)
+          .where(
+            buildWhere([
+              eq(products.slug, candidate),
+              eq(products.status, "published"),
+            ]),
+          )
+          .limit(1),
+      ),
+    );
+    if (row) return row;
+  }
+
   return null;
 };
 
@@ -504,6 +574,7 @@ export const duplicateProduct = async (
       .insert(products)
       .values({
         artisanId: source.artisanId,
+        attributes: source.attributes,
         collectionId: source.collectionId,
         detailsCondition: source.detailsCondition,
         detailsDesigner: source.detailsDesigner,
@@ -524,6 +595,7 @@ export const duplicateProduct = async (
         storyNarrative: source.storyNarrative,
         storyProvenance: source.storyProvenance,
         storyTitle: source.storyTitle,
+        typeId: source.typeId,
         updatedAt: new Date(),
       })
       .returning({ id: products.id }),
@@ -740,7 +812,7 @@ export const restockProduct = async (
 ): Promise<"restocked" | "skipped" | "not_found"> => {
   // Read the current stock status first (conditional restock)
   const [product] = await db
-    .select({ id: products.id, stockStatus: products.stockStatus })
+    .select({ id: products.id, slug: products.slug, stockStatus: products.stockStatus })
     .from(products)
     .where(eq(products.id, productId))
     .limit(1);
@@ -785,6 +857,7 @@ export const restockProduct = async (
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
+  revalidateProductsCache([product.slug]);
 
   return "restocked";
 };

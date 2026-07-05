@@ -1,7 +1,11 @@
 import { existsSync } from "fs";
 import { join } from "path";
-import Image from "next/image";
 import Link from "next/link";
+
+import {
+  FabricCategoryMotionGrid,
+  type FabricMotionCategory,
+} from "@/components/sections/fabric-category-motion-grid";
 
 type FabricCategory = {
   bestFor: string;
@@ -96,104 +100,84 @@ const fabricCategories: FabricCategory[] = [
   },
 ];
 
+const fabricQuickLinks = [
+  {
+    label: "Light & airy",
+    href: "/collection?fabric=kota-cotton",
+    note: "Kota, chiffon, organza",
+  },
+  {
+    label: "Everyday ease",
+    href: "/collection?fabric=cotton",
+    note: "Cotton, cotton silk",
+  },
+  {
+    label: "Ceremonial",
+    href: "/collection?fabric=kanjeevaram",
+    note: "Kanjeevaram, silk",
+  },
+  {
+    label: "Soft flow",
+    href: "/collection?fabric=georgette",
+    note: "Georgette, chiffon",
+  },
+  {
+    label: "Modern volume",
+    href: "/collection?fabric=organza",
+    note: "Organza",
+  },
+] as const;
+
 function publicImageExists(src: string) {
   return existsSync(join(process.cwd(), "public", src.replace(/^\//, "")));
 }
 
-function ArrowIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
-    </svg>
-  );
-}
-
 export function FabricCategorySection() {
+  const categories: FabricMotionCategory[] = fabricCategories.map((fabric) => ({
+    ...fabric,
+    imageSrc: publicImageExists(fabric.image)
+      ? fabric.image
+      : fabric.fallbackImage,
+  }));
+
   return (
-    <section className="bg-[#F8F4EF] px-5 py-16 sm:px-6 md:py-20">
+    <section className="bg-[#FDF7F1] px-5 py-16 sm:px-6 md:py-20">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-9 grid gap-5 border-b border-[#3C0C0F]/10 pb-8 lg:grid-cols-[0.95fr_0.7fr] lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#7A5430]">
+        <div className="mb-8 border-b border-[#601D1C]/10 pb-8">
+          <div className="max-w-4xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#74531B]">
               Shop By Fabric
             </p>
-            <h2 className="mt-4 max-w-3xl font-serif text-[clamp(2.45rem,4.6vw,5rem)] leading-[0.95] text-[#3C0C0F]">
+
+            <h2 className="mt-4 max-w-3xl font-serif text-[clamp(2.45rem,4.6vw,5rem)] leading-[0.95] text-[#601D1C]">
               Choose by feel, drape, and occasion.
             </h2>
+
+            <p className="mt-5 max-w-2xl text-base leading-7 text-[#601D1C]/70">
+              Fabric is time made visible — soft, wearable, and never quite
+              forgotten. Start with the texture that suits your moment.
+            </p>
           </div>
-          <p className="max-w-md text-base leading-7 text-[#3C0C0F]/70 lg:justify-self-end">
-            Fabric changes how a saree sits, moves, and carries memory. Start
-            with the texture that suits your moment.
-          </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-          {fabricCategories.map((fabric) => {
-            const hasImage = publicImageExists(fabric.image);
-            const imageSrc = hasImage ? fabric.image : fabric.fallbackImage;
-
-            return (
-              <Link
-                key={fabric.href}
-                href={fabric.href}
-                className="group relative flex aspect-3/4 min-h-46 w-[calc((100%-0.75rem)/2)] overflow-hidden rounded-md bg-[#3C0C0F] text-white shadow-[0_16px_44px_rgba(60,12,15,0.13)] transition duration-500 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AA8657] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EF] sm:min-h-52 sm:w-[calc((100%-1.5rem)/3)] md:min-h-58 lg:w-[calc((100%-3rem)/4)] xl:min-h-62 2xl:w-[calc((100%-4rem)/5)]"
-              >
-                <Image
-                  src={imageSrc}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1536px) 25vw, 20vw"
-                  className="scale-110 object-cover transition duration-700 group-hover:scale-[1.18]"
-                />
-
-                <span
-                  className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04)_0%,rgba(0,0,0,0.12)_48%,rgba(60,12,15,0.72)_100%)]"
-                  aria-hidden="true"
-                />
-                <span
-                  className="absolute inset-0 bg-[linear-gradient(180deg,rgba(60,12,15,0.78)_0%,rgba(60,12,15,0.86)_46%,rgba(0,0,0,0.93)_100%)] opacity-0 transition duration-500 group-hover:opacity-100 group-focus-visible:opacity-100"
-                  aria-hidden="true"
-                />
-                <span
-                  className="absolute inset-x-0 bottom-0 h-1 bg-[#AA8657]/80 opacity-75 transition duration-500 group-hover:h-1.5 group-hover:opacity-100"
-                  aria-hidden="true"
-                />
-
-                <span className="relative flex h-full w-full flex-col justify-end p-4 sm:p-5">
-                  <span className="block transition duration-500 lg:group-hover:opacity-0 lg:group-focus-visible:opacity-0">
-                    <span className="block max-w-[12ch] font-serif text-[clamp(1.65rem,3vw,2.75rem)] leading-[0.9] text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.35)]">
-                      {fabric.name}
-                    </span>
-                  </span>
-
-                  <span className="hidden text-xs leading-5 text-white/86 opacity-100 transition duration-500 lg:block lg:absolute lg:inset-x-5 lg:bottom-5 lg:translate-y-4 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100 lg:group-focus-visible:translate-y-0 lg:group-focus-visible:opacity-100">
-                    <span className="mb-3 hidden font-serif text-[clamp(1.8rem,2.6vw,2.65rem)] leading-none text-white lg:block">
-                      {fabric.name}
-                    </span>
-                    <span className="block text-xs font-semibold text-[#AA8657]">
-                      {fabric.bestFor}
-                    </span>
-                    <span className="mt-2 block">{fabric.description}</span>
-                    <span className="mt-4 inline-flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#AA8657]">
-                      Explore fabric
-                      <ArrowIcon />
-                    </span>
-                  </span>
-                </span>
-              </Link>
-            );
-          })}
+        <div className="mb-8 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {fabricQuickLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group shrink-0 rounded-full border border-[#601D1C]/16 bg-[#FFFCF8]/70 px-4 py-2 text-left shadow-[0_8px_22px_rgba(96,29,28,0.05)] transition hover:-translate-y-0.5 hover:border-[#B39152]/70 hover:bg-[#B39152]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]"
+            >
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition group-hover:text-[#74531B]">
+                {item.label}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-[#601D1C]/72">
+                {item.note}
+              </span>
+            </Link>
+          ))}
         </div>
+
+        <FabricCategoryMotionGrid categories={categories} />
       </div>
     </section>
   );

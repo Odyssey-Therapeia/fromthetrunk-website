@@ -7,7 +7,9 @@ test("mobile product page screenshot", async ({ page }) => {
     waitUntil: "domcontentloaded",
   });
   await expect(page.locator("h1", { hasText: "Kempu Pachai" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add to Bag" })).toBeVisible();
+  const addToBag = page.getByRole("button", { name: "Add to Bag" }).first();
+  await addToBag.scrollIntoViewIfNeeded();
+  await expect(addToBag).toBeVisible();
   await page.screenshot({
     path: "test-results/mobile-product-page.png",
     fullPage: false,
@@ -19,7 +21,9 @@ test("mobile product gallery screenshot", async ({ page }) => {
     waitUntil: "domcontentloaded",
   });
   await expect(page.locator("h1", { hasText: "Kempu Pachai" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add to Bag" })).toBeVisible();
+  const addToBag = page.getByRole("button", { name: "Add to Bag" }).first();
+  await addToBag.scrollIntoViewIfNeeded();
+  await expect(addToBag).toBeVisible();
   const firstGalleryThumb = page
     .locator('button[aria-label^="View image"]')
     .first();

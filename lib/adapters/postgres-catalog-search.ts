@@ -5,8 +5,12 @@
  * products and returns hydrated ProductWithRelations rows + facet counts.
  *
  * Filter mapping:
- *   type         → SQL subquery: WHERE typeId IN (SELECT id FROM product_types WHERE slug = ?)
- *   fabric       → WHERE (products.attributes->>'fabric') = value
+ *   types        → SQL subquery: WHERE typeId IN (SELECT id FROM product_types WHERE slug IN (...))
+ *   fabrics      → attributes/details fabric OR fabric tags match any selected value
+ *   colors       → color/colour attributes OR color tags match any selected value
+ *   occasions    → occasion attributes OR occasion tags match any selected value
+ *   works        → work/border/craft attributes OR craft/work/border tags match any selected value
+ *   patterns     → pattern/motif/print attributes OR pattern/motif tags match any selected value
  *   priceMin     → WHERE products.price_paise >= value
  *   priceMax     → WHERE products.price_paise <= value
  *   availability → WHERE products.stock_status = 'available'
@@ -31,39 +35,275 @@
  * would interfere with queue-based test mocks.
  */
 
-import { and, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
+import {
+  getCollectionBySlug,
+  getCollectionProductIds,
+} from "@/db/queries/collections";
 import { hydrateProducts as hydrateProductsQuery } from "@/db/queries/products";
 import {
+  events,
   products,
   productTags,
   productTypes,
   tags,
 } from "@/db/schema";
+import {
+  normalizeColorSlug,
+  normalizeFacetSlug,
+  toFacetSlugs,
+  type CatalogAvailability,
+} from "@/lib/catalog/filter-taxonomy";
 import type { CatalogFacets, CatalogSearchFilters, CatalogSearchPort } from "@/lib/ports/catalog-search";
+import { DEFAULT_PRODUCT_SORT } from "@/lib/products/sort";
+import type { ProductSortOption } from "@/lib/products/sort";
+import { timed, timedRows } from "@/lib/perf/timed";
+
+/**
+ * Max products returned for the virtual `top-viewed` collection. Kept small so
+ * the storefront "Top View" edit stays a tight, curated shortlist (6–7 pieces)
+ * rather than a full paginated grid.
+ */
+const TOP_VIEWED_LIMIT = 7;
+
+/** Rolling window (days) for counting product_view events, matching Admin Control Centre. */
+const TOP_VIEWED_WINDOW_DAYS = 30;
 
 // ── Facet helpers ─────────────────────────────────────────────────────────────
 
-/** Resolve facet counts for the FULL published catalog (static). */
-async function buildFacets(): Promise<CatalogFacets> {
-  const publishedFilter = eq(products.status, "published" as const);
+/** Resolve static facet counts for the active published catalog scope. */
+const emptyFacets = (): CatalogFacets => ({
+  fabric: {},
+  color: {},
+  occasion: {},
+  work: {},
+  pattern: {},
+  type: {},
+  availability: {},
+  tags: {},
+  tagDetails: {},
+});
 
-  const [fabricRows, typeRows, availabilityRows, tagRows] = await Promise.all([
-    // Fabric: (attributes->>'fabric') GROUP BY value
-    withRetry(() =>
+const addFacetValue = (
+  target: Record<string, number>,
+  rawValue: unknown,
+  countValue: unknown,
+  options: { color?: boolean } = {},
+) => {
+  const slug = options.color
+    ? normalizeColorSlug(rawValue)
+    : normalizeFacetSlug(rawValue);
+  const countValueNumber =
+    typeof countValue === "number" ? countValue : Number(countValue);
+  if (!slug || !Number.isFinite(countValueNumber) || countValueNumber <= 0) {
+    return;
+  }
+  target[slug] = Math.max(target[slug] ?? 0, countValueNumber);
+};
+
+const normalizeInputSlugs = (
+  values: Array<string | undefined> | string[] | undefined,
+  options: { color?: boolean } = {},
+) => {
+  const slugs = values
+    ?.flatMap((value) => toFacetSlugs(value))
+    .map((value) => (options.color ? normalizeColorSlug(value) : value))
+    .filter(Boolean);
+
+  return Array.from(new Set(slugs ?? []));
+};
+
+const normalizedSqlValue = (expression: SQL<unknown>) =>
+  sql<string>`regexp_replace(
+    regexp_replace(
+      replace(lower(btrim(coalesce(${expression}, ''))), '&', ' and '),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    ),
+    '(^-+|-+$)',
+    '',
+    'g'
+  )`;
+
+const colorSqlValue = (expression: SQL<unknown>) =>
+  sql<string>`case
+    when ${normalizedSqlValue(expression)} in ('ivory', 'white') then 'ivory-white'
+    when ${normalizedSqlValue(expression)} = 'multicolor' then 'multicolour'
+    else ${normalizedSqlValue(expression)}
+  end`;
+
+const productHasTag = (slugs: string[], categories: string[]) =>
+  sql`${products.id} in (
+    select pt.product_id
+    from ${productTags} pt
+    join ${tags} t on pt.tag_id = t.id
+    where lower(t.category) in (${sql.join(categories.map((category) => sql`${category}`), sql`, `)})
+      and t.slug in (${sql.join(slugs.map((slug) => sql`${slug}`), sql`, `)})
+  )`;
+
+const jsonStringMatches = (
+  expression: SQL<unknown>,
+  slugs: string[],
+  options: { color?: boolean; contains?: boolean } = {},
+) => {
+  if (slugs.length === 0) return undefined;
+  const normalized = options.color ? colorSqlValue(expression) : normalizedSqlValue(expression);
+  const exact = sql`${normalized} in (${sql.join(slugs.map((slug) => sql`${slug}`), sql`, `)})`;
+  if (!options.contains) return exact;
+
+  return or(
+    exact,
+    ...slugs.map((slug) => sql`${normalized} like ${`%${slug}%`}`),
+  );
+};
+
+const multiSourceFacetFilter = ({
+  attributeExpressions,
+  categories,
+  contains,
+  color,
+  slugs,
+}: {
+  attributeExpressions: SQL<unknown>[];
+  categories: string[];
+  contains?: boolean;
+  color?: boolean;
+  slugs: string[];
+}) => {
+  if (slugs.length === 0) return undefined;
+  const attributeClauses = attributeExpressions
+    .map((expression) => jsonStringMatches(expression, slugs, { color, contains }))
+    .filter((clause): clause is SQL<unknown> => Boolean(clause));
+
+  return or(...attributeClauses, productHasTag(slugs, categories));
+};
+
+const getProductSortOrder = (sort: ProductSortOption) => {
+  switch (sort) {
+    case "price-low-to-high":
+      return [asc(products.pricePaise), desc(products.createdAt)];
+    case "price-high-to-low":
+      return [desc(products.pricePaise), desc(products.createdAt)];
+    default:
+      return [desc(products.createdAt)];
+  }
+};
+
+async function buildScopedCollectionIds(
+  collectionSlug?: string,
+): Promise<string[] | undefined> {
+  if (!collectionSlug) return undefined;
+
+  const collection = await getCollectionBySlug(collectionSlug);
+  if (!collection) return [];
+
+  return getCollectionProductIds(collection);
+}
+
+async function buildFacets(productIds?: string[]): Promise<CatalogFacets> {
+  if (productIds && productIds.length === 0) {
+    return emptyFacets();
+  }
+
+  // Hide sold + actively-reserved pieces from the public catalog. A reservation
+  // whose hold has expired (reservedUntil in the past) counts as available again.
+  const stockVisible = sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`;
+  const publishedFilter = productIds
+    ? and(
+        eq(products.status, "published" as const),
+        inArray(products.id, productIds),
+        stockVisible,
+      )
+    : and(eq(products.status, "published" as const), stockVisible);
+
+  const [
+    fabricRows,
+    colorRows,
+    occasionRows,
+    workRows,
+    patternRows,
+    typeRows,
+    availabilityRows,
+    tagRows,
+  ] = await Promise.all([
+    // Fabric: details_fabric / attributes->>'fabric' GROUP BY value
+    timedRows("catalog.facets.fabric", () => withRetry(() =>
       db
         .select({
-          fabric: sql<string>`(${products.attributes}->>'fabric')`.as("fabric"),
+          fabric: sql<string>`coalesce(nullif(btrim(${products.detailsFabric}), ''), nullif(btrim(${products.attributes}->>'fabric'), ''))`.as("fabric"),
           count: sql<number>`cast(count(*) as integer)`.as("count"),
         })
         .from(products)
         .where(publishedFilter)
-        .groupBy(sql`(${products.attributes}->>'fabric')`)
-    ),
+        .groupBy(sql`coalesce(nullif(btrim(${products.detailsFabric}), ''), nullif(btrim(${products.attributes}->>'fabric'), ''))`)
+    )),
+
+    // Colour: attributes color/colour values.
+    timedRows("catalog.facets.color", () => withRetry(() =>
+      db
+        .select({
+          color: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'color'), ''), nullif(btrim(${products.attributes}->>'colour'), ''), nullif(btrim(${products.attributes}->>'colors'), ''), nullif(btrim(${products.attributes}->>'colours'), ''))`.as("color"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'color'), ''), nullif(btrim(${products.attributes}->>'colour'), ''), nullif(btrim(${products.attributes}->>'colors'), ''), nullif(btrim(${products.attributes}->>'colours'), ''))`)
+    )),
+
+    // Occasion: attributes occasion/occasions values.
+    timedRows("catalog.facets.occasion", () => withRetry(() =>
+      db
+        .select({
+          occasion: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'occasion'), ''), nullif(btrim(${products.attributes}->>'occasions'), ''))`.as("occasion"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'occasion'), ''), nullif(btrim(${products.attributes}->>'occasions'), ''))`)
+    )),
+
+    // Work / border: attributes work/border/craft/embellishment values.
+    timedRows("catalog.facets.work", () => withRetry(() =>
+      db
+        .select({
+          work: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'work'), ''), nullif(btrim(${products.attributes}->>'border'), ''), nullif(btrim(${products.attributes}->>'craft'), ''), nullif(btrim(${products.attributes}->>'embellishment'), ''), nullif(btrim(${products.attributes}->>'embroidery'), ''))`.as("work"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'work'), ''), nullif(btrim(${products.attributes}->>'border'), ''), nullif(btrim(${products.attributes}->>'craft'), ''), nullif(btrim(${products.attributes}->>'embellishment'), ''), nullif(btrim(${products.attributes}->>'embroidery'), ''))`)
+    )),
+
+    // Pattern / motif: attributes pattern/motif/print values.
+    timedRows("catalog.facets.pattern", () => withRetry(() =>
+      db
+        .select({
+          pattern: sql<string>`coalesce(nullif(btrim(${products.attributes}->>'pattern'), ''), nullif(btrim(${products.attributes}->>'motif'), ''), nullif(btrim(${products.attributes}->>'print'), ''))`.as("pattern"),
+          count: sql<number>`cast(count(*) as integer)`.as("count"),
+        })
+        .from(products)
+        .where(publishedFilter)
+        .groupBy(sql`coalesce(nullif(btrim(${products.attributes}->>'pattern'), ''), nullif(btrim(${products.attributes}->>'motif'), ''), nullif(btrim(${products.attributes}->>'print'), ''))`)
+    )),
 
     // Type: LEFT JOIN productTypes → slug, GROUP BY slug
-    withRetry(() =>
+    timedRows("catalog.facets.type", () => withRetry(() =>
       db
         .select({
           typeSlug: productTypes.slug,
@@ -73,10 +313,10 @@ async function buildFacets(): Promise<CatalogFacets> {
         .leftJoin(productTypes, eq(products.typeId, productTypes.id))
         .where(publishedFilter)
         .groupBy(productTypes.slug)
-    ),
+    )),
 
     // Availability: stock_status GROUP BY
-    withRetry(() =>
+    timedRows("catalog.facets.availability", () => withRetry(() =>
       db
         .select({
           stockStatus: products.stockStatus,
@@ -85,26 +325,48 @@ async function buildFacets(): Promise<CatalogFacets> {
         .from(products)
         .where(publishedFilter)
         .groupBy(products.stockStatus)
-    ),
+    )),
 
-    // Tags: JOIN product_tags → tags → slug, GROUP BY slug
-    withRetry(() =>
+    // Tags: JOIN product_tags → tags, keeping display metadata for filter groups.
+    timedRows("catalog.facets.tags", () => withRetry(() =>
       db
         .select({
           tagSlug: tags.slug,
+          tagName: tags.name,
+          tagCategory: tags.category,
           count: sql<number>`cast(count(*) as integer)`.as("count"),
         })
         .from(products)
         .innerJoin(productTags, eq(productTags.productId, products.id))
         .innerJoin(tags, eq(productTags.tagId, tags.id))
         .where(publishedFilter)
-        .groupBy(tags.slug)
-    ),
+        .groupBy(tags.slug, tags.name, tags.category)
+    )),
   ]);
 
   const fabric: Record<string, number> = {};
   for (const row of fabricRows) {
-    if (row.fabric) fabric[row.fabric] = row.count;
+    addFacetValue(fabric, row.fabric, row.count);
+  }
+
+  const color: Record<string, number> = {};
+  for (const row of colorRows) {
+    addFacetValue(color, row.color, row.count, { color: true });
+  }
+
+  const occasion: Record<string, number> = {};
+  for (const row of occasionRows) {
+    addFacetValue(occasion, row.occasion, row.count);
+  }
+
+  const work: Record<string, number> = {};
+  for (const row of workRows) {
+    addFacetValue(work, row.work, row.count);
+  }
+
+  const pattern: Record<string, number> = {};
+  for (const row of patternRows) {
+    addFacetValue(pattern, row.pattern, row.count);
   }
 
   const type: Record<string, number> = {};
@@ -118,11 +380,30 @@ async function buildFacets(): Promise<CatalogFacets> {
   }
 
   const tagsMap: Record<string, number> = {};
+  const tagDetails: CatalogFacets["tagDetails"] = {};
   for (const row of tagRows) {
-    if (row.tagSlug) tagsMap[row.tagSlug] = row.count;
+    if (row.tagSlug) {
+      tagsMap[row.tagSlug] = row.count;
+      tagDetails[row.tagSlug] = {
+        category: row.tagCategory ?? "",
+        name: row.tagName ?? row.tagSlug,
+      };
+      const category = normalizeFacetSlug(row.tagCategory ?? "");
+      if (category === "fabric") {
+        addFacetValue(fabric, row.tagSlug, row.count);
+      } else if (category === "color" || category === "colour") {
+        addFacetValue(color, row.tagSlug, row.count, { color: true });
+      } else if (category === "occasion") {
+        addFacetValue(occasion, row.tagSlug, row.count);
+      } else if (["craft", "work", "border", "embellishment", "embroidery"].includes(category)) {
+        addFacetValue(work, row.tagSlug, row.count);
+      } else if (["pattern", "motif", "print"].includes(category)) {
+        addFacetValue(pattern, row.tagSlug, row.count);
+      }
+    }
   }
 
-  return { fabric, type, availability, tags: tagsMap };
+  return { fabric, color, occasion, work, pattern, type, availability, tags: tagsMap, tagDetails };
 }
 
 // ── Main adapter ──────────────────────────────────────────────────────────────
@@ -130,10 +411,60 @@ async function buildFacets(): Promise<CatalogFacets> {
 export function createPostgresCatalogSearch(): CatalogSearchPort {
   return {
     async searchProducts(filters: CatalogSearchFilters) {
-      const { query, type, fabric, priceMin, priceMax, availability, tags: tagSlugs } = filters;
+      const {
+        availability,
+        availabilityStatus,
+        colors,
+        collectionSlug,
+        fabrics,
+        facetsOnly = false,
+        includeFacets = true,
+        occasions,
+        patterns,
+        query,
+        type,
+        types,
+        excludeTypes,
+        sleeveTypes,
+        fabric,
+        limit,
+        offset = 0,
+        priceMin,
+        priceMax,
+        sort = DEFAULT_PRODUCT_SORT,
+        sortBy,
+        tags: tagSlugs,
+        works,
+      } = filters;
+      const activeTypes = normalizeInputSlugs([...(types ?? []), type]);
+      const activeExcludeTypes = normalizeInputSlugs(excludeTypes);
+      const activeSleeves = normalizeInputSlugs(sleeveTypes);
+      const activeFabrics = normalizeInputSlugs([...(fabrics ?? []), fabric]);
+      const activeColors = normalizeInputSlugs(colors, { color: true });
+      const activeOccasions = normalizeInputSlugs(occasions);
+      const activeWorks = normalizeInputSlugs(works);
+      const activePatterns = normalizeInputSlugs(patterns);
+      const activeAvailability: CatalogAvailability | undefined =
+        availabilityStatus ?? (availability === true ? "available" : undefined);
+      const collectionProductIds = await timed(
+        "catalog.scope.collectionIds",
+        () => buildScopedCollectionIds(collectionSlug),
+      );
+
+      if (collectionProductIds && collectionProductIds.length === 0) {
+        return { products: [], facets: emptyFacets(), totalDocs: 0 };
+      }
 
       // Build WHERE clauses — all ANDed.
-      const whereClauses = [eq(products.status, "published" as const)];
+      const whereClauses = [
+        eq(products.status, "published" as const),
+        // Public catalog hides sold + actively-reserved pieces (expired holds show).
+        sql`(${products.stockStatus} = 'available' OR (${products.stockStatus} = 'reserved' AND ${products.reservedUntil} < now()))`,
+      ];
+
+      if (collectionProductIds) {
+        whereClauses.push(inArray(products.id, collectionProductIds));
+      }
 
       // P6-03: Free-text search via ILIKE (case-insensitive substring match).
       //
@@ -184,28 +515,112 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         whereClauses.push(lte(products.pricePaise, priceMax));
       }
 
-      // Availability: stockStatus = 'available'
-      if (availability === true) {
-        whereClauses.push(eq(products.stockStatus, "available" as const));
+      // Availability: stock status.
+      if (activeAvailability) {
+        whereClauses.push(eq(products.stockStatus, activeAvailability));
       }
 
-      // Fabric: JSONB expression — uses expression index on (attributes->>'fabric')
-      if (fabric) {
-        whereClauses.push(
-          sql`(${products.attributes}->>'fabric') = ${fabric}`
-        );
+      // Fabric: OR within selected fabric values; ANDed with other groups.
+      const fabricClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.detailsFabric}`,
+          sql`${products.attributes}->>'fabric'`,
+        ],
+        categories: ["fabric"],
+        contains: true,
+        slugs: activeFabrics,
+      });
+      if (fabricClause) {
+        whereClauses.push(fabricClause);
       }
 
       // Type: raw SQL subquery avoids a separate db.select() call.
-      //   WHERE products.type_id IN (SELECT id FROM product_types WHERE slug = ?)
-      if (type) {
+      //   WHERE products.type_id IN (SELECT id FROM product_types WHERE slug IN (...))
+      if (activeTypes.length > 0) {
         whereClauses.push(
           sql`${products.typeId} IN (
             SELECT id FROM ${productTypes}
-            WHERE ${productTypes.slug} = ${type}
+            WHERE ${productTypes.slug} in (${sql.join(activeTypes.map((typeSlug) => sql`${typeSlug}`), sql`, `)})
           )`
         );
       }
+
+      // Exclude types (e.g. hide blouses from the default catalog). Products
+      // with no type (typeId IS NULL) are kept — only the named types drop out.
+      if (activeExcludeTypes.length > 0) {
+        whereClauses.push(
+          sql`(${products.typeId} IS NULL OR ${products.typeId} NOT IN (
+            SELECT id FROM ${productTypes}
+            WHERE ${productTypes.slug} in (${sql.join(activeExcludeTypes.map((typeSlug) => sql`${typeSlug}`), sql`, `)})
+          ))`
+        );
+      }
+
+      // Blouse sleeve is a binary facet driven by the "sleeve" product tag:
+      //   • has the tag  → "Sleeve"
+      //   • lacks the tag → "Sleeveless"
+      // EXISTS / NOT EXISTS is a correlated semi/anti-join — cheap given the
+      // product_tags primary key and the unique tags.slug index, and it never
+      // pulls tag rows into the result set. Selecting both (or neither) applies
+      // no constraint; unknown legacy values fall through to no constraint too.
+      const wantsSleeve = activeSleeves.includes("sleeve");
+      const wantsSleeveless = activeSleeves.includes("sleeveless");
+      if (wantsSleeve !== wantsSleeveless) {
+        const hasSleeveTag = sql`exists (
+          select 1
+          from ${productTags} pt
+          join ${tags} t on t.id = pt.tag_id
+          where pt.product_id = ${products.id} and t.slug = 'sleeve'
+        )`;
+        whereClauses.push(wantsSleeve ? hasSleeveTag : sql`not ${hasSleeveTag}`);
+      }
+
+      const colorClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'color'`,
+          sql`${products.attributes}->>'colour'`,
+          sql`${products.attributes}->>'colors'`,
+          sql`${products.attributes}->>'colours'`,
+        ],
+        categories: ["color", "colour"],
+        color: true,
+        slugs: activeColors,
+      });
+      if (colorClause) whereClauses.push(colorClause);
+
+      const occasionClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'occasion'`,
+          sql`${products.attributes}->>'occasions'`,
+        ],
+        categories: ["occasion"],
+        slugs: activeOccasions,
+      });
+      if (occasionClause) whereClauses.push(occasionClause);
+
+      const workClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'work'`,
+          sql`${products.attributes}->>'border'`,
+          sql`${products.attributes}->>'craft'`,
+          sql`${products.attributes}->>'embellishment'`,
+          sql`${products.attributes}->>'embroidery'`,
+        ],
+        categories: ["craft", "work", "border", "embellishment", "embroidery"],
+        slugs: activeWorks,
+      });
+      if (workClause) whereClauses.push(workClause);
+
+      const patternClause = multiSourceFacetFilter({
+        attributeExpressions: [
+          sql`${products.attributes}->>'pattern'`,
+          sql`${products.attributes}->>'motif'`,
+          sql`${products.attributes}->>'print'`,
+        ],
+        categories: ["pattern", "motif", "print"],
+        slugs: activePatterns,
+      });
+      if (patternClause) whereClauses.push(patternClause);
 
       // Tags: one subquery per tag slug (AND semantics).
       //   WHERE products.id IN (
@@ -230,22 +645,115 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         ? whereClauses[0]
         : and(...whereClauses);
 
-      // Fetch matching product rows (single db.select() call)
-      const rows = await withRetry(() =>
-        db
+      if (facetsOnly) {
+        const facets = await timed("catalog.facets", () =>
+          buildFacets(collectionProductIds),
+        );
+        return { products: [], facets, totalDocs: 0 };
+      }
+
+      // Virtual "top-viewed" collection: rank the already-filtered products by
+      // product_view event count over the last 30 days, most-viewed first.
+      // `whereClause` still applies every active filter (blouses are excluded by
+      // default, so this ranks within the visible saree catalog unless the caller
+      // opted blouses back in). Products with zero views are omitted by design.
+      if (sortBy === "top-viewed") {
+        const topViewedLimit = Math.min(limit ?? TOP_VIEWED_LIMIT, TOP_VIEWED_LIMIT);
+        const viewCount = sql<number>`cast(count(${events.id}) as integer)`;
+
+        const rankedRows = await timedRows("catalog.products.topViewed", () =>
+          withRetry(() =>
+            db
+              .select({ productId: products.id, viewCount })
+              .from(products)
+              .innerJoin(
+                events,
+                sql`${products.id} = (${events.payload}->>'productId')::uuid`,
+              )
+              .where(
+                and(
+                  whereClause,
+                  eq(events.type, "product_view"),
+                  sql`${events.occurredAt} >= now() - make_interval(days => ${TOP_VIEWED_WINDOW_DAYS})`,
+                  sql`${events.payload}->>'productId' is not null`,
+                ),
+              )
+              .groupBy(products.id)
+              .orderBy(desc(viewCount), desc(products.createdAt))
+              .limit(topViewedLimit),
+          ),
+        );
+
+        const rankedIds = rankedRows.map((row) => row.productId);
+        const facets = includeFacets
+          ? await timed("catalog.facets", () => buildFacets(collectionProductIds))
+          : emptyFacets();
+
+        if (rankedIds.length === 0) {
+          return { products: [], facets, totalDocs: 0 };
+        }
+
+        // Re-fetch full rows (grouped query only selected id) then re-order them
+        // to match the ranked id order before hydrating relations.
+        const productRows = await timedRows("catalog.products.topViewed.rows", () =>
+          withRetry(() =>
+            db.select().from(products).where(inArray(products.id, rankedIds)),
+          ),
+        );
+        const rowById = new Map(productRows.map((row) => [row.id, row]));
+        const orderedRows = rankedIds
+          .map((id) => rowById.get(id))
+          .filter((row): row is (typeof productRows)[number] => Boolean(row));
+
+        const hydratedProducts = await timedRows("catalog.products.hydrate", () =>
+          hydrateProductsQuery(orderedRows),
+        );
+
+        return {
+          products: hydratedProducts,
+          facets,
+          totalDocs: rankedIds.length,
+        };
+      }
+
+      const rowsPromise = timedRows("catalog.products.rows", () => withRetry(() => {
+        const query = db
           .select()
           .from(products)
           .where(whereClause)
-          .orderBy(sql`${products.createdAt} DESC`)
+          .offset(offset)
+          .orderBy(...getProductSortOrder(sort));
+
+        return typeof limit === "number" ? query.limit(limit) : query;
+      }));
+
+      const countPromise =
+        typeof limit === "number"
+          ? timedRows("catalog.products.count", () => withRetry(() =>
+              db.select({ total: count() }).from(products).where(whereClause)
+            ))
+          : Promise.resolve([{ total: 0 }]);
+      const facetsPromise = includeFacets
+        ? timed("catalog.facets", () => buildFacets(collectionProductIds))
+        : Promise.resolve(emptyFacets());
+
+      const [rows, [countResult], facets] = await Promise.all([
+        rowsPromise,
+        countPromise,
+        facetsPromise,
+      ]);
+
+      // Hydrate with relations only for the visible page, not every match.
+      const hydratedProducts = await timedRows("catalog.products.hydrate", () =>
+        hydrateProductsQuery(rows),
       );
 
-      // Hydrate with relations (collections, images, tags) — 2-3 db.select() calls
-      const hydratedProducts = await hydrateProductsQuery(rows);
-
-      // Build facets (4 parallel db.select() calls)
-      const facets = await buildFacets();
-
-      return { products: hydratedProducts, facets };
+      return {
+        products: hydratedProducts,
+        facets,
+        totalDocs:
+          typeof limit === "number" ? (countResult?.total ?? 0) : rows.length,
+      };
     },
   };
 }

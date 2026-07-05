@@ -114,6 +114,26 @@ const blouse_defs: AttributeDef[] = [
     meta: { type: "text", label: "Color" },
     required: false,
   },
+  {
+    key: "availableSizes",
+    meta: { type: "list-of-text", label: "Available Sizes" },
+    required: false,
+  },
+  {
+    key: "sleeveLength",
+    meta: { type: "text", label: "Sleeve Length" },
+    required: false,
+  },
+  {
+    key: "blouseSize",
+    meta: { type: "text", label: "Blouse Size" },
+    required: false,
+  },
+  {
+    key: "fitNotes",
+    meta: { type: "textarea", label: "Fit Notes" },
+    required: false,
+  },
 ];
 
 /** accessory attribute_defs */
@@ -239,6 +259,8 @@ describe("buildTypeZodSchema — blouse", () => {
       fabric: "Raw Silk",
       condition: "excellent",
       color: "Navy Blue",
+      availableSizes: ["S", "M", "L"],
+      fitNotes: "Structured fit",
     });
     expect(result.success).toBe(true);
   });

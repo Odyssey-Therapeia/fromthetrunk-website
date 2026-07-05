@@ -29,6 +29,7 @@ const updateProductsBatchMock = vi.hoisted(() => vi.fn());
 const bulkAddProductsToCollectionMock = vi.hoisted(() => vi.fn());
 const bulkRemoveProductsFromCollectionMock = vi.hoisted(() => vi.fn());
 const bulkSetProductTagsMock = vi.hoisted(() => vi.fn());
+const getProductsByIdsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/products", () => ({
   updateProductsBatch: updateProductsBatchMock,
@@ -39,7 +40,7 @@ vi.mock("@/db/queries/products", () => ({
   duplicateProduct: vi.fn(),
   updateProduct: vi.fn(),
   getProductBySlug: vi.fn(),
-  getProductsByIds: vi.fn(),
+  getProductsByIds: getProductsByIdsMock,
   listProducts: vi.fn(),
   deriveQuantityAvailable: vi.fn(),
 }));
@@ -63,6 +64,10 @@ vi.mock("@/lib/ai/tag-suggestions", () => ({
 
 vi.mock("@/lib/config/flags", () => ({
   isInventoryV2: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock("@/lib/data/products", () => ({
+  getTimedPublicProductBySlug: vi.fn(),
 }));
 
 import { registerProductRoutes } from "@/api/hono/routes/products";
@@ -89,6 +94,8 @@ describe("POST /products/bulk-edit — collection controls (UI consumer path)", 
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
     bulkSetProductTagsMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("addCollectionId: calls bulkAddProductsToCollection with ALL selected IDs (mutation proof)", async () => {
@@ -158,6 +165,8 @@ describe("POST /products/bulk-edit — tag controls (UI consumer path)", () => {
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
     bulkSetProductTagsMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("addTagIds: calls bulkSetProductTags with ALL selected IDs and the tag IDs (mutation proof)", async () => {
@@ -231,6 +240,8 @@ describe("POST /products/bulk-edit — combined collection + tag in one request"
     bulkAddProductsToCollectionMock.mockReset();
     bulkRemoveProductsFromCollectionMock.mockReset();
     bulkSetProductTagsMock.mockReset();
+    getProductsByIdsMock.mockReset();
+    getProductsByIdsMock.mockResolvedValue([]);
   });
 
   it("runs both collection add AND tag add when body contains addCollectionId + addTagIds", async () => {

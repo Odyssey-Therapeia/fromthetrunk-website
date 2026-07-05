@@ -1,28 +1,56 @@
 import type { Product } from "@/types/domain";
 import { isGstInclusive } from "@/lib/config/flags";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
-import { getSiteOrigin } from "@/lib/config/site";
+import { productSeoImageUrls } from "@/lib/seo/image-urls";
+import { absoluteUrl, getCanonicalOrigin } from "@/lib/seo/site-url";
 
 /**
  * Generate JSON-LD structured data for a product page.
  * See: https://schema.org/Product
  */
 export function productJsonLd(product: Product): Record<string, unknown> {
-  const image = resolveMediaURL(product.images?.[0]);
+  const images = productSeoImageUrls(product);
   const displayDetails = getProductDisplayDetails(product);
+  const category = product.collection?.name ?? "Pre-loved saree";
+  const additionalProperty = [
+    displayDetails.fabric
+      ? {
+          "@type": "PropertyValue",
+          name: "Fabric",
+          value: displayDetails.fabric,
+        }
+      : null,
+    displayDetails.condition
+      ? {
+          "@type": "PropertyValue",
+          name: "Condition",
+          value: displayDetails.condition,
+        }
+      : null,
+    product.storyProvenance
+      ? {
+          "@type": "PropertyValue",
+          name: "Provenance",
+          value: product.storyProvenance,
+        }
+      : null,
+  ].filter(Boolean);
 
   return {
     "@context": "https://schema.org",
     "@type": "Product",
+    productID: product.id,
+    sku: product.slug,
     name: product.name,
     description:
       product.storyNarrative ?? `${product.name}: ${displayDetails.fabric}.`,
-    ...(image ? { image } : {}),
+    ...(images.length > 0 ? { image: images } : {}),
     brand: {
       "@type": "Brand",
       name: "From the Trunk",
     },
+    category,
+    ...(additionalProperty.length > 0 ? { additionalProperty } : {}),
     offers: {
       "@type": "Offer",
       price: product.pricePaise / 100,
@@ -32,11 +60,11 @@ export function productJsonLd(product: Product): Record<string, unknown> {
       ...(isGstInclusive() ? { valueAddedTaxIncluded: true } : {}),
       availability:
         product.stockStatus === "sold"
-          ? "https://schema.org/SoldOut"
+          ? "https://schema.org/OutOfStock"
           : product.stockStatus === "reserved"
             ? "https://schema.org/LimitedAvailability"
             : "https://schema.org/InStock",
-      url: `${getSiteOrigin()}/collection/${product.slug}`,
+      url: absoluteUrl(`/collection/${product.slug}`),
       seller: {
         "@type": "Organization",
         name: "From the Trunk",
@@ -57,13 +85,31 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "From the Trunk",
-    url: getSiteOrigin(),
+    url: getCanonicalOrigin(),
+    logo: absoluteUrl("/Ftt_logo_navbar.avif"),
+    sameAs: ["https://www.instagram.com/from.thetrunk/"],
     description:
       "Curated collection of authenticated, pre-loved luxury sarees with provenance.",
     contactPoint: {
       "@type": "ContactPoint",
       email: "hello@fromthetrunk.shop",
       contactType: "customer service",
+      areaServed: "IN",
+      availableLanguage: ["en"],
+    },
+  };
+}
+
+export function websiteJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "From the Trunk",
+    url: getCanonicalOrigin(),
+    publisher: {
+      "@type": "Organization",
+      name: "From the Trunk",
+      logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     },
   };
 }
