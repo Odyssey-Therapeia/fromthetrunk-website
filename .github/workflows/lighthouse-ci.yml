@@ -19,10 +19,10 @@ jobs:
     name: Tests, lint, and build
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/ftt
+      DATABASE_URL: ${{ secrets.FTT_CI_DATABASE_URL }}
       PAYLOAD_SECRET: ci-build-secret-placeholder
       NEXTAUTH_SECRET: ci-build-secret-placeholder
-      NEXT_PUBLIC_SERVER_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SERVER_URL: https://www.fromthetrunk.shop
     steps:
       - uses: actions/checkout@v6
 
@@ -44,9 +44,10 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/ftt
+      DATABASE_URL: ${{ secrets.FTT_CI_DATABASE_URL }}
       PAYLOAD_SECRET: ci-build-secret-placeholder
       NEXTAUTH_SECRET: ci-build-secret-placeholder
+      SITE_URL: https://www.fromthetrunk.shop
       NEXT_PUBLIC_SERVER_URL: http://127.0.0.1:3000
       FTT_LHCI_BASE_URL: http://127.0.0.1:3000
       # P6-06: expanded to home + collection (PDP entry) for LCP/CLS budget enforcement
@@ -102,6 +103,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
       NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      SITE_URL: https://www.fromthetrunk.shop
       NEXT_PUBLIC_SERVER_URL: http://127.0.0.1:3000
       FTT_LHCI_BASE_URL: http://127.0.0.1:3000
       FTT_LHCI_SCOPE: admin
