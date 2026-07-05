@@ -19,7 +19,7 @@ jobs:
     name: Tests, lint, and build
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/ftt
+      DATABASE_URL: ${{ secrets.FTT_CI_DATABASE_URL }}
       PAYLOAD_SECRET: ci-build-secret-placeholder
       NEXTAUTH_SECRET: ci-build-secret-placeholder
       NEXT_PUBLIC_SERVER_URL: https://www.fromthetrunk.shop
@@ -44,7 +44,7 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/ftt
+      DATABASE_URL: ${{ secrets.FTT_CI_DATABASE_URL }}
       PAYLOAD_SECRET: ci-build-secret-placeholder
       NEXTAUTH_SECRET: ci-build-secret-placeholder
       SITE_URL: https://www.fromthetrunk.shop
