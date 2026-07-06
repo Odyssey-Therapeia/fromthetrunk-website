@@ -61,6 +61,8 @@ const storyChapters = [
     ],
     marginNote:
       "This is the opening belief: a saree is not finished when it is folded away.",
+    tagline:
+      "Set aside for a while, the saree keeps its story, ready for the next page.",
   },
   {
     number: "02",
@@ -73,6 +75,8 @@ const storyChapters = [
     ],
     marginNote:
       "Authentication, restoration, and provenance make the piece ready for its next chapter.",
+    tagline:
+      "A saree is more than thread. Cared for and kept, its story is ready for a new hand.",
   },
   {
     number: "03",
@@ -85,6 +89,8 @@ const storyChapters = [
     ],
     marginNote:
       "A second life is not about resale alone. It is about transfer of care.",
+    tagline:
+      "Past and present meet in one length of silk, and the care crosses with it.",
   },
   {
     number: "04",
@@ -104,6 +110,8 @@ const storyChapters = [
     ],
     marginNote:
       "FTT serves both sides of the story: the giver and the finder.",
+    tagline:
+      "It takes two to turn the page: the one who gives, and the one who finds.",
   },
   {
     number: "05",
@@ -116,6 +124,8 @@ const storyChapters = [
     ],
     marginNote:
       "Some treasures deserve another chapter. Choose pre-loved over new.",
+    tagline:
+      "To wear again is to take less and give more. A conscious kind of beautiful.",
   },
   {
     number: "06",
@@ -129,6 +139,8 @@ const storyChapters = [
     ],
     promise: true,
     marginNote: "The final promise:",
+    tagline:
+      "The book closes, and the saree carries on. Its story begins again, with someone new.",
   },
 ] as const;
 
@@ -337,7 +349,7 @@ export default function OurStoryPage() {
                         Cover
                       </span>
                       <span className="mt-1 block font-serif text-xl">
-                        Every saree deserves a second story
+                        Elegance, given a second life
                       </span>
                     </button>
 
@@ -526,7 +538,7 @@ function StoryDesktopFrame({
 }) {
   return (
     <section className="relative px-2 py-2 sm:px-4 lg:px-5">
-      <div className="mx-auto grid h-[calc(100svh-8.75rem)] min-h-[34rem] max-h-[52rem] max-w-[96rem] grid-cols-[minmax(8.5rem,20%)_minmax(0,1fr)] gap-2 overflow-hidden rounded-[1.8rem] bg-[#FDF7F1] shadow-[0_24px_80px_rgba(20,29,70,0.10)] md:grid-cols-[minmax(10rem,20%)_minmax(0,1fr)] lg:grid-cols-[minmax(12rem,20%)_minmax(0,1fr)]">
+      <div className="mx-auto grid h-[calc(100svh-8.75rem)] min-h-[min(34rem,calc(100svh-8.75rem))] max-h-[52rem] max-w-[96rem] grid-cols-[minmax(8.5rem,20%)_minmax(0,1fr)] gap-2 overflow-hidden rounded-[1.8rem] bg-[#FDF7F1] shadow-[0_24px_80px_rgba(20,29,70,0.10)] md:grid-cols-[minmax(10rem,20%)_minmax(0,1fr)] lg:grid-cols-[minmax(12rem,20%)_minmax(0,1fr)]">
         <StoryDesktopSpine
           chapterNav={chapterNav}
           goToPage={goToPage}
@@ -547,8 +559,8 @@ function StoryDesktopFrame({
           />
 
           <div className="relative flex h-full min-h-0 items-center justify-center px-5 py-3 pr-16 xl:px-9 xl:py-4 xl:pr-20">
-            <div className="relative flex min-h-0 w-full flex-1 items-center justify-center [perspective:2200px]">
-              <div className="h-full max-h-full w-full max-w-[78rem]">
+            <div className="relative flex min-h-0 w-full flex-1 items-center justify-center self-stretch [perspective:2200px]">
+              <div className="h-full max-h-full w-full max-w-[78rem] self-stretch">
                 <AnimatePresence mode="wait" custom={direction}>
                   {isCover ? (
                     <CoverPage
@@ -613,7 +625,7 @@ function StoryDesktopSpine({
         <div className="flex min-h-0 flex-1 items-center justify-center py-5">
           <div className="flex items-center justify-center gap-5 xl:gap-7">
             <h1
-              className="font-serif text-[clamp(3.25rem,5.2vw,6.35rem)] font-medium leading-[0.82] tracking-[-0.055em] text-[#FDF7F1]"
+              className="font-serif text-[clamp(1.6rem,min(5.2vw,6vh),6.35rem)] font-medium leading-[0.82] tracking-[-0.055em] text-[#FDF7F1]"
               style={{
                 writingMode: "vertical-rl",
                 transform: "rotate(180deg)",
@@ -623,7 +635,7 @@ function StoryDesktopSpine({
             </h1>
 
             <p
-              className="max-h-[28rem] text-[clamp(0.72rem,0.9vw,0.95rem)] font-semibold leading-6 tracking-[0.02em] text-[#FDF7F1]/76"
+              className="max-h-[min(28rem,calc(100svh-19rem))] text-[clamp(0.72rem,0.9vw,0.95rem)] font-semibold leading-6 tracking-[0.02em] text-[#FDF7F1]/76"
               style={{
                 writingMode: "vertical-rl",
                 transform: "rotate(180deg)",
@@ -733,7 +745,7 @@ function StoryContentsDialog({
               Cover
             </span>
             <span className="mt-1 block font-serif text-xl">
-              Every saree deserves a second story
+              Elegance, given a second life
             </span>
           </button>
 
@@ -820,7 +832,7 @@ function CoverPage({
                   : "text-[clamp(2.45rem,5.6vw,5.7rem)]",
               )}
             >
-              Every saree deserves a second story.
+              Elegance, given a second life.
             </h2>
 
             <p className="mt-5 max-w-xl text-sm leading-7 text-[#FDF7F1]/76">
@@ -945,7 +957,7 @@ function BookSpread({
         className={cn(
           "relative grid lg:grid-cols-2",
           framed
-            ? "h-full min-h-0"
+            ? "h-full min-h-0 grid-rows-1"
             : "min-h-[min(31rem,calc(100svh-20rem))] lg:min-h-[min(33rem,calc(100svh-19rem))]",
         )}
       >
@@ -1186,8 +1198,7 @@ function StoryRightPage({
           </div>
 
           <p className="mt-3 text-sm font-semibold leading-6 text-[#141D46]">
-            The page turns, but the saree does not lose its past. It simply
-            carries it forward.
+            {chapter.tagline}
           </p>
         </div>
       </div>

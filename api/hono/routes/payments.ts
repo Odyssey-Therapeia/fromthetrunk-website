@@ -27,6 +27,7 @@ import { isInventoryV2 } from "@/lib/config/flags";
 import { createOrderAccessToken, verifyOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 import { validateOrderItemSelectedOptions } from "@/lib/orders/selected-options";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
 import { validateDiscountCode } from "@/lib/discounts/validate";
 import {
@@ -566,6 +567,15 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             )
           : [];
       const typeById = new Map(typeRows.map((type) => [type.id, type]));
+      const typeSlugForProductId = (productId: string) => {
+        const product = productById.get(productId);
+        return product?.typeId ? typeById.get(product.typeId)?.slug ?? null : null;
+      };
+      // Blouses are made-to-order, not one-of-one: they are never reserved or
+      // marked sold. Only these product ids participate in the inventory claim.
+      const reservableProductIds = productIds.filter(
+        (productId) => !isBlouseProduct({ typeSlug: typeSlugForProductId(productId) }),
+      );
       const now = new Date();
       const validReservationTokens = new Map<string, Date>();
       let claimedCheckoutAttemptOrderPromise: Promise<OrderWithRelations | null> | null = null;
@@ -595,6 +605,11 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             },
             400
           );
+        }
+
+        // Blouses are always available — skip the one-of-one availability checks.
+        if (isBlouseProduct({ typeSlug: typeSlugForProductId(productId) })) {
+          continue;
         }
 
         if (product.stockStatus === "sold") {
@@ -924,9 +939,9 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       // Dual-write (quantity_available + reservations table) occurs in BOTH paths.
 
       if (isInventoryV2()) {
-        // Pre-check: ensure quantity_available >= 1 for every product.
+        // Pre-check: ensure quantity_available >= 1 for every one-of-one product.
         // Throws "QUANTITY_INSUFFICIENT" if any product has qty=0.
-        for (const productId of productIds) {
+        for (const productId of reservableProductIds) {
           try {
             await insertReservation({
               orderId: order.id,
@@ -938,7 +953,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             const msg = err instanceof Error ? err.message : String(err);
             if (msg === "QUANTITY_INSUFFICIENT") {
               // Clean up any reservations already inserted for earlier products
-              await releaseReservationsByProducts(productIds.slice(0, productIds.indexOf(productId)));
+              await releaseReservationsByProducts(reservableProductIds.slice(0, reservableProductIds.indexOf(productId)));
               await db
                 .update(orders)
                 .set({ paymentStatus: "failed", updatedAt: new Date() })
@@ -966,7 +981,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         })
         .where(
           and(
-            inArray(products.id, productIds),
+            inArray(products.id, reservableProductIds),
             or(
               eq(products.stockStatus, "available"),
               and(
@@ -987,7 +1002,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         )
         .returning({ id: products.id, slug: products.slug });
 
-      if (reservedRows.length !== productIds.length) {
+      if (reservedRows.length !== reservableProductIds.length) {
         const reservedProductIds = reservedRows.map((row) => row.id);
         if (reservedProductIds.length > 0) {
           await db
@@ -1004,7 +1019,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
         // Dual-write: release any reservations rows we inserted in the v2 path
         if (isInventoryV2()) {
-          await releaseReservationsByProducts(productIds);
+          await releaseReservationsByProducts(reservableProductIds);
         }
 
         await db
@@ -1016,12 +1031,12 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           .where(eq(orders.id, order.id));
 
         await addOrderEvent(order.id, "Checkout reservation failed", "pending", {
-          requestedProductIds: productIds,
+          requestedProductIds: reservableProductIds,
           reservedProductIds,
         });
 
         return c.json(
-          availabilityError("PRODUCT_RESERVED", productIds[0] ?? "unknown"),
+          availabilityError("PRODUCT_RESERVED", reservableProductIds[0] ?? "unknown"),
           409
         );
       }
@@ -1056,12 +1071,12 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             stockStatus: "available",
             updatedAt: new Date(),
           })
-          .where(inArray(products.id, productIds));
+          .where(inArray(products.id, reservableProductIds));
         revalidateProductsCache(productRows.map((product) => product.slug));
 
         // Dual-write: release reservation rows on Razorpay failure
         if (isInventoryV2()) {
-          await releaseReservationsByProducts(productIds);
+          await releaseReservationsByProducts(reservableProductIds);
         }
 
         await db

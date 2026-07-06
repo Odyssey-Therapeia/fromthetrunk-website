@@ -88,7 +88,7 @@ export async function SocialSection({ images }: { images: LandingImage[] }) {
             </div>
 
             <h2 className="max-w-[8ch] font-serif text-[clamp(4rem,9vw,8.4rem)] leading-[0.82] text-[#601D1C]">
-              Seen in the trunk.
+              Seen in the Trunk.
             </h2>
 
             <p className="mt-7 w-full max-w-[calc(100vw-2.5rem)] text-base leading-7 text-[#601D1C]/70 sm:max-w-md">
