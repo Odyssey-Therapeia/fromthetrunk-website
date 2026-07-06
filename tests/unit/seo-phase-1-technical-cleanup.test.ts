@@ -87,6 +87,21 @@ describe("SEO Phase 1 technical cleanup", () => {
     expect(redirects).toEqual(
       expect.arrayContaining([
         {
+          source: "/faq",
+          destination: "/faqs",
+          permanent: true,
+        },
+        {
+          source: "/about",
+          destination: "/our-story",
+          permanent: true,
+        },
+        {
+          source: "/stories",
+          destination: "/our-story",
+          permanent: true,
+        },
+        {
           source: "/founders",
           destination: "/our-team",
           permanent: true,
@@ -121,6 +136,7 @@ describe("SEO Phase 1 technical cleanup", () => {
     const urls = entries.map((entry) => entry.url);
 
     expect(urls).toContain("https://www.fromthetrunk.shop/policies");
+    expect(urls).toContain("https://www.fromthetrunk.shop/contact");
     expect(urls).toContain("https://www.fromthetrunk.shop/policies/privacy-policy");
     expect(urls).toContain("https://www.fromthetrunk.shop/policies/terms-of-service");
     expect(urls).toContain("https://www.fromthetrunk.shop/policies/shipping-delivery-policy");
@@ -132,8 +148,12 @@ describe("SEO Phase 1 technical cleanup", () => {
     expect(urls).not.toContain("https://www.fromthetrunk.shop/shipping-policy");
     expect(urls).not.toContain("https://www.fromthetrunk.shop/return-policy");
     expect(urls).not.toContain("https://www.fromthetrunk.shop/founders");
+    expect(urls).not.toContain("https://www.fromthetrunk.shop/faq");
+    expect(urls).not.toContain("https://www.fromthetrunk.shop/about");
+    expect(urls).not.toContain("https://www.fromthetrunk.shop/stories");
     expect(urls.some((url) => url.includes("localhost"))).toBe(false);
     expect(urls.some((url) => url.includes("vercel.app"))).toBe(false);
+    expect(new Set(urls).size).toBe(urls.length);
   });
 
   it("robots points to production sitemap and blocks private/system route families", async () => {
@@ -224,6 +244,7 @@ describe("SEO Phase 1 technical cleanup", () => {
     expect(jsonLd.image).toEqual([
       "https://www.fromthetrunk.shop/media/gold-tissue.webp",
     ]);
+    expect(jsonLd.itemCondition).toBe("https://schema.org/UsedCondition");
     expect(serialised).not.toContain("localhost");
     expect(serialised).not.toContain("vercel.app");
     expect(jsonLd).not.toHaveProperty("aggregateRating");

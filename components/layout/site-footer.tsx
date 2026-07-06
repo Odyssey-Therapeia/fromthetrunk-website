@@ -42,6 +42,7 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
       },
       { href: "/policies/care-packaging-policy", label: "Care & Packaging" },
       { href: "/policies/sell-with-us-policy", label: "Sell With Us" },
+      { href: "/contact", label: "Contact Support" },
     ],
   },
   {
@@ -54,6 +55,34 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
     ],
   },
 ];
+
+const CONTACT_FOOTER_LINK = {
+  href: "/contact",
+  label: "Contact Support",
+} as const;
+
+function ensureContactFooterLink(
+  footerSections: FooterSection[],
+): FooterSection[] {
+  if (
+    footerSections.some((section) =>
+      section.links.some((link) => link.href === CONTACT_FOOTER_LINK.href),
+    )
+  ) {
+    return footerSections;
+  }
+
+  const targetIndex = footerSections.findIndex(
+    (section) => section.title === "Customer Care",
+  );
+  const insertIndex = targetIndex >= 0 ? targetIndex : 0;
+
+  return footerSections.map((section, index) =>
+    index === insertIndex
+      ? { ...section, links: [...section.links, CONTACT_FOOTER_LINK] }
+      : section,
+  );
+}
 
 type IconProps = {
   className?: string;
@@ -263,9 +292,10 @@ export function SiteFooter({
   footerSections?: FooterSection[];
 }) {
   const year = new Date().getFullYear();
+  const resolvedFooterSections = ensureContactFooterLink(footerSections);
 
   const footerNavGridClass =
-    footerSections.length <= 3
+    resolvedFooterSections.length <= 3
       ? "lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3"
       : "lg:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4";
 
@@ -283,7 +313,7 @@ export function SiteFooter({
             className={`hidden gap-5 md:grid md:grid-cols-2 ${footerNavGridClass}`}
             aria-label="Footer navigation"
           >
-            {footerSections.map((section) => (
+            {resolvedFooterSections.map((section) => (
               <div
                 key={section.title}
                 className="border-l border-[#B39152]/22 pl-5"
@@ -311,7 +341,7 @@ export function SiteFooter({
             ))}
           </nav>
 
-          <FooterMobileNav footerSections={footerSections} />
+          <FooterMobileNav footerSections={resolvedFooterSections} />
 
           <section className="border-t border-[#B39152]/24 pt-5 lg:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0 2xl:pl-7 2xl:pt-0">
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] md:items-end 2xl:block">

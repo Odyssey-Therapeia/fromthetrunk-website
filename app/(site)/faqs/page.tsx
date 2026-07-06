@@ -15,33 +15,33 @@ import { safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 const faqDescription =
-  "Answers to common questions about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one checkout at From the Trunk.";
+  "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.";
 
 const faqSocialDescription =
-  "Explore answers about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one pieces.";
+  "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.";
 
 const faqBaseMetadata = publicPageMetadata({
-  title: "FAQs — Pre-Loved Sarees, Care & Selling | From the Trunk",
+  title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
   description: faqDescription,
   path: "/faqs",
   image: {
-    alt: "From the Trunk FAQ guide for authenticated pre-loved sarees",
+    alt: "From The Trunk FAQ guide for authenticated pre-loved sarees",
   },
 });
 
 export const metadata: Metadata = {
   ...faqBaseMetadata,
   title: {
-    absolute: "FAQs — Pre-Loved Sarees, Care & Selling | From the Trunk",
+    absolute: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
   },
   openGraph: {
     ...(faqBaseMetadata.openGraph ?? {}),
-    title: "FAQs — From the Trunk",
+    title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
     description: faqSocialDescription,
   },
   twitter: {
     ...(faqBaseMetadata.twitter ?? {}),
-    title: "FAQs — From the Trunk",
+    title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
     description: faqSocialDescription,
   },
 };

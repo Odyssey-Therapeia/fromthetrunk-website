@@ -100,7 +100,7 @@ export async function generateMetadata({
 
   const pdpTitle = isEligibleForProductSocialPreview
     ? buildPdpTitle(product.name, displayDetails.fabric)
-    : "From the Trunk Product";
+    : "From The Trunk Product";
   const pdpDescription = isEligibleForProductSocialPreview
     ? buildPdpDescription(
         product.name,
@@ -108,7 +108,7 @@ export async function generateMetadata({
         product.storyNarrative,
         product.storyTitle,
       )
-    : "Explore authenticated pre-loved luxury sarees from From the Trunk.";
+    : "Explore authenticated pre-loved luxury sarees from From The Trunk.";
   const socialImage = seoImageMetadata(
     imageUrl
       ? {
