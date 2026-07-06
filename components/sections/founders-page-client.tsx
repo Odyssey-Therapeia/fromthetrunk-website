@@ -458,7 +458,7 @@ function FounderDesktopSpine({
         <div className="flex min-h-0 flex-1 items-center justify-center py-5">
           <div className="flex items-center justify-center gap-5 xl:gap-7">
             <h1
-              className="font-serif text-[clamp(3.3rem,5.2vw,6.35rem)] font-medium leading-[0.82] tracking-[-0.055em] text-[#FDF7F1]"
+              className="font-serif text-[clamp(1.4rem,min(5.2vw,4.7vh),6.35rem)] font-medium leading-[0.82] tracking-[-0.055em] text-[#FDF7F1]"
               style={{
                 writingMode: "vertical-rl",
                 transform: "rotate(180deg)",

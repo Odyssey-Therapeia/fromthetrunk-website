@@ -288,8 +288,12 @@ export default async function SareePage({ params }: ProductPageProps) {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <DossierFact label="Fabric" value={displayDetails.fabric} />
                 <DossierFact label="Grade" value={displayDetails.condition} />
-                <DossierFact label="Length" value={displayDetails.length} />
-                <DossierFact label="Width" value={displayDetails.width} />
+                {!isBlouse ? (
+                  <>
+                    <DossierFact label="Length" value={displayDetails.length} />
+                    <DossierFact label="Width" value={displayDetails.width} />
+                  </>
+                ) : null}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -301,12 +305,14 @@ export default async function SareePage({ params }: ProductPageProps) {
                     More {displayDetails.fabric} sarees
                   </Link>
                 ) : null}
-                <Link
-                  href="/guides/what-is-a-pre-loved-saree"
-                  className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
-                >
-                  What pre-loved means
-                </Link>
+                {!isBlouse ? (
+                  <Link
+                    href="/guides/what-is-a-pre-loved-saree"
+                    className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
+                  >
+                    What pre-loved means
+                  </Link>
+                ) : null}
               </div>
 
               <div className="mt-4 space-y-2.5">
@@ -377,33 +383,35 @@ export default async function SareePage({ params }: ProductPageProps) {
                 collapsible
                 className="mt-3 border-t border-[#E7DDD4]"
               >
-                <AccordionItem value="story" className="border-[#E7DDD4]">
-                  <AccordionTrigger className="text-sm text-[#141D46]">
-                    Story and provenance
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm leading-6 text-[#141D46]/65">
-                    <p>
-                      {product.storyNarrative ||
-                        "This saree has been reviewed, restored, and prepared for its next chapter."}
-                    </p>
-                    {product.storyProvenance ? (
+                {!isBlouse ? (
+                  <AccordionItem value="story" className="border-[#E7DDD4]">
+                    <AccordionTrigger className="text-sm text-[#141D46]">
+                      Story and provenance
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-3 text-sm leading-6 text-[#141D46]/65">
                       <p>
-                        <span className="font-semibold text-[#141D46]">
-                          Provenance:
-                        </span>{" "}
-                        {product.storyProvenance}
+                        {product.storyNarrative ||
+                          "This saree has been reviewed, restored, and prepared for its next chapter."}
                       </p>
-                    ) : null}
-                  </AccordionContent>
-                </AccordionItem>
+                      {product.storyProvenance ? (
+                        <p>
+                          <span className="font-semibold text-[#141D46]">
+                            Provenance:
+                          </span>{" "}
+                          {product.storyProvenance}
+                        </p>
+                      ) : null}
+                    </AccordionContent>
+                  </AccordionItem>
+                ) : null}
                 <AccordionItem value="care" className="border-[#E7DDD4]">
                   <AccordionTrigger className="text-sm text-[#141D46]">
                     Care and ownership
                   </AccordionTrigger>
                   <AccordionContent className="text-sm leading-6 text-[#141D46]/65">
-                    Dry clean only. Store folded in muslin, away from direct
-                    sunlight and humidity. Shipping and taxes are calculated at
-                    checkout.
+                    {isBlouse
+                      ? "Gentle hand wash or dry clean as per the care label. Store the blouse folded and flat, away from direct sunlight and humidity. Shipping and taxes are calculated at checkout."
+                      : "Dry clean only. Store folded in muslin, away from direct sunlight and humidity. Shipping and taxes are calculated at checkout."}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="measurements" className="border-[#E7DDD4]">
@@ -411,9 +419,15 @@ export default async function SareePage({ params }: ProductPageProps) {
                     Measurements
                   </AccordionTrigger>
                   <AccordionContent className="text-sm leading-6 text-[#141D46]/65">
-                    Length: {displayDetails.length}. Width:{" "}
-                    {displayDetails.width}. Condition:{" "}
-                    {displayDetails.condition}.
+                    {isBlouse ? (
+                      "Model is wearing a Size S."
+                    ) : (
+                      <>
+                        Length: {displayDetails.length}. Width:{" "}
+                        {displayDetails.width}. Condition:{" "}
+                        {displayDetails.condition}.
+                      </>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>

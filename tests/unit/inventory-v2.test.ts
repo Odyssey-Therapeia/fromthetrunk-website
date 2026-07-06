@@ -413,9 +413,11 @@ describe("AUTHORITATIVE OVERSELL GUARD — stock_status='available' predicate in
     // Removing .returning() would break the rowcount check that drives the 409.
     expect(source).toMatch(/\.returning\s*\(\s*\{/);
 
-    // The rowcount check must compare against productIds.length
-    // (if removed, all items appear claimed even when none are).
-    expect(source).toMatch(/reservedRows\.length\s*!==\s*productIds\.length/);
+    // The rowcount check must compare against the reservable (one-of-one) ids
+    // (if removed, all items appear claimed even when none are). Blouses are
+    // made-to-order and excluded from the claim, so the guard compares against
+    // reservableProductIds.length.
+    expect(source).toMatch(/reservedRows\.length\s*!==\s*reservableProductIds\.length/);
   });
 });
 

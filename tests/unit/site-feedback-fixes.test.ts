@@ -76,8 +76,8 @@ describe("Light mode only", () => {
 describe("Brand content — Our Story page", () => {
   const ourStory = readSource("app/(site)/our-story/page.tsx");
 
-  it("uses the current second-story hero title", () => {
-    expect(ourStory).toContain("Every saree deserves a second story.");
+  it("uses the current elegance hero title", () => {
+    expect(ourStory).toContain("Elegance, given a second life.");
   });
 
   it("contains the current trunk journey narrative", () => {

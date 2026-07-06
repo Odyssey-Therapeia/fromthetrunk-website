@@ -1388,7 +1388,10 @@ function HeroStat({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
         {label}
       </p>
-      <p className="mt-2 font-serif text-4xl text-[var(--ftt-ivory)]">
+      <p
+        className="mt-2 text-4xl text-[var(--ftt-ivory)]"
+        style={{ fontFamily: '"Times New Roman", Times, serif' }}
+      >
         {value}
       </p>
     </div>

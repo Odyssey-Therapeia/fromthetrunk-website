@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import { addOrderEvent, getOrder } from "@/db/queries/orders";
 import { incrementDiscountUsage } from "@/db/queries/discounts";
+import { getBlouseProductIdSet } from "@/db/queries/products";
 import { releaseReservationsByOrder } from "@/db/queries/reservations";
 import { orders, products } from "@/db/schema";
 import { getOrderNotificationRecipients } from "@/lib/email/recipients";
@@ -138,7 +139,13 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
     .map((item) => item.productId)
     .filter((id): id is string => Boolean(id));
 
-  if (productIds.length > 0) {
+  // Blouses are made-to-order and were never reserved, so they never transition
+  // to sold. Only one-of-one products are claimed here — excluding blouses keeps
+  // the sold-count assertion correct when an order mixes blouses and sarees.
+  const blouseProductIds = await getBlouseProductIdSet(productIds);
+  const reservableProductIds = productIds.filter((id) => !blouseProductIds.has(id));
+
+  if (reservableProductIds.length > 0) {
     const soldRows = await db
       .update(products)
       .set({
@@ -149,13 +156,13 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
         quantityAvailable: 0,
         updatedAt: new Date(),
       })
-      .where(and(inArray(products.id, productIds), eq(products.stockStatus, "reserved")))
+      .where(and(inArray(products.id, reservableProductIds), eq(products.stockStatus, "reserved")))
       .returning({ slug: products.slug });
     const soldProducts = soldRows ?? [];
-    if (soldProducts.length !== productIds.length) {
+    if (soldProducts.length !== reservableProductIds.length) {
       await addOrderEvent(input.orderId, "Payment completion inventory conflict", existing.status ?? "pending", {
         code: "PRODUCT_SOLD",
-        requestedProductIds: productIds,
+        requestedProductIds: reservableProductIds,
         soldCount: soldProducts.length,
       });
       throw new Error("PRODUCT_SOLD");
