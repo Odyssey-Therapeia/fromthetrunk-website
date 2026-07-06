@@ -40,7 +40,7 @@ const expectSafeSocialMetadata = (metadata: {
   const twitterImage = firstTwitterImage(metadata);
 
   expect(metadata.openGraph).toMatchObject({
-    siteName: "From the Trunk",
+    siteName: "From The Trunk",
     locale: "en_IN",
     type: "website",
   });
@@ -170,7 +170,7 @@ describe("OG and social preview metadata", () => {
 
     expect(metadata.robots).toEqual({ index: true, follow: true });
     expect(metadata.openGraph?.title).toBe(
-      "Tangerine Noir Floral Border Weave | Preloved Chiffon Saree",
+      "Tangerine Noir Floral Border Weave | Pre-Loved Chiffon Saree",
     );
     expect(ogImage).toMatchObject({
       url: "https://www.fromthetrunk.shop/media/tangerine-noir.jpg",
@@ -248,8 +248,8 @@ describe("OG and social preview metadata", () => {
     const serialized = metadataJson(metadata);
 
     expect(metadata.robots).toEqual({ index: false, follow: true });
-    expect(metadata.title).toBe("From the Trunk Product");
-    expect(metadata.openGraph?.title).toBe("From the Trunk Product");
+    expect(metadata.title).toBe("From The Trunk Product");
+    expect(metadata.openGraph?.title).toBe("From The Trunk Product");
     expect(firstOgImage(metadata).url).toBe(
       "https://www.fromthetrunk.shop/banner/collection_banner.png",
     );

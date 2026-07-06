@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "From the Trunk: Pre-Loved Luxury Sarees";
+export const alt = "From The Trunk: Pre-Loved Luxury Sarees";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -36,7 +36,7 @@ export default function OGImage() {
             color: "rgba(245, 240, 232, 0.6)",
           }}
         >
-          From the Trunk
+          From The Trunk
         </div>
         <div
           style={{

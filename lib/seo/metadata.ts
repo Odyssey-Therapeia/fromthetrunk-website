@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { absoluteUrl } from "@/lib/seo/site-url";
 import { toSeoImageUrl } from "@/lib/seo/image-urls";
 
-export const SITE_NAME = "From the Trunk";
+export const SITE_NAME = "From The Trunk";
 export const OG_LOCALE = "en_IN";
 export const DEFAULT_TWITTER_CARD = "summary_large_image";
 
@@ -11,7 +11,7 @@ export const DEFAULT_SOCIAL_IMAGE = {
   url: "/banner/collection_banner.png",
   width: 1920,
   height: 1080,
-  alt: "From the Trunk curated pre-loved luxury saree collection",
+  alt: "From The Trunk curated pre-loved luxury saree collection",
 } as const;
 
 export type SeoImageInput = {
@@ -65,9 +65,12 @@ export function publicPageMetadata({
 }: PublicPageMetadataInput): Metadata {
   const canonical = absoluteUrl(path);
   const socialImage = seoImageMetadata(image);
+  const metadataTitle = title.includes(SITE_NAME)
+    ? { absolute: title }
+    : title;
 
   return {
-    title,
+    title: metadataTitle,
     description,
     alternates: {
       canonical,

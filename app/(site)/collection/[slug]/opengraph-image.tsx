@@ -23,7 +23,7 @@ import { getSiteOrigin } from "@/lib/config/site";
 import type { Product } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
-export const alt = "From the Trunk product";
+export const alt = "From The Trunk product";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -62,7 +62,7 @@ export default async function OGImage({ params }: Props) {
             textAlign: "center",
           }}
         >
-          From the Trunk
+          From The Trunk
         </div>
         <div
           style={{
@@ -146,7 +146,7 @@ export default async function OGImage({ params }: Props) {
             color: "rgba(245, 240, 232, 0.55)",
           }}
         >
-          From the Trunk
+          From The Trunk
         </div>
 
         <div

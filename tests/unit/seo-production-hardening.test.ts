@@ -109,6 +109,7 @@ describe("SEO production hardening", () => {
     const urls = entries.map((entry) => entry.url);
 
     expect(urls).toContain("https://www.fromthetrunk.shop/collection");
+    expect(urls).toContain("https://www.fromthetrunk.shop/contact");
     expect(urls).toContain(
       "https://www.fromthetrunk.shop/collection/fabric/silk",
     );
@@ -134,6 +135,7 @@ describe("SEO production hardening", () => {
     expect(urls.some((url) => url.includes("?collection="))).toBe(false);
     expect(urls.some((url) => url.includes("localhost"))).toBe(false);
     expect(urls.some((url) => url.includes("vercel.app"))).toBe(false);
+    expect(new Set(urls).size).toBe(urls.length);
 
     const availableEntry = entries.find((entry) =>
       entry.url.endsWith("/collection/available-saree"),
@@ -329,6 +331,7 @@ describe("SEO production hardening", () => {
 
     expect(jsonLd.productID).toBe("p1");
     expect(jsonLd.sku).toBe("gold-tissue-saree");
+    expect(jsonLd.itemCondition).toBe("https://schema.org/UsedCondition");
     expect(jsonLd.image).toEqual([
       "https://cdn.example.com/one.jpg",
       "https://www.fromthetrunk.shop/media/two.jpg",

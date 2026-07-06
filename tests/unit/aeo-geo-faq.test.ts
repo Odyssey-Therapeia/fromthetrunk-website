@@ -92,25 +92,29 @@ describe("AEO/GEO FAQ expansion", () => {
     const serialized = JSON.stringify(faqMetadata);
 
     expect(faqMetadata.title).toEqual({
-      absolute: "FAQs — Pre-Loved Sarees, Care & Selling | From the Trunk",
+      absolute: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
     });
     expect(faqMetadata.description).toBe(
-      "Answers to common questions about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one checkout at From the Trunk.",
+      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
     );
-    expect(faqMetadata.openGraph?.title).toBe("FAQs — From the Trunk");
+    expect(faqMetadata.openGraph?.title).toBe(
+      "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+    );
     expect(faqMetadata.openGraph?.description).toBe(
-      "Explore answers about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one pieces.",
+      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
     );
-    expect(faqMetadata.twitter?.title).toBe("FAQs — From the Trunk");
+    expect(faqMetadata.twitter?.title).toBe(
+      "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+    );
     expect(faqMetadata.twitter?.description).toBe(
-      "Explore answers about authenticated pre-loved sarees, saree care, selling your saree, shipping, returns, and one-of-one pieces.",
+      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
     );
     expect(faqMetadata.twitter?.card).toBe("summary_large_image");
     expect(ogImage?.url).toBe(
       "https://www.fromthetrunk.shop/banner/collection_banner.png",
     );
     expect(ogImage?.alt).toBe(
-      "From the Trunk FAQ guide for authenticated pre-loved sarees",
+      "From The Trunk FAQ guide for authenticated pre-loved sarees",
     );
     expect(twitterImage?.url).toBe(ogImage?.url);
     expect(twitterImage?.alt).toBe(ogImage?.alt);

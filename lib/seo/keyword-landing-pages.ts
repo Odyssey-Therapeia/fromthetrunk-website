@@ -533,7 +533,7 @@ export function keywordGuideJsonLd(config: KeywordLandingConfig) {
     url: absoluteUrl(config.canonicalPath),
     publisher: {
       "@type": "Organization",
-      name: "From the Trunk",
+      name: "From The Trunk",
       logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     },
   };

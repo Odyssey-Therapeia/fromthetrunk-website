@@ -459,9 +459,9 @@ describe("P5-06: AEO schema completeness audit", () => {
       const parsed = JSON.parse(safeJsonLd(org)) as Record<string, unknown>;
 
       expect(parsed["@context"]).toBe("https://schema.org");
-      expect(parsed["@type"]).toBe("Organization");
-      expect(typeof parsed.name).toBe("string");
-      expect(typeof parsed.url).toBe("string");
+      expect(parsed["@type"]).toBe("OnlineStore");
+      expect(parsed.name).toBe("From The Trunk");
+      expect(parsed.url).toBe("https://www.fromthetrunk.shop/");
       expect(typeof parsed.description).toBe("string");
     });
 

@@ -4,9 +4,9 @@ import { FoundersPageClient } from "@/components/sections/founders-page-client";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Our Team",
+  title: "Our Team | From The Trunk",
   description:
-    "Meet the founders and contributors behind From the Trunk, the circular saree house giving every saree a second story.",
+    "Meet the team behind From The Trunk, a circular saree house for authenticated pre-loved sarees and restored Indian textiles.",
   path: "/our-team",
 });
 
