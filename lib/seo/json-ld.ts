@@ -2,7 +2,7 @@ import type { Product } from "@/types/domain";
 import { isGstInclusive } from "@/lib/config/flags";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { productSeoImageUrls } from "@/lib/seo/image-urls";
-import { absoluteUrl, getCanonicalOrigin } from "@/lib/seo/site-url";
+import { absoluteUrl } from "@/lib/seo/site-url";
 
 /**
  * Generate JSON-LD structured data for a product page.
@@ -47,7 +47,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     ...(images.length > 0 ? { image: images } : {}),
     brand: {
       "@type": "Brand",
-      name: "From the Trunk",
+      name: "From The Trunk",
     },
     category,
     ...(additionalProperty.length > 0 ? { additionalProperty } : {}),
@@ -67,12 +67,10 @@ export function productJsonLd(product: Product): Record<string, unknown> {
       url: absoluteUrl(`/collection/${product.slug}`),
       seller: {
         "@type": "Organization",
-        name: "From the Trunk",
+        name: "From The Trunk",
       },
     },
-    ...(product.detailsCondition
-      ? { itemCondition: "https://schema.org/UsedCondition" }
-      : {}),
+    itemCondition: "https://schema.org/UsedCondition",
     material: displayDetails.fabric,
   };
 }
@@ -83,10 +81,11 @@ export function productJsonLd(product: Product): Record<string, unknown> {
 export function organizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "From the Trunk",
-    url: getCanonicalOrigin(),
+    "@type": "OnlineStore",
+    name: "From The Trunk",
+    url: absoluteUrl("/"),
     logo: absoluteUrl("/Ftt_logo_navbar.avif"),
+    email: "hello@fromthetrunk.shop",
     sameAs: ["https://www.instagram.com/from.thetrunk/"],
     description:
       "Curated collection of authenticated, pre-loved luxury sarees with provenance.",
@@ -104,12 +103,46 @@ export function websiteJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "From the Trunk",
-    url: getCanonicalOrigin(),
+    name: "From The Trunk",
+    alternateName: [
+      "FTT",
+      "FromTheTrunk",
+      "From the Trunk",
+      "fromthetrunk.shop",
+    ],
+    url: absoluteUrl("/"),
     publisher: {
       "@type": "Organization",
-      name: "From the Trunk",
+      name: "From The Trunk",
       logo: absoluteUrl("/Ftt_logo_navbar.avif"),
+    },
+  };
+}
+
+export function contactPageJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: "Contact From The Trunk",
+    url: absoluteUrl("/contact"),
+    about: {
+      "@type": "OnlineStore",
+      name: "From The Trunk",
+      url: absoluteUrl("/"),
+    },
+    mainEntity: {
+      "@type": "OnlineStore",
+      name: "From The Trunk",
+      url: absoluteUrl("/"),
+      email: "hello@fromthetrunk.shop",
+      sameAs: ["https://www.instagram.com/from.thetrunk/"],
+      contactPoint: {
+        "@type": "ContactPoint",
+        email: "hello@fromthetrunk.shop",
+        contactType: "customer service",
+        areaServed: "IN",
+        availableLanguage: ["en"],
+      },
     },
   };
 }

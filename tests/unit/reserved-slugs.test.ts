@@ -42,6 +42,10 @@ describe("isReservedSlug — reserved segments", () => {
     expect(isReservedSlug("cart")).toBe(true);
   });
 
+  it("rejects 'contact' (site route)", () => {
+    expect(isReservedSlug("contact")).toBe(true);
+  });
+
   it("rejects 'order' (deny-list entry)", () => {
     expect(isReservedSlug("order")).toBe(true);
   });
@@ -98,9 +102,6 @@ describe("isReservedSlug — normal slugs", () => {
     expect(isReservedSlug("summer-sale-2025")).toBe(false);
   });
 
-  it("accepts 'contact'", () => {
-    expect(isReservedSlug("contact")).toBe(false);
-  });
 });
 
 // ── L5: adversarial ─────────────────────────────────────────────────────────

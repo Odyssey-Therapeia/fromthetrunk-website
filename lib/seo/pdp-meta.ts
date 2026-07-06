@@ -6,12 +6,12 @@
 /**
  * Build the <title> for a product detail page.
  *
- * Format: `{name} | Preloved {fabric} Saree`
+ * Format: `{name} | Pre-Loved {fabric} Saree`
  *
  * Redundancy guard: when the product name already ends with "{fabric} saree"
  * (case-insensitive) the suffix is omitted to avoid repetition.
  *
- * The brand segment (" | From the Trunk") is appended by the layout template
+ * The brand segment (" | From The Trunk") is appended by the layout template
  * and must NOT be added here.
  */
 export function buildPdpTitle(name: string, fabric: string): string {
@@ -27,7 +27,7 @@ export function buildPdpTitle(name: string, fabric: string): string {
     return name;
   }
 
-  return `${name} | Preloved ${suffix}`;
+  return `${name} | Pre-Loved ${suffix}`;
 }
 
 /**

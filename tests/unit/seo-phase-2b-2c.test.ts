@@ -38,6 +38,7 @@ describe("SEO Phase 2B internal linking", () => {
         "/why",
         "/how-it-works",
         "/faqs",
+        "/contact",
         "/sell-your-saree",
         "/packing",
         "/our-team",

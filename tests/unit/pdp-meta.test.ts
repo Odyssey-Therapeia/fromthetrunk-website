@@ -12,7 +12,7 @@ import {
 describe("buildPdpTitle", () => {
   it("appends the suffix when the name does NOT already end in '{fabric} saree'", () => {
     const title = buildPdpTitle("Temple Border Archive", "Kanjeevaram silk");
-    expect(title).toBe("Temple Border Archive | Preloved Kanjeevaram silk Saree");
+    expect(title).toBe("Temple Border Archive | Pre-Loved Kanjeevaram silk Saree");
   });
 
   it("skips the suffix when the name ends in '{fabric} Saree' (case-insensitive match)", () => {
@@ -32,19 +32,19 @@ describe("buildPdpTitle", () => {
 
   it("does not add the brand segment (layout handles that)", () => {
     const title = buildPdpTitle("Heritage Linen Drape", "Linen");
-    expect(title).not.toContain("From the Trunk");
+    expect(title).not.toContain("From The Trunk");
   });
 
   it("strips trailing 'saree' from fabric value to avoid double-saree output", () => {
-    // fabric = "Heirloom saree" should produce "| Preloved Heirloom Saree", not
-    // "| Preloved Heirloom saree Saree".
+    // fabric = "Heirloom saree" should produce "| Pre-Loved Heirloom Saree", not
+    // "| Pre-Loved Heirloom saree Saree".
     const title = buildPdpTitle("Heirloom Beauty", "Heirloom saree");
-    expect(title).toBe("Heirloom Beauty | Preloved Heirloom Saree");
+    expect(title).toBe("Heirloom Beauty | Pre-Loved Heirloom Saree");
   });
 
   it("strips trailing 'SAREE' (case-insensitive) from fabric value", () => {
     const title = buildPdpTitle("Vintage Drape", "Cotton SAREE");
-    expect(title).toBe("Vintage Drape | Preloved Cotton Saree");
+    expect(title).toBe("Vintage Drape | Pre-Loved Cotton Saree");
   });
 });
 

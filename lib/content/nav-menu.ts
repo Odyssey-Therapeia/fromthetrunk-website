@@ -52,6 +52,7 @@ export const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
       { href: "/packing", label: "Packing" },
       { href: "/policies/return-refund-policy", label: "Returns & Refunds" },
       { href: "/how-it-works", label: "Authentication" },
+      { href: "/contact", label: "Contact Support" },
     ],
   },
   {

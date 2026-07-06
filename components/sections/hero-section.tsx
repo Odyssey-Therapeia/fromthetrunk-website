@@ -260,72 +260,40 @@ function renderMobileHeadline(slide: Slide) {
   );
 }
 
-function HeroCopy({
-  mode,
-  slide,
-}: {
-  mode: "mobile" | "desktop";
-  slide: Slide;
-}) {
-  const isMobile = mode === "mobile";
-
+function HeroCopy({ slide }: { slide: Slide }) {
   return (
-    <div
-      className={
-        isMobile
-          ? "w-full max-w-[min(88vw,28rem)] drop-shadow-[0_5px_22px_rgba(0,0,0,0.48)]"
-          : "drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none md:-translate-y-4 lg:w-[clamp(24rem,40vw,44rem)] lg:-translate-y-8"
-      }
-    >
+    <div className="w-full max-w-[min(88vw,28rem)] drop-shadow-[0_5px_22px_rgba(0,0,0,0.48)] transition-transform duration-500 md:w-[clamp(20rem,38vw,32rem)] md:max-w-none md:-translate-y-4 md:drop-shadow-[0_5px_24px_rgba(0,0,0,0.5)] lg:w-[clamp(24rem,40vw,44rem)] lg:-translate-y-8">
       <p
-        className={
-          isMobile
-            ? "font-sans text-[clamp(0.72rem,2.8vw,0.9rem)] font-semibold uppercase tracking-[0.32em] text-white/82"
-            : "font-serif text-[clamp(0.68rem,0.75vw,0.95rem)] font-semibold uppercase tracking-[0.44em] text-white/88 lg:tracking-[0.5em]"
-        }
+        className="font-sans text-[clamp(0.72rem,2.8vw,0.9rem)] font-semibold uppercase tracking-[0.32em] text-white/82 md:font-serif md:text-[clamp(0.68rem,0.75vw,0.95rem)] md:tracking-[0.44em] md:text-white/88 lg:tracking-[0.5em]"
       >
         {slide.eyebrow}
       </p>
       <span
-        className={
-          isMobile
-            ? "mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
-            : "mb-6 mt-4 block h-px w-32 bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent"
-        }
+        className="mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent md:mb-6 md:mt-4 md:w-32"
         aria-hidden="true"
       />
       <h1
-        className={[
-          isMobile
-            ? "max-w-full font-serif text-[clamp(3.15rem,13vw,5rem)] font-medium leading-[0.9] text-white"
-            : "max-w-none font-serif text-[clamp(2.8rem,6vw,4.8rem)] font-semibold leading-[0.96] text-white lg:text-[clamp(4rem,6vw,7.6rem)]",
-          isMobile
-            ? (slide.mobileHeadlineClassName ?? "")
-            : (slide.headlineClassName ?? ""),
-        ].join(" ")}
+        className="max-w-full font-serif text-[clamp(3.15rem,13vw,5rem)] font-medium leading-[0.9] text-white md:max-w-none md:text-[clamp(2.8rem,6vw,4.8rem)] md:font-semibold md:leading-[0.96] lg:text-[clamp(4rem,6vw,7.6rem)]"
       >
-        {isMobile
-          ? renderMobileHeadline(slide)
-          : renderHeadline(slide.headline)}
+        <span className={["md:hidden", slide.mobileHeadlineClassName ?? ""].join(" ")}>
+          {renderMobileHeadline(slide)}
+        </span>
+        <span className={["hidden md:inline", slide.headlineClassName ?? ""].join(" ")}>
+          {renderHeadline(slide.headline)}
+        </span>
       </h1>
-      {!(isMobile && slide.hideMobileDescription) ? (
+      {slide.hideMobileDescription ? (
+        <p className="mt-6 hidden w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 md:block lg:max-w-[clamp(24rem,38vw,40rem)]">
+          {slide.description}
+        </p>
+      ) : (
         <p
-          className={
-            isMobile
-              ? "mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88"
-              : "mt-6 w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
-          }
+          className="mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88 md:mt-6 md:w-auto md:max-w-[clamp(18rem,34vw,32rem)] md:text-[clamp(1.15rem,1.35vw,1.6rem)] md:leading-[1.6] md:text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
         >
           {slide.description}
         </p>
-      ) : null}
-      <div
-        className={
-          isMobile
-            ? "mt-6 flex flex-wrap items-center gap-3"
-            : "mt-8 flex flex-wrap items-center gap-4"
-        }
-      >
+      )}
+      <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-8 md:gap-4">
         <Link
           href="/collection"
           className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-linear-to-r from-[#601D1C] to-[#141D46] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#FDF7F1] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:brightness-110"
@@ -354,6 +322,7 @@ export function HeroSection(props: HeroSectionProps) {
   const { nudge } = useUiHaptics();
   const isIntroReady = useHomeIntroReady();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const activeSlide = slides[activeImageIndex] ?? slides[0]!;
 
   const changeSlide = useCallback(
     (nextIndex: number) => {
@@ -490,44 +459,22 @@ export function HeroSection(props: HeroSectionProps) {
       </button>
 
       <div className="relative z-20 h-full w-full">
-        {slides.map((slide, index) => (
-          <div
-            key={`${slide.image}-content`}
-            aria-hidden={activeImageIndex !== index}
-            inert={activeImageIndex !== index || undefined}
-            className={[
-              "absolute inset-0 transition-opacity ease-in-out",
-              activeImageIndex === index
-                ? "opacity-100"
-                : "pointer-events-none opacity-0",
-            ].join(" ")}
-            style={{
-              transitionDuration: prefersReducedMotion
-                ? "0ms"
-                : `${SLIDE_TRANSITION_MS}ms`,
-            }}
-          >
-            <div
-              className={[
-                "flex h-full flex-col px-[clamp(2rem,7.5vw,3.25rem)] md:hidden",
-                slide.mobileCopyClassName ?? "justify-start pt-32",
-              ].join(" ")}
-              aria-live="polite"
-            >
-              <HeroCopy mode="mobile" slide={slide} />
-            </div>
-
-            <div
-              className={[
-                "hidden h-full md:flex md:flex-row md:items-center md:px-0 md:py-0 md:pl-[clamp(2rem,6vw,5rem)] md:pr-[clamp(1.5rem,4vw,3rem)] lg:pl-[clamp(5rem,8vw,13rem)] lg:pr-[clamp(3rem,5vw,6rem)]",
-                slide.mobileCopyClassName ?? "md:justify-start",
-              ].join(" ")}
-              aria-live="polite"
-            >
-              <HeroCopy mode="desktop" slide={slide} />
-            </div>
-          </div>
-        ))}
+        <div
+          key={`${activeSlide.image}-content`}
+          className={[
+            "flex h-full flex-col px-[clamp(2rem,7.5vw,3.25rem)] transition-opacity ease-in-out md:flex-row md:items-center md:px-0 md:py-0 md:pl-[clamp(2rem,6vw,5rem)] md:pr-[clamp(1.5rem,4vw,3rem)] lg:pl-[clamp(5rem,8vw,13rem)] lg:pr-[clamp(3rem,5vw,6rem)]",
+            activeSlide.mobileCopyClassName ??
+              "justify-start pt-32 md:justify-start md:pt-0",
+          ].join(" ")}
+          style={{
+            transitionDuration: prefersReducedMotion
+              ? "0ms"
+              : `${SLIDE_TRANSITION_MS}ms`,
+          }}
+          aria-live="polite"
+        >
+          <HeroCopy slide={activeSlide} />
+        </div>
       </div>
 
       <div className="absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 gap-3 md:bottom-10">

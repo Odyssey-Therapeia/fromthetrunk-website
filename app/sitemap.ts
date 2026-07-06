@@ -54,6 +54,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
+      url: absoluteUrl("/contact"),
+      lastModified: STATIC_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
       url: absoluteUrl("/how-it-works"),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
@@ -108,7 +114,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const keywordPages = await getKeywordSitemapPages();
 
-  return [...staticPages, ...policyPages, ...keywordPages, ...productPages];
+  return dedupeSitemapEntries([
+    ...staticPages,
+    ...policyPages,
+    ...keywordPages,
+    ...productPages,
+  ]);
+}
+
+function dedupeSitemapEntries(
+  entries: MetadataRoute.Sitemap,
+): MetadataRoute.Sitemap {
+  return Array.from(new Map(entries.map((entry) => [entry.url, entry])).values());
 }
 
 async function getKeywordSitemapPages(): Promise<MetadataRoute.Sitemap> {

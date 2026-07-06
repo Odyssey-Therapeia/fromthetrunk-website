@@ -180,3 +180,34 @@ describe("proxy.ts — MONEY PATH: /checkout and /cart never redirected", () => 
     expect(response.status).toBe(200);
   });
 });
+
+describe("proxy.ts — SEO host noindex", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    productSlugExistsMock.mockResolvedValue(true);
+    dbSelectPageBySlugMock.mockResolvedValue({
+      status: "published",
+      publishedVersionId: "version-1",
+    });
+    resolveRedirectMock.mockResolvedValue(null);
+    getTokenMock.mockResolvedValue(null);
+  });
+
+  it("adds X-Robots-Tag noindex,nofollow on Vercel preview hosts", async () => {
+    const response = await proxy(
+      new NextRequest("https://fromthetrunk-website.vercel.app/our-story"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+
+  it("does not add preview noindex on canonical public hosts", async () => {
+    const response = await proxy(
+      new NextRequest("https://www.fromthetrunk.shop/our-story"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Robots-Tag")).toBeNull();
+  });
+});
