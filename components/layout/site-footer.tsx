@@ -132,28 +132,6 @@ function CompactArchLineArt() {
   );
 }
 
-function MiniKeyhole() {
-  return (
-    <svg
-      viewBox="0 0 40 30"
-      className="h-6 w-8 text-[#B39152]"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20 2c-8 4-12 10-12 18v5h24v-5C32 12 28 6 20 2Z"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
-      <path
-        d="M20 12a4 4 0 0 0-2 7.4V25h4v-5.6A4 4 0 0 0 20 12Z"
-        fill="currentColor"
-        opacity=".82"
-      />
-    </svg>
-  );
-}
-
 function FooterGoldRail() {
   return (
     <div
@@ -208,10 +186,6 @@ function FooterGoldRail() {
           fill="url(#ftt-compact-footer-motif)"
         />
       </svg>
-
-      <div className="absolute left-1/2 top-[-18px] grid h-10 w-14 -translate-x-1/2 place-items-center rounded-t-full border border-[#B39152]/65 bg-[#601D1C] shadow-[0_0_24px_rgba(179,145,82,0.16)] sm:top-[-21px] sm:h-12 sm:w-16">
-        <MiniKeyhole />
-      </div>
     </div>
   );
 }

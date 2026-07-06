@@ -45,6 +45,12 @@ vi.mock("@/db/queries/orders", () => ({
   getOrder: getOrderMock,
 }));
 
+// Blouses are excluded from the paid→sold claim. Default: no blouses, so every
+// product is reservable (one-of-one) — preserves the pre-blouse behaviour.
+vi.mock("@/db/queries/products", () => ({
+  getBlouseProductIdSet: vi.fn().mockResolvedValue(new Set()),
+}));
+
 vi.mock("@/lib/email/send", () => ({
   sendEmail: sendEmailMock,
 }));

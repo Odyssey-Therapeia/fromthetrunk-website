@@ -6,6 +6,7 @@ import { cartReservationSchema } from "@/api/hono/schemas/cart";
 import { errorSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
+import { getBlouseProductIdSet } from "@/db/queries/products";
 import { products } from "@/db/schema";
 import { getCartReservationExpiresAt } from "@/lib/cart/reservation-policy";
 import {
@@ -55,6 +56,23 @@ export const registerCartRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (rateLimited) return rateLimited;
 
       const { productId } = c.req.valid("json");
+
+      // Blouses are made-to-order (not one-of-one), so they are never held.
+      // Report success without a reservation token so the item still enters the
+      // cart and stays visible/available to every other shopper.
+      const blouseIds = await getBlouseProductIdSet([productId]);
+      if (blouseIds.has(productId)) {
+        return c.json(
+          {
+            productId,
+            reserved: false,
+            reservationToken: null,
+            reservedUntil: null,
+          },
+          200
+        );
+      }
+
       const now = new Date();
       const reservedUntil = getCartReservationExpiresAt(now);
       let signedReservationToken: string;

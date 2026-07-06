@@ -30,6 +30,7 @@ import {
   DEFAULT_PRODUCT_SORT,
   type ProductSortOption,
 } from "@/lib/products/sort";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { timeAsync, type TimingSink } from "@/lib/perf/server-timing";
 import { slugify } from "@/lib/utils";
@@ -39,6 +40,29 @@ type MediaRecord = InferSelectModel<typeof mediaAssets>;
 type ProductRecord = InferSelectModel<typeof products>;
 type ProductTypeRecord = InferSelectModel<typeof productTypes>;
 type TagRecord = InferSelectModel<typeof tags>;
+
+/**
+ * Resolve which of the given products are blouses (made-to-order, not one-of-one).
+ *
+ * Blouses are never reserved or marked sold, so inventory-claim callers use this
+ * to exclude them from holds and paid→sold transitions. A product is a blouse when
+ * its product_types.slug is "blouse"; a missing type resolves to a reservable saree.
+ */
+export async function getBlouseProductIdSet(
+  productIds: string[],
+): Promise<Set<string>> {
+  if (productIds.length === 0) return new Set();
+  const rows = await db
+    .select({ id: products.id, typeSlug: productTypes.slug })
+    .from(products)
+    .leftJoin(productTypes, eq(products.typeId, productTypes.id))
+    .where(inArray(products.id, productIds));
+  return new Set(
+    rows
+      .filter((row) => isBlouseProduct({ typeSlug: row.typeSlug }))
+      .map((row) => row.id),
+  );
+}
 
 export type ProductWithRelations = ProductRecord & {
   collection: CollectionRecord | null;

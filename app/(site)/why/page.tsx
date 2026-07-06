@@ -15,7 +15,7 @@ const WHY_IMAGES = [
     alt: "A pre-loved heritage saree from From the Trunk",
   },
   {
-    src: "/our-story/chap_2.avif",
+    src: "/category/georgette.jpg",
     alt: "A restored silk saree styled for a modern wardrobe",
   },
   {
@@ -28,7 +28,7 @@ const WHY_IMAGES = [
   },
   {
     src: "/our-story/chap_5.avif",
-    alt: "A re-storied saree from the From the Trunk collection",
+    alt: "A restored saree from the From the Trunk collection",
   },
 ];
 
