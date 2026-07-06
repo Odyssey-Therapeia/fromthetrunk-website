@@ -4,7 +4,10 @@ import { Cormorant_Garamond, Jost } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { shouldRenderGtm, buildGtmSrc } from "@/lib/analytics/gtm";
+import {
+  shouldRenderGtm,
+  buildGtmDataLayerScript,
+} from "@/lib/analytics/gtm";
 
 import "../globals.css";
 import { SiteFooterServer } from "@/components/layout/site-footer-server";
@@ -92,6 +95,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {/* P3-07: Inject active theme tokens as :root CSS custom-property overrides.
             When no theme is saved, ThemeStyler returns null and globals.css defaults apply. */}
         <ThemeStyler />
+        {/* GTM: dataLayer init + container load MUST be in <head> so Google Tag
+            Assistant detects a correctly installed container. */}
+        {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (
+          <Script
+            id="gtm-dataLayer"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{
+              __html: buildGtmDataLayerScript(process.env.NEXT_PUBLIC_GTM_ID!),
+            }}
+          />
+        )}
       </head>
       <body
         className="bg-background font-sans text-foreground"
@@ -126,12 +140,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <SiteWidgets />
         <Analytics />
         <SpeedInsights />
-        {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (
-          <Script
-            strategy="afterInteractive"
-            src={buildGtmSrc(process.env.NEXT_PUBLIC_GTM_ID!)}
-          />
-        )}
       </body>
     </html>
   );

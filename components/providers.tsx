@@ -6,6 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 
+import { FttPostHogProvider } from "@/components/analytics/posthog-provider";
+import { AnalyticsLoginListener } from "@/components/analytics/analytics-login-listener";
+import { CookieConsentBanner } from "@/components/consent/cookie-consent-banner";
+
 const WishlistMergeOnLogin = dynamic(
   () =>
     import("@/components/wishlist/wishlist-merge-on-login").then(
@@ -25,21 +29,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <QueryClientProvider client={queryClient}>
-        {/* Session-scoped guest wishlist merge — runs on every page after login,
-            not only on pages that happen to mount a WishlistButton. */}
-        {deferredEffectsReady ? <WishlistMergeOnLogin /> : null}
-        {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              fontFamily: "var(--font-sans)",
-              borderRadius: "0.75rem",
-            },
-          }}
-        />
-      </QueryClientProvider>
+      <FttPostHogProvider>
+        <QueryClientProvider client={queryClient}>
+          {/* Session-scoped guest wishlist merge — runs on every page after login,
+              not only on pages that happen to mount a WishlistButton. */}
+          {deferredEffectsReady ? <WishlistMergeOnLogin /> : null}
+          {/* Identifies known users to PostHog immediately after sign-in,
+              stitching the anonymous journey to the user id. */}
+          <AnalyticsLoginListener />
+          {children}
+          <CookieConsentBanner />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                fontFamily: "var(--font-sans)",
+                borderRadius: "0.75rem",
+              },
+            }}
+          />
+        </QueryClientProvider>
+      </FttPostHogProvider>
     </SessionProvider>
   );
 }

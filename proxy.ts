@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt";
 
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
+import { SESSION_COOKIE, VISITOR_COOKIE } from "@/lib/analytics/identity";
 
 /**
  * Proxy handles:
@@ -143,6 +144,53 @@ const publishedCmsPageExists = async (slug: string): Promise<boolean> => {
   );
 };
 
+/**
+ * Analytics identity cookies (ftt_sid / ftt_uid).
+ *
+ * First-party, pseudonymous, always essential — consent is not required
+ * because these carry no cross-site data; consent only gates whether we EMIT
+ * events (PostHog/GA4), not whether we hold the cookie.
+ *
+ * Only set on real top-level browser document navigations
+ * (`sec-fetch-mode: navigate`). RSC/data subrequests and the synthetic
+ * requests Next issues during static prerendering never send this header, so
+ * this write never forces a prerendered page dynamic (which would surface
+ * latent useSearchParams-without-Suspense errors).
+ */
+const SESSION_MAX_AGE = 60 * 30; // 30 min rolling
+const VISITOR_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+const isProd = process.env.NODE_ENV === "production";
+
+function ensureIdentityCookies(
+  request: NextRequest,
+  response: NextResponse,
+): void {
+  if (request.method !== "GET") return;
+  if (request.headers.get("sec-fetch-mode") !== "navigate") return;
+
+  const cookieOpts = {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax" as const,
+    path: "/",
+  };
+
+  let visitorId = request.cookies.get(VISITOR_COOKIE)?.value;
+  if (!visitorId) visitorId = crypto.randomUUID();
+
+  let sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionId) sessionId = crypto.randomUUID();
+
+  response.cookies.set(VISITOR_COOKIE, visitorId, {
+    ...cookieOpts,
+    maxAge: VISITOR_MAX_AGE,
+  });
+  response.cookies.set(SESSION_COOKIE, sessionId, {
+    ...cookieOpts,
+    maxAge: SESSION_MAX_AGE,
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const startedAt = performance.now();
   const { pathname } = request.nextUrl;
@@ -152,6 +200,12 @@ export async function proxy(request: NextRequest) {
   if (isPublicAssetPath(pathname)) {
     return withProxyTiming(response, startedAt);
   }
+
+  // ─── Analytics identity cookies (ftt_sid / ftt_uid) ─────────────
+  // Set on real browser navigations so the session rolls (30 min) and the
+  // visitor id persists (1 yr). Self-gates on sec-fetch-mode=navigate so it
+  // never forces prerendered pages dynamic. See ensureIdentityCookies above.
+  ensureIdentityCookies(request, response);
 
   // ─── Route Protection ───────────────────────────────────────────
   if (isProtected(pathname)) {

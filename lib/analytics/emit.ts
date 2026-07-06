@@ -9,12 +9,14 @@
  *
  * Adapter selection:
  *   - internal-events: ALWAYS ON (default, no env gate)
- *   - ga4: env-gated (GA4_MEASUREMENT_ID + GA4_API_SECRET)
+ *   - posthog-node: env-gated (POSTHOG_KEY) — primary product analytics
+ *   - ga4: env-gated (GA4_MEASUREMENT_ID + GA4_API_SECRET) — secondary
  *   - meta-capi: env-gated (META_CAPI_PIXEL_ID + META_CAPI_ACCESS_TOKEN)
  */
 import { buildGa4Sink } from "@/lib/adapters/ga4-sink";
 import { internalEventsSink } from "@/lib/adapters/internal-events-sink";
 import { buildMetaCapiSink } from "@/lib/adapters/meta-capi-sink";
+import { buildPosthogNodeSink } from "@/lib/adapters/posthog-node-sink";
 import type { AnalyticsEvent, AnalyticsSink } from "@/lib/ports/analytics-sink";
 import { createLogger } from "@/lib/log";
 
@@ -23,6 +25,9 @@ const log = createLogger("analytics:emit");
 /** Build the list of active sinks once per process (env vars do not change at runtime). */
 function buildActiveSinks(): AnalyticsSink[] {
   const sinks: AnalyticsSink[] = [internalEventsSink];
+
+  const posthog = buildPosthogNodeSink();
+  if (posthog) sinks.push(posthog);
 
   const ga4 = buildGa4Sink();
   if (ga4) sinks.push(ga4);
