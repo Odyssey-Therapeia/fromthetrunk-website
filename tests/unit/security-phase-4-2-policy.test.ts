@@ -78,6 +78,47 @@ describe("Security Phase 4.2 policy helpers", () => {
     expect(csp).toContain("report-uri /api/v2/security/csp-report");
   });
 
+  it("allowlists consent-gated GTM + GA4 domains in the CSP", async () => {
+    const headers = await nextConfig.headers?.();
+    const globalHeaders =
+      headers?.find((entry) => entry.source === "/(.*)")?.headers ?? [];
+    const csp =
+      globalHeaders.find(
+        (header) => header.key === "Content-Security-Policy-Report-Only",
+      )?.value ?? "";
+
+    const directive = (name: string): string =>
+      csp
+        .split(";")
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name} `)) ?? "";
+
+    // GTM script + Preview (tagmanager.google.com) in script-src (+ elem).
+    for (const name of ["script-src", "script-src-elem"]) {
+      expect(directive(name)).toContain("https://www.googletagmanager.com");
+      expect(directive(name)).toContain("https://tagmanager.google.com");
+    }
+    // GA4 collect + GTM Preview channel in connect-src.
+    expect(directive("connect-src")).toContain("https://*.google-analytics.com");
+    expect(directive("connect-src")).toContain("https://www.googletagmanager.com");
+    // GA4 pixel + gstatic in img-src.
+    expect(directive("img-src")).toContain("https://www.googletagmanager.com");
+    expect(directive("img-src")).toContain("https://www.gstatic.com");
+    // GTM Preview iframe in frame-src.
+    expect(directive("frame-src")).toContain("https://www.googletagmanager.com");
+    expect(directive("frame-src")).toContain("https://tagmanager.google.com");
+
+    // Guardrails: no broad wildcard, no ads/remarketing, no unsafe-eval.
+    expect(csp).not.toContain("script-src *");
+    expect(csp).not.toContain("'unsafe-eval'");
+    expect(csp).not.toContain("doubleclick");
+    expect(csp).not.toContain("pagead");
+
+    // Razorpay + report endpoint preserved.
+    expect(directive("frame-src")).toContain("https://checkout.razorpay.com");
+    expect(csp).toContain("report-uri /api/v2/security/csp-report");
+  });
+
   it("accepts CSP reports without logging or persisting request bodies", async () => {
     const harness = createRouteHarness({
       register: registerSecurityRoutes,

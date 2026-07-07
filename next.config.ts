@@ -2,18 +2,33 @@ import type { NextConfig } from "next";
 
 const isStandaloneBuild = process.env.BUILD_STANDALONE === "true";
 
+// Google Tag Manager + GA4 domains (consent-gated GTM loader; GA4 configured
+// inside GTM). Merged into the directives below. GTM Preview / Tag Assistant
+// need tagmanager.google.com + googletagmanager.com in script/frame/connect,
+// and gstatic in img. No Google Ads / DoubleClick / pagead domains (no ads /
+// remarketing), no wildcard `*`, no 'unsafe-eval'.
+const GTM_SCRIPT_SRC =
+  "https://www.googletagmanager.com https://*.googletagmanager.com https://tagmanager.google.com";
+const GA_CONNECT_SRC =
+  "https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com https://*.googletagmanager.com";
+const GA_IMG_SRC =
+  "https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.googletagmanager.com https://ssl.gstatic.com https://www.gstatic.com";
+const GTM_FRAME_SRC =
+  "https://www.googletagmanager.com https://tagmanager.google.com";
+
 const cspReportOnly = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com https://www.google-analytics.com",
-  "font-src 'self' data:",
-  "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com",
-  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+  `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
+  `script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
+  "style-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://tagmanager.google.com https://fonts.googleapis.com",
+  `img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC}`,
+  "font-src 'self' data: https://fonts.gstatic.com",
+  `connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://region1.google-analytics.com ${GA_CONNECT_SRC} https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com`,
+  `frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com ${GTM_FRAME_SRC}`,
   "worker-src 'self' blob:",
   "report-uri /api/v2/security/csp-report",
 ].join("; ");
