@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Cormorant_Garamond, Jost } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { shouldRenderGtm, buildGtmSrc } from "@/lib/analytics/gtm";
+import { AnalyticsGate } from "@/components/analytics/analytics-gate";
 
 import "../globals.css";
 import { SiteFooterServer } from "@/components/layout/site-footer-server";
@@ -126,12 +125,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <SiteWidgets />
         <Analytics />
         <SpeedInsights />
-        {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (
-          <Script
-            strategy="afterInteractive"
-            src={buildGtmSrc(process.env.NEXT_PUBLIC_GTM_ID!)}
-          />
-        )}
+        {/* Consent-gated Google Tag Manager + GA4 (GA4 is configured inside the
+            GTM container). Loads nothing unless NEXT_PUBLIC_GTM_ID is set AND
+            the visitor accepts analytics consent. */}
+        <AnalyticsGate />
       </body>
     </html>
   );

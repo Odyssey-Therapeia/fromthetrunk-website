@@ -2,6 +2,7 @@
 
 import { Instagram, Mail, MessageCircle } from "lucide-react";
 
+import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
 import { ContactWizard } from "@/components/contact/contact-wizard";
 import {
   Dialog,
@@ -69,21 +70,48 @@ export function ConnectDialog({
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {CONTACT_LINKS.map(({ label, href, Icon }) => (
-            <a
-              key={label}
-              href={href}
-              target={href.startsWith("http") ? "_blank" : undefined}
-              rel={href.startsWith("http") ? "noreferrer noopener" : undefined}
-              aria-label={label}
-              className="group flex items-center justify-center gap-2 rounded-2xl border border-[#601D1C]/10 bg-[#141D46] px-3 py-3.5 text-[#FDF7F1] transition hover:bg-[#601D1C]"
-            >
-              <Icon className="h-4 w-4 text-[#B39152] transition group-hover:text-[#E5C983]" />
-              <span className="text-xs font-semibold uppercase tracking-[0.16em]">
-                {label}
-              </span>
-            </a>
-          ))}
+          {CONTACT_LINKS.map(({ label, href, Icon }) => {
+            const isWhatsApp = /wa\.me/.test(href);
+            const target = href.startsWith("http") ? "_blank" : undefined;
+            const rel = href.startsWith("http")
+              ? "noreferrer noopener"
+              : undefined;
+            const anchorClassName =
+              "group flex items-center justify-center gap-2 rounded-2xl border border-[#601D1C]/10 bg-[#141D46] px-3 py-3.5 text-[#FDF7F1] transition hover:bg-[#601D1C]";
+            const inner = (
+              <>
+                <Icon className="h-4 w-4 text-[#B39152] transition group-hover:text-[#E5C983]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.16em]">
+                  {label}
+                </span>
+              </>
+            );
+
+            return isWhatsApp ? (
+              <WhatsAppLink
+                key={label}
+                location="connect_dialog"
+                href={href}
+                target={target}
+                rel={rel}
+                aria-label={label}
+                className={anchorClassName}
+              >
+                {inner}
+              </WhatsAppLink>
+            ) : (
+              <a
+                key={label}
+                href={href}
+                target={target}
+                rel={rel}
+                aria-label={label}
+                className={anchorClassName}
+              >
+                {inner}
+              </a>
+            );
+          })}
         </div>
       </DialogContent>
     </Dialog>

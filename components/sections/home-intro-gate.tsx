@@ -144,7 +144,7 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
             type="button"
             onClick={reveal}
             aria-label="Skip intro video"
-            className="fixed bottom-6 right-6 z-10 inline-flex items-center gap-2 rounded-full border border-[#B39152]/50 bg-[#601D1C]/70 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#FDF7F1] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/90 hover:text-[#B39152] sm:bottom-8 sm:right-8"
+            className="fixed bottom-6 right-6 z-[60] inline-flex items-center gap-2 rounded-full border border-[#B39152]/50 bg-[#601D1C]/70 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#FDF7F1] backdrop-blur-md transition duration-300 hover:border-[#B39152] hover:bg-[#601D1C]/90 hover:text-[#B39152] sm:bottom-8 sm:right-8"
           >
             Skip Intro
             <svg

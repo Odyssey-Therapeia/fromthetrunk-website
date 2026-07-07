@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/analytics/cookie-settings-button";
+import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
 import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
 import type { FooterSection } from "@/components/layout/nav-data";
 
@@ -371,7 +373,8 @@ export function SiteFooter({
                     <InstagramIcon className="h-4 w-4" />
                   </a>
 
-                  <a
+                  <WhatsAppLink
+                    location="footer"
                     href="https://wa.me/919731910202"
                     target="_blank"
                     rel="noreferrer noopener"
@@ -379,7 +382,7 @@ export function SiteFooter({
                     aria-label="Chat with From the Trunk on WhatsApp"
                   >
                     <WhatsAppIcon className="h-4 w-4" />
-                  </a>
+                  </WhatsAppLink>
 
                   <a
                     href="mailto:hello@fromthetrunk.shop"
@@ -403,7 +406,10 @@ export function SiteFooter({
         */}
 
         <div className="mt-7 grid grid-cols-1 items-center gap-3 border-t border-[#B39152]/35 py-4 text-center text-[12px] text-[#FDF7F1]/58 md:grid-cols-[1fr_auto_1fr] md:text-left">
-          <p>© {year} From The Trunk. All rights reserved.</p>
+          <p className="flex flex-col items-center gap-1 md:flex-row md:gap-3">
+            <span>© {year} From The Trunk. All rights reserved.</span>
+            <CookieSettingsButton className="text-[#FDF7F1]/58 underline-offset-2 transition hover:text-[#FDF7F1] hover:underline" />
+          </p>
 
           <p className="text-center uppercase leading-5 tracking-[0.18em] text-[#B39152] sm:tracking-[0.24em]">
             Some treasures aren&apos;t made.
