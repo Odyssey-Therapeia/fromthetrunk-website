@@ -21,6 +21,7 @@ import {
   sanitizePhone,
   type ContactWizardState,
 } from "@/lib/contact/contact-form";
+import { trackLead } from "@/lib/analytics/track";
 import { cn } from "@/lib/utils";
 
 export type ContactWizardProps = {
@@ -127,6 +128,11 @@ export function ContactWizard({
       });
       if (!response.ok) throw new Error("Contact submission failed.");
       setStatus("success");
+      // Analytics: a successful contact submission is exactly ONE lead. We fire
+      // ftt_generate_lead only (→ GA4 generate_lead). We deliberately do NOT
+      // also fire ftt_contact_submit here: both previously mapped to GA4
+      // generate_lead and double-counted the conversion.
+      trackLead(`contact_wizard_${surface}`, state.topic || "general");
       if (onSuccess) {
         successTimerRef.current = window.setTimeout(() => onSuccess(), 1600);
       }

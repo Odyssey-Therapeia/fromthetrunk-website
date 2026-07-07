@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Instagram, Mail, MessageCircle } from "lucide-react";
 
+import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
 import { ContactWizard } from "@/components/contact/contact-wizard";
 import { CONTACT_TOPIC_OPTIONS } from "@/lib/contact/contact-form";
 import { whatsappLink } from "@/lib/config/site";
@@ -63,29 +64,53 @@ export default function ContactPage() {
           </p>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            {contactLinks.map(({ href, label, value, Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target={href.startsWith("http") ? "_blank" : undefined}
-                rel={
-                  href.startsWith("http") ? "noreferrer noopener" : undefined
-                }
-                className="group flex min-h-20 items-center gap-4 rounded-2xl border border-[#601D1C]/10 bg-[#FFFCF8] p-4 shadow-[0_14px_36px_rgba(20,29,70,0.08)] transition hover:border-[#B39152]/70 hover:shadow-[0_18px_42px_rgba(20,29,70,0.12)]"
-              >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#141D46] text-[#B39152] transition group-hover:bg-[#601D1C]">
-                  <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#74531B]">
-                    {label}
+            {contactLinks.map(({ href, label, value, Icon }) => {
+              const isWhatsApp = /wa\.me/.test(href);
+              const anchorClassName =
+                "group flex min-h-20 items-center gap-4 rounded-2xl border border-[#601D1C]/10 bg-[#FFFCF8] p-4 shadow-[0_14px_36px_rgba(20,29,70,0.08)] transition hover:border-[#B39152]/70 hover:shadow-[0_18px_42px_rgba(20,29,70,0.12)]";
+              const inner = (
+                <>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#141D46] text-[#B39152] transition group-hover:bg-[#601D1C]">
+                    <Icon className="size-5" aria-hidden="true" />
                   </span>
-                  <span className="mt-1 block break-words text-sm font-medium text-[#141D46]">
-                    {value}
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#74531B]">
+                      {label}
+                    </span>
+                    <span className="mt-1 block break-words text-sm font-medium text-[#141D46]">
+                      {value}
+                    </span>
                   </span>
-                </span>
-              </a>
-            ))}
+                </>
+              );
+              const target = href.startsWith("http") ? "_blank" : undefined;
+              const rel = href.startsWith("http")
+                ? "noreferrer noopener"
+                : undefined;
+
+              return isWhatsApp ? (
+                <WhatsAppLink
+                  key={label}
+                  location="contact_page"
+                  href={href}
+                  target={target}
+                  rel={rel}
+                  className={anchorClassName}
+                >
+                  {inner}
+                </WhatsAppLink>
+              ) : (
+                <a
+                  key={label}
+                  href={href}
+                  target={target}
+                  rel={rel}
+                  className={anchorClassName}
+                >
+                  {inner}
+                </a>
+              );
+            })}
           </div>
 
           <section className="mt-10" aria-labelledby="contact-support-topics">

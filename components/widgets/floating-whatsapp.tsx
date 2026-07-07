@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
+import { trackWhatsappClick } from "@/lib/analytics/track";
 import { DEFAULT_WHATSAPP_MESSAGE, whatsappLink } from "@/lib/config/site";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +127,7 @@ export function FloatingWhatsApp() {
               event.preventDefault();
               return;
             }
+            trackWhatsappClick("floating_widget");
             dismissBubble();
           }}
           animate={reduceMotion ? undefined : { rotate: [0, -12, 12, -8, 8, 0] }}

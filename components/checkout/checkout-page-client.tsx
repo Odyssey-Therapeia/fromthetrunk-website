@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { trackOncePerSession } from "@/lib/analytics/client";
+import { trackStartFlow } from "@/lib/analytics/track";
 import {
   GST_RATE,
   type ShippingMethod,
@@ -109,6 +110,8 @@ export function CheckoutPageClient({
   const payment = useCheckoutPayment();
   const { isSubmitting, error } = payment;
 
+  const startFlowFiredRef = useRef(false);
+
   useEffect(() => {
     if (!hasItems) return;
 
@@ -125,6 +128,18 @@ export function CheckoutPageClient({
         subtotalPaise: Math.round(subtotal * 100),
       },
     );
+
+    // Browser-owned GTM funnel event (begin checkout), fired once per mount.
+    // Server MP still owns the authoritative purchase conversion, so no
+    // duplication here.
+    if (!startFlowFiredRef.current) {
+      startFlowFiredRef.current = true;
+      trackStartFlow("checkout", {
+        item_count: itemCount,
+        value: Math.round(subtotal * 100) / 100,
+        currency: "INR",
+      });
+    }
   }, [hasItems, items, subtotal]);
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("shipping");
