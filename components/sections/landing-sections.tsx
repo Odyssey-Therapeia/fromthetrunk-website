@@ -11,6 +11,8 @@ import { Instagram, Mail, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { trackWhatsappClick } from "@/lib/analytics/track";
+
 import { ContactWizard } from "@/components/contact/contact-wizard";
 
 export type LandingImage = {
@@ -760,17 +762,25 @@ export function ConnectWithUsSection() {
                 href: "mailto:hello@fromthetrunk.shop",
                 icon: <Mail className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />,
               },
-            ].map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                aria-label={item.label}
-                title={item.label}
-                className="group grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#FDF7F1]/12 bg-[linear-gradient(135deg,#141D46_0%,#11183C_100%)] text-[#B39152] shadow-[inset_0_0_0_1px_rgba(253,247,241,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/80 hover:bg-[linear-gradient(135deg,#601D1C_0%,#141D46_62%,#0E0D0E_100%)] hover:text-[#E5C983] hover:shadow-[0_18px_36px_rgba(20,29,70,0.22),inset_0_0_0_1px_rgba(179,145,82,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] sm:h-14 sm:w-14"
-              >
-                {item.icon}
-              </a>
-            ))}
+            ].map((item) => {
+              const isWhatsApp = /wa\.me/.test(item.href);
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  aria-label={item.label}
+                  title={item.label}
+                  onClick={
+                    isWhatsApp
+                      ? () => trackWhatsappClick("landing_connect")
+                      : undefined
+                  }
+                  className="group grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#FDF7F1]/12 bg-[linear-gradient(135deg,#141D46_0%,#11183C_100%)] text-[#B39152] shadow-[inset_0_0_0_1px_rgba(253,247,241,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/80 hover:bg-[linear-gradient(135deg,#601D1C_0%,#141D46_62%,#0E0D0E_100%)] hover:text-[#E5C983] hover:shadow-[0_18px_36px_rgba(20,29,70,0.22),inset_0_0_0_1px_rgba(179,145,82,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] sm:h-14 sm:w-14"
+                >
+                  {item.icon}
+                </a>
+              );
+            })}
           </div>
         </div>
 

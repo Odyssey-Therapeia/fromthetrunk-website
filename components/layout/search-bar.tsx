@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trackSearch } from "@/lib/analytics/track";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import type { Product } from "@/types/domain";
@@ -195,7 +196,10 @@ export function SearchBar() {
               })}
               <Link
                 href={`/search?q=${encodeURIComponent(query)}`}
-                onClick={handleSelect}
+                onClick={() => {
+                  trackSearch(query);
+                  handleSelect();
+                }}
                 className="block rounded-xl p-2 text-center text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
               >
                 View all results →
