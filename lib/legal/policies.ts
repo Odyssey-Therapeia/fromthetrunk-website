@@ -80,8 +80,11 @@ export const policies: LegalPolicy[] = [
         id: "cookies",
         title: "Cookies and similar technologies",
         body: [
-          "We may use cookies and similar technologies to keep you signed in, remember cart/wishlist activity, improve performance, measure traffic, secure the website, and understand how customers use the site.",
-          "You can control cookies through your browser settings, but some features may not work properly if cookies are disabled.",
+          "What cookies are: cookies are small text files that a website stores in your web browser. They let the site remember simple things between page visits. They are not programs, they cannot run on your device, and they cannot read files on your device.",
+          "Essential cookies: some cookies are necessary for the website to work — for example, to keep you signed in, remember your cart and wishlist, secure the website, and remember your cookie choice. These are always used because the site cannot function properly without them.",
+          "Optional analytics cookies: with your consent, we use analytics cookies (including Google Analytics, loaded through Google Tag Manager) to measure website traffic and understand how the site is browsed — for example, how many people visit, which pages are viewed, and which links or buttons are used. This is aggregate usage information used only to see how much traffic the website receives and to improve it. Nothing else.",
+          "What we do NOT do: we do not use analytics to steal, sell, or trade your personal data. Analytics runs only inside your web browser and only reads or writes the small cookies for this website. It does not access your phone's or device's memory, files, photos, contacts, messages, or other apps, and it does not track your activity on other websites.",
+          "Your choice: when you first visit, a banner lets you “Allow cookies” or “Continue without cookies.” If you continue without cookies, no analytics cookies are set and no analytics data is collected. You can change your choice at any time using “Cookie settings” in the website footer, or through your browser settings. Some features may not work properly if essential cookies are disabled in your browser.",
         ],
       },
       {
