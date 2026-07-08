@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
  * Minimal, NON-MODAL analytics consent banner.
  *
  * Shown only when no decision has been stored yet. GTM/GA4 does not load until
- * "Allow analytics" is chosen (strict load-after-consent). "Continue without
- * analytics" persists the refusal so the banner does not reappear.
+ * "Allow cookies" is chosen (strict load-after-consent). "Continue without
+ * cookies" persists the refusal so the banner does not reappear.
  *
  * Section-aware theming ONLY (no behavior change): `variant="hero"` renders the
  * light/ivory style so it reads well over the hero; `variant="default"` renders
@@ -71,8 +71,9 @@ export function ConsentBanner({
         )}
       >
         <p className={cn("text-sm leading-6 transition-colors duration-300", styles.text)}>
-          We use optional analytics cookies to understand how the trunk is
-          browsed and improve your experience. Nothing loads until you choose.{" "}
+          We use optional analytics cookies — small files stored only in your
+          browser — to measure website traffic and understand how the trunk is
+          browsed. Nothing loads until you choose. See how in our{" "}
           <Link
             href="/privacy-policy"
             className={cn(
@@ -95,7 +96,7 @@ export function ConsentBanner({
               styles.secondary,
             )}
           >
-            Continue without analytics
+            Continue without cookies
           </Button>
           <Button
             type="button"
@@ -106,7 +107,7 @@ export function ConsentBanner({
               styles.primary,
             )}
           >
-            Allow analytics
+            Allow cookies
           </Button>
         </div>
       </section>
