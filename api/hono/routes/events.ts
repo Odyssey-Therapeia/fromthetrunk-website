@@ -35,12 +35,26 @@ const blockedPayloadKeys = new Set([
   "postalcode",
 ]);
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function cleanPayload(payload: Record<string, unknown>) {
-  return Object.fromEntries(
+  const cleaned = Object.fromEntries(
     Object.entries(payload).filter(
       ([key]) => !blockedPayloadKeys.has(key.toLowerCase()),
     ),
   );
+  // Drop a malformed productId (this endpoint is public and unauthenticated, so
+  // bots/scanners can post arbitrary values). A stored non-UUID productId would
+  // otherwise poison uuid-based analytics queries such as the top-viewed
+  // ranking join. Only canonical UUIDs are kept.
+  if (
+    typeof cleaned.productId === "string" &&
+    !UUID_RE.test(cleaned.productId)
+  ) {
+    delete cleaned.productId;
+  }
+  return cleaned;
 }
 
 export const registerEventsRoutes = (app: OpenAPIHono<HonoBindings>) => {

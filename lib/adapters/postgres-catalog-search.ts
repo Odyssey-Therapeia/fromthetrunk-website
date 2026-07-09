@@ -666,9 +666,15 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
             db
               .select({ productId: products.id, viewCount })
               .from(products)
+              // Compare as TEXT — never cast the (untrusted) event payload value
+              // to uuid. products.id is always a valid uuid, so casting IT to
+              // text is safe; a malformed events.payload->>'productId' (e.g. a
+              // bot-posted "abc") then simply fails to match instead of throwing
+              // 22P02 "invalid input syntax for type uuid" and crashing the whole
+              // top-viewed page.
               .innerJoin(
                 events,
-                sql`${products.id} = (${events.payload}->>'productId')::uuid`,
+                sql`${products.id}::text = ${events.payload}->>'productId'`,
               )
               .where(
                 and(
