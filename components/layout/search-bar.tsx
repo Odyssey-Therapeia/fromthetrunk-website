@@ -97,117 +97,121 @@ export function SearchBar() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => handleChange(e.target.value)}
-            placeholder="Search sarees..."
-            className="w-56 pl-9 pr-8 md:w-72"
-            aria-label="Search products"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setResults([]);
-                inputRef.current?.focus();
-              }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-          onClick={() => {
-            setOpen(false);
-            setQuery("");
-            setResults([]);
-          }}
-          aria-label="Close search"
-        >
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Dropdown results */}
-      {query.length >= 2 && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-2xl border border-border/60 bg-background p-2 shadow-lg md:w-96">
-          {isLoading ? (
-            <p className="p-4 text-center text-sm text-muted-foreground">
-              Searching...
-            </p>
-          ) : results.length === 0 ? (
-            <div className="space-y-2 p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                No results for &ldquo;{query}&rdquo;
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Try Banarasi, Kanjeevaram, Silk, or Heirloom.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {results.map((product) => {
-                const image = resolveMediaURL(product.images?.[0]);
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/collection/${product.slug}`}
-                    prefetch={false}
-                    onClick={handleSelect}
-                    className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-muted/50"
-                  >
-                    <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      {image ? (
-                        <Image
-                          src={image}
-                          alt={product.name}
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">
-                          -
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {product.detailsFabric ?? "Heirloom"},{" "}
-                        {formatCurrency(product.pricePaise / 100)}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-              <Link
-                href={`/search?q=${encodeURIComponent(query)}`}
+    <div ref={containerRef} className="md:relative">
+      {/* On mobile the expanded search drops into a full-width bar below the
+          navbar so it never overlaps the logo. On md+ it stays inline. */}
+      <div className="absolute inset-x-0 top-full z-40 border-b border-[#601D1C]/10 bg-[#FDF7F1] px-3 py-3 shadow-[0_10px_20px_-8px_rgba(96,29,28,0.25)] md:static md:inset-x-auto md:top-auto md:z-auto md:border-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 md:flex-none">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="Search sarees..."
+              className="w-full pl-9 pr-8 md:w-72"
+              aria-label="Search products"
+            />
+            {query && (
+              <button
+                type="button"
                 onClick={() => {
-                  trackSearch(query);
-                  handleSelect();
+                  setQuery("");
+                  setResults([]);
+                  inputRef.current?.focus();
                 }}
-                className="block rounded-xl p-2 text-center text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
               >
-                View all results →
-              </Link>
-            </div>
-          )}
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full"
+            onClick={() => {
+              setOpen(false);
+              setQuery("");
+              setResults([]);
+            }}
+            aria-label="Close search"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
-      )}
+
+        {/* Dropdown results */}
+        {query.length >= 2 && (
+          <div className="mt-2 w-full rounded-2xl border border-border/60 bg-background p-2 shadow-lg md:absolute md:right-0 md:top-full md:z-50 md:w-96">
+            {isLoading ? (
+              <p className="p-4 text-center text-sm text-muted-foreground">
+                Searching...
+              </p>
+            ) : results.length === 0 ? (
+              <div className="space-y-2 p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No results for &ldquo;{query}&rdquo;
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Try Banarasi, Kanjeevaram, Silk, or Heirloom.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {results.map((product) => {
+                  const image = resolveMediaURL(product.images?.[0]);
+                  return (
+                    <Link
+                      key={product.id}
+                      href={`/collection/${product.slug}`}
+                      prefetch={false}
+                      onClick={handleSelect}
+                      className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-muted/50"
+                    >
+                      <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {image ? (
+                          <Image
+                            src={image}
+                            alt={product.name}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">
+                            -
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.detailsFabric ?? "Heirloom"},{" "}
+                          {formatCurrency(product.pricePaise / 100)}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+                <Link
+                  href={`/search?q=${encodeURIComponent(query)}`}
+                  onClick={() => {
+                    trackSearch(query);
+                    handleSelect();
+                  }}
+                  className="block rounded-xl p-2 text-center text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+                >
+                  View all results →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
