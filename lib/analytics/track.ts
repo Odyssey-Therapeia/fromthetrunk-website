@@ -4,9 +4,11 @@
  * These push `ftt_*` (and `page_view`) events onto `window.dataLayer`; GA4 Event
  * tags configured INSIDE the GTM container map them to GA4 events. Every push is
  * SSR-safe (guards on `window`) and never throws — analytics must never break
- * browsing or checkout. Consent gating is enforced upstream: these run only
- * inside components mounted after consent (see `AnalyticsGate`); GTM itself is
- * not loaded until consent, so pushes before that simply queue in the array.
+ * browsing or checkout.
+ *
+ * Consent gating is enforced inside `trackEvent()`, so no dataLayer event is
+ * queued unless the visitor has explicitly granted analytics consent. GTM itself
+ * is also not loaded until consent is granted (see `AnalyticsGate`).
  *
  * OWNERSHIP (no double-counting with the server-side GA4 Measurement Protocol
  * sink in `lib/adapters/ga4-sink.ts`):
@@ -19,6 +21,8 @@
  *    backend payment_completed → GA4 `purchase` with transaction_id/value/
  *    currency/items, then mark `purchase` a GA4 key event.)
  */
+
+import { readClientConsent } from "@/lib/analytics/consent";
 
 type EventParams = Record<string, unknown>;
 
@@ -38,7 +42,13 @@ function pushToDataLayer(payload: Record<string, unknown>): void {
 
 /** Push a named event with arbitrary params onto the dataLayer. */
 export function trackEvent(event: string, params: EventParams = {}): void {
-  pushToDataLayer({ event, event_source: EVENT_SOURCE, ...params });
+  if (readClientConsent() !== "granted") return;
+
+  pushToDataLayer({
+    event,
+    event_source: EVENT_SOURCE,
+    ...params,
+  });
 }
 
 /**

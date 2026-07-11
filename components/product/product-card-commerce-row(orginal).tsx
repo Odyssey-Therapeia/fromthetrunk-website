@@ -73,28 +73,28 @@ export function ProductCardCommerceRow({
   return (
     <div
       className={cn(
-        "mt-3 flex items-center justify-between gap-2 border-t border-[var(--ftt-border)]/80 pt-3",
+        "mt-3 flex items-center justify-between gap-2 border-t border-(--ftt-border)/80 pt-3",
         className,
       )}
     >
-      <div className="min-w-0 text-xs font-medium text-[var(--ftt-muted)]">
+      <div className="min-w-0 text-xs font-medium text-ftt-muted">
         <div className="flex items-center gap-1.5">
-          <span className="text-[var(--ftt-gold)]" aria-hidden="true">
+          <span className="text-ftt-gold" aria-hidden="true">
             ★
           </span>
           {rating !== null ? (
             <>
-              <span className="text-[var(--ftt-royal-navy)]">
+              <span className="text-ftt-navy">
                 {rating.toFixed(1)}
               </span>
               {typeof reviewCount === "number" && reviewCount > 0 ? (
-                <span className="truncate text-[var(--ftt-muted)]">
+                <span className="truncate text-ftt-muted">
                   · {reviewCount.toLocaleString("en-IN")}
                 </span>
               ) : null}
             </>
           ) : (
-            <span className="truncate text-[var(--ftt-royal-navy)]">
+            <span className="truncate text-ftt-navy">
               Verified
             </span>
           )}
@@ -118,12 +118,12 @@ export function ProductCardCommerceRow({
           toast.success(`${product.name} added to your bag`);
         }}
         className={cn(
-          "inline-flex h-9 min-w-20 items-center justify-center rounded-full px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ftt-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ftt-ivory)] @sm:min-w-22 @sm:px-4 @sm:text-sm",
+          "inline-flex h-9 min-w-20 items-center justify-center rounded-full px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold focus-visible:ring-offset-2 focus-visible:ring-offset-ftt-ivory @sm:min-w-22 @sm:px-4 @sm:text-sm",
           isUnavailable
-            ? "cursor-not-allowed bg-[var(--ftt-burgundy)] text-[var(--ftt-ivory)] opacity-90"
+            ? "cursor-not-allowed bg-ftt-burgundy text-ftt-ivory opacity-90"
             : inCart || state === "added"
-              ? "border border-[var(--ftt-royal-navy)] bg-transparent text-[var(--ftt-royal-navy)]"
-              : "bg-[var(--ftt-royal-navy)] text-[var(--ftt-ivory)] shadow-[0_8px_20px_rgba(20,29,70,0.16)] hover:bg-[var(--ftt-midnight)]",
+              ? "border border-ftt-navy bg-transparent text-ftt-navy"
+              : "bg-ftt-navy text-ftt-ivory shadow-[0_8px_20px_rgba(20,29,70,0.16)] hover:bg-ftt-midnight",
         )}
       >
         {buttonLabel}
