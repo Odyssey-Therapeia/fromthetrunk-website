@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackLogin, trackSignup } from "@/lib/analytics/track";
 import { buildClientCallbackUrl } from "@/lib/auth/client-callback-url";
 import {
   composeAddressLine2,
@@ -232,6 +233,8 @@ function SignInOtpPanel({
 
     await update();
     router.refresh();
+    // Analytics: returning user signed in successfully.
+    trackLogin("email-otp");
     await onSuccess?.();
 
     if (isAccountContext) {
@@ -700,6 +703,8 @@ function SignUpOtpPanel({
 
       await update();
       router.refresh();
+      // Analytics: new account created (registration completed).
+      trackSignup("email-otp");
       await onSuccess?.();
 
       if (isAccountContext) {

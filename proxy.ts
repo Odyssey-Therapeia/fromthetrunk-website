@@ -59,6 +59,10 @@ const publicAssetPaths = new Set([
 ]);
 
 const DRAFT_MODE_COOKIE = "__prerender_bypass";
+const CANONICAL_PUBLIC_HOSTS = new Set([
+  "www.fromthetrunk.shop",
+  "fromthetrunk.shop",
+]);
 
 const isProtected = (pathname: string) =>
   protectedPaths.some((prefix) => pathname.startsWith(prefix));
@@ -91,10 +95,33 @@ const isExcludedFromRedirectCheck = (pathname: string): boolean =>
 
 const roundDuration = (durationMs: number) => Math.round(durationMs * 10) / 10;
 
+const getRequestHost = (request: NextRequest): string =>
+  (request.headers.get("host") ?? request.nextUrl.host)
+    .split(":", 1)[0]
+    .toLowerCase();
+
+const shouldNoindexHost = (request: NextRequest): boolean => {
+  const host = getRequestHost(request);
+  return host.endsWith(".vercel.app") && !CANONICAL_PUBLIC_HOSTS.has(host);
+};
+
+const withHostRobots = <T extends NextResponse>(
+  response: T,
+  request: NextRequest,
+) => {
+  if (shouldNoindexHost(request)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  return response;
+};
+
 const withProxyTiming = <T extends NextResponse>(
   response: T,
+  request: NextRequest,
   startedAt: number,
 ) => {
+  withHostRobots(response, request);
   response.headers.append(
     "Server-Timing",
     `proxy;dur=${roundDuration(performance.now() - startedAt)}`,
@@ -105,6 +132,7 @@ const withProxyTiming = <T extends NextResponse>(
 const rewriteNotFound = (request: NextRequest, startedAt: number) =>
   withProxyTiming(
     NextResponse.rewrite(new URL("/404", request.url), { status: 404 }),
+    request,
     startedAt,
   );
 
@@ -150,7 +178,7 @@ export async function proxy(request: NextRequest) {
   const isDraftModeRequest = request.cookies.has(DRAFT_MODE_COOKIE);
 
   if (isPublicAssetPath(pathname)) {
-    return withProxyTiming(response, startedAt);
+    return withProxyTiming(response, request, startedAt);
   }
 
   // ─── Route Protection ───────────────────────────────────────────
@@ -163,7 +191,7 @@ export async function proxy(request: NextRequest) {
     if (!token) {
       const signInUrl = new URL("/account/sign-in", request.url);
       signInUrl.searchParams.set("callbackUrl", request.url);
-      return withProxyTiming(NextResponse.redirect(signInUrl), startedAt);
+      return withProxyTiming(NextResponse.redirect(signInUrl), request, startedAt);
     }
   }
 
@@ -187,6 +215,7 @@ export async function proxy(request: NextRequest) {
       const destination = new URL(redirect.toPath, request.url);
       return withProxyTiming(
         NextResponse.redirect(destination, { status: redirect.status }),
+        request,
         startedAt,
       );
     }
@@ -203,7 +232,7 @@ export async function proxy(request: NextRequest) {
   // Razorpay webhooks need to bypass auth but the signature is
   // verified in the route handler itself.
 
-  return withProxyTiming(response, startedAt);
+  return withProxyTiming(response, request, startedAt);
 }
 
 export const config = {

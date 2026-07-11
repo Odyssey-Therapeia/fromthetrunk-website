@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/analytics/cookie-settings-button";
+import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
 import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
 import type { FooterSection } from "@/components/layout/nav-data";
 
@@ -42,6 +44,7 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
       },
       { href: "/policies/care-packaging-policy", label: "Care & Packaging" },
       { href: "/policies/sell-with-us-policy", label: "Sell With Us" },
+      { href: "/contact", label: "Contact Support" },
     ],
   },
   {
@@ -54,6 +57,34 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
     ],
   },
 ];
+
+const CONTACT_FOOTER_LINK = {
+  href: "/contact",
+  label: "Contact Support",
+} as const;
+
+function ensureContactFooterLink(
+  footerSections: FooterSection[],
+): FooterSection[] {
+  if (
+    footerSections.some((section) =>
+      section.links.some((link) => link.href === CONTACT_FOOTER_LINK.href),
+    )
+  ) {
+    return footerSections;
+  }
+
+  const targetIndex = footerSections.findIndex(
+    (section) => section.title === "Customer Care",
+  );
+  const insertIndex = targetIndex >= 0 ? targetIndex : 0;
+
+  return footerSections.map((section, index) =>
+    index === insertIndex
+      ? { ...section, links: [...section.links, CONTACT_FOOTER_LINK] }
+      : section,
+  );
+}
 
 type IconProps = {
   className?: string;
@@ -132,28 +163,6 @@ function CompactArchLineArt() {
   );
 }
 
-function MiniKeyhole() {
-  return (
-    <svg
-      viewBox="0 0 40 30"
-      className="h-6 w-8 text-[#B39152]"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20 2c-8 4-12 10-12 18v5h24v-5C32 12 28 6 20 2Z"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
-      <path
-        d="M20 12a4 4 0 0 0-2 7.4V25h4v-5.6A4 4 0 0 0 20 12Z"
-        fill="currentColor"
-        opacity=".82"
-      />
-    </svg>
-  );
-}
-
 function FooterGoldRail() {
   return (
     <div
@@ -208,10 +217,6 @@ function FooterGoldRail() {
           fill="url(#ftt-compact-footer-motif)"
         />
       </svg>
-
-      <div className="absolute left-1/2 top-[-18px] grid h-10 w-14 -translate-x-1/2 place-items-center rounded-t-full border border-[#B39152]/65 bg-[#601D1C] shadow-[0_0_24px_rgba(179,145,82,0.16)] sm:top-[-21px] sm:h-12 sm:w-16">
-        <MiniKeyhole />
-      </div>
     </div>
   );
 }
@@ -289,9 +294,10 @@ export function SiteFooter({
   footerSections?: FooterSection[];
 }) {
   const year = new Date().getFullYear();
+  const resolvedFooterSections = ensureContactFooterLink(footerSections);
 
   const footerNavGridClass =
-    footerSections.length <= 3
+    resolvedFooterSections.length <= 3
       ? "lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3"
       : "lg:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4";
 
@@ -309,7 +315,7 @@ export function SiteFooter({
             className={`hidden gap-5 md:grid md:grid-cols-2 ${footerNavGridClass}`}
             aria-label="Footer navigation"
           >
-            {footerSections.map((section) => (
+            {resolvedFooterSections.map((section) => (
               <div
                 key={section.title}
                 className="border-l border-[#B39152]/22 pl-5"
@@ -337,7 +343,7 @@ export function SiteFooter({
             ))}
           </nav>
 
-          <FooterMobileNav footerSections={footerSections} />
+          <FooterMobileNav footerSections={resolvedFooterSections} />
 
           <section className="border-t border-[#B39152]/24 pt-5 lg:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0 2xl:pl-7 2xl:pt-0">
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] md:items-end 2xl:block">
@@ -367,7 +373,8 @@ export function SiteFooter({
                     <InstagramIcon className="h-4 w-4" />
                   </a>
 
-                  <a
+                  <WhatsAppLink
+                    location="footer"
                     href="https://wa.me/919731910202"
                     target="_blank"
                     rel="noreferrer noopener"
@@ -375,7 +382,7 @@ export function SiteFooter({
                     aria-label="Chat with From the Trunk on WhatsApp"
                   >
                     <WhatsAppIcon className="h-4 w-4" />
-                  </a>
+                  </WhatsAppLink>
 
                   <a
                     href="mailto:hello@fromthetrunk.shop"
@@ -399,7 +406,10 @@ export function SiteFooter({
         */}
 
         <div className="mt-7 grid grid-cols-1 items-center gap-3 border-t border-[#B39152]/35 py-4 text-center text-[12px] text-[#FDF7F1]/58 md:grid-cols-[1fr_auto_1fr] md:text-left">
-          <p>© {year} From The Trunk. All rights reserved.</p>
+          <p className="flex flex-col items-center gap-1 md:flex-row md:gap-3">
+            <span>© {year} From The Trunk. All rights reserved.</span>
+            <CookieSettingsButton className="text-[#FDF7F1]/58 underline-offset-2 transition hover:text-[#FDF7F1] hover:underline" />
+          </p>
 
           <p className="text-center uppercase leading-5 tracking-[0.18em] text-[#B39152] sm:tracking-[0.24em]">
             Some treasures aren&apos;t made.

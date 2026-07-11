@@ -35,7 +35,7 @@ describe("POST /events/track", () => {
           Name: "Customer Name",
           phone: "+91 99999 99999",
           postalCode: "560001",
-          productId: "product-1",
+          productId: "11111111-1111-4111-8111-111111111111",
         },
         type: "filter_applied",
       }),
@@ -66,7 +66,7 @@ describe("POST /events/track", () => {
       expect.objectContaining({
         filterType: "fabric",
         filterValue: "silk",
-        productId: "product-1",
+        productId: "11111111-1111-4111-8111-111111111111",
         referrer: "https://fromthetrunk.com/collection?fabric=silk",
         userId: "user-123",
       }),
@@ -75,6 +75,30 @@ describe("POST /events/track", () => {
     expect(emitted.payload).not.toHaveProperty("Name");
     expect(emitted.payload).not.toHaveProperty("phone");
     expect(emitted.payload).not.toHaveProperty("postalCode");
+  });
+
+  it("drops a malformed (non-UUID) productId so it cannot poison uuid queries", async () => {
+    emitAnalyticsEventMock.mockClear();
+
+    const harness = createRouteHarness({
+      authUser: null,
+      register: registerEventsRoutes,
+    });
+
+    const response = await harness.request("/track", {
+      body: JSON.stringify({
+        payload: { productId: "abc" },
+        type: "product_view",
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    const emitted = emitAnalyticsEventMock.mock.calls[0]?.[0] as {
+      payload: Record<string, unknown>;
+    };
+    expect(emitted.payload).not.toHaveProperty("productId");
   });
 
   it.each([

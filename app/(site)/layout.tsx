@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Cormorant_Garamond, Jost } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { shouldRenderGtm, buildGtmSrc } from "@/lib/analytics/gtm";
+import { AnalyticsGate } from "@/components/analytics/analytics-gate";
 
 import "../globals.css";
 import { SiteFooterServer } from "@/components/layout/site-footer-server";
@@ -44,27 +43,27 @@ const defaultSocialImage = seoImageMetadata();
 
 export const metadata: Metadata = {
   title: {
-    default: "From the Trunk | Pre-Loved Luxury Sarees",
-    template: "%s | From the Trunk",
+    default: "From The Trunk | Authenticated Pre-Loved Sarees in India",
+    template: "%s | From The Trunk",
   },
   description:
-    "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
+    "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
   metadataBase: new URL(baseUrl),
   openGraph: {
     type: "website",
     locale: OG_LOCALE,
     siteName: SITE_NAME,
     url: baseUrl,
-    title: "From the Trunk | Pre-Loved Luxury Sarees",
+    title: "From The Trunk | Authenticated Pre-Loved Sarees in India",
     description:
-      "Curated collection of authenticated, pre-loved luxury sarees. Each unique piece comes with provenance and a story woven in silk.",
+      "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
     images: [defaultSocialImage],
   },
   twitter: {
     card: DEFAULT_TWITTER_CARD,
-    title: "From the Trunk | Pre-Loved Luxury Sarees",
+    title: "From The Trunk | Authenticated Pre-Loved Sarees in India",
     description:
-      "Curated collection of authenticated, pre-loved luxury sarees.",
+      "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
     images: [defaultSocialImage],
   },
   robots: {
@@ -126,12 +125,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <SiteWidgets />
         <Analytics />
         <SpeedInsights />
-        {shouldRenderGtm(process.env.NEXT_PUBLIC_GTM_ID) && (
-          <Script
-            strategy="afterInteractive"
-            src={buildGtmSrc(process.env.NEXT_PUBLIC_GTM_ID!)}
-          />
-        )}
+        {/* Consent-gated Google Tag Manager + GA4 (GA4 is configured inside the
+            GTM container). Loads nothing unless NEXT_PUBLIC_GTM_ID is set AND
+            the visitor accepts analytics consent. */}
+        <AnalyticsGate />
       </body>
     </html>
   );

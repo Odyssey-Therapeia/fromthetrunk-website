@@ -5,7 +5,7 @@
  * top-level route segment in the app. Derived from actual route directories:
  *
  *   app/(site)/ top-level dirs: account, blouses, cart, checkout, collection,
- *     faqs, founders, guides, how-it-works, our-story, our-team, packing,
+ *     contact, faqs, founders, guides, how-it-works, our-story, our-team, packing,
  *     policies, privacy-policy, return-policy, search, sell-your-saree,
  *     shipping-policy, terms-of-service, why
  *
@@ -23,6 +23,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "checkout",
   "blouses",
   "collection",
+  "contact",
   "faqs",
   "founders",
   "guides",

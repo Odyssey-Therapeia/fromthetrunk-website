@@ -31,6 +31,7 @@ import { formatSelectedOptions } from "@/lib/orders/selected-options";
 import { getViewableOrder } from "@/lib/orders/viewable-order";
 import type { Order, OrderItem } from "@/types/domain";
 import { ClearCartOnConfirmation } from "./clear-cart-on-confirmation";
+import { ConfirmationAnalytics } from "./confirmation-analytics";
 import { PaymentStatusPoller } from "./payment-status-poller";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,12 @@ export default async function ConfirmationPage({
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-16">
       <ClearCartOnConfirmation enabled={isPaid} />
+      <ConfirmationAnalytics
+        enabled={isPaid}
+        orderId={order.id}
+        value={order.totalPaise / 100}
+        currency="INR"
+      />
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start">
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-ftt-border bg-ftt-card p-6 shadow-[var(--ftt-soft-shadow)] sm:p-8">

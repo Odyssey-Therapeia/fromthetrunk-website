@@ -37,6 +37,8 @@ import {
   normalizeFacetSlug,
 } from "@/lib/catalog/filter-taxonomy";
 import { hasCollectionFilterParams } from "@/lib/seo/collection-filter";
+import { absoluteUrl } from "@/lib/seo/site-url";
+import { breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import type { Collection, Product } from "@/types/domain";
 import type { CollectionPageContent } from "@/types/site-content";
@@ -122,9 +124,9 @@ export async function generateMetadata({
 
   return {
     ...publicPageMetadata({
-      title: "Collection",
+      title: "Curated Pre-Loved Sarees in India | From The Trunk",
       description:
-        "Discover curated, authenticated pre-loved luxury sarees from private wardrobes and collector trunks.",
+        "Browse authenticated pre-loved sarees, heirloom silk sarees, restored Indian textiles, and premium pre-owned drapes from From The Trunk.",
       path: "/collection",
     }),
     robots: hasFilters
@@ -1081,6 +1083,17 @@ export default async function CollectionPage({
 
   return (
     <div className="min-h-screen bg-[#FDF7F1] text-[#0E0D0E]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLd(
+            breadcrumbJsonLd([
+              { name: "Home", url: absoluteUrl("/") },
+              { name: "Collection", url: absoluteUrl("/collection") },
+            ]),
+          ),
+        }}
+      />
       <TrackPageView
         eventKey={`collection_view:${activeCollectionSlug ?? "all"}:${currentPage}:${activeSort}:${activeTypes.join(",") || "all"}:${activeFabrics.join(",") || "all"}:${activeColors.join(",") || "all"}:${activeOccasions.join(",") || "all"}:${activePriceMin ?? "min-any"}:${activePriceMax ?? "max-any"}:${activeAvailability ?? "any"}:${activeTags.slice().sort().join(",")}`}
         type="collection_view"
@@ -1388,7 +1401,10 @@ function HeroStat({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
         {label}
       </p>
-      <p className="mt-2 font-serif text-4xl text-[var(--ftt-ivory)]">
+      <p
+        className="mt-2 text-4xl text-[var(--ftt-ivory)]"
+        style={{ fontFamily: '"Times New Roman", Times, serif' }}
+      >
         {value}
       </p>
     </div>

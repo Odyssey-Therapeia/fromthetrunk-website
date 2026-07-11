@@ -3,12 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const dbSelectMock = vi.hoisted(() => vi.fn());
 const dbUpdateMock = vi.hoisted(() => vi.fn());
 const rateLimitResponseMock = vi.hoisted(() => vi.fn());
+const getBlouseProductIdSetMock = vi.hoisted(() =>
+  vi.fn(async () => new Set<string>()),
+);
 
 vi.mock("@/db", () => ({
   db: {
     select: dbSelectMock,
     update: dbUpdateMock,
   },
+}));
+
+// Blouses are made-to-order and skip the hold entirely. Default: no blouses, so
+// every product flows through the normal one-of-one reservation path.
+vi.mock("@/db/queries/products", () => ({
+  getBlouseProductIdSet: getBlouseProductIdSetMock,
 }));
 
 vi.mock("@/db/schema", () => ({
@@ -87,6 +96,7 @@ describe("cart reservation routes", () => {
     vi.unstubAllEnvs();
     vi.stubEnv("NEXTAUTH_SECRET", "test-reservation-secret");
     rateLimitResponseMock.mockResolvedValue(null);
+    getBlouseProductIdSetMock.mockResolvedValue(new Set<string>());
   });
 
   it("atomically reserves an available product and returns a signed token", async () => {
@@ -140,6 +150,26 @@ describe("cart reservation routes", () => {
     expect(updateChain.set).toHaveBeenCalledWith(
       expect.objectContaining({ stockStatus: "reserved" }),
     );
+  });
+
+  it("skips the hold for blouses and reports success without reserving", async () => {
+    getBlouseProductIdSetMock.mockResolvedValueOnce(new Set([PRODUCT_ID]));
+
+    const response = await route()(
+      "/reserve",
+      {
+        method: "POST",
+        ...jsonBody({ productId: PRODUCT_ID }),
+      },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.reserved).toBe(false);
+    expect(payload.reservationToken).toBeNull();
+    expect(payload.reservedUntil).toBeNull();
+    // Made-to-order blouses are never written to a reserved state.
+    expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
   it("rejects reserve quantity above 1 for one-of-one inventory", async () => {

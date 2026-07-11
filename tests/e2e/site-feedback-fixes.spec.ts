@@ -47,7 +47,7 @@ test.describe("Our Story page content", () => {
     await page.goto("/our-story", { waitUntil: "domcontentloaded" });
     await expect(page.locator("h1", { hasText: "Our Story Book" })).toBeAttached();
     await expect(
-      page.locator("h2", { hasText: "Every saree deserves a second story" }).first()
+      page.locator("h2", { hasText: "Elegance, given a second life" }).first()
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Open the book" })).toBeVisible();
   });
@@ -56,7 +56,7 @@ test.describe("Our Story page content", () => {
     await page.goto("/our-story", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open story contents" }).first().click();
     await expect(
-      page.getByRole("dialog").getByText("Every saree deserves a second story")
+      page.getByRole("dialog").getByText("Elegance, given a second life")
     ).toBeVisible();
     await expect(page.getByRole("dialog").getByText("Never just fabric")).toBeVisible();
     await expect(page.getByRole("dialog").getByText("The promise")).toBeVisible();

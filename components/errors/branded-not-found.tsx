@@ -10,6 +10,8 @@ import {
   Store,
 } from "lucide-react";
 
+import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
+
 import { Button } from "@/components/ui/button";
 
 const heroImage = {
@@ -159,7 +161,8 @@ export function BrandedNotFound() {
                 you trace it.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <a
+                <WhatsAppLink
+                  location="not_found"
                   href={whatsappHref}
                   target="_blank"
                   rel="noreferrer noopener"
@@ -167,7 +170,7 @@ export function BrandedNotFound() {
                 >
                   <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   Chat with us
-                </a>
+                </WhatsAppLink>
                 <a
                   href={reportHref}
                   className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B625B] underline-offset-4 transition hover:text-[#601D1C] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFCF8]"

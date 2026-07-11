@@ -1,5 +1,6 @@
 "use client";
 
+import { readClientConsent } from "@/lib/analytics/consent";
 import type { AnalyticsEventType } from "@/lib/ports/analytics-sink";
 
 type WebsiteMetricType = Extract<
@@ -20,6 +21,13 @@ export function trackWebsiteMetric(
   type: WebsiteMetricType,
   payload: TrackPayload = {},
 ) {
+  // Consent gate: these are browser-origin analytics events. When consent is
+  // unknown or denied we send NOTHING — no /api/v2/events/track request — so
+  // first-party analytics also respects consent (not just GTM). Once granted,
+  // events flow to the internal store; the GA4 MP sink still excludes these
+  // browser events (GTM owns them client-side).
+  if (readClientConsent() !== "granted") return;
+
   const body = JSON.stringify({
     eventId: crypto.randomUUID(),
     payload,
@@ -52,6 +60,11 @@ export function trackOncePerSession(
   type: WebsiteMetricType,
   payload: TrackPayload = {},
 ) {
+  // Consent gate first, BEFORE the sessionStorage marker — otherwise a pre-
+  // consent attempt would set the "already sent" flag and suppress the event
+  // after the visitor later accepts.
+  if (readClientConsent() !== "granted") return;
+
   try {
     const storageKey = `ftt.metric.${key}`;
     if (sessionStorage.getItem(storageKey)) return;

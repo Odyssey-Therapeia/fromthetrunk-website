@@ -7,8 +7,11 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
+import { Instagram, Mail, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+import { trackWhatsappClick } from "@/lib/analytics/track";
 
 import { ContactWizard } from "@/components/contact/contact-wizard";
 
@@ -135,7 +138,7 @@ const storyChapters = [
   {
     label: "Conscious Choice",
     title: "Loved all over again.",
-    body: "Each re-storied saree reduces waste while celebrating timeless fashion.",
+    body: "Each restored saree reduces waste while celebrating timeless fashion.",
   },
 ];
 
@@ -162,7 +165,7 @@ const STORY_IMAGES: LandingImage[] = [
   },
   {
     src: "/our-story/chap_5.avif",
-    alt: "A re-storied saree ready to be loved all over again",
+    alt: "A restored saree ready to be loved all over again",
     title: "Ready for its next story",
   },
 ];
@@ -479,7 +482,7 @@ export function FeaturedProductsSection({
               Featured Products
             </p>
             <h2 className="max-w-4xl font-serif text-5xl leading-none text-[#601D1C] sm:text-6xl lg:text-7xl">
-              New arrivals from the trunk.
+              New arrivals From The Trunk.
             </h2>
           </div>
 
@@ -702,6 +705,22 @@ export function TestimonialsSection() {
   );
 }
 
+function WhatsAppGlyph({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path d="M5 18.2 3.8 22l4-1.1A9 9 0 1 0 5 18.2Z" />
+      <path d="M8.7 10.2c.5 1.7 1.9 3 3.4 3.8.8.4 1.5.6 2.2.5.5-.1.9-.6 1.1-1" />
+    </svg>
+  );
+}
+
 export function ConnectWithUsSection() {
   return (
     <section
@@ -721,34 +740,47 @@ export function ConnectWithUsSection() {
             restored piece that feels personal, considered, and entirely yours.
           </p>
 
-          <div className="mt-7 grid gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-4">
+          <div className="mt-7 flex items-center gap-3 sm:mt-10 sm:gap-4">
             {[
-              ["Explore", "Browse the collection", "/collection"],
-              [
-                "Instagram",
-                "@from.thetrunk",
-                "https://www.instagram.com/from.thetrunk/",
-              ],
-              ["WhatsApp", "Chat with us", "https://wa.me/919731910202"],
-              [
-                "Email",
-                "hello@fromthetrunk.shop",
-                "mailto:hello@fromthetrunk.shop",
-              ],
-            ].map(([label, title, href]) => (
-              <a
-                key={label}
-                href={href}
-                className="group min-w-0 rounded-2xl border border-[#FDF7F1]/12 bg-[linear-gradient(135deg,#141D46_0%,#11183C_100%)] p-4 text-[#FDF7F1] shadow-[inset_0_0_0_1px_rgba(253,247,241,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/80 hover:bg-[linear-gradient(135deg,#601D1C_0%,#141D46_62%,#0E0D0E_100%)] hover:shadow-[0_18px_36px_rgba(20,29,70,0.22),inset_0_0_0_1px_rgba(179,145,82,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] sm:p-5"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B39152] transition group-hover:text-[#E5C983]">
-                  {label}
-                </p>
-                <p className="mt-1.5 wrap-break-word font-serif text-xl text-[#FDF7F1] transition group-hover:text-white sm:mt-2 sm:text-2xl">
-                  {title}
-                </p>
-              </a>
-            ))}
+              {
+                label: "Explore the collection",
+                href: "/collection",
+                icon: <Store className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />,
+              },
+              {
+                label: "Instagram",
+                href: "https://www.instagram.com/from.thetrunk/",
+                icon: <Instagram className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />,
+              },
+              {
+                label: "WhatsApp",
+                href: "https://wa.me/919731910202",
+                icon: <WhatsAppGlyph className="h-5 w-5 sm:h-6 sm:w-6" />,
+              },
+              {
+                label: "Email",
+                href: "mailto:hello@fromthetrunk.shop",
+                icon: <Mail className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />,
+              },
+            ].map((item) => {
+              const isWhatsApp = /wa\.me/.test(item.href);
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  aria-label={item.label}
+                  title={item.label}
+                  onClick={
+                    isWhatsApp
+                      ? () => trackWhatsappClick("landing_connect")
+                      : undefined
+                  }
+                  className="group grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#FDF7F1]/12 bg-[linear-gradient(135deg,#141D46_0%,#11183C_100%)] text-[#B39152] shadow-[inset_0_0_0_1px_rgba(253,247,241,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-[#B39152]/80 hover:bg-[linear-gradient(135deg,#601D1C_0%,#141D46_62%,#0E0D0E_100%)] hover:text-[#E5C983] hover:shadow-[0_18px_36px_rgba(20,29,70,0.22),inset_0_0_0_1px_rgba(179,145,82,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] sm:h-14 sm:w-14"
+                >
+                  {item.icon}
+                </a>
+              );
+            })}
           </div>
         </div>
 

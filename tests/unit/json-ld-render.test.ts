@@ -34,8 +34,14 @@ vi.mock("@/lib/products/display-details", () => ({
 }));
 
 // Import AFTER mocks are registered
-const { productJsonLd, organizationJsonLd, breadcrumbJsonLd, safeJsonLd } =
-  await import("@/lib/seo/json-ld");
+const {
+  breadcrumbJsonLd,
+  contactPageJsonLd,
+  organizationJsonLd,
+  productJsonLd,
+  safeJsonLd,
+  websiteJsonLd,
+} = await import("@/lib/seo/json-ld");
 
 const fixture = {
   name: 'Banarasi "Silk" Saree',
@@ -64,6 +70,7 @@ describe("JSON-LD render path", () => {
       expect(parsed["@type"]).toBe("Product");
       expect(parsed.name).toBe(fixture.name);
       expect(typeof parsed.offers.price).toBe("number");
+      expect(parsed.itemCondition).toBe("https://schema.org/UsedCondition");
       // description round-trip: newlines and </script> in storyNarrative must survive parsing
       expect(parsed.description).toBe(fixture.storyNarrative);
       // The raw HTML must not contain </script> — that sequence would close the tag early
@@ -138,14 +145,46 @@ describe("JSON-LD render path", () => {
     it("Test C — roundtrip yields correct @type", () => {
       const org = organizationJsonLd();
       const parsed = JSON.parse(JSON.stringify(org));
-      expect(parsed["@type"]).toBe("Organization");
+      expect(parsed["@type"]).toBe("OnlineStore");
     });
 
     it("includes required fields", () => {
       const org = organizationJsonLd();
       const parsed = JSON.parse(JSON.stringify(org));
       expect(parsed["@context"]).toBe("https://schema.org");
-      expect(typeof parsed.name).toBe("string");
+      expect(parsed.name).toBe("From The Trunk");
+      expect(parsed.url).toBe("https://www.fromthetrunk.shop/");
+      expect(parsed.email).toBe("hello@fromthetrunk.shop");
+    });
+  });
+
+  describe("websiteJsonLd", () => {
+    it("includes canonical entity names for site-name disambiguation", () => {
+      const site = websiteJsonLd();
+      const parsed = JSON.parse(JSON.stringify(site));
+
+      expect(parsed["@type"]).toBe("WebSite");
+      expect(parsed.name).toBe("From The Trunk");
+      expect(parsed.alternateName).toEqual([
+        "FTT",
+        "FromTheTrunk",
+        "From the Trunk",
+        "fromthetrunk.shop",
+      ]);
+      expect(parsed.url).toBe("https://www.fromthetrunk.shop/");
+      expect(parsed.publisher.name).toBe("From The Trunk");
+    });
+  });
+
+  describe("contactPageJsonLd", () => {
+    it("emits ContactPage schema for the public contact route", () => {
+      const contact = contactPageJsonLd();
+      const parsed = JSON.parse(JSON.stringify(contact));
+
+      expect(parsed["@type"]).toBe("ContactPage");
+      expect(parsed.name).toBe("Contact From The Trunk");
+      expect(parsed.url).toBe("https://www.fromthetrunk.shop/contact");
+      expect(parsed.mainEntity.email).toBe("hello@fromthetrunk.shop");
     });
   });
 
