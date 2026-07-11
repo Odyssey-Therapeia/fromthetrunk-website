@@ -198,14 +198,16 @@ export default async function SareePage({ params }: ProductPageProps) {
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbs) }}
       />
       <ProductViewTracker
+        category={isBlouse ? "Blouse" : "Saree"}
         id={product.id}
-        slug={product.slug}
+        image={images[0] ?? ""}
         name={product.name}
         price={product.pricePaise / 100}
-        image={images[0] ?? ""}
+        slug={product.slug}
+        variant={displayDetails.fabric}
       />
 
-      <div className="mx-auto w-full max-w-[1440px] space-y-7 px-4 py-4 sm:px-6 sm:py-6 lg:space-y-9 lg:px-8 lg:py-7">
+      <div className="mx-auto w-full max-w-360 space-y-7 px-4 py-4 sm:px-6 sm:py-6 lg:space-y-9 lg:px-8 lg:py-7">
         <nav
           aria-label="Breadcrumb"
           className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#601D1C]/55"
@@ -230,7 +232,7 @@ export default async function SareePage({ params }: ProductPageProps) {
             imageAlts={imageAlts}
           />
 
-          <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-[var(--pdp-panel-height)] lg:p-5">
+          <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-(--pdp-panel-height) lg:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">
@@ -357,7 +359,7 @@ export default async function SareePage({ params }: ProductPageProps) {
                 )}
               </div>
 
-              <div className="mt-4 grid gap-2 rounded-[1rem] border border-[#141D46]/10 bg-[#141D46] p-3 text-[#FDF7F1]">
+              <div className="mt-4 grid gap-2 rounded-3xl border border-[#141D46]/10 bg-[#141D46] p-3 text-[#FDF7F1]">
                 <TrustLine icon={<ShieldCheck />} text="Authenticated by hand" />
                 <TrustLine icon={<PackageCheck />} text="Packed with muslin care" />
                 <TrustLine icon={<Truck />} text="Shipping at checkout" />
@@ -434,7 +436,7 @@ export default async function SareePage({ params }: ProductPageProps) {
           </aside>
         </section>
 
-        <section className="overflow-hidden rounded-[1.25rem] border border-[#141D46]/10 bg-[#141D46] p-4 text-[#FDF7F1] shadow-[0_16px_42px_rgba(20,29,70,0.13)] sm:p-5 lg:grid lg:grid-cols-[0.9fr_1.4fr] lg:items-center lg:gap-5">
+        <section className="overflow-hidden rounded-4xl border border-[#141D46]/10 bg-[#141D46] p-4 text-[#FDF7F1] shadow-[0_16px_42px_rgba(20,29,70,0.13)] sm:p-5 lg:grid lg:grid-cols-[0.9fr_1.4fr] lg:items-center lg:gap-5">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">
                 Provenance Promise
@@ -700,7 +702,7 @@ function InfoCard({
   body: string;
 }) {
   return (
-    <article className="h-full rounded-[1.25rem] border border-[#E7DDD4] bg-[#FFFCF8]/82 p-4 shadow-[0_14px_34px_rgba(20,29,70,0.05)]">
+    <article className="h-full rounded-4xl border border-[#E7DDD4] bg-[#FFFCF8]/82 p-4 shadow-[0_14px_34px_rgba(20,29,70,0.05)]">
       <div className="mb-4 grid h-9 w-9 place-items-center rounded-full bg-[#141D46] text-[#B39152] [&_svg]:h-4 [&_svg]:w-4">
         {icon}
       </div>

@@ -7,6 +7,7 @@ import { ArrowUpRight } from "lucide-react";
 
 import { formatCurrency } from "@/lib/formatters";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
+import { buildSelectItemEvent } from "@/lib/analytics/ga4-ecommerce";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { buildProductCardAlt } from "@/lib/seo/image-alt";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import { WishlistButton } from "@/components/product/wishlist-button";
 import { ProductCardCommerceRow } from "@/components/product/product-card-commerce-row";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import type { Product, StockStatus } from "@/types/domain";
+
 
 interface ProductCardProps {
   product: Product;
@@ -48,13 +50,29 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const isReserved = stockStatus === "reserved";
   const isBlouse = isBlouseProduct(product);
   const trackProductCardClick = () => {
-    trackWebsiteMetric("product_card_click", {
-      pricePaise: product.pricePaise,
-      productId: product.id,
-      slug: product.slug,
-      source: "product_card",
-      stockStatus,
-    });
+    trackWebsiteMetric(
+      "product_card_click",
+      {
+        pricePaise: product.pricePaise,
+        productId: product.id,
+        slug: product.slug,
+        source: "product_card",
+        stockStatus,
+      },
+      buildSelectItemEvent(
+        {
+          category: isBlouse ? "Blouse" : "Saree",
+          id: product.id,
+          name: product.name,
+          pricePaise: product.pricePaise,
+          variant: product.detailsFabric,
+        },
+        {
+          source: "product_card",
+          stockStatus,
+        },
+      ),
+    );
   };
 
   return (
@@ -101,7 +119,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                 <Badge className="bg-foreground/90 text-background shadow-soft">
                   Sold out
                 </Badge>
-                <p className="max-w-[15rem] text-[10px] font-medium leading-snug text-white/90 @sm:text-[11px]">
+                <p className="max-w-60 text-[10px] font-medium leading-snug text-white/90 @sm:text-[11px]">
                   We&apos;ll notify you if something like this comes back. Till
                   then, shop with us.
                 </p>
@@ -139,10 +157,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
         >
           <div className="flex items-start justify-between gap-1.5">
             <div className="min-w-0">
-              <h3 className="line-clamp-2 max-w-full break-words font-serif text-[15px] font-semibold leading-[1.08] text-[#141D46] @sm:text-lg @md:text-xl">
+              <h3 className="line-clamp-2 max-w-full wrap-break-word font-serif text-[15px] font-semibold leading-[1.08] text-[#141D46] @sm:text-lg @md:text-xl">
                 {product.name}
               </h3>
-              <p className="mt-1 line-clamp-1 max-w-full break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-[#601D1C]/72 @sm:text-xs @sm:tracking-[0.18em]">
+              <p className="mt-1 line-clamp-1 max-w-full wrap-break-word text-[11px] font-semibold uppercase tracking-[0.14em] text-[#601D1C]/72 @sm:text-xs @sm:tracking-[0.18em]">
                 <span>{product.detailsFabric ?? "Heirloom"}</span>
                 <span className="hidden @sm:inline">, unique</span>
               </p>
