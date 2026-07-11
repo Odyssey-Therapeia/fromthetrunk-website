@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
+import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
+import { isBlouseProduct } from "@/lib/products/product-type";
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import {
   getSelectedSizeLabel,
@@ -55,6 +57,7 @@ export function AddToCartButton({
   const [added, setAdded] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
   const image = resolveMediaURL(product.images?.[0]) ?? "";
+  const isBlouse = isBlouseProduct(product);
   const inCart = Boolean(existingItem);
   const selectedSize = normalizeBlouseSize(selectedOptions?.size);
   const existingSize = normalizeBlouseSize(existingItem?.selectedOptions?.size);
@@ -120,13 +123,29 @@ export function AddToCartButton({
         reservedUntil: payload?.reservedUntil ?? null,
         ...(selectedSize ? { selectedOptions: { size: selectedSize } } : {}),
       });
-      trackWebsiteMetric("add_to_cart", {
-        pricePaise: product.pricePaise,
-        productId: product.id,
-        slug: product.slug,
-        source: "pdp",
-        stockStatus,
-      });
+      trackWebsiteMetric(
+        "add_to_cart",
+        {
+          pricePaise: product.pricePaise,
+          productId: product.id,
+          slug: product.slug,
+          source: "pdp",
+          stockStatus,
+        },
+        buildAddToCartEvent(
+          {
+            category: isBlouse ? "Blouse" : "Saree",
+            id: product.id,
+            name: product.name,
+            pricePaise: product.pricePaise,
+            variant: selectedSize ?? product.detailsFabric,
+          },
+          {
+            source: "pdp",
+            stockStatus,
+          },
+        ),
+      );
       setAdded(true);
       toast.success(
         selectedSize
