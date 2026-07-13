@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
+import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import { useCartStore } from "@/lib/store/cart-store";
@@ -222,13 +223,29 @@ export function ProductCardCommerceRow({
         reservationToken: reserveResult.reservation?.reservationToken ?? null,
         reservedUntil: reserveResult.reservation?.reservedUntil ?? null,
       });
-      trackWebsiteMetric("add_to_cart", {
-        pricePaise: product.pricePaise,
-        productId: product.id,
-        slug: product.slug,
-        source: "product_card",
-        stockStatus: analyticsStockStatus,
-      });
+      trackWebsiteMetric(
+        "add_to_cart",
+        {
+          pricePaise: product.pricePaise,
+          productId: product.id,
+          slug: product.slug,
+          source: "product_card",
+          stockStatus: analyticsStockStatus,
+        },
+        buildAddToCartEvent(
+          {
+            category: isBlouse ? "Blouse" : "Saree",
+            id: product.id,
+            name: product.name,
+            pricePaise: product.pricePaise,
+            variant: product.detailsFabric,
+          },
+          {
+            source: "product_card",
+            stockStatus: analyticsStockStatus,
+          },
+        ),
+      );
 
       dispatchCartUpdated(product.id, 1);
       const cartTarget = getCartTarget();
@@ -308,7 +325,7 @@ export function ProductCardCommerceRow({
   return (
     <div
       className={cn(
-        "mt-3 flex min-h-12 min-w-0 items-center justify-between gap-2 border-t border-[#E7DDD4]/80 pt-3 @sm:min-h-[3.25rem] @sm:gap-2.5",
+        "mt-3 flex min-h-12 min-w-0 items-center justify-between gap-2 border-t border-[#E7DDD4]/80 pt-3 @sm:min-h-13 @sm:gap-2.5",
         className,
       )}
     >
@@ -336,7 +353,7 @@ export function ProductCardCommerceRow({
         {isBlouse && !isUnavailable && !inCart ? (
           <Link
             href={`/collection/${product.slug}`}
-            className="inline-flex h-9 min-w-[104px] max-w-full items-center justify-center rounded-full bg-[#141D46] px-4 text-[13px] font-medium text-[#FDF7F1] shadow-[0_8px_20px_rgba(20,29,70,0.16)] transition hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-[116px] @sm:text-sm"
+            className="inline-flex h-9 min-w-26 max-w-full items-center justify-center rounded-full bg-[#141D46] px-4 text-[13px] font-medium text-[#FDF7F1] shadow-[0_8px_20px_rgba(20,29,70,0.16)] transition hover:bg-[#0E0D0E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-29 @sm:text-sm"
             onClick={(event) => event.stopPropagation()}
           >
             Select size
@@ -349,7 +366,7 @@ export function ProductCardCommerceRow({
             data-phase={dataPhase}
             aria-live="polite"
             className={cn(
-              "ftt-cart-motion-button inline-flex h-9 min-w-[104px] max-w-full items-center justify-center rounded-full px-4 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-[116px] @sm:text-sm",
+              "ftt-cart-motion-button inline-flex h-9 min-w-26 max-w-full items-center justify-center rounded-full px-4 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1] @sm:min-w-29 @sm:text-sm",
               isUnavailable
                 ? "cursor-not-allowed bg-[#601D1C] text-[#FDF7F1] opacity-90"
                 : inCart || state === "added"
