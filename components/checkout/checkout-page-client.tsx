@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -353,6 +353,20 @@ export function CheckoutPageClient({
         style: "percent",
       }).format(GST_RATE),
     [],
+  );
+
+  // Task 6: blouse-pairing availability note. CartItem doesn't carry the product
+  // type, so we detect a blouse from the item name / slug / a selected size
+  // (blouses are the only sized items). Drives the review-step wording.
+  const cartHasBlouse = useMemo(
+    () =>
+      items.some(
+        (item) =>
+          /\bblouse\b/i.test(item.name) ||
+          /blouse/i.test(item.slug ?? "") ||
+          Boolean(item.selectedOptions?.size),
+      ),
+    [items],
   );
 
   const resolvedBilling = billingSameAsShipping ? shippingAddress : billingAddress;
@@ -871,6 +885,18 @@ export function CheckoutPageClient({
                         of From the Trunk.
                       </span>
                     </label>
+                  </div>
+
+                  {/* Task 6: blouse pairing availability note at the end of checkout. */}
+                  <div className="rounded-3xl border border-ftt-gold/40 bg-ftt-burgundy p-4 text-sm shadow-[var(--ftt-soft-shadow)]">
+                    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-ivory">
+                      <Info className="size-3.5" /> Blouse availability
+                    </p>
+                    <p className="mt-2 leading-6 text-ftt-ivory/85">
+                      {cartHasBlouse
+                        ? "Your order includes a blouse. Blouse pairing is subject to availability. Our team will confirm the available blouse options before dispatch."
+                        : "Blouse pairing is subject to availability. Our team will confirm the available blouse options before dispatch."}
+                    </p>
                   </div>
 
                   <CheckoutStepActions

@@ -2,7 +2,11 @@ import { Check } from "lucide-react";
 
 import { PackagingPreview } from "@/components/checkout/packaging-preview";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
+import {
+  ENABLE_SHIPPING_CHARGES,
+  SHIPPING_TIERS,
+  type ShippingMethod,
+} from "@/lib/config/order-pricing";
 import { isFreeShipping } from "@/lib/checkout/estimate";
 import { STEP_COPY } from "@/lib/checkout/steps";
 import { formatCurrency } from "@/lib/formatters";
@@ -224,6 +228,9 @@ export function PackagingStep({
   const price = free
     ? "Complimentary"
     : formatCurrency(SHIPPING_TIERS.standard);
+  // LAUNCH: shipping charges are waived (ENABLE_SHIPPING_CHARGES off) — show the
+  // standard ₹250 struck through beside a "Free" badge so the saving is explicit.
+  const shippingWaived = !ENABLE_SHIPPING_CHARGES;
 
   return (
     <section className="rounded-3xl border border-ftt-border bg-ftt-card p-5 shadow-[var(--ftt-soft-shadow)] sm:p-7">
@@ -246,10 +253,21 @@ export function PackagingStep({
             ♻ Made from recycled sarees
           </span>
           <div className="text-right">
-            <span className="block text-sm font-semibold text-ftt-navy">
-              {price}
-            </span>
-            <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-ftt-burgundy/55">
+            {shippingWaived ? (
+              <span className="flex items-center justify-end gap-2 text-sm font-semibold text-ftt-navy">
+                <span className="text-ftt-burgundy/50 line-through">
+                  {formatCurrency(SHIPPING_TIERS.standard)}
+                </span>
+                <span className="rounded-full bg-ftt-gold/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ftt-gold">
+                  Free
+                </span>
+              </span>
+            ) : (
+              <span className="block text-sm font-semibold text-ftt-navy">
+                {price}
+              </span>
+            )}
+            <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-ftt-burgundy/55">
               Shipped by Shiprocket / DTDC
             </span>
           </div>
@@ -279,6 +297,8 @@ export function PackagingStep({
           moments of joy that come with opening something made with care.
         </p>
 
+        {/* Task 5: "Preview packaging" button hidden from customers for launch.
+            Kept intact for restore — uncomment to re-enable.
         <div className="mt-5">
           <PackagingPreview
             title="From the Trunk Packaging"
@@ -288,6 +308,7 @@ export function PackagingStep({
             images={NORMAL_PACKAGING_IMAGES}
           />
         </div>
+        */}
       </div>
     </section>
   );

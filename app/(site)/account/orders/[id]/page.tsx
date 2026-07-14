@@ -164,12 +164,31 @@ export default function OrderDetailPage() {
             <span>Subtotal</span>
             <span>{formatCurrency(order.subtotalPaise / 100)}</span>
           </div>
-          {order.shippingCostPaise > 0 && (
-            <div className="flex justify-between text-muted-foreground">
-              <span>Shipping</span>
-              <span>{formatCurrency(order.shippingCostPaise / 100)}</span>
+          {order.discountCode && (
+            <div className="flex justify-between font-medium text-ftt-gold">
+              <span>Discount ({order.discountCode})</span>
+              <span>
+                -
+                {formatCurrency(
+                  Math.max(
+                    0,
+                    order.subtotalPaise +
+                      order.shippingCostPaise +
+                      order.taxAmountPaise -
+                      order.totalPaise,
+                  ) / 100,
+                )}
+              </span>
             </div>
           )}
+          <div className="flex justify-between text-muted-foreground">
+            <span>Shipping</span>
+            <span>
+              {order.shippingCostPaise > 0
+                ? formatCurrency(order.shippingCostPaise / 100)
+                : "Free"}
+            </span>
+          </div>
           {order.taxAmountPaise > 0 && (
             <div className="flex justify-between text-muted-foreground">
               <span>GST</span>

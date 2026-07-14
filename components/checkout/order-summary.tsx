@@ -1,8 +1,16 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { ShieldCheck, X } from "lucide-react";
+import { Info, ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { getSelectedSizeLabel } from "@/lib/catalog/blouse-size-chart";
 import type { OneOfOneConflictCopy } from "@/lib/checkout/one-of-one-conflict-copy";
@@ -35,14 +43,16 @@ type OrderSummaryProps = {
   error?: string | null;
 };
 
-const packagingLabel = (method: ShippingMethod) =>
-  method === "express" ? "Premium Trunk Packaging" : "Normal Care Packaging";
+// LAUNCH: the order summary now shows a flat "Shipping — Free" line instead of
+// the paid packaging tier, so the packaging label is unused. Kept for restore.
+// const packagingLabel = (method: ShippingMethod) =>
+//   method === "express" ? "Premium Trunk Packaging" : "Normal Care Packaging";
 
 /** The persistent order manifest shown beside every checkout step. */
 export function OrderSummary({
   items,
   subtotal,
-  shippingMethod,
+  // shippingMethod — unused while shipping is a flat free line (kept in props).
   shippingCost,
   taxAmount,
   taxRateLabel,
@@ -129,18 +139,43 @@ export function OrderSummary({
                 accent
               />
             ) : null}
-            <Row
-              label={packagingLabel(shippingMethod)}
-              value={
-                shippingCost === 0
-                  ? "Complimentary"
-                  : formatCurrency(shippingCost)
-              }
-            />
-            <Row
-              label={`Estimated GST (${taxRateLabel})`}
-              value={formatCurrency(taxAmount)}
-            />
+            {/* LAUNCH: shipping is free. Original paid packaging row kept for restore:
+              <Row
+                label={packagingLabel(shippingMethod)}
+                value={shippingCost === 0 ? "Complimentary" : formatCurrency(shippingCost)}
+              /> */}
+            <div className="flex min-w-0 items-center justify-between gap-4">
+              <dt className="flex min-w-0 items-center gap-1.5 break-words text-ftt-burgundy/60">
+                Shipping
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Estimated delivery time"
+                        className="grid size-4 shrink-0 place-items-center rounded-full text-ftt-burgundy/45 transition hover:text-ftt-burgundy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold/40"
+                      >
+                        <Info className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[13rem] border-none bg-ftt-burgundy text-center font-medium leading-5 text-ftt-ivory">
+                      Your order will be delivered in 7 to 10 days.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </dt>
+              <dd className="shrink-0 text-right font-medium text-ftt-navy">
+                {shippingCost === 0 ? "Free" : formatCurrency(shippingCost)}
+              </dd>
+            </div>
+            {/* LAUNCH: GST removed — row stays hidden while taxAmount is 0
+                (ENABLE_GST off). Reappears automatically if GST is re-enabled. */}
+            {taxAmount > 0 ? (
+              <Row
+                label={`Estimated GST (${taxRateLabel})`}
+                value={formatCurrency(taxAmount)}
+              />
+            ) : null}
           </dl>
 
           <div className="h-px bg-ftt-border" />

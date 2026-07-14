@@ -2,7 +2,7 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 
 import { isGstInclusive } from "@/lib/config/flags";
-import { ENABLE_FREE_SHIPPING, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
+import { ENABLE_FREE_SHIPPING, ENABLE_GST, ENABLE_SHIPPING_CHARGES, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { applyDiscountToPaise, type ValidatedDiscount } from "@/lib/discounts/validate";
 import { isLiveRazorpayMode, isUnsafeLiveHost } from "@/lib/payments/payment-host-guard";
 
@@ -277,6 +277,9 @@ export function toShippingCostPaise(
   subtotalPaise: number,
   shippingMethod: ShippingMethod = "standard"
 ): number {
+  // LAUNCH: shipping is FREE. Gate kept so the original tiered charge below can
+  // be restored by enabling ENABLE_SHIPPING_CHARGES.
+  if (!ENABLE_SHIPPING_CHARGES) return 0;
   const freeThresholdPaise = SHIPPING_TIERS.freeThreshold * 100;
   if (ENABLE_FREE_SHIPPING && subtotalPaise >= freeThresholdPaise) return 0;
   return SHIPPING_TIERS[shippingMethod] * 100;
@@ -375,7 +378,13 @@ export function calculateOrderTotals(
   let taxAmountPaise: number;
   let totalPaise: number;
 
-  if (isGstInclusive()) {
+  if (!ENABLE_GST) {
+    // LAUNCH: GST removed — no tax component and nothing added to the total.
+    // The inclusive/exclusive branches below are kept intact; restore by
+    // enabling ENABLE_GST.
+    taxAmountPaise = 0;
+    totalPaise = Math.max(0, discountedSubtotal + shippingCostPaise);
+  } else if (isGstInclusive()) {
     // Inclusive: back-calculate the GST component from the discounted all-in price
     // for transparency display only. No GST is added on top.
     taxAmountPaise = Math.round((discountedSubtotal * GST_RATE) / (1 + GST_RATE));
