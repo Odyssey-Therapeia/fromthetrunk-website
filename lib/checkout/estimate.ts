@@ -20,6 +20,8 @@
 
 import {
   ENABLE_FREE_SHIPPING,
+  ENABLE_GST,
+  ENABLE_SHIPPING_CHARGES,
   GST_RATE,
   SHIPPING_TIERS,
   type ShippingMethod,
@@ -63,11 +65,16 @@ export function computeCheckoutEstimate(input: {
   const effectiveSubtotal = Math.max(0, input.subtotal - discountAmount);
 
   // Shipping on the DISCOUNTED subtotal — mirrors the server.
-  const shippingCost = isFreeShipping(effectiveSubtotal, tiers)
+  // LAUNCH: shipping is free (ENABLE_SHIPPING_CHARGES off) so this is 0; the
+  // tiered fallback is kept for when charges are restored.
+  const shippingCost = !ENABLE_SHIPPING_CHARGES
     ? 0
-    : tiers[input.shippingMethod];
+    : isFreeShipping(effectiveSubtotal, tiers)
+      ? 0
+      : tiers[input.shippingMethod];
 
-  const taxAmount = Math.round(effectiveSubtotal * gstRate);
+  // LAUNCH: GST removed (ENABLE_GST off) so this is 0; mirrors the server.
+  const taxAmount = ENABLE_GST ? Math.round(effectiveSubtotal * gstRate) : 0;
   const total = Math.max(0, effectiveSubtotal + shippingCost + taxAmount);
 
   return { effectiveSubtotal, discountAmount, shippingCost, taxAmount, total };

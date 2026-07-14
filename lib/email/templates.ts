@@ -37,6 +37,8 @@ export type EmailOrder = {
   subtotal: number;
   taxAmount?: number | null;
   total?: number | null;
+  /** Applied discount code, or null when none was used. */
+  discountCode?: null | string;
 };
 
 const brandStyles = {
@@ -93,6 +95,23 @@ const wrapper = (content: string) => `
 </body>
 </html>
 `;
+
+/**
+ * Totals-block discount row — rendered only when a code was applied, matching
+ * the receipt and checkout. No discount amount is persisted, so it is derived
+ * from the stored totals: discount = subtotal + shipping + tax − total.
+ */
+const discountRowHtml = (order: EmailOrder): string => {
+  if (!order.discountCode) return "";
+  const discount = Math.max(
+    0,
+    order.subtotal +
+      (order.shippingCost ?? 0) +
+      (order.taxAmount ?? 0) -
+      (order.total ?? order.subtotal),
+  );
+  return `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Discount (${escapeHtml(order.discountCode)})</span><span>-${formatINR(discount * 100)}</span></div>`;
+};
 
 export function orderConfirmationEmail(order: EmailOrder): {
   subject: string;
@@ -160,7 +179,8 @@ export function orderConfirmationEmail(order: EmailOrder): {
       <div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;">
         <span>Subtotal</span><span>${formatINR(order.subtotal * 100)}</span>
       </div>
-      ${(order.shippingCost ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${formatINR(order.shippingCost! * 100)}</span></div>` : ""}
+      ${discountRowHtml(order)}
+      <div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${(order.shippingCost ?? 0) > 0 ? formatINR(order.shippingCost! * 100) : "Free"}</span></div>
       ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>${isGstInclusive() ? "GST (incl.)" : "GST"}</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
       <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:${brandStyles.text};margin:12px 0;padding-top:12px;border-top:2px solid ${brandStyles.border};">
         <span>Total${isGstInclusive() ? " (incl. GST)" : ""}</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>
@@ -251,7 +271,8 @@ export function orderPurchaseNotificationEmail(
       <div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;">
         <span>Subtotal</span><span>${formatINR(order.subtotal * 100)}</span>
       </div>
-      ${(order.shippingCost ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${formatINR(order.shippingCost! * 100)}</span></div>` : ""}
+      ${discountRowHtml(order)}
+      <div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>Shipping</span><span>${(order.shippingCost ?? 0) > 0 ? formatINR(order.shippingCost! * 100) : "Free"}</span></div>
       ${(order.taxAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:${brandStyles.muted};margin:4px 0;"><span>${isGstInclusive() ? "GST (incl.)" : "GST"}</span><span>${formatINR(order.taxAmount! * 100)}</span></div>` : ""}
       <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:${brandStyles.text};margin:12px 0;padding-top:12px;border-top:2px solid ${brandStyles.border};">
         <span>Total paid${isGstInclusive() ? " (incl. GST)" : ""}</span><span>${formatINR((order.total ?? order.subtotal) * 100)}</span>

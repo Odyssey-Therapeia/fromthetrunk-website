@@ -78,6 +78,24 @@ export const GST_RATE = parseRateEnv(
  */
 export const ENABLE_FREE_SHIPPING: boolean = false;
 
+/**
+ * LAUNCH PRICING SWITCHES (restore-friendly).
+ *
+ * For now shipping is FREE on every order and GST is NOT charged. Both are gated
+ * behind these flags so the original charged-pricing logic (SHIPPING_TIERS +
+ * toShippingCostPaise, GST_RATE + calculateOrderTotals) stays fully intact and
+ * can be restored by setting the env var to "true" (or flipping the default
+ * here). The `NEXT_PUBLIC_` prefix keeps client (estimate) and server
+ * (calculateOrderTotals) in lock-step when re-enabled.
+ *
+ * Default (env unset) => false => shipping free / no GST, everywhere.
+ */
+export const ENABLE_SHIPPING_CHARGES: boolean =
+  process.env.NEXT_PUBLIC_FTT_ENABLE_SHIPPING_CHARGES === "true";
+
+export const ENABLE_GST: boolean =
+  process.env.NEXT_PUBLIC_FTT_ENABLE_GST === "true";
+
 /** Shipping cost tiers in INR. */
 export const SHIPPING_TIERS = {
   /** Free-shipping threshold in INR (only applies when ENABLE_FREE_SHIPPING). */

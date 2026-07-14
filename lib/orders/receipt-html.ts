@@ -363,11 +363,23 @@ export function buildOrderReceiptHtml(order: Order, generatedAt = new Date()) {
         </table>
         <div class="totals">
           <div class="row"><span>Subtotal</span><strong>${moneyFromPaise(order.subtotalPaise)}</strong></div>
-          <div class="row"><span>Shipping</span><strong>${moneyFromPaise(order.shippingCostPaise)}</strong></div>
-          <div class="row"><span>GST</span><strong>${moneyFromPaise(order.taxAmountPaise)}</strong></div>
           ${
             order.discountCode
-              ? `<div class="row"><span>Discount code</span><strong>${escapeHtml(order.discountCode)}</strong></div>`
+              ? `<div class="row"><span>Discount (${escapeHtml(order.discountCode)})</span><strong>-${moneyFromPaise(
+                  Math.max(
+                    0,
+                    order.subtotalPaise +
+                      order.shippingCostPaise +
+                      order.taxAmountPaise -
+                      order.totalPaise,
+                  ),
+                )}</strong></div>`
+              : ""
+          }
+          <div class="row"><span>Shipping</span><strong>${order.shippingCostPaise > 0 ? moneyFromPaise(order.shippingCostPaise) : "Free"}</strong></div>
+          ${
+            order.taxAmountPaise > 0
+              ? `<div class="row"><span>GST</span><strong>${moneyFromPaise(order.taxAmountPaise)}</strong></div>`
               : ""
           }
           <div class="row total"><span>Amount paid</span><strong>${moneyFromPaise(order.totalPaise)}</strong></div>
