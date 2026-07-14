@@ -72,6 +72,17 @@ export default async function ConfirmationPage({
   const shortOrderId = formatOrderShortId(order.id);
   const receiptHref = getReceiptHref(order.id, accessKey);
   const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
+  // No discount-amount column is persisted, so derive what the code saved:
+  // total = (subtotal - discount) + shipping + tax  ⇒  discount = subtotal + shipping + tax - total.
+  const discountPaise = order.discountCode
+    ? Math.max(
+        0,
+        order.subtotalPaise +
+          order.shippingCostPaise +
+          order.taxAmountPaise -
+          order.totalPaise,
+      )
+    : 0;
   const addressLines = getShippingAddressLines(order);
   const paymentLabel = formatPaymentStatusLabel(order.paymentStatus);
   const orderStatusLabel = formatOrderStatusLabel(order.status);
@@ -288,10 +299,21 @@ export default async function ConfirmationPage({
           <Separator className="my-5 bg-ftt-border" />
           <dl className="space-y-3 text-sm">
             <TotalRow label="Subtotal" value={formatCurrency(order.subtotalPaise / 100)} />
-            <TotalRow label="Shipping" value={formatCurrency(order.shippingCostPaise / 100)} />
-            <TotalRow label="GST" value={formatCurrency(order.taxAmountPaise / 100)} />
             {order.discountCode ? (
-              <TotalRow label="Discount code" value={order.discountCode} />
+              <TotalRow
+                label={`Discount (${order.discountCode})`}
+                value={`-${formatCurrency(discountPaise / 100)}`}
+                accent
+              />
+            ) : null}
+            {/* LAUNCH: shipping is free. Older orders that stored a shipping charge still show it. */}
+            <TotalRow
+              label="Shipping"
+              value={order.shippingCostPaise > 0 ? formatCurrency(order.shippingCostPaise / 100) : "Free"}
+            />
+            {/* LAUNCH: GST removed — hidden while the order carries no tax (older taxed orders still show it). */}
+            {order.taxAmountPaise > 0 ? (
+              <TotalRow label="GST" value={formatCurrency(order.taxAmountPaise / 100)} />
             ) : null}
             <div className="flex items-center justify-between border-t border-ftt-border pt-4 text-lg font-semibold text-ftt-navy">
               <dt>{isPaid ? "Total paid" : "Order total"}</dt>
@@ -385,11 +407,25 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TotalRow({ label, value }: { label: string; value: string }) {
+function TotalRow({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 text-ftt-burgundy/70">
+    <div
+      className={`flex items-center justify-between gap-4 ${accent ? "text-ftt-gold" : "text-ftt-burgundy/70"}`}
+    >
       <dt className="min-w-0 break-words">{label}</dt>
-      <dd className="shrink-0 text-right font-medium text-ftt-navy">{value}</dd>
+      <dd
+        className={`shrink-0 text-right ${accent ? "font-semibold text-ftt-gold" : "font-medium text-ftt-navy"}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

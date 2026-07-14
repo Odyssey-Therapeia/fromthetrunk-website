@@ -46,6 +46,8 @@ export function ReviewStep({
         />
       </div>
 
+      {/* LAUNCH: packaging summary card hidden on the final review step — only
+          one packaging is offered, so restating it here is noise. Kept for restore.
       <div className="mt-4 rounded-3xl border border-ftt-gold/25 bg-ftt-gold/8 p-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ftt-gold">
           Packaging
@@ -55,7 +57,7 @@ export function ReviewStep({
             ? "Premium Trunk Packaging"
             : "Normal Care Packaging"}
         </p>
-      </div>
+      </div> */}
 
       {isGift ? (
         <div className="mt-4 rounded-3xl border border-ftt-gold/25 bg-ftt-gold/8 p-4">

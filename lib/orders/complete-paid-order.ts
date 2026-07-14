@@ -52,6 +52,7 @@ const toEmailOrder = (order: NonNullable<Awaited<ReturnType<typeof getOrder>>>):
   subtotal: order.subtotalPaise / 100,
   taxAmount: order.taxAmountPaise / 100,
   total: order.totalPaise / 100,
+  discountCode: order.discountCode,
 });
 
 const sendPurchaseEmails = async (
