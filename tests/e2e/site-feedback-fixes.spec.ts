@@ -43,9 +43,13 @@ test.describe("Light mode only", () => {
 });
 
 test.describe("Our Story page content", () => {
-  test("shows the current story-book hero and cover copy", async ({ page }) => {
+  test("shows the current story hero and cover copy", async ({ page }) => {
     await page.goto("/our-story", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("h1", { hasText: "Our Story Book" })).toBeAttached();
+    await expect(
+      page.locator("h1", {
+        hasText: "Our Story — Pre-Loved Sarees With Provenance",
+      }),
+    ).toBeAttached();
     await expect(
       page.locator("h2", { hasText: "Elegance, given a second life" }).first()
     ).toBeVisible();

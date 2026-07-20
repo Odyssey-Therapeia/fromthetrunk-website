@@ -4,9 +4,9 @@ import Link from "next/link";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Packing",
+  title: "Packaging & Care",
   description:
-    "How From the Trunk prepares, protects, and dispatches each saree order.",
+    "How we wrap and protect every pre-loved saree for its journey to you.",
   path: "/packing",
 });
 
@@ -18,7 +18,7 @@ export default function PackingPage() {
           Customer Care
         </p>
         <h1 className="font-serif text-3xl text-foreground sm:text-4xl">
-          Packing
+          Our Packaging
         </h1>
         <p className="text-sm text-muted-foreground">
           Last updated: June 29, 2026

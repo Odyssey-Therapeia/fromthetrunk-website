@@ -170,7 +170,7 @@ describe("OG and social preview metadata", () => {
 
     expect(metadata.robots).toEqual({ index: true, follow: true });
     expect(metadata.openGraph?.title).toBe(
-      "Tangerine Noir Floral Border Weave | Pre-Loved Chiffon Saree",
+      "Tangerine Noir Floral Border Weave – Pre-Loved Chiffon Saree",
     );
     expect(ogImage).toMatchObject({
       url: "https://www.fromthetrunk.shop/media/tangerine-noir.jpg",

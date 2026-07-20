@@ -124,9 +124,9 @@ export async function generateMetadata({
 
   return {
     ...publicPageMetadata({
-      title: "Curated Pre-Loved Sarees in India | From The Trunk",
+      title: "Pre-Loved & Vintage Luxury Sarees – Shop All | From The Trunk",
       description:
-        "Browse authenticated pre-loved sarees, heirloom silk sarees, restored Indian textiles, and premium pre-owned drapes from From The Trunk.",
+        "Browse our full collection of authenticated pre-loved sarees — silk, chiffon, Banarasi and designer drapes. One-of-a-kind pieces, new arrivals weekly.",
       path: "/collection",
     }),
     robots: hasFilters
@@ -1158,9 +1158,8 @@ export default async function CollectionPage({
                     cms.title
                   ) : (
                     <>
-                      Curated{" "}
-                      <span className="whitespace-nowrap">pre-loved</span>{" "}
-                      sarees
+                      <span className="whitespace-nowrap">Pre-Loved</span> &amp;
+                      Vintage Luxury Sarees
                     </>
                   )}
                 </h1>

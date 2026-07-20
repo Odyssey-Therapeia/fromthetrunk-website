@@ -36,8 +36,9 @@ const contactLinks = [
 ] as const;
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Contact From The Trunk | Pre-Loved Saree Support",
-  description: contactDescription,
+  title: "Contact Us | From The Trunk Pre-Loved Sarees",
+  description:
+    "Questions about a saree, an order, or consigning your own? Reach the From The Trunk team by email, WhatsApp or social.",
   path: "/contact",
 });
 

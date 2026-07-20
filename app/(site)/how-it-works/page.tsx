@@ -8,9 +8,9 @@ import { HowItWorksExperience } from "./how-it-works-experience";
 export const revalidate = 300;
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "How It Works",
+  title: "How It Works — Buying & Authentication",
   description:
-    "Give your saree a second life. From sourcing to doorstep delivery, every piece is authenticated, restored, packed, and cared for with respect for its heritage.",
+    "How From The Trunk sources, authenticates and ships pre-loved sarees — with provenance, care and confidence at every step.",
   path: "/how-it-works",
 });
 
@@ -66,7 +66,7 @@ export default async function HowItWorksPage() {
       eyebrow={textOrFallback(howItWorksPage?.eyebrow, "How It Works")}
       title={textOrFallback(
         howItWorksPage?.title,
-        "A second life, handled with care",
+        "How From The Trunk Works — Buying & Authentication",
       )}
       description={textOrFallback(
         howItWorksPage?.description,

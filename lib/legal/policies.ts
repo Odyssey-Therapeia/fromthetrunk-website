@@ -21,6 +21,15 @@ export type LegalPolicy = {
   description: string;
   lastUpdated: string;
   sections: PolicySection[];
+  /**
+   * Optional SEO overrides. `title` and `description` stay the display copy used
+   * by the policy hub cards, breadcrumbs, and nav; these fields — when set —
+   * override only the page <h1> (`h1`), the browser/meta <title> (`seoTitle`),
+   * and the meta description (`metaDescription`).
+   */
+  h1?: string;
+  seoTitle?: string;
+  metaDescription?: string;
 };
 
 const CONTACT_EMAIL = "hello@fromthetrunk.shop";
@@ -32,6 +41,8 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Your data",
     description:
       "How From the Trunk collects, uses, protects, and handles personal information.",
+    metaDescription:
+      "How From The Trunk collects, uses and protects your personal information.",
     lastUpdated: "June 29, 2026",
     sections: [
       {
@@ -146,6 +157,10 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Returns",
     description:
       "How returns, refunds, exchanges, and unique product concerns are handled.",
+    h1: "Returns & Exchanges",
+    seoTitle: "Returns & Exchanges",
+    metaDescription:
+      "From The Trunk's returns and exchange policy for pre-loved sarees — what's covered and how it works.",
     lastUpdated: "June 29, 2026",
     sections: [
       {
@@ -244,6 +259,10 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Delivery",
     description:
       "Processing time, packaging, tracking, shipping charges, and delivery support.",
+    h1: "Shipping & Delivery",
+    seoTitle: "Shipping & Delivery",
+    metaDescription:
+      "How From The Trunk packs and ships your pre-loved saree — timelines, coverage and what to expect.",
     lastUpdated: "June 29, 2026",
     sections: [
       {
@@ -326,6 +345,10 @@ export const policies: LegalPolicy[] = [
     eyebrow: "Terms",
     description:
       "The terms that govern use of the website, accounts, orders, listings, and payments.",
+    h1: "Terms & Conditions",
+    seoTitle: "Terms & Conditions",
+    metaDescription:
+      "The terms that apply when you shop with or consign to From The Trunk.",
     lastUpdated: "June 29, 2026",
     sections: [
       {

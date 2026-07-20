@@ -95,7 +95,6 @@ describe("keyword landing page architecture", () => {
       getKeywordLandingByTypeSlug("fabric", "chiffon"),
       getKeywordLandingByTypeSlug("fabric", "georgette"),
       getKeywordLandingByTypeSlug("occasion", "wedding"),
-      getKeywordLandingByTypeSlug("blouse", "blouses"),
     ];
 
     for (const config of deferred) {
@@ -149,24 +148,24 @@ describe("keyword landing page architecture", () => {
 });
 
 describe("blouse landing guard", () => {
-  it("keeps the blouse landing page noindex even when QA blouse products exist", async () => {
+  it("makes the blouse landing page indexable when blouse products exist", async () => {
     vi.resetModules();
     vi.doMock("@/components/seo/keyword-product-landing-page", () => ({
       getKeywordLandingProducts: vi
         .fn()
-        .mockResolvedValue({ products: [{ id: "p_blouse_qa" }], totalDocs: 5 }),
+        .mockResolvedValue({ products: [{ id: "p_blouse" }], totalDocs: 5 }),
       KeywordProductLandingPage: () => null,
     }));
 
     const page = await import("@/app/(site)/blouses/page");
     await expect(page.generateMetadata()).resolves.toMatchObject({
-      robots: { index: false, follow: true },
+      robots: { index: true, follow: true },
     });
 
     vi.doUnmock("@/components/seo/keyword-product-landing-page");
   });
 
-  it("does not render the blouse page when blouse scope has no products", async () => {
+  it("renders a stable blouse page (no 404) and stays noindex when there are no products", async () => {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
       notFound: () => {
@@ -181,7 +180,13 @@ describe("blouse landing guard", () => {
     }));
 
     const page = await import("@/app/(site)/blouses/page");
-    await expect(page.default()).rejects.toThrow("NEXT_NOT_FOUND");
+    // No inventory gate: the page renders its empty state instead of 404ing.
+    await expect(page.default()).resolves.toBeTruthy();
+    // With no stock it stays out of the index (noindex, but still follow).
+    await expect(page.generateMetadata()).resolves.toMatchObject({
+      robots: { index: false, follow: true },
+    });
+
     vi.doUnmock("next/navigation");
     vi.doUnmock("@/components/seo/keyword-product-landing-page");
   });

@@ -140,13 +140,15 @@ describe("Brand content — How It Works page", () => {
     expect(hiw).toContain("Doorstep Magic");
   });
 
-  it("uses the current 'second life' heading", () => {
-    expect(hiw).toContain("A second life, handled with care");
+  it("uses the current how-it-works heading", () => {
+    expect(hiw).toContain("How From The Trunk Works — Buying & Authentication");
   });
 
   it("no longer has the old generic step titles", () => {
     expect(hiw).not.toContain("Sourcing & Curation");
-    expect(hiw).not.toContain("Authentication");
+    // Quoted form = a step title; the bare word now appears in the page H1
+    // ("Buying & Authentication"), which is intentional.
+    expect(hiw).not.toContain('"Authentication"');
     expect(hiw).not.toContain('"Restoration"');
   });
 });

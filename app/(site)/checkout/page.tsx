@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 
 import { CheckoutShell } from "@/components/checkout/checkout-shell";
 import { CheckoutPageClient } from "@/components/checkout/checkout-page-client";
-import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
+import { CUSTOMER_NOINDEX_FOLLOW_ROBOTS } from "@/lib/seo/route-metadata";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  robots: PRIVATE_NOINDEX_ROBOTS,
+  robots: CUSTOMER_NOINDEX_FOLLOW_ROBOTS,
 };
 
 export default async function CheckoutPage() {

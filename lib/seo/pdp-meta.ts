@@ -6,7 +6,7 @@
 /**
  * Build the <title> for a product detail page.
  *
- * Format: `{name} | Pre-Loved {fabric} Saree`
+ * Format: `{name} – Pre-Loved {fabric} Saree`
  *
  * Redundancy guard: when the product name already ends with "{fabric} saree"
  * (case-insensitive) the suffix is omitted to avoid repetition.
@@ -27,20 +27,28 @@ export function buildPdpTitle(name: string, fabric: string): string {
     return name;
   }
 
-  return `${name} | Pre-Loved ${suffix}`;
+  return `${name} – Pre-Loved ${suffix}`;
 }
+
+/** Target length for the PDP meta description (kept ≤ this where possible). */
+const PDP_DESCRIPTION_MAX = 155;
+
+/** Minimum room the story sentence needs before it is worth including. */
+const PDP_STORY_MIN_CHARS = 24;
 
 /**
  * Build the meta description for a product detail page.
  *
- * Fallback chain (first truthy source wins):
- *   1. storyNarrative  — truncated at word boundary ≤150 chars
- *   2. storyTitle
- *   3. `{name} {fabric} saree`
+ * Format:
+ *   `Own '{name}', a one-of-a-kind pre-loved {fabric} saree authenticated by
+ *    From The Trunk. {one-line story}. Shipped with provenance.`
  *
- * Word-boundary truncation: if the source is longer than 150 chars, find the
- * last space at or before position 150 and cut there. If the source is ≤150
- * chars it is returned whole.
+ * The description is ALWAYS unique per product (the name is embedded). The
+ * one-line story is sourced from `storyNarrative` (or `storyTitle` as a
+ * fallback) and is truncated at a word boundary so the whole description stays
+ * around {@link PDP_DESCRIPTION_MAX} characters. When there is no story — or no
+ * meaningful room for one — the story sentence is omitted, leaving a valid,
+ * provenance-forward description.
  */
 export function buildPdpDescription(
   name: string,
@@ -48,15 +56,43 @@ export function buildPdpDescription(
   storyNarrative?: null | string,
   storyTitle?: null | string,
 ): string {
-  if (storyNarrative && storyNarrative.trim().length > 0) {
-    return truncateAtWordBoundary(storyNarrative.trim(), 150);
+  // Normalize fabric the same way the title does, so we never emit "silk saree
+  // saree" when the fabric value already contains "saree".
+  const fabricDisplay = fabric.replace(/\s+saree\s*$/i, "").trim() || fabric;
+
+  const lead = `Own '${name}', a one-of-a-kind pre-loved ${fabricDisplay} saree authenticated by From The Trunk.`;
+  const tail = "Shipped with provenance.";
+
+  const story =
+    (storyNarrative && storyNarrative.trim()) ||
+    (storyTitle && storyTitle.trim()) ||
+    "";
+
+  if (!story) {
+    return `${lead} ${tail}`;
   }
 
-  if (storyTitle && storyTitle.trim().length > 0) {
-    return storyTitle.trim();
+  // Drop trailing sentence punctuation so we control the ". " join ourselves.
+  const storyClause = story.replace(/[.!?\s]+$/, "").trim();
+
+  // Budget for the story clause within `${lead} ${clause}. ${tail}`:
+  // lead + " " + clause + ". " + tail.
+  const budget = PDP_DESCRIPTION_MAX - lead.length - tail.length - 3;
+
+  if (budget < PDP_STORY_MIN_CHARS) {
+    return `${lead} ${tail}`;
   }
 
-  return `${name} ${fabric} saree`;
+  const fittedClause =
+    storyClause.length > budget
+      ? truncateAtWordBoundary(storyClause, budget)
+      : storyClause;
+
+  if (fittedClause.length === 0) {
+    return `${lead} ${tail}`;
+  }
+
+  return `${lead} ${fittedClause}. ${tail}`;
 }
 
 // ---------------------------------------------------------------------------
