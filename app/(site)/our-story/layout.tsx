@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "About From The Trunk | Restored Indian Textiles and Pre-Loved Sarees",
+  title: "Our Story — Sarees With Provenance | From The Trunk",
   description:
-    "Learn how From The Trunk authenticates, restores, and recirculates pre-loved sarees, heirloom silk sarees, and Indian textiles with provenance.",
+    "Why we authenticate every saree and pass on its story. Meet From The Trunk — a home for pre-loved luxury sarees that still have a story to tell.",
   path: "/our-story",
 });
 

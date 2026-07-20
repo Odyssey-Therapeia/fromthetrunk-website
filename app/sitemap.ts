@@ -36,6 +36,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/top-viewed"),
+      lastModified: STATIC_PAGE_LAST_MODIFIED,
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+    {
       url: absoluteUrl("/our-story"),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
@@ -61,6 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: absoluteUrl("/how-it-works"),
+      lastModified: STATIC_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: absoluteUrl("/authentication"),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,

@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
-import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
+import { CUSTOMER_NOINDEX_FOLLOW_ROBOTS } from "@/lib/seo/route-metadata";
 import {
   formatOrderShortId,
   formatOrderStatusLabel,
@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Order Confirmed",
-  robots: PRIVATE_NOINDEX_ROBOTS,
+  robots: CUSTOMER_NOINDEX_FOLLOW_ROBOTS,
 };
 
 type ConfirmationPageProps = {

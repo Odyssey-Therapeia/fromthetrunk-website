@@ -20,8 +20,8 @@ export async function generateMetadata({
   const policy = getPolicyBySlug(slug);
   if (!policy) return { title: "Policy" };
   return publicPageMetadata({
-    title: policy.title,
-    description: policy.description,
+    title: policy.seoTitle ?? policy.title,
+    description: policy.metaDescription ?? policy.description,
     path: `/policies/${policy.slug}`,
   });
 }
@@ -56,7 +56,7 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
               {policy.eyebrow}
             </p>
             <h1 className="mt-4 max-w-4xl font-serif text-[clamp(2.4rem,5.5vw,5rem)] leading-[0.95]">
-              {policy.title}
+              {policy.h1 ?? policy.title}
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-ftt-ivory/75 sm:text-base">
               {policy.description}
