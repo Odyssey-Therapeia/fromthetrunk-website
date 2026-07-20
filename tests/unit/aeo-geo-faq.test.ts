@@ -92,22 +92,22 @@ describe("AEO/GEO FAQ expansion", () => {
     const serialized = JSON.stringify(faqMetadata);
 
     expect(faqMetadata.title).toEqual({
-      absolute: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+      absolute: "Pre-Loved Saree FAQs | From The Trunk",
     });
     expect(faqMetadata.description).toBe(
-      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
     );
     expect(faqMetadata.openGraph?.title).toBe(
-      "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+      "Pre-Loved Saree FAQs | From The Trunk",
     );
     expect(faqMetadata.openGraph?.description).toBe(
-      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
     );
     expect(faqMetadata.twitter?.title).toBe(
-      "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+      "Pre-Loved Saree FAQs | From The Trunk",
     );
     expect(faqMetadata.twitter?.description).toBe(
-      "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
     );
     expect(faqMetadata.twitter?.card).toBe("summary_large_image");
     expect(ogImage?.url).toBe(

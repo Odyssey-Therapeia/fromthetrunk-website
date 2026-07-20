@@ -311,7 +311,7 @@ export default function OurStoryPage() {
                 From the Trunk
               </p>
               <h1 className="mt-2 font-serif text-3xl leading-none text-[#141D46] sm:text-4xl">
-                Our Story Book
+                Our Story — Pre-Loved Sarees With Provenance
               </h1>
             </div>
 
@@ -624,7 +624,13 @@ function StoryDesktopSpine({
 
         <div className="flex min-h-0 flex-1 items-center justify-center py-5">
           <div className="flex items-center justify-center gap-5 xl:gap-7">
-            <h1
+            {/* Consistent page H1 across viewports; the vertical "OUR STORY" below
+                is decorative only. */}
+            <h1 className="sr-only">
+              Our Story — Pre-Loved Sarees With Provenance
+            </h1>
+            <span
+              aria-hidden="true"
               className="font-serif text-[clamp(1.6rem,min(5.2vw,6vh),6.35rem)] font-medium leading-[0.82] tracking-[-0.055em] text-[#FDF7F1]"
               style={{
                 writingMode: "vertical-rl",
@@ -632,7 +638,7 @@ function StoryDesktopSpine({
               }}
             >
               OUR STORY
-            </h1>
+            </span>
 
             <p
               className="max-h-[min(28rem,calc(100svh-19rem))] text-[clamp(0.72rem,0.9vw,0.95rem)] font-semibold leading-6 tracking-[0.02em] text-[#FDF7F1]/76"

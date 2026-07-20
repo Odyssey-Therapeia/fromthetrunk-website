@@ -6,14 +6,14 @@ import { TrackPageView } from "@/components/analytics/track-page-view";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { searchProducts } from "@/lib/ports/catalog-search";
-import { PRIVATE_NOINDEX_ROBOTS } from "@/lib/seo/route-metadata";
+import { CUSTOMER_NOINDEX_FOLLOW_ROBOTS } from "@/lib/seo/route-metadata";
 import type { Product } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Search",
-  robots: PRIVATE_NOINDEX_ROBOTS,
+  robots: CUSTOMER_NOINDEX_FOLLOW_ROBOTS,
 };
 
 type SearchPageProps = {

@@ -251,21 +251,21 @@ export const keywordLandingPages = [
     ],
     title: "Pre-Loved Saree Blouses",
     description:
-      "Shop pre-loved saree blouses when blouse inventory is available from From the Trunk.",
-    h1: "Pre-loved saree blouses",
+      "Curated pre-loved and designer saree blouses to complete your drape — authenticated, one-of-a-kind pieces from From The Trunk.",
+    h1: "Pre-Loved & Designer Saree Blouses",
     intro: [
-      "Blouses need fit, fabric, and styling clarity, so From the Trunk keeps blouse discovery separate from saree-only searches. This page renders only when blouse inventory exists.",
+      "Blouses need fit, fabric, and styling clarity, so From the Trunk keeps blouse discovery separate from saree-only searches. New pieces are added here as they are authenticated and restored.",
       "When available, pieces are shown with the same care standards: visible condition, product details, and no hidden ownership assumptions.",
     ],
     faq: [
       {
-        question: "Why is the blouse page sometimes unavailable?",
+        question: "How often are new blouses added?",
         answer:
-          "It is kept out of the public journey when there are no blouse products, avoiding a thin empty SEO page.",
+          "New pieces are listed as they are authenticated and restored, so availability changes often — browse the full collection meanwhile and check back soon.",
       },
     ],
     canonicalPath: "/blouses",
-    sitemap: false,
+    sitemap: true,
     minProductCount: 1,
     searchFilters: { types: ["blouse"], availabilityStatus: "available" },
     related: [

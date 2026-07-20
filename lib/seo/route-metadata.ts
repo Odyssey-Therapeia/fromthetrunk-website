@@ -2,14 +2,28 @@ import type { Metadata } from "next";
 
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
-export const PRIVATE_NOINDEX_ROBOTS: NonNullable<Metadata["robots"]> = {
+/**
+ * Customer-facing utility pages — cart, checkout, order confirmation, search,
+ * account, wishlist, and the 404. Kept OUT of the index, but crawlers may FOLLOW
+ * the links on them (e.g. product links) so link equity still flows through.
+ */
+export const CUSTOMER_NOINDEX_FOLLOW_ROBOTS: NonNullable<Metadata["robots"]> = {
+  index: false,
+  follow: true,
+};
+
+/**
+ * Admin surfaces — out of the index AND not followed. Nothing behind admin
+ * should be crawled or discovered.
+ */
+export const ADMIN_NOINDEX_NOFOLLOW_ROBOTS: NonNullable<Metadata["robots"]> = {
   index: false,
   follow: false,
 };
 
 export const ADMIN_METADATA: Metadata = {
   title: "From the Trunk Admin",
-  robots: PRIVATE_NOINDEX_ROBOTS,
+  robots: ADMIN_NOINDEX_NOFOLLOW_ROBOTS,
 };
 
 export const WHY_PAGE_METADATA: Metadata = publicPageMetadata({

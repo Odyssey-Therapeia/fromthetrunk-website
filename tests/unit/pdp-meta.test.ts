@@ -6,13 +6,20 @@ import {
 } from "@/lib/seo/pdp-meta";
 
 // ---------------------------------------------------------------------------
-// buildPdpTitle
+// buildPdpTitle — format: `{name} – Pre-Loved {fabric} Saree`
+// (the " | From The Trunk" brand segment is appended by the layout template)
 // ---------------------------------------------------------------------------
 
 describe("buildPdpTitle", () => {
-  it("appends the suffix when the name does NOT already end in '{fabric} saree'", () => {
+  it("appends the suffix (en-dash separated) when the name does NOT already end in '{fabric} saree'", () => {
     const title = buildPdpTitle("Temple Border Archive", "Kanjeevaram silk");
-    expect(title).toBe("Temple Border Archive | Pre-Loved Kanjeevaram silk Saree");
+    expect(title).toBe("Temple Border Archive – Pre-Loved Kanjeevaram silk Saree");
+  });
+
+  it("keeps the product name (does not collapse to a fabric-only title)", () => {
+    const title = buildPdpTitle("Forest & Flame Tie Dye", "Silk");
+    expect(title).toContain("Forest & Flame Tie Dye");
+    expect(title).toBe("Forest & Flame Tie Dye – Pre-Loved Silk Saree");
   });
 
   it("skips the suffix when the name ends in '{fabric} Saree' (case-insensitive match)", () => {
@@ -36,92 +43,79 @@ describe("buildPdpTitle", () => {
   });
 
   it("strips trailing 'saree' from fabric value to avoid double-saree output", () => {
-    // fabric = "Heirloom saree" should produce "| Pre-Loved Heirloom Saree", not
-    // "| Pre-Loved Heirloom saree Saree".
     const title = buildPdpTitle("Heirloom Beauty", "Heirloom saree");
-    expect(title).toBe("Heirloom Beauty | Pre-Loved Heirloom Saree");
+    expect(title).toBe("Heirloom Beauty – Pre-Loved Heirloom Saree");
   });
 
   it("strips trailing 'SAREE' (case-insensitive) from fabric value", () => {
     const title = buildPdpTitle("Vintage Drape", "Cotton SAREE");
-    expect(title).toBe("Vintage Drape | Pre-Loved Cotton Saree");
+    expect(title).toBe("Vintage Drape – Pre-Loved Cotton Saree");
   });
 });
 
 // ---------------------------------------------------------------------------
-// buildPdpDescription
+// buildPdpDescription — SOT template:
+//   Own '{name}', a one-of-a-kind pre-loved {fabric} saree authenticated by
+//   From The Trunk. {one-line story}. Shipped with provenance.
 // ---------------------------------------------------------------------------
 
+const NO_STORY =
+  "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. Shipped with provenance.";
+
 describe("buildPdpDescription", () => {
-  it("returns storyNarrative in full when it is ≤150 chars", () => {
-    const narrative = "A beautiful heirloom piece passed down three generations.";
-    const desc = buildPdpDescription("Product", "Silk", narrative);
-    expect(desc).toBe(narrative);
+  it("wraps the SOT template around name + fabric when there is no story", () => {
+    expect(buildPdpDescription("Aardha", "Silk", null, null)).toBe(NO_STORY);
   });
 
-  it("truncates storyNarrative at word boundary when it is >150 chars", () => {
-    // Build a string that is clearly > 150 chars where char 150 falls mid-word.
-    // "hello " repeated 25 times = 150 chars exactly, then add a long word so
-    // the total is 170 chars. The truncation point at 150 falls right after the
-    // last space (position 149), so we should get the 150-char prefix without
-    // the extra long word.
-    const base = "hello ".repeat(25); // 150 chars — the last char is a space
-    const longWord = "overlengthword"; // 14 chars, pushes to 164 total
-    const narrative = base + longWord;
-    expect(narrative.length).toBeGreaterThan(150);
-
-    const desc = buildPdpDescription("Product", "Silk", narrative);
-    expect(desc.length).toBeLessThanOrEqual(150);
-    // The long word that starts at position 150 must not appear in the result
-    expect(desc).not.toContain(longWord);
+  it("omits the story sentence when both story sources are empty strings", () => {
+    expect(buildPdpDescription("Aardha", "Silk", "", "")).toBe(NO_STORY);
   });
 
-  it("truncates at word boundary and does not cut mid-word (exact boundary check)", () => {
-    // "word ".repeat(28) = 140 chars (28×5), indices 0–139, last char is a space.
-    // "superlongwordhere123" = 20 chars, indices 140–159. Total = 160 chars.
-    // truncateAtWordBoundary(text, 150):
-    //   slice(0,150) → indices 0–149, which is the 140 "word " chars + "superlon"
-    //   lastIndexOf(" ") in that slice → 139 (the trailing space of the 28th "word ")
-    //   result = slice(0,139) → "word ".repeat(27) + "word" = 139 chars
-    const part1 = "word ".repeat(28); // 140 chars, ends with space
-    const longWord = "superlongwordhere123"; // 20 chars
-    const narrative = part1 + longWord; // 160 chars
-
-    const desc = buildPdpDescription("Product", "Silk", narrative);
-    expect(desc.length).toBeLessThanOrEqual(150);
-    expect(desc).not.toContain(longWord);
-    // Exact equality — a naive slice(0,150) mutant would produce a 150-char string
-    // ending in "superlon" and would NOT equal this, so the assertion detects regressions.
-    expect(desc).toBe("word ".repeat(27) + "word");
-  });
-
-  it("falls back to storyTitle when storyNarrative is absent", () => {
-    const desc = buildPdpDescription(
-      "Heritage Piece",
-      "Chanderi",
-      null,
-      "The Story of a Lifetime"
+  it("includes the one-line story when it fits", () => {
+    const desc = buildPdpDescription("Aardha", "Silk", "A monsoon-wedding heirloom");
+    expect(desc).toBe(
+      "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. A monsoon-wedding heirloom. Shipped with provenance.",
     );
-    expect(desc).toBe("The Story of a Lifetime");
   });
 
-  it("falls back to storyTitle when storyNarrative is an empty string", () => {
-    const desc = buildPdpDescription(
-      "Heritage Piece",
-      "Chanderi",
-      "",
-      "The Story of a Lifetime"
-    );
-    expect(desc).toBe("The Story of a Lifetime");
+  it("uses storyTitle as the one-line story when the narrative is absent", () => {
+    const desc = buildPdpDescription("Aardha", "Silk", null, "A quiet Sunday drape");
+    expect(desc).toContain("A quiet Sunday drape.");
+    expect(desc.endsWith("Shipped with provenance.")).toBe(true);
   });
 
-  it("falls back to '{name} {fabric} saree' when both storyNarrative and storyTitle are absent", () => {
-    const desc = buildPdpDescription("Heritage Piece", "Chanderi", null, null);
-    expect(desc).toBe("Heritage Piece Chanderi saree");
+  it("embeds the product name so the description is unique per product", () => {
+    const a = buildPdpDescription("Aardha", "Silk", null, null);
+    const b = buildPdpDescription("Bela", "Silk", null, null);
+    expect(a).toContain("'Aardha'");
+    expect(b).toContain("'Bela'");
+    expect(a).not.toBe(b);
   });
 
-  it("falls back to '{name} {fabric} saree' when both are empty strings", () => {
-    const desc = buildPdpDescription("Vintage Silk", "Georgette", "", "");
-    expect(desc).toBe("Vintage Silk Georgette saree");
+  it("truncates a long story at a word boundary and stays around 155 chars", () => {
+    const longStory =
+      "Woven over many months by artisans in a small weaving village, this drape carries motifs handed down through several generations of one family";
+    const desc = buildPdpDescription("Aardha", "Silk", longStory);
+    expect(desc.length).toBeLessThanOrEqual(155);
+    expect(
+      desc.startsWith(
+        "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk.",
+      ),
+    ).toBe(true);
+    expect(desc.endsWith(". Shipped with provenance.")).toBe(true);
+    // Word-boundary truncation never emits a partial word from the story.
+    const storyClause = desc
+      .replace(
+        "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. ",
+        "",
+      )
+      .replace(". Shipped with provenance.", "");
+    expect(longStory.startsWith(storyClause)).toBe(true);
+  });
+
+  it("strips a trailing 'saree' from the fabric value (no double 'saree')", () => {
+    const desc = buildPdpDescription("Aardha", "Heirloom saree", null, null);
+    expect(desc).toContain("pre-loved Heirloom saree authenticated");
+    expect(desc).not.toContain("Heirloom saree saree");
   });
 });

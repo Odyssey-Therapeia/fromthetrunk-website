@@ -7,7 +7,8 @@ import nextConfig from "@/next.config";
 import { productJsonLd } from "@/lib/seo/json-ld";
 import {
   ADMIN_METADATA,
-  PRIVATE_NOINDEX_ROBOTS,
+  ADMIN_NOINDEX_NOFOLLOW_ROBOTS,
+  CUSTOMER_NOINDEX_FOLLOW_ROBOTS,
   WHY_PAGE_METADATA,
 } from "@/lib/seo/route-metadata";
 
@@ -176,9 +177,13 @@ describe("SEO Phase 1 technical cleanup", () => {
     );
   });
 
-  it("private/admin surfaces expose noindex metadata without changing auth", async () => {
+  it("private/admin surfaces expose the right noindex metadata without changing auth", async () => {
+    // Admin stays noindex + nofollow.
     expect(ADMIN_METADATA.robots).toEqual({ index: false, follow: false });
-    expect(PRIVATE_NOINDEX_ROBOTS).toEqual({ index: false, follow: false });
+    expect(ADMIN_NOINDEX_NOFOLLOW_ROBOTS).toEqual({ index: false, follow: false });
+    // Customer utility pages (cart/checkout/account/search/confirmation) are
+    // noindex + FOLLOW so crawlers can still follow links out of them.
+    expect(CUSTOMER_NOINDEX_FOLLOW_ROBOTS).toEqual({ index: false, follow: true });
   });
 
   it("/why has full production canonical metadata", async () => {

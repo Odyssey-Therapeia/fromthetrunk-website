@@ -59,7 +59,7 @@ const slides: Slide[] = [
     ],
     description: "Handcrafted pieces for women who lead with confidence.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0",
+      "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0",
   },
   {
     image: "/hero/4-lcp.webp",
@@ -78,7 +78,7 @@ const slides: Slide[] = [
     description:
       "Created to be cherished today, tomorrow, and for generations.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
+      "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
     image: "/hero/5-lcp.webp",
@@ -100,7 +100,7 @@ const slides: Slide[] = [
     ],
     description: "Every weave becomes a story when you wear it.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
+      "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0 md:pt-16",
   },
   {
     image: "/hero/6-lcp.webp",
@@ -130,7 +130,7 @@ const slides: Slide[] = [
     headlineClassName:
       "md:!text-[clamp(2.45rem,4.7vw,4.35rem)] lg:!text-[clamp(3.2rem,5.15vw,6.35rem)]",
     mobileCopyClassName:
-      "justify-end pb-[clamp(5.5rem,13vh,8rem)] md:justify-start md:pb-0 md:pt-16",
+      "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0 md:pt-16",
     mobileHeadlineClassName: "!text-[clamp(2.65rem,11vw,4rem)] !leading-[0.92]",
   },
 ];
@@ -272,7 +272,9 @@ function HeroCopy({ slide }: { slide: Slide }) {
         className="mb-4 mt-3 block h-px w-[clamp(5.5rem,24vw,8rem)] bg-linear-to-r from-[#B39152] via-[#B39152]/70 to-transparent md:mb-6 md:mt-4 md:w-32"
         aria-hidden="true"
       />
-      <h1
+      {/* Rotating hero tagline. This is a styled sub-line, NOT the page heading —
+          the single page <h1> lives once in HeroSection (sr-only). */}
+      <p
         className="max-w-full font-serif text-[clamp(3.15rem,13vw,5rem)] font-medium leading-[0.9] text-white md:max-w-none md:text-[clamp(2.8rem,6vw,4.8rem)] md:font-semibold md:leading-[0.96] lg:text-[clamp(4rem,6vw,7.6rem)]"
       >
         <span className={["md:hidden", slide.mobileHeadlineClassName ?? ""].join(" ")}>
@@ -281,7 +283,7 @@ function HeroCopy({ slide }: { slide: Slide }) {
         <span className={["hidden md:inline", slide.headlineClassName ?? ""].join(" ")}>
           {renderHeadline(slide.headline)}
         </span>
-      </h1>
+      </p>
       {slide.hideMobileDescription ? (
         <p className="mt-6 hidden w-auto max-w-[clamp(18rem,34vw,32rem)] text-[clamp(1.15rem,1.35vw,1.6rem)] leading-[1.6] text-white/85 md:block lg:max-w-[clamp(24rem,38vw,40rem)]">
           {slide.description}
@@ -399,6 +401,9 @@ export function HeroSection(props: HeroSectionProps) {
       id="home-hero"
       className="relative h-[calc(100svh-9.125rem)] min-h-120 overflow-hidden text-white md:h-[min(calc(100svh-6.625rem),60vw)] md:min-h-144 lg:h-[min(calc(100svh-6.625rem),56.25vw)] lg:min-h-152 xl:min-h-160 2xl:min-h-168"
     >
+      {/* The homepage's single, canonical H1 (visually hidden — the visible hero
+          headline is the rotating tagline above). */}
+      <h1 className="sr-only">Authenticated Pre-Loved Luxury Sarees</h1>
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div

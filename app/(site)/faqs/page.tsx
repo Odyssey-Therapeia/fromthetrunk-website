@@ -15,13 +15,13 @@ import { safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 const faqDescription =
-  "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.";
+  "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.";
 
 const faqSocialDescription =
-  "Answers about buying authenticated pre-loved sarees in India, heirloom silk saree care, selling old sarees, shipping, returns, and one-of-one checkout.";
+  "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.";
 
 const faqBaseMetadata = publicPageMetadata({
-  title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+  title: "Pre-Loved Saree FAQs | From The Trunk",
   description: faqDescription,
   path: "/faqs",
   image: {
@@ -32,16 +32,16 @@ const faqBaseMetadata = publicPageMetadata({
 export const metadata: Metadata = {
   ...faqBaseMetadata,
   title: {
-    absolute: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+    absolute: "Pre-Loved Saree FAQs | From The Trunk",
   },
   openGraph: {
     ...(faqBaseMetadata.openGraph ?? {}),
-    title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+    title: "Pre-Loved Saree FAQs | From The Trunk",
     description: faqSocialDescription,
   },
   twitter: {
     ...(faqBaseMetadata.twitter ?? {}),
-    title: "FAQs | Authenticated Pre-Loved Sarees in India | From The Trunk",
+    title: "Pre-Loved Saree FAQs | From The Trunk",
     description: faqSocialDescription,
   },
 };
@@ -59,7 +59,7 @@ export default function FaqsPage() {
           Support
         </p>
         <h1 className="font-serif text-4xl text-foreground md:text-5xl">
-          FAQs &amp; Policies
+          Pre-Loved Saree FAQs
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
           Everything you need before bringing a unique piece home. Read our
