@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { DeferredFillImage } from "@/components/media/deferred-fill-image";
+import { isApprovedSourceMediaUrl } from "@/lib/media/derivative-policy";
 import { cn } from "@/lib/utils";
 
 export type InstagramSocialCardData = {
@@ -25,6 +27,7 @@ export function InstagramSocialCard({
   featured = false,
   handle = "from.thetrunk",
   linkTabIndex,
+  loadMedia = true,
   priority = false,
   showHandle = true,
 }: {
@@ -33,6 +36,7 @@ export function InstagramSocialCard({
   featured?: boolean;
   handle?: string;
   linkTabIndex?: number;
+  loadMedia?: boolean;
   priority?: boolean;
   showHandle?: boolean;
 }) {
@@ -40,6 +44,8 @@ export function InstagramSocialCard({
   const [videoActive, setVideoActive] = useState(false);
 
   const canPlayVideo = Boolean(card.videoUrl);
+  const bypassOptimization =
+    card.image.startsWith("http") && !isApprovedSourceMediaUrl(card.image);
 
   const playVideo = () => {
     if (!videoRef.current || !canPlayVideo) return;
@@ -87,28 +93,46 @@ export function InstagramSocialCard({
           }}
         />
 
-        <Image
-          src={card.image}
-          alt={card.alt}
-          fill
-          priority={priority}
-          sizes={
-            featured
-              ? "(max-width: 1024px) 100vw, 50vw"
-              : "(max-width: 1024px) 50vw, 25vw"
-          }
-          unoptimized={card.image.startsWith("http")}
-          className={cn(
-            "object-cover transition duration-700 group-hover:scale-105",
-            videoActive && canPlayVideo ? "opacity-0" : "opacity-100",
-          )}
-        />
+        {loadMedia && priority ? (
+          <Image
+            src={card.image}
+            alt={card.alt}
+            fill
+            priority={priority}
+            sizes={
+              featured
+                ? "(max-width: 1024px) 100vw, 50vw"
+                : "(max-width: 1024px) 50vw, 25vw"
+            }
+            unoptimized={bypassOptimization}
+            className={cn(
+              "object-cover transition duration-700 group-hover:scale-105",
+              videoActive && canPlayVideo ? "opacity-0" : "opacity-100",
+            )}
+          />
+        ) : loadMedia ? (
+          <DeferredFillImage
+            src={card.image}
+            alt={card.alt}
+            rootMargin="160px 120px"
+            sizes={
+              featured
+                ? "(max-width: 1024px) 100vw, 50vw"
+                : "(max-width: 1024px) 50vw, 25vw"
+            }
+            unoptimized={bypassOptimization}
+            className={cn(
+              "object-cover transition duration-700 group-hover:scale-105",
+              videoActive && canPlayVideo ? "opacity-0" : "opacity-100",
+            )}
+          />
+        ) : null}
 
         {card.videoUrl ? (
           <video
             ref={videoRef}
             src={videoActive ? card.videoUrl : undefined}
-            poster={card.image}
+            poster={videoActive && loadMedia ? card.image : undefined}
             muted
             loop
             playsInline

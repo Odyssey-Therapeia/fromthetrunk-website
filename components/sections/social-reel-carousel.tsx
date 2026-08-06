@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import {
@@ -14,7 +14,6 @@ type SocialReelCarouselProps = {
   username: string;
 };
 
-const REEL_INTERVAL_MS = 3800;
 const VISIBLE_POSITIONS = [-2, -1, 0, 1, 2] as const;
 type ReelPosition = (typeof VISIBLE_POSITIONS)[number] | "hidden";
 
@@ -23,22 +22,6 @@ export function SocialReelCarousel({
   username,
 }: SocialReelCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    if (cards.length < 2) return;
-
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (reduceMotion) return;
-
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % cards.length);
-    }, REEL_INTERVAL_MS);
-
-    return () => window.clearInterval(timer);
-  }, [cards.length]);
 
   if (!cards.length) return null;
 
@@ -71,6 +54,7 @@ export function SocialReelCarousel({
                 card={card}
                 handle={username}
                 linkTabIndex={position === 0 ? 0 : -1}
+                loadMedia={position === -1 || position === 0 || position === 1}
                 showHandle={position === 0 || position === -1}
                 className={cn(
                   "h-full w-full rounded-[1.65rem] border border-[#FDF7F1]/30 shadow-[0_28px_75px_rgba(96,29,28,0.16)] sm:rounded-[1.9rem]",

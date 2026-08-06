@@ -71,9 +71,6 @@ export function SiteWidgets() {
     const compute = () => {
       const hero = document.getElementById("home-hero");
       if (!hero) {
-        // On the homepage the hero can mount late (behind the intro gate), so a
-        // missing hero here does NOT mean it has been scrolled past — keep the
-        // widgets hidden. Only routes that genuinely have no hero count as passed.
         setHeroPassed(pathname !== "/");
         return;
       }
@@ -83,18 +80,9 @@ export function SiteWidgets() {
     };
 
     compute();
-    // Poll briefly so we catch the hero once the intro gate reveals it, even if
-    // the visitor has not scrolled yet (scroll/resize alone would miss it).
-    const poll = window.setInterval(compute, 300);
-    const stopPoll = window.setTimeout(
-      () => window.clearInterval(poll),
-      8000,
-    );
     window.addEventListener("scroll", compute, { passive: true });
     window.addEventListener("resize", compute);
     return () => {
-      window.clearInterval(poll);
-      window.clearTimeout(stopPoll);
       window.removeEventListener("scroll", compute);
       window.removeEventListener("resize", compute);
     };

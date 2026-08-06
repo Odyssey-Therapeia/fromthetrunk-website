@@ -24,6 +24,18 @@ const toAuthUser = (token: Record<string, unknown>): AuthUser | null => {
 };
 
 export const authMiddleware: MiddlewareHandler<HonoBindings> = async (c, next) => {
+  const pathname = new URL(c.req.raw.url).pathname;
+  const isProvenPublicRead =
+    c.req.raw.method === "GET" &&
+    (pathname === "/api/v2/search" ||
+      pathname === "/api/v2/health" ||
+      pathname.startsWith("/api/v2/feeds/"));
+  if (isProvenPublicRead) {
+    c.set("authUser", null);
+    await next();
+    return;
+  }
+
   const timings = c.get("perfTimings");
   const token = await timeAsync(timings, "auth-session", () =>
     getToken({

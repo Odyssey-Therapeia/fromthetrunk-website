@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SessionProvider, useSession } from "next-auth/react";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { ConnectDialog } from "@/components/layout/connect-dialog";
@@ -21,8 +20,8 @@ import { useGuestWishlistStore } from "@/lib/store/wishlist-store";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
-  { href: "/collection?type=blouse", label: "Blouses" },
+  { href: "/top-viewed", label: "Top Viewed" },
+  { href: "/blouses", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
@@ -114,57 +113,18 @@ function HeartIcon() {
 }
 
 function SiteHeaderControlsInner() {
-  const { data: session } = useSession();
   const router = useRouter();
   const hasMounted = useHasMounted();
   const [mobileSearch, setMobileSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
 
-  // Wishlist count for the heart badge. Logged-in users are server-backed
-  // (/api/v2/wishlist); guests fall back to the local guest store. This header
-  // renders outside the app's QueryClientProvider, so we fetch directly and
-  // refresh on the `ftt:wishlist-updated` event dispatched by WishlistButton.
-  const userId = session?.user?.id;
+  // Keep the global header independent from session/query providers. Account
+  // and server-backed wishlist state resolve inside their dedicated routes;
+  // the header can still show the already-local guest count at zero network cost.
   const guestWishlistCount = useGuestWishlistStore((s) => s.productIds.length);
   const guestWishlistHydrated = useGuestWishlistStore((s) => s.hasHydrated);
-  const [accountWishlistCount, setAccountWishlistCount] = useState(0);
-
-  useEffect(() => {
-    // Guests use the local store below; only fetch for signed-in accounts.
-    if (!userId) return;
-
-    let cancelled = false;
-    const loadCount = async () => {
-      try {
-        const res = await fetch("/api/v2/wishlist", {
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) return;
-        const ids = (await res.json()) as unknown;
-        if (!cancelled && Array.isArray(ids)) {
-          setAccountWishlistCount(ids.length);
-        }
-      } catch {
-        /* keep the last known count on a transient failure */
-      }
-    };
-
-    void loadCount();
-    const handleWishlistUpdated = () => void loadCount();
-    window.addEventListener("ftt:wishlist-updated", handleWishlistUpdated);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("ftt:wishlist-updated", handleWishlistUpdated);
-    };
-  }, [userId]);
-
-  const wishlistCount = userId
-    ? accountWishlistCount
-    : guestWishlistHydrated
-      ? guestWishlistCount
-      : 0;
+  const wishlistCount = guestWishlistHydrated ? guestWishlistCount : 0;
   const showWishlistCount = hasMounted && wishlistCount > 0;
 
   return (
@@ -179,13 +139,11 @@ function SiteHeaderControlsInner() {
           className="relative size-11 rounded-full hover:bg-[#601D1C]/8 hover:text-[#601D1C]"
         >
           <Link
-            href={session ? "/account/profile" : "/account/sign-in"}
-            aria-label={session ? "Your account" : "Sign in"}
+            href="/account"
+            prefetch={false}
+            aria-label="Your account"
           >
             <AccountIcon />
-            {session ? (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#B39152]" />
-            ) : null}
           </Link>
         </Button>
 
@@ -197,6 +155,7 @@ function SiteHeaderControlsInner() {
         >
           <Link
             href="/account/wishlist"
+            prefetch={false}
             aria-label={
               showWishlistCount
                 ? `Liked products, ${wishlistCount} saved`
@@ -264,6 +223,7 @@ function SiteHeaderControlsInner() {
                       <Link
                         key={link.href}
                         href={link.href}
+                        prefetch={false}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`text-lg text-[#601D1C] ${"strong" in link && link.strong ? "font-bold" : "font-medium"}`}
                       >
@@ -280,6 +240,7 @@ function SiteHeaderControlsInner() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={false}
                         onClick={() => setMobileMenuOpen(false)}
                         className="text-lg font-medium text-[#601D1C]"
                       >
@@ -296,6 +257,7 @@ function SiteHeaderControlsInner() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={false}
                         onClick={() => setMobileMenuOpen(false)}
                         className="text-lg font-medium text-[#601D1C]"
                       >
@@ -321,6 +283,7 @@ function SiteHeaderControlsInner() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={false}
                         onClick={() => setMobileMenuOpen(false)}
                         className="text-lg font-medium text-[#601D1C]"
                       >
@@ -329,11 +292,12 @@ function SiteHeaderControlsInner() {
                     ))}
                   </div>
                   <Link
-                    href={session ? "/account/profile" : "/account/sign-in"}
+                    href="/account"
+                    prefetch={false}
                     onClick={() => setMobileMenuOpen(false)}
                     className="block text-lg font-medium text-[#601D1C]"
                   >
-                    {session ? "Account" : "Sign In"}
+                    Account
                   </Link>
                 </div>
               </SheetContent>
@@ -369,9 +333,5 @@ function SiteHeaderControlsInner() {
 }
 
 export function SiteHeaderControls() {
-  return (
-    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <SiteHeaderControlsInner />
-    </SessionProvider>
-  );
+  return <SiteHeaderControlsInner />;
 }

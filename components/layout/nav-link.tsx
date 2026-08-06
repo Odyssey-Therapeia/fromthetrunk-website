@@ -38,6 +38,7 @@ export function NavLink({
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       className={cn(
         "group/nav relative whitespace-nowrap text-[15px] tracking-[0.035em] transition-colors 2xl:text-[16px]",

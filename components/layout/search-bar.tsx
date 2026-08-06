@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 
@@ -9,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trackSearch } from "@/lib/analytics/track";
 import { formatCurrency } from "@/lib/formatters";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
+import {
+  MAX_PUBLIC_SEARCH_QUERY_LENGTH,
+  normalizePublicSearchQuery,
+} from "@/lib/search/query";
 import type { Product } from "@/types/domain";
 
 export function SearchBar() {
@@ -45,14 +48,15 @@ export function SearchBar() {
   }, []);
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 2) {
+    const normalizedQuery = normalizePublicSearchQuery(q);
+    if (normalizedQuery.length < 2) {
       setResults([]);
       return;
     }
     setIsLoading(true);
     try {
       const res = await fetch(
-        `/api/v2/search?q=${encodeURIComponent(q)}&limit=6`
+        `/api/v2/search?q=${encodeURIComponent(normalizedQuery)}&limit=6`
       );
       if (res.ok) {
         const data = await res.json();
@@ -107,6 +111,7 @@ export function SearchBar() {
             <Input
               ref={inputRef}
               value={query}
+              maxLength={MAX_PUBLIC_SEARCH_QUERY_LENGTH}
               onChange={(e) => handleChange(e.target.value)}
               placeholder="Search sarees..."
               className="w-full pl-9 pr-8 md:w-72"
@@ -161,7 +166,10 @@ export function SearchBar() {
             ) : (
               <div className="space-y-1">
                 {results.map((product) => {
-                  const image = resolveMediaURL(product.images?.[0]);
+                  const image = resolvePrimaryCurrentProductImage(
+                    product,
+                    "thumbnail",
+                  ).image?.url;
                   return (
                     <Link
                       key={product.id}
@@ -172,7 +180,7 @@ export function SearchBar() {
                     >
                       <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
                         {image ? (
-                          <Image
+                          <ResilientProductImage
                             src={image}
                             alt={product.name}
                             fill
@@ -215,3 +223,4 @@ export function SearchBar() {
     </div>
   );
 }
+import { ResilientProductImage } from "@/components/media/resilient-product-image";

@@ -11,9 +11,18 @@ import { productSeoImageUrls } from "@/lib/seo/image-urls";
 import { shouldIncludeProductInSeo } from "@/lib/seo/product-indexing";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const STATIC_PAGE_LAST_MODIFIED = new Date("2026-04-27T00:00:00.000Z");
+
+const getKeywordProductCount = (
+  filters: NonNullable<(typeof keywordLandingPages)[number]["searchFilters"]>,
+) =>
+  searchProducts({
+    ...filters,
+    includeFacets: false,
+    limit: 1,
+  }).then((result) => result.totalDocs);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { rows: products } = await listProducts({
@@ -141,31 +150,25 @@ function dedupeSitemapEntries(
 }
 
 async function getKeywordSitemapPages(): Promise<MetadataRoute.Sitemap> {
-  const pages: MetadataRoute.Sitemap = [];
+  const candidates = keywordLandingPages.filter((page) => page.sitemap);
+  const counts = await Promise.all(
+    candidates.map(async (page) =>
+      page.searchFilters
+        ? (
+            await getKeywordProductCount(page.searchFilters)
+          )
+        : 0,
+    ),
+  );
 
-  for (const page of keywordLandingPages) {
-    if (!page.sitemap) continue;
-
-    const productCount = page.searchFilters
-      ? (
-          await searchProducts({
-            ...page.searchFilters,
-            includeFacets: false,
-            limit: 1,
-          })
-        ).totalDocs
-      : 0;
-
-    if (!isKeywordLandingIndexable(page, productCount)) continue;
-
-    pages.push({
+  return candidates.flatMap((page, index): MetadataRoute.Sitemap => {
+    if (!isKeywordLandingIndexable(page, counts[index] ?? 0)) return [];
+    return [{
       url: absoluteUrl(page.canonicalPath),
       lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: page.type === "guide" ? "monthly" : "weekly",
       priority:
         page.type === "supply" ? 0.75 : page.type === "guide" ? 0.65 : 0.7,
-    });
-  }
-
-  return pages;
+    }];
+  });
 }

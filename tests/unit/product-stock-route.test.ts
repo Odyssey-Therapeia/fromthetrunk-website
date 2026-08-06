@@ -114,7 +114,7 @@ const publicProductRow = {
         metadata: { private: true },
         mimeType: "image/jpeg",
         updatedAt: new Date("2026-06-19T07:00:00.000Z"),
-        url: "https://cdn.example.com/powder-blue.jpg",
+        url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/powder-blue.jpg",
         width: 900,
       },
     },
@@ -230,10 +230,16 @@ describe("GET /products/:slug", () => {
 
     expect(payload.images[0]).toEqual({
       alt: "Saree drape",
+      fallbackToOriginal: true,
       filename: "powder-blue.jpg",
       height: 1200,
+      pdpUrl:
+        "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/powder-blue.jpg",
       sortOrder: 0,
-      url: "https://cdn.example.com/powder-blue.jpg",
+      source: "main",
+      thumbnailUrl:
+        "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/powder-blue.jpg",
+      url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/powder-blue.jpg",
       width: 900,
     });
     expect(payload.images[0].key).toBeUndefined();

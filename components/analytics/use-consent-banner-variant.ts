@@ -26,9 +26,8 @@ function computeVariant(): ConsentBannerVariant {
 /**
  * Returns "hero" while the consent banner visually overlaps the home hero
  * section, else "default". SSR-safe (starts "default"); listens to scroll +
- * resize (rAF-throttled) and briefly polls so it catches the hero mounting late
- * behind the intro gate (mirrors the pattern in site-widgets.tsx). Non-home
- * pages have no hero element → always "default".
+ * resize (rAF-throttled). The homepage hero is present in the initial tree even
+ * while the optional intro overlays it. Non-home pages remain "default".
  */
 export function useConsentBannerVariant(): ConsentBannerVariant {
   const [variant, setVariant] = useState<ConsentBannerVariant>("default");
@@ -52,14 +51,8 @@ export function useConsentBannerVariant(): ConsentBannerVariant {
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
 
-    // Catch the hero once the intro gate reveals it, even without a scroll.
-    const poll = window.setInterval(update, 300);
-    const stopPoll = window.setTimeout(() => window.clearInterval(poll), 8000);
-
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
-      window.clearInterval(poll);
-      window.clearTimeout(stopPoll);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
     };

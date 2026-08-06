@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/utils";
+import { canonicalizeCollectionSearchParams } from "@/lib/seo/collection-filter";
 
 export type CatalogFilterOption = {
   count?: number;
@@ -39,7 +40,9 @@ type MobileFilterSheetProps = {
   activeCount: number;
   groups: CatalogFilterGroup[];
   perPage?: number;
-  preservedParams?: Partial<Record<"collection" | "type", string[]>>;
+  preservedParams?: Partial<
+    Record<CatalogFilterGroup["param"] | "priceMax" | "priceMin", string[]>
+  >;
 };
 
 const encodeSelections = (groups: CatalogFilterGroup[]) =>
@@ -102,9 +105,11 @@ export function MobileFilterSheet({
 
     for (const group of groups) {
       const selected = nextDraft[group.key] ?? [];
-      if (selected.length === 0) continue;
 
       if (group.param === "price") {
+        params.delete("priceMin");
+        params.delete("priceMax");
+        if (selected.length === 0) continue;
         const [range] = selected;
         const [min, max] = range.split(":");
         if (min) params.set("priceMin", min);
@@ -113,11 +118,15 @@ export function MobileFilterSheet({
       }
 
       if (group.param === "sort") {
+        params.delete("sort");
+        if (selected.length === 0) continue;
         const [sort] = selected;
         if (sort && sort !== "latest") params.set("sort", sort);
         continue;
       }
 
+      params.delete(group.param);
+      if (selected.length === 0) continue;
       for (const value of selected) {
         params.append(group.param, value);
       }
@@ -125,14 +134,14 @@ export function MobileFilterSheet({
 
     if (perPage) params.set("perPage", String(perPage));
 
-    const query = params.toString();
+    const query = canonicalizeCollectionSearchParams(params).toString();
     return `/collection${query ? `?${query}` : ""}`;
   };
 
   const apply = () => {
     const href = buildHref(draft);
     startTransition(() => {
-      router.replace(href, { scroll: false });
+      router.push(href, { scroll: false });
       setOpen(false);
     });
   };

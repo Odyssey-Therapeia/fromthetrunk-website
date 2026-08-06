@@ -268,6 +268,7 @@ function FooterMobileNav({
                 <li key={`${section.title}-${link.label}`}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="block rounded-md py-1.5 transition hover:text-[#FDF7F1]"
                   >
                     {link.label}
@@ -295,6 +296,7 @@ function FooterTrunkBrand() {
           height={70}
           loading="lazy"
           fetchPriority="low"
+          unoptimized
           className="h-12 w-auto object-contain xl:h-14"
         />
       </div>
@@ -357,6 +359,7 @@ export function SiteFooter({
                     <li key={`${section.title}-${link.label}`}>
                       <Link
                         href={link.href}
+                        prefetch={false}
                         className="block rounded-md py-1 transition hover:translate-x-1 hover:text-[#FDF7F1]"
                       >
                         {link.label}

@@ -1,5 +1,16 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 
+const seoMedia = vi.hoisted(
+  () => (filename: string) => ({
+    url: `https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/${filename}`,
+    filesize: 300000,
+    height: 1800,
+    metadata: { source: "vercel-blob" },
+    mimeType: "image/webp",
+    width: 1400,
+  }),
+);
+
 vi.mock("@/db/queries/products", () => ({
   listProducts: vi.fn().mockResolvedValue({
     rows: [
@@ -12,7 +23,7 @@ vi.mock("@/db/queries/products", () => ({
         pricePaise: 1250000,
         updatedAt: "2026-05-01T00:00:00.000Z",
         images: [
-          { media: { url: "/media/available-one.webp" } },
+          { media: seoMedia("available-one.webp"), sortOrder: 0 },
           { media: { url: "https://cdn.example.com/available-two.webp" } },
         ],
       },
@@ -24,7 +35,7 @@ vi.mock("@/db/queries/products", () => ({
         stockStatus: "sold",
         pricePaise: 1250000,
         updatedAt: "2026-05-01T00:00:00.000Z",
-        images: [{ media: { url: "/media/sold.webp" } }],
+        images: [{ media: seoMedia("sold.webp"), sortOrder: 0 }],
       },
       {
         id: "p_blouse_qa",
@@ -36,7 +47,7 @@ vi.mock("@/db/queries/products", () => ({
         storyTitle: "Untitled Product",
         typeSlug: "blouse",
         updatedAt: "2026-05-01T00:00:00.000Z",
-        images: [{ media: { url: "/media/blouse-test.webp" } }],
+        images: [{ media: seoMedia("blouse-test.webp"), sortOrder: 0 }],
         tags: [{ name: "Blouse", slug: "blouse" }],
       },
       {
@@ -49,7 +60,7 @@ vi.mock("@/db/queries/products", () => ({
         storyTitle: "Tailored silk blouse",
         typeSlug: "blouse",
         updatedAt: "2026-05-01T00:00:00.000Z",
-        images: [{ media: { url: "/media/cerise-blouse.webp" } }],
+        images: [{ media: seoMedia("cerise-blouse.webp"), sortOrder: 0 }],
         tags: [{ name: "Blouse", slug: "blouse" }],
       },
     ],
@@ -141,8 +152,7 @@ describe("SEO production hardening", () => {
       entry.url.endsWith("/collection/available-saree"),
     );
     expect(availableEntry?.images).toEqual([
-      "https://www.fromthetrunk.shop/media/available-one.webp",
-      "https://cdn.example.com/available-two.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/available-one.webp",
     ]);
     expect(
       entries.some((entry) => entry.images?.some((image) => image.includes("sold.webp"))),
@@ -173,12 +183,13 @@ describe("SEO production hardening", () => {
     expect(disallow).toContain("/search");
   });
 
-  it("detects collection filter/query URLs for noindex,follow handling", async () => {
+  it("detects every explicit collection query state for noindex,nofollow handling", async () => {
     const { hasCollectionFilterParams } = await import(
       "@/lib/seo/collection-filter"
     );
 
     expect(hasCollectionFilterParams(undefined)).toBe(false);
+    expect(hasCollectionFilterParams({ fabric: "" })).toBe(true);
     expect(hasCollectionFilterParams({ fabric: "silk" })).toBe(true);
     expect(hasCollectionFilterParams({ fabric: ["", "cotton"] })).toBe(true);
   });
@@ -306,7 +317,7 @@ describe("SEO production hardening", () => {
     ).toEqual({ index: false, follow: true });
   });
 
-  it("product JSON-LD includes all image URLs, identifiers, and OutOfStock for sold products", async () => {
+  it("product JSON-LD includes one bounded image, identifiers, and sold availability", async () => {
     const { productJsonLd } = await import("@/lib/seo/json-ld");
     const product = {
       id: "p1",
@@ -314,7 +325,7 @@ describe("SEO production hardening", () => {
       slug: "gold-tissue-saree",
       storyNarrative: "A restored saree with provenance.",
       images: [
-        { media: { url: "https://cdn.example.com/one.jpg" } },
+        { media: seoMedia("one.webp"), sortOrder: 0 },
         { media: { url: "/media/two.jpg" } },
         { media: { url: "https://images.unsplash.com/photo-1" } },
       ],
@@ -333,8 +344,7 @@ describe("SEO production hardening", () => {
     expect(jsonLd.sku).toBe("gold-tissue-saree");
     expect(jsonLd.itemCondition).toBe("https://schema.org/UsedCondition");
     expect(jsonLd.image).toEqual([
-      "https://cdn.example.com/one.jpg",
-      "https://www.fromthetrunk.shop/media/two.jpg",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/one.webp",
     ]);
     expect(JSON.stringify(jsonLd)).not.toContain("unsplash");
     expect(offers.availability).toBe("https://schema.org/OutOfStock");

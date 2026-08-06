@@ -101,19 +101,21 @@ vi.mock("@/db", () => ({
 // ---------------------------------------------------------------------------
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
+const TEST_MEDIA_ORIGIN =
+  "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com";
 
 const mkMedia = (url: string) => ({
   id: "media-1",
   key: "media/img.jpg",
-  url,
+  url: `${TEST_MEDIA_ORIGIN}/media/${url.split("/").pop() ?? "img.jpg"}`,
   filename: "img.jpg",
   alt: null,
   mimeType: "image/jpeg",
-  filesize: null,
-  width: null,
-  height: null,
+  filesize: 300000,
+  width: 1400,
+  height: 1800,
   blurDataUrl: null,
-  metadata: null,
+  metadata: { source: "vercel-blob" },
   createdAt: NOW,
   updatedAt: NOW,
 });
@@ -415,10 +417,10 @@ describe("mapProductToFeedItem — unit tests (no db calls)", () => {
     });
     const item = mapProductToFeedItem(
       product    );
-    expect(item.imageUrl).toBe("https://blob.vercel-storage.com/img1.jpg");
+    expect(item.imageUrl).toBe(`${TEST_MEDIA_ORIGIN}/media/img1.jpg`);
   });
 
-  it("additionalImageUrls contains remaining image URLs", () => {
+  it("does not publish untyped additional originals", () => {
     const product = mkProduct({
       images: [
         {
@@ -437,10 +439,7 @@ describe("mapProductToFeedItem — unit tests (no db calls)", () => {
     });
     const item = mapProductToFeedItem(
       product    );
-    expect(item.additionalImageUrls).toEqual([
-      "https://blob.vercel-storage.com/img2.jpg",
-      "https://blob.vercel-storage.com/img3.jpg",
-    ]);
+    expect(item.additionalImageUrls).toEqual([]);
   });
 
   it("GST-inclusive flag ON: price = pricePaise / 100 (the all-in price)", () => {
@@ -575,14 +574,13 @@ describe("buildGoogleMerchantFeedXml — XML structure", () => {
     expect(imgLink).toMatch(/^https:\/\//);
   });
 
-  it("multiple images → g:additional_image_link for each extra", () => {
+  it("multiple images do not leak untyped additional originals", () => {
     const xml = buildGoogleMerchantFeedXml([
       multiImageProduct as Parameters<typeof mapProductToFeedItem>[0],
     ]);
     const { items } = parseFeedXml(xml);
     const additional = items[0]["g:additional_image_link"];
-    expect(additional).toBeDefined();
-    expect(additional!.length).toBe(2);
+    expect(additional).toBeUndefined();
   });
 });
 
@@ -702,6 +700,7 @@ describe("Token gate — FEEDS_PUBLIC_TOKEN env var", () => {
     const res = await app.fetch(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/xml");
+    expect(res.headers.get("cache-control")).toContain("s-maxage=3600");
   });
 });
 
@@ -744,6 +743,30 @@ describe("Feed route — content-type and XML output (via HTTP)", () => {
     expect(parsed.isRss).toBe(true);
     expect(parsed.hasGNs).toBe(true);
     expect(parsed.items.length).toBeGreaterThan(0);
+  });
+
+  it("returns an explicit non-cacheable 503 when safe image coverage is incomplete", async () => {
+    delete process.env.FEEDS_PUBLIC_TOKEN;
+    const unsafe = mkProduct({
+      images: [
+        {
+          media: { ...mkMedia("unsafe.jpg"), width: null, height: null },
+          sortOrder: 0,
+        },
+      ],
+    });
+    setupDbForProducts([unsafe]);
+    const app = (await import("@/api/hono/app")).default;
+    const res = await app.fetch(
+      new Request("http://localhost/api/v2/feeds/google-merchant.xml"),
+    );
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("retry-after")).toBe("3600");
+    await expect(res.json()).resolves.toMatchObject({
+      error: "FEED_SAFE_IMAGE_COVERAGE_INCOMPLETE",
+    });
   });
 });
 

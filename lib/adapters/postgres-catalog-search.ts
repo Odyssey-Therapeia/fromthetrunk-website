@@ -419,6 +419,7 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         fabrics,
         facetsOnly = false,
         includeFacets = true,
+        includeTotal = true,
         occasions,
         patterns,
         query,
@@ -734,7 +735,7 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
       }));
 
       const countPromise =
-        typeof limit === "number"
+        typeof limit === "number" && includeTotal
           ? timedRows("catalog.products.count", () => withRetry(() =>
               db.select({ total: count() }).from(products).where(whereClause)
             ))
@@ -758,7 +759,9 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
         products: hydratedProducts,
         facets,
         totalDocs:
-          typeof limit === "number" ? (countResult?.total ?? 0) : rows.length,
+          typeof limit === "number" && includeTotal
+            ? (countResult?.total ?? 0)
+            : rows.length,
       };
     },
   };

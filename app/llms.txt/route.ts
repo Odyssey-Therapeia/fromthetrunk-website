@@ -77,8 +77,9 @@ export async function GET(): Promise<Response> {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      // Cache for 1 hour in CDN; revalidate in background
-      "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
+      // Keep browsers fresh while letting Vercel's shared cache absorb crawler traffic.
+      "cache-control":
+        "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
 }

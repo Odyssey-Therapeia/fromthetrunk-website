@@ -11,12 +11,13 @@
  * Consuming components use var(--primary) etc. — they never know the source.
  */
 
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
 import { buildInlineStyle } from "@/lib/content/theme-tokens";
+import { PUBLIC_THEME_CACHE_TAG } from "@/lib/cache/public-content-cache";
 
-// Cached fetch — deduped across the render tree within a single request.
-const fetchThemeSettings = cache(async () => {
+// Cross-request cache; successful admin mutations invalidate this tag.
+const readThemeSettings = async () => {
   try {
     const { createDrizzleContentStore } =
       await import("@/lib/adapters/drizzle-content-store");
@@ -26,10 +27,15 @@ const fetchThemeSettings = cache(async () => {
     // Never let a theme DB error break the site render.
     return null;
   }
+};
+
+const fetchThemeSettings = unstable_cache(readThemeSettings, ["ftt:public-theme"], {
+  revalidate: 300,
+  tags: [PUBLIC_THEME_CACHE_TAG],
 });
 
 export async function ThemeStyler() {
-  const theme = await fetchThemeSettings();
+  const theme = await fetchThemeSettings().catch(readThemeSettings);
   if (!theme) return null;
 
   const css = buildInlineStyle(theme.tokens);

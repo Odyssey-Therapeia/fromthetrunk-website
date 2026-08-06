@@ -55,6 +55,8 @@ import {
   timeSync,
   type TimingEntry,
 } from "@/lib/perf/server-timing";
+import { serializeCurrentProductImages } from "@/lib/media/product-image-resolver";
+import { MediaDerivativePublicationError } from "@/lib/media/publication-policy";
 
 const productRouteLog = createLogger("products:api");
 
@@ -171,14 +173,7 @@ export const serializePublicProduct = (product: ProductWithRelations) => ({
         slug: product.collection.slug,
       }
     : null,
-  images: product.images.map((image) => ({
-    alt: image.media.alt,
-    filename: image.media.filename,
-    height: image.media.height,
-    sortOrder: image.sortOrder,
-    url: image.media.url,
-    width: image.media.width,
-  })),
+  images: serializeCurrentProductImages(product),
   tags: product.tags.map((tag) => ({
     name: tag.name,
     slug: tag.slug,
@@ -643,6 +638,7 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       responses: {
         201: { description: "Product created" },
+        409: { description: "Required media derivatives are missing" },
       },
       tags: ["Products"],
     }),
@@ -651,13 +647,28 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (adminOrResponse instanceof Response) return adminOrResponse;
 
       const body = c.req.valid("json");
-      const created = await createProduct({
-        ...body,
-        imageMediaIds: body.imageMediaIds ?? [],
-        reservedUntil: parseDate(body.reservedUntil),
-        soldAt: parseDate(body.soldAt),
-        tagIds: body.tagIds ?? [],
-      });
+      let created;
+      try {
+        created = await createProduct({
+          ...body,
+          imageMediaIds: body.imageMediaIds ?? [],
+          reservedUntil: parseDate(body.reservedUntil),
+          soldAt: parseDate(body.soldAt),
+          tagIds: body.tagIds ?? [],
+        });
+      } catch (error) {
+        if (error instanceof MediaDerivativePublicationError) {
+          return c.json(
+            {
+              code: error.code,
+              message: error.message,
+              missing: error.missing,
+            },
+            409,
+          );
+        }
+        throw error;
+      }
       revalidateProductsCache([created.slug]);
       void refreshProductEmbedding(created.id).catch(() => undefined);
       return c.json(created, 201);
@@ -718,6 +729,7 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
       },
       responses: {
         200: { description: "Product updated" },
+        409: { description: "Required media derivatives are missing" },
         404: {
           content: { "application/json": { schema: errorSchema } },
           description: "Product not found",
@@ -759,6 +771,16 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
           soldAt: parseDate(body.soldAt),
         });
 	      } catch (error) {
+	        if (error instanceof MediaDerivativePublicationError) {
+	          return c.json(
+	            {
+	              code: error.code,
+	              message: error.message,
+	              missing: error.missing,
+	            },
+	            409,
+	          );
+	        }
 	        productRouteLog.error("Product update failed", {
 	          changedFields: Object.keys(body),
 	          err: error instanceof Error ? error : new Error(String(error)),

@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { join } from "path";
 import Link from "next/link";
+import { FilterLink } from "@/components/collection/filter-link";
 
 import {
   FabricCategoryMotionGrid,
@@ -22,8 +23,8 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for fluid movement and evening ease",
     description:
       "Choose georgette when you want a graceful fall, soft pleats, and a saree that feels dressed without feeling heavy.",
-    href: "/collection?fabric=georgette",
-    image: "/category/georgette.jpg",
+    href: "/collection/fabric/georgette",
+    image: "/category/optimized-v1/georgette-v1.webp",
     fallbackImage: "/hero/timeless.JPG",
   },
   {
@@ -32,7 +33,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "Cotton is breathable, grounded, and easy to wear for daytime gatherings, workwear, and relaxed heritage styling.",
     href: "/collection?fabric=cotton",
-    image: "/category/cotton.JPG",
+    image: "/category/optimized-v1/cotton-v1.webp",
     fallbackImage: "/media/hero-bg.png",
   },
   {
@@ -41,7 +42,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "Pick Kanjeevaram for structure, rich silk weight, zari detail, and a saree that holds a formal silhouette beautifully.",
     href: "/collection?fabric=kanjeevaram",
-    image: "/category/kanjiverram.jpg",
+    image: "/category/optimized-v1/kanjeevaram-v1.webp",
     fallbackImage: "/hero/banner.png",
   },
   {
@@ -49,8 +50,8 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for timeless polish and soft sheen",
     description:
       "Silk brings luminosity and refinement, making it a dependable choice for festive dinners, family events, and heirloom dressing.",
-    href: "/collection?fabric=silk",
-    image: "/category/silk.JPG",
+    href: "/collection/fabric/silk",
+    image: "/category/optimized-v1/silk-v1.webp",
     fallbackImage: "/hero/banner1.png",
   },
   {
@@ -59,7 +60,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "Kota cotton feels airy and crisp, with a light grid texture that suits warm weather and understated occasion wear.",
     href: "/collection?fabric=kota-cotton",
-    image: "/category/Kota_Cotton.jpg",
+    image: "/category/optimized-v1/kota-cotton-v1.webp",
     fallbackImage: "/hero/you.png",
   },
   {
@@ -67,8 +68,8 @@ const fabricCategories: FabricCategory[] = [
     bestFor: "Best for soft flow and delicate styling",
     description:
       "Chiffon is sheer, light, and feminine, ideal when you want a saree that moves gently and keeps the look minimal.",
-    href: "/collection?fabric=chiffon",
-    image: "/category/Chiffon.JPG",
+    href: "/collection/fabric/chiffon",
+    image: "/category/optimized-v1/chiffon-v1.webp",
     fallbackImage: "/media/home-cover.png",
   },
   {
@@ -77,7 +78,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "A Kanjeevaram mix keeps the celebratory mood but can feel lighter and more flexible for long events.",
     href: "/collection?fabric=kanjeevaram-mix",
-    image: "/category/kanji_mix.JPG",
+    image: "/category/optimized-v1/kanjeevaram-mix-v1.webp",
     fallbackImage: "/hero/banner.png",
   },
   {
@@ -86,7 +87,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "Organza has a crisp, sheer body that creates shape and drama while still feeling light on the shoulder.",
     href: "/collection?fabric=organza",
-    image: "/category/Organza.JPG",
+    image: "/category/optimized-v1/organza-v1.webp",
     fallbackImage: "/hero/timeless.JPG",
   },
   {
@@ -95,7 +96,7 @@ const fabricCategories: FabricCategory[] = [
     description:
       "Cotton silk balances breathable ease with a soft sheen, making it versatile for day-to-evening dressing.",
     href: "/collection?fabric=cotton-silk",
-    image: "/category/Cotton_Silk.JPG",
+    image: "/category/optimized-v1/cotton-silk-v1.webp",
     fallbackImage: "/hero/banner1.png",
   },
 ];
@@ -118,7 +119,7 @@ const fabricQuickLinks = [
   },
   {
     label: "Soft flow",
-    href: "/collection?fabric=georgette",
+    href: "/collection/fabric/georgette",
     note: "Georgette, chiffon",
   },
   {
@@ -161,20 +162,30 @@ export function FabricCategorySection() {
         </div>
 
         <div className="mb-8 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {fabricQuickLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group shrink-0 rounded-full border border-[#601D1C]/16 bg-[#FFFCF8]/70 px-4 py-2 text-left shadow-[0_8px_22px_rgba(96,29,28,0.05)] transition hover:-translate-y-0.5 hover:border-[#B39152]/70 hover:bg-[#B39152]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]"
-            >
+          {fabricQuickLinks.map((item) => {
+            const className =
+              "group shrink-0 rounded-full border border-[#601D1C]/16 bg-[#FFFCF8]/70 px-4 py-2 text-left shadow-[0_8px_22px_rgba(96,29,28,0.05)] transition hover:-translate-y-0.5 hover:border-[#B39152]/70 hover:bg-[#B39152]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]";
+            const content = (
+              <>
               <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#601D1C] transition group-hover:text-[#74531B]">
                 {item.label}
               </span>
               <span className="mt-0.5 block text-[11px] text-[#601D1C]/72">
                 {item.note}
               </span>
-            </Link>
-          ))}
+              </>
+            );
+
+            return item.href.includes("?") ? (
+              <FilterLink key={item.href} href={item.href} className={className}>
+                {content}
+              </FilterLink>
+            ) : (
+              <Link key={item.href} href={item.href} className={className}>
+                {content}
+              </Link>
+            );
+          })}
         </div>
 
         <FabricCategoryMotionGrid categories={categories} />

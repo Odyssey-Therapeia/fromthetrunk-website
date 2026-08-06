@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  STORY_NARRATIVE_FALLBACK_IMAGE,
+  STORY_NARRATIVE_FALLBACK_IMAGES,
   selectStoryNarrativeImages,
 } from "@/lib/story-narrative-images";
 import type { Product } from "@/types/domain";
@@ -12,39 +12,46 @@ const makeProduct = (image?: unknown) =>
   }) as Product;
 
 describe("selectStoryNarrativeImages", () => {
+  const safeMedia = (filename: string) => ({
+    url: `https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/${filename}`,
+    filesize: 300000,
+    height: 1800,
+    metadata: { source: "vercel-blob" },
+    mimeType: "image/webp",
+    width: 1400,
+  });
+
   it("skips products without valid images before truncating", () => {
     const images = selectStoryNarrativeImages([
       makeProduct(null),
-      makeProduct({ url: "/media/first.jpg" }),
+      makeProduct(safeMedia("first.webp")),
       makeProduct(undefined),
-      makeProduct({ url: "/media/second.jpg" }),
-      makeProduct({ url: "/media/third.jpg" }),
-      makeProduct({ url: "/media/fourth.jpg" }),
-      makeProduct({ url: "/media/fifth.jpg" }),
+      makeProduct(safeMedia("second.webp")),
+      makeProduct(safeMedia("third.webp")),
+      makeProduct(safeMedia("fourth.webp")),
+      makeProduct(safeMedia("fifth.webp")),
     ]);
 
     expect(images).toEqual([
-      "/media/first.jpg",
-      "/media/second.jpg",
-      "/media/third.jpg",
-      "/media/fourth.jpg",
-      "/media/fifth.jpg",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/first.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/second.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/third.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/fourth.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/fifth.webp",
     ]);
   });
 
   it("pads with the fallback image when there are not enough valid URLs", () => {
     const images = selectStoryNarrativeImages([
-      makeProduct({ url: "/media/one.jpg" }),
+      makeProduct(safeMedia("one.webp")),
       makeProduct(null),
-      makeProduct({ url: "/media/two.jpg" }),
+      makeProduct(safeMedia("two.webp")),
     ]);
 
     expect(images).toEqual([
-      "/media/one.jpg",
-      "/media/two.jpg",
-      STORY_NARRATIVE_FALLBACK_IMAGE,
-      STORY_NARRATIVE_FALLBACK_IMAGE,
-      STORY_NARRATIVE_FALLBACK_IMAGE,
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/one.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/two.webp",
+      ...STORY_NARRATIVE_FALLBACK_IMAGES.slice(2, 5),
     ]);
   });
 });

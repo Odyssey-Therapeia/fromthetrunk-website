@@ -85,6 +85,8 @@ export type CatalogSearchFilters = {
    * Use this when a caller fetches cached facets separately.
    */
   includeFacets?: boolean;
+  /** When false, skip the separate total-count query. */
+  includeTotal?: boolean;
 };
 
 // ── Facet output ─────────────────────────────────────────────────────────────

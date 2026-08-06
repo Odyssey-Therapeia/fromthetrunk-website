@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { FilterLink } from "@/components/collection/filter-link";
+import { DeferredFillImage } from "@/components/media/deferred-fill-image";
 
 import {
   Carousel,
@@ -26,38 +26,11 @@ type FabricCategoryMotionGridProps = {
   categories: FabricMotionCategory[];
 };
 
-const ROTATION_INTERVAL_MS = 4200;
-
 export function FabricCategoryMotionGrid({
   categories,
 }: FabricCategoryMotionGridProps) {
-  const [offset, setOffset] = useState(0);
-
-  useEffect(() => {
-    if (categories.length < 2) return;
-
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (reduceMotion) return;
-
-    const timer = window.setInterval(() => {
-      setOffset((current) => (current + 1) % categories.length);
-    }, ROTATION_INTERVAL_MS);
-
-    return () => window.clearInterval(timer);
-  }, [categories.length]);
-
-  const rotatedCategories = useMemo(
-    () =>
-      categories.map(
-        (_, index) => categories[(index + offset) % categories.length],
-      ),
-    [categories, offset],
-  );
-  const primaryCategories = rotatedCategories.slice(0, 5);
-  const secondaryCategories = rotatedCategories.slice(5);
+  const primaryCategories = categories.slice(0, 5);
+  const secondaryCategories = categories.slice(5);
 
   return (
     <>
@@ -70,7 +43,7 @@ export function FabricCategoryMotionGrid({
           className="w-full"
         >
           <CarouselContent className="-ml-3">
-            {rotatedCategories.map((fabric, index) => (
+            {categories.map((fabric, index) => (
               <CarouselItem
                 key={`${fabric.href}-${index}`}
                 className="basis-[82%] pl-3 min-[520px]:basis-[52%] md:basis-[38%]"
@@ -133,10 +106,7 @@ function FabricCard({
   const isWide = variant === "wide";
   const isCarousel = variant === "carousel";
 
-  return (
-    <Link
-      href={fabric.href}
-      className={[
+  const className = [
         "ftt-fabric-card group relative flex overflow-hidden bg-[#601D1C] text-white shadow-[0_16px_44px_rgba(96,29,28,0.13)] transition duration-500 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39152] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDF7F1]",
         isFeature
           ? "rounded-[1.65rem] lg:col-span-4 lg:row-span-2"
@@ -150,14 +120,15 @@ function FabricCard({
             : isWide
               ? "min-h-[18rem]"
               : "min-h-[23rem]",
-      ].join(" ")}
-    >
-      <Image
+      ].join(" ");
+  const content = (
+    <>
+      <DeferredFillImage
         key={`${fabric.href}-image`}
         src={fabric.imageSrc}
         alt=""
-        fill
         fetchPriority="low"
+        quality={70}
         sizes={
           isFeature
             ? "(max-width: 1024px) 82vw, 34vw"
@@ -228,6 +199,16 @@ function FabricCard({
           </span>
         </span>
       </span>
+    </>
+  );
+
+  return fabric.href.includes("?") ? (
+    <FilterLink href={fabric.href} className={className}>
+      {content}
+    </FilterLink>
+  ) : (
+    <Link href={fabric.href} className={className}>
+      {content}
     </Link>
   );
 }

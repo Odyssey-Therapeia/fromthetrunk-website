@@ -4,6 +4,12 @@ import { getToken } from "next-auth/jwt";
 
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
+import {
+  canonicalizeCollectionSearchParams,
+  collectionRoutingSearchParams,
+  hasCollectionTrackingParams,
+  isValidCollectionSearchParams,
+} from "@/lib/seo/collection-filter";
 
 /**
  * Proxy handles:
@@ -91,7 +97,8 @@ const isExcludedFromRedirectCheck = (pathname: string): boolean =>
   pathname === "/collection" ||
   pathname.startsWith("/collection/") ||
   pathname.startsWith("/checkout") ||
-  pathname.startsWith("/cart");
+  pathname.startsWith("/cart") ||
+  isReservedSlug(getPathSegments(pathname)[0] ?? "");
 
 const roundDuration = (durationMs: number) => Math.round(durationMs * 10) / 10;
 
@@ -139,6 +146,10 @@ const rewriteNotFound = (request: NextRequest, startedAt: number) =>
 const getPathSegments = (pathname: string) =>
   pathname.split("/").filter(Boolean);
 
+const isRscNavigation = (request: NextRequest): boolean =>
+  request.nextUrl.searchParams.has("_rsc") ||
+  request.headers.get("rsc") === "1";
+
 const getCollectionProductSlug = (pathname: string): string | null => {
   const segments = getPathSegments(pathname);
   if (segments.length !== 2 || segments[0] !== "collection") {
@@ -181,6 +192,45 @@ export async function proxy(request: NextRequest) {
     return withProxyTiming(response, request, startedAt);
   }
 
+  // ─── Collection query preflight ────────────────────────────────
+  // Resolve invalid, legacy, and non-canonical filter URLs before the app
+  // starts streaming. Handling these only inside the page can leave crawlers
+  // with an HTTP 200 even when Next embeds a notFound/redirect instruction.
+  if (pathname === "/collection") {
+    const received = request.nextUrl.searchParams;
+    const routing = collectionRoutingSearchParams(received);
+    if (!isValidCollectionSearchParams(routing)) {
+      return rewriteNotFound(request, startedAt);
+    }
+
+    const canonical = canonicalizeCollectionSearchParams(routing);
+    const canonicalQuery = canonical.toString();
+    const canonicalHref = `/collection${
+      canonicalQuery ? `?${canonicalQuery}` : ""
+    }`;
+
+    const promotedHref =
+      canonicalHref === "/collection?tags=top-viewed"
+        ? "/top-viewed"
+        : canonicalHref === "/collection?type=blouse"
+          ? "/blouses"
+          : canonicalHref;
+
+    if (
+      promotedHref !== canonicalHref ||
+      routing.toString() !== canonicalQuery ||
+      hasCollectionTrackingParams(received)
+    ) {
+      return withProxyTiming(
+        NextResponse.redirect(new URL(promotedHref, request.url), {
+          status: 308,
+        }),
+        request,
+        startedAt,
+      );
+    }
+  }
+
   // ─── Route Protection ───────────────────────────────────────────
   if (isProtected(pathname)) {
     const token = await getToken({
@@ -201,7 +251,11 @@ export async function proxy(request: NextRequest) {
   // through so preview flows can still resolve unpublished content in-page.
   if (!isDraftModeRequest) {
     const productSlug = getCollectionProductSlug(pathname);
-    if (productSlug && !(await publicProductSlugExists(productSlug))) {
+    if (
+      productSlug &&
+      !isRscNavigation(request) &&
+      !(await publicProductSlugExists(productSlug))
+    ) {
       return rewriteNotFound(request, startedAt);
     }
   }

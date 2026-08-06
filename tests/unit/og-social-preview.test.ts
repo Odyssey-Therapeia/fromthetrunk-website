@@ -74,10 +74,13 @@ const productFixture = (overrides: MetadataRecord = {}) => ({
   images: [
     {
       media: {
-        url: "/media/tangerine-noir.jpg",
+        url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/tangerine-noir.jpg",
         alt: "Tangerine chiffon saree photographed for From the Trunk",
+        filesize: 300000,
         width: 1600,
         height: 2400,
+        metadata: { source: "vercel-blob" },
+        mimeType: "image/jpeg",
       },
       sortOrder: 0,
     },
@@ -118,7 +121,7 @@ describe("OG and social preview metadata", () => {
     expectSafeSocialMetadata(metadata);
     expect(metadata.openGraph?.url).toBe("https://www.fromthetrunk.shop/collection");
     expect(ogImage).toMatchObject({
-      url: "https://www.fromthetrunk.shop/banner/collection_banner.png",
+      url: "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
       width: DEFAULT_SOCIAL_IMAGE.width,
       height: DEFAULT_SOCIAL_IMAGE.height,
       alt: DEFAULT_SOCIAL_IMAGE.alt,
@@ -136,9 +139,24 @@ describe("OG and social preview metadata", () => {
     expect(metadata.robots).toEqual({ index: true, follow: true });
     expectSafeSocialMetadata(metadata);
     expect(firstOgImage(metadata)).toMatchObject({
-      width: 1920,
-      height: 1080,
+      width: 1200,
+      height: 630,
     });
+  });
+
+  it("keeps arbitrary collection filters noindex,nofollow with a clean canonical", async () => {
+    const collectionPage = await import("@/app/(site)/collection/page");
+    const metadata = (await collectionPage.generateMetadata({
+      searchParams: Promise.resolve({ color: ["red", "blue"] }),
+    })) as {
+      alternates?: MetadataRecord;
+      robots?: MetadataRecord;
+    };
+
+    expect(metadata.robots).toEqual({ index: false, follow: false });
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.fromthetrunk.shop/collection",
+    );
   });
 
   it("keeps /blouses noindex while giving it non-promotional social metadata", async () => {
@@ -152,7 +170,7 @@ describe("OG and social preview metadata", () => {
     expect(metadata.robots).toEqual({ index: false, follow: true });
     expectSafeSocialMetadata(metadata);
     expect(firstOgImage(metadata).url).toBe(
-      "https://www.fromthetrunk.shop/banner/collection_banner.png",
+      "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
     );
   });
 
@@ -173,7 +191,7 @@ describe("OG and social preview metadata", () => {
       "Tangerine Noir Floral Border Weave – Pre-Loved Chiffon Saree",
     );
     expect(ogImage).toMatchObject({
-      url: "https://www.fromthetrunk.shop/media/tangerine-noir.jpg",
+      url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/tangerine-noir.jpg",
       width: 1600,
       height: 2400,
       alt: "Tangerine chiffon saree photographed for From the Trunk",
@@ -206,9 +224,9 @@ describe("OG and social preview metadata", () => {
     };
 
     expect(firstOgImage(metadata)).toMatchObject({
-      url: "https://www.fromthetrunk.shop/banner/collection_banner.png",
-      width: 1920,
-      height: 1080,
+      url: "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
+      width: 1200,
+      height: 630,
     });
     expectSafeSocialMetadata(metadata);
   });
@@ -251,7 +269,7 @@ describe("OG and social preview metadata", () => {
     expect(metadata.title).toBe("From The Trunk Product");
     expect(metadata.openGraph?.title).toBe("From The Trunk Product");
     expect(firstOgImage(metadata).url).toBe(
-      "https://www.fromthetrunk.shop/banner/collection_banner.png",
+      "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
     );
     expect(serialized).not.toContain("StretchFit Blouse");
     expect(serialized).not.toContain("stretchfit-blouse.jpg");

@@ -21,6 +21,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Product } from "@/types/domain";
 
+const seoMedia = vi.hoisted(
+  () => (filename: string) => ({
+    url: `https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/${filename}`,
+    filesize: 300000,
+    height: 1800,
+    metadata: { source: "vercel-blob" },
+    mimeType: "image/jpeg",
+    width: 1400,
+  }),
+);
+
 // ── Mocks for transitive deps ────────────────────────────────────────────────
 
 // next/og ImageResponse is an edge-runtime construct that requires a real fetch
@@ -88,7 +99,7 @@ vi.mock("@/db/queries/products", () => ({
         pricePaise: 1500000,
         stockStatus: "available",
         status: "published",
-        images: [{ media: { url: "https://cdn.example.com/a.jpg" }, sortOrder: 0 }],
+        images: [{ media: seoMedia("a.jpg"), sortOrder: 0 }],
         tags: [],
         collection: null,
       },
@@ -99,7 +110,7 @@ vi.mock("@/db/queries/products", () => ({
         pricePaise: 2500000,
         stockStatus: "available",
         status: "published",
-        images: [{ media: { url: "https://cdn.example.com/b.jpg" }, sortOrder: 0 }],
+        images: [{ media: seoMedia("b.jpg"), sortOrder: 0 }],
         tags: [],
         collection: null,
       },
@@ -124,7 +135,7 @@ const fixtureAvailable = {
   name: "Banarasi Silk Saree",
   storyNarrative: "A timeless piece from Varanasi.",
   images: [
-    { media: { url: "https://cdn.example.com/a.jpg" }, sortOrder: 0 },
+    { media: seoMedia("a.jpg"), sortOrder: 0 },
   ],
   pricePaise: 1500000,
   stockStatus: "available" as const,
@@ -139,7 +150,7 @@ const fixtureSold = {
   name: "Kanjeevaram Heritage Saree",
   storyNarrative: "A vibrant Kanjeevaram with rich zari work.",
   images: [
-    { media: { url: "https://cdn.example.com/b.jpg" }, sortOrder: 0 },
+    { media: seoMedia("b.jpg"), sortOrder: 0 },
   ],
   pricePaise: 2500000,
   stockStatus: "sold" as const,
@@ -167,7 +178,7 @@ const fixtureWithInjection = {
   name: 'Tussar Silk & "Heritage"',
   storyNarrative: "Contains </script> injection attempt.",
   images: [
-    { media: { url: "https://cdn.example.com/c.jpg" }, sortOrder: 0 },
+    { media: seoMedia("c.jpg"), sortOrder: 0 },
   ],
   pricePaise: 3200000,
   stockStatus: "available" as const,
@@ -355,7 +366,9 @@ describe("P5-06: AEO schema completeness audit", () => {
         safeJsonLd(productJsonLd(fixtureAvailable))
       ) as Record<string, unknown>;
       // The mock resolveMediaURL returns the url from media object
-      expect(parsed.image).toEqual(["https://cdn.example.com/a.jpg"]);
+      expect(parsed.image).toEqual([
+        "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/a.jpg",
+      ]);
     });
 
     it("MUTATION PROOF — removing image support from builder omits image field (fixture without images has no image)", () => {
@@ -482,6 +495,7 @@ describe("P5-06: llms.txt route", () => {
     expect(response.status).toBe(200);
     const contentType = response.headers.get("content-type") ?? "";
     expect(contentType).toContain("text/plain");
+    expect(response.headers.get("cache-control")).toContain("s-maxage=3600");
   });
 
   it("response body contains the site name", async () => {
@@ -545,15 +559,19 @@ describe("P5-06: per-product OG data helper", () => {
 
     const result = extractPdpOgData(fixtureAvailable);
 
-    expect(result.imageUrl).toBe("https://cdn.example.com/a.jpg");
+    expect(result.imageUrl).toBe(
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/a.jpg",
+    );
   });
 
-  it("extractPdpOgData returns null imageUrl when product has no images", async () => {
+  it("extractPdpOgData uses the lightweight global fallback without safe product media", async () => {
     const { extractPdpOgData } = await import("@/lib/seo/og-data");
 
     const result = extractPdpOgData(fixtureReserved);
 
-    expect(result.imageUrl).toBeNull();
+    expect(result.imageUrl).toBe(
+      "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
+    );
   });
 
   it("extractPdpOgData price is a number (not a string)", async () => {

@@ -1,0 +1,953 @@
+URL/source file,Signal type,Signal value,Present/missing,SEO/AEO/GEO importance,Notes
+/,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/top-viewed,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-story,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/our-team,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faqs,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/contact,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/how-it-works,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/authentication,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/why,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/sell-your-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/packing,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/privacy-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/return-refund-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/shipping-delivery-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/terms-of-service,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/authentication-condition-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/care-packaging-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/cancellation-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/sell-with-us-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/policies/grievance-redressal,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/blouses,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/what-is-a-pre-loved-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/guides/pre-loved-vs-second-hand-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/tangerine-noir-floral-border-weave,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sunset-ombr-chiffon-draped-dream,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-plum-tied-silk-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-flame-tie-dye-silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moonstone-cream-mauve-border-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/marigold-moss-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-garden-georgette-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/verdant-bloom-silk-burgundy-gold-border,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pink-katan-triangle-zari-edge,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/forest-green-silk-black-gold,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/teal-blue-moody-silk-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-silk-green-brown-stripe,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mustard-organza-brown-border-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/charcoal-gold-organza-heirloom-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/beige-organza-peach-bloom,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/maroon-chettinad-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/deep-wine-organza,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/indigo-dusk-silk-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/reddish-mango-cotton-orange-border,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/red-blue-madras-check-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/twilight-orange-cotton-weave,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/lime-and-gold-cotton-classic,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-tribe-gold-border-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/autumn-ember-golden-leaf-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/orange-blossom-cotton-weave,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-kesari-cotton-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/blush-green-handwoven-cotton-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-kapi-cotton-black-line-border,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/brown-and-mustard-light-silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kesari-sunset-chiffon-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/magenta-mist-chiffon-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/green-chiffon-with-fancy-border,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rani-pink-georgette-garden-party,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/midnight-zari-georgette,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pressed-bloom-sheer-chiffon,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/mayil-peacock-kanjivaram-mix,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/burnt-orange-temple-border-kanjivaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/semmanjal-turmeric-gold-kanjeevaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/thangam-golden-weave-kanjivaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/violet-bloom-cotton-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/moss-green-lightweight-silk-selai,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/heritage-zari-border-kanjivaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nava-pazham-kanjeevaram-silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/nila-blue-gold-zari-silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/colorful-vintage-kanjeevaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/gulabi-kota-cotton,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/kempu-pachai-and-bandhani,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/pachai-linen-golden-border-drape,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/404,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/addresses,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/orders,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/profile/verify-email,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-in,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/sign-up,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/account/wishlist,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/cart,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout/confirmation,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/checkout,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/founders,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/privacy-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/return-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/shipping-policy,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/terms-of-service,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_global-error,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,html lang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,og:locale,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,Organization/OnlineStore,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/_not-found,Brand naming,not found,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/chiffon,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/georgette,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/fabric/kanjeevaram,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/festive,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/occasion/wedding,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,FAQPage,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/faq,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/about,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/stories,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/search?q=silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?fabric=silk,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?occasion=wedding,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?tags=top-viewed,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?type=blouse,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection?sort=price-asc,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/seo-audit-definitely-missing,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,html lang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,og:locale,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,Organization/OnlineStore,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/admin/orders/seo-audit-placeholder/packing-slip,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/stretchfit-blouse-1,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-cerise-pink-stretchfit-blouse,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-marigold-orange-stretchfit,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,Product facts,not applicable/missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/sleeveless-black-stretchfit,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/rose-vine-stripe-chiffon-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,html lang,en,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,og:locale,en_IN,present,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,geo meta,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,hreflang,missing,missing/not applicable,Language/geographic clarity,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,FAQPage,missing,missing/not applicable,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,Organization/OnlineStore,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,Product facts,present,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.
+/collection/coral-sunrise-chiffon-georgette-saree,Brand naming,From The Trunk visible,present,Answer/entity consistency,LocalBusiness and PostalAddress are not recommended unless truthful business/location data is approved.

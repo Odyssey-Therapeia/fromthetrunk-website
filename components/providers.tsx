@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
-import { Toaster } from "sonner";
 
 const WishlistMergeOnLogin = dynamic(
   () =>
@@ -30,15 +29,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             not only on pages that happen to mount a WishlistButton. */}
         {deferredEffectsReady ? <WishlistMergeOnLogin /> : null}
         {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              fontFamily: "var(--font-sans)",
-              borderRadius: "0.75rem",
-            },
-          }}
-        />
       </QueryClientProvider>
     </SessionProvider>
   );

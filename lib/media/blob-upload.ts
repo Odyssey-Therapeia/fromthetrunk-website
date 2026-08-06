@@ -1,10 +1,18 @@
 import path from "path";
+import { createHash } from "node:crypto";
 
 import { put } from "@vercel/blob";
 import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
 import sharp from "sharp";
 
 import { createMediaRecord } from "@/db/queries/media";
+import {
+  generateMediaDerivatives,
+  sanitizeDerivativeFailure,
+} from "@/lib/media/derivative-generator";
+import { vercelDerivativeBlobStore } from "@/lib/media/derivative-blob-store";
+import { isApprovedMediaUrl } from "@/lib/media/derivative-policy";
+import { isMediaDerivativeUploadGenerationEnabled } from "@/lib/media/derivative-rollout";
 
 /**
  * 1MB threshold: uploads at or above this size are auto-compressed to WebP
@@ -14,7 +22,6 @@ const COMPRESS_THRESHOLD_BYTES = 1_024 * 1_024;
 export const MAX_IMAGE_BYTES = 12 * 1_024 * 1_024;
 export const MAX_IMAGE_PIXELS = 24_000_000;
 const BLOB_FETCH_TIMEOUT_MS = 5_000;
-const TRUSTED_BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
 const TRUSTED_BLOB_PATH_PREFIX = "media/";
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -108,10 +115,6 @@ const assertTrustedBlobUpload = (input: CreateMediaFromUploadInput): URL => {
     rejectMediaUpload("Media URL host is not allowed.");
   }
 
-  if (!url.hostname.toLowerCase().endsWith(TRUSTED_BLOB_HOST_SUFFIX)) {
-    rejectMediaUpload("Media URL must be a trusted Vercel Blob URL.");
-  }
-
   const normalizedUrlPathname = normalizePathname(url.pathname);
   const normalizedInputPathname = normalizePathname(input.pathname);
   if (
@@ -120,6 +123,10 @@ const assertTrustedBlobUpload = (input: CreateMediaFromUploadInput): URL => {
     normalizedUrlPathname !== normalizedInputPathname
   ) {
     rejectMediaUpload("Media pathname does not match the trusted upload path.");
+  }
+
+  if (!isApprovedMediaUrl(url.toString())) {
+    rejectMediaUpload("Media URL must use an approved Vercel Blob host and path.");
   }
 
   if (!ALLOWED_IMAGE_MIME_TYPES.has(input.mimeType)) {
@@ -143,6 +150,9 @@ const getResponseHeader = (response: Response, header: string) =>
   response.headers.get(header) ?? response.headers.get(header.toLowerCase());
 
 const assertFetchedBlobIsSafe = async (response: Response, rawBuffer: Buffer) => {
+  if (!isApprovedMediaUrl(response.url)) {
+    rejectMediaUpload("Fetched media URL is not approved.");
+  }
   const contentType = getResponseHeader(response, "content-type")?.split(";")[0]?.trim();
   if (contentType && !ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
     rejectMediaUpload("Fetched media content type is not allowed.");
@@ -162,6 +172,10 @@ const assertFetchedBlobIsSafe = async (response: Response, rawBuffer: Buffer) =>
   if (pixels > MAX_IMAGE_PIXELS) {
     rejectMediaUpload("Fetched media dimensions are too large.");
   }
+  if (!metadata.width || !metadata.height) {
+    rejectMediaUpload("Fetched media dimensions could not be determined.");
+  }
+  return metadata;
 };
 
 export const generateUploadUrl = async (input: UploadUrlInput) => {
@@ -206,19 +220,25 @@ export const createMediaFromUpload = async (input: CreateMediaFromUploadInput) =
   let finalWidth: number | null = null;
   let finalHeight: number | null = null;
 
+  // Fetch every upload once. Previously only >=1MB images were inspected,
+  // which left dimensions unknown on normal uploads and made safe derivative
+  // eligibility impossible to prove.
+  const response = await fetch(trustedUrl, {
+    signal: AbortSignal.timeout(BLOB_FETCH_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch blob for validation: ${response.status} ${response.statusText}`
+    );
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const rawBuffer = Buffer.from(arrayBuffer);
+  const rawMetadata = await assertFetchedBlobIsSafe(response, rawBuffer);
+  finalWidth = rawMetadata.width ?? null;
+  finalHeight = rawMetadata.height ?? null;
+  let sourceHash = createHash("sha256").update(rawBuffer).digest("hex");
+
   if (input.size >= COMPRESS_THRESHOLD_BYTES) {
-    // Fetch the just-uploaded original from Blob and compress server-side.
-    const response = await fetch(trustedUrl, {
-      signal: AbortSignal.timeout(BLOB_FETCH_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch blob for compression: ${response.status} ${response.statusText}`
-      );
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    const rawBuffer = Buffer.from(arrayBuffer);
-    await assertFetchedBlobIsSafe(response, rawBuffer);
 
     const { data: compressedData, info } = await sharp(rawBuffer)
       .resize({ fit: "inside", withoutEnlargement: true, width: 2400 })
@@ -230,6 +250,8 @@ export const createMediaFromUpload = async (input: CreateMediaFromUploadInput) =
 
     const blob = await put(compressedPathname, compressedData, {
       access: "public",
+      addRandomSuffix: false,
+      allowOverwrite: false,
       contentType: "image/webp",
     });
 
@@ -239,6 +261,7 @@ export const createMediaFromUpload = async (input: CreateMediaFromUploadInput) =
     finalFilesize = info.size;
     finalWidth = info.width;
     finalHeight = info.height;
+    sourceHash = createHash("sha256").update(compressedData).digest("hex");
   }
 
   // ── 3. Persist media record ──────────────────────────────────────────────
@@ -251,11 +274,40 @@ export const createMediaFromUpload = async (input: CreateMediaFromUploadInput) =
     key: finalPathname,
     metadata: {
       source: "vercel-blob",
+      sourceSha256: sourceHash,
     },
     mimeType: finalMimeType,
     url: finalUrl,
     width: finalWidth,
   });
+
+  if (isMediaDerivativeUploadGenerationEnabled()) {
+    try {
+      const { mediaDerivativeRepository } = await import(
+        "@/lib/media/derivative-runtime"
+      );
+      const derivativeGeneration = await generateMediaDerivatives({
+        blobStore: vercelDerivativeBlobStore,
+        repository: mediaDerivativeRepository,
+        source: {
+          id: record.id,
+          mimeType: record.mimeType,
+          updatedAt: record.updatedAt,
+          url: record.url,
+        },
+      });
+      return { ...record, derivativeGeneration };
+    } catch (error) {
+      return {
+        ...record,
+        derivativeGeneration: {
+          mediaAssetId: record.id,
+          reason: sanitizeDerivativeFailure(error),
+          status: "failed" as const,
+        },
+      };
+    }
+  }
 
   return record;
 };

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import type { Product } from "@/types/domain";
 
 type EmptyCartProps = {
@@ -50,7 +50,10 @@ export function EmptyCart({ featuredPicks }: EmptyCartProps) {
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 md:grid-cols-3">
             {featuredPicks.map((product, index) => {
-              const imageSrc = resolveMediaURL(product.images?.[0]);
+              const imageSrc = resolvePrimaryCurrentProductImage(
+                product,
+                "card",
+              ).image?.url;
               return (
                 <Link
                   key={product.id}

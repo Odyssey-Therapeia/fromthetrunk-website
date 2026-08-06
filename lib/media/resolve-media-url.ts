@@ -1,7 +1,19 @@
+import {
+  resolveCurrentMediaImage,
+  resolveCurrentProductImage,
+  type CurrentMediaLike,
+  type CurrentProductImageLike,
+} from "@/lib/media/product-image-resolver";
+
 export const resolveMediaURL = (media: unknown): string | null => {
   if (!media) return null;
 
   if (typeof media === "object" && media !== null && "media" in media) {
+    const resolved = resolveCurrentProductImage(
+      media as CurrentProductImageLike,
+      "card",
+    ).image?.url;
+    if (resolved) return resolved;
     const relation = media as { media?: unknown };
     return resolveMediaURL(relation.media ?? null);
   }
@@ -23,23 +35,17 @@ export const resolveMediaURL = (media: unknown): string | null => {
   }
 
   if (typeof media === "object") {
-    const mediaRecord = media as {
+    const mediaRecord = media as CurrentMediaLike & {
       filename?: string;
       pathname?: string;
-      sizes?: { card?: { url?: string } };
-      url?: string;
     };
 
-    if (typeof mediaRecord.url === "string") {
-      return mediaRecord.url;
-    }
+    const card = resolveCurrentMediaImage(mediaRecord, "card").image?.url;
+    if (card) return card;
 
-    if (
-      typeof mediaRecord.filename === "string" &&
-      typeof mediaRecord.sizes?.card?.url === "string"
-    ) {
-      return mediaRecord.sizes.card.url;
-    }
+    // Generic CMS media can intentionally use a non-product URL. Product
+    // surfaces resolve through the approved role-aware path above.
+    if (typeof mediaRecord.url === "string") return mediaRecord.url;
 
     if (typeof mediaRecord.pathname === "string") {
       if (mediaRecord.pathname.startsWith("http")) {
