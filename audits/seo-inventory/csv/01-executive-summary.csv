@@ -1,0 +1,32 @@
+Metric,Value,Evidence / Notes
+Audit generated,2026-07-22T15:21:16.378Z,Fresh local production build; HTTP GET crawl only.
+Rendered base URL,http://127.0.0.1:3100,No external pages were crawled.
+Total pages/URLs crawled,124,"Includes HTML, redirects, utility/admin probes, and metadata/API endpoints."
+Rendered HTML pages,119,
+Public indexable pages,79,Successful rendered pages without noindex and allowed by robots.txt.
+Unexpected indexable utility/private pages,1,Accessible pages that should be noindex/private but currently are indexable.
+Noindex pages,31,
+Redirect count,13,
+404 count,7,
+5xx count,1,
+Soft-404 risk count,0,
+Pages in sitemap,75,
+Pages missing from sitemap,4,Indexable canonical rendered pages absent from sitemap.
+Pages with duplicate titles,0,
+Pages with duplicate meta descriptions,0,
+Pages with missing title,0,
+Pages with missing meta description,0,
+Pages with missing H1,0,
+Pages with multiple H1s,0,
+Pages with canonical mismatch,0,
+Pages with schema,117,
+Pages with invalid schema,0,
+Pages with missing image alt text,0,0 missing alt instances.
+Internal link instances,6315,Rendered anchors; external URLs not fetched.
+External outbound link instances,716,Inventoried only; not fetched.
+Files scanned,650,Source/config/tests/assets inventory.
+Product pages checked,56,Real product URLs from rendered sitemap/llms/internal discovery.
+SEO keywords/phrases extracted,21195,Normalized 1-4 grams and exact SEO-field phrases.
+Backlink data status,"Backlink data not available from project code. Requires Google Search Console Links export, Ahrefs, Semrush, or another backlink source.",No backlink export was present.
+Production readiness SEO verdict,Not production SEO-ready: 0 Critical and 9 High issue rows require resolution or explicit acceptance.,Rendered results override static assumptions.
+XLSX generation,Blocked - CSV fallback delivered,@oai/artifact-tool and the required workspace dependency loader were unavailable; 24 sheet-equivalent CSVs were generated.

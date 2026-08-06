@@ -44,7 +44,7 @@ const VARIANT_STYLES: Record<
     link: "text-[#E5C983] hover:text-[#FDF7F1]",
     secondary:
       "border-transparent bg-[#FDF7F1] text-[#601D1C] hover:bg-[#FDF7F1]/85",
-    primary: "border-transparent bg-[#B39152] text-[#601D1C] hover:bg-[#C8A45F]",
+    primary: "border-transparent bg-[#B39152] text-[#0E0D0E] hover:bg-[#C8A45F]",
   },
 };
 
@@ -60,39 +60,47 @@ export function ConsentBanner({
   const styles = VARIANT_STYLES[variant];
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+    <div
+      data-ftt-consent-banner
+      className="pointer-events-none fixed inset-x-0 bottom-2 z-40 flex justify-center px-2 sm:bottom-4 sm:px-4"
+    >
       <section
         role="region"
-        aria-live="polite"
         aria-label="Analytics cookie preferences"
         className={cn(
-          "pointer-events-auto flex w-full max-w-4xl flex-col gap-3 rounded-2xl border p-4 shadow-[var(--ftt-soft-shadow)] transition-colors duration-300 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5",
+          "pointer-events-auto flex w-full max-w-4xl flex-col gap-2 rounded-2xl border p-3 [font-family:system-ui,sans-serif] shadow-[var(--ftt-soft-shadow)] sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5",
           styles.card,
         )}
       >
-        <p className={cn("text-sm leading-6 transition-colors duration-300", styles.text)}>
-          We use optional analytics cookies — small files stored only in your
-          browser — to measure website traffic and understand how the trunk is
-          browsed. Nothing loads until you choose. See how in our{" "}
-          <Link
-            href="/privacy-policy"
-            className={cn(
-              "font-medium underline underline-offset-2 transition-colors",
-              styles.link,
-            )}
-          >
-            Privacy policy
-          </Link>
-          .
-        </p>
+        <div className={cn("space-y-1 text-xs leading-5 sm:text-sm sm:leading-6", styles.text)}>
+          <p>
+            We use optional analytics cookies — small files stored only in your
+            browser — to measure website traffic and understand how the trunk is
+            browsed.
+          </p>
+          <p>
+            Nothing loads until you choose. See how in our{" "}
+            <Link
+              href="/policies/privacy-policy"
+              prefetch={false}
+              className={cn(
+                "font-medium underline underline-offset-2 transition-colors",
+                styles.link,
+              )}
+            >
+              Privacy policy
+            </Link>
+            .
+          </p>
+        </div>
 
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:shrink-0 sm:items-center">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:items-center">
           <Button
             type="button"
             variant="outline"
             onClick={onDecline}
             className={cn(
-              "h-10 w-full whitespace-nowrap rounded-full border px-5 transition-colors sm:w-auto",
+              "min-h-10 h-auto w-full whitespace-normal rounded-full border px-3 py-2 text-[11px] leading-4 transition-colors sm:h-10 sm:w-auto sm:whitespace-nowrap sm:px-5 sm:py-0 sm:text-sm",
               styles.secondary,
             )}
           >
@@ -103,7 +111,7 @@ export function ConsentBanner({
             variant="outline"
             onClick={onAccept}
             className={cn(
-              "h-10 w-full whitespace-nowrap rounded-full border px-5 transition-colors sm:w-auto",
+              "min-h-10 h-auto w-full whitespace-normal rounded-full border px-3 py-2 text-[11px] leading-4 transition-colors sm:h-10 sm:w-auto sm:whitespace-nowrap sm:px-5 sm:py-0 sm:text-sm",
               styles.primary,
             )}
           >

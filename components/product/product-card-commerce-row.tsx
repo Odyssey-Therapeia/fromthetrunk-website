@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import { useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
@@ -217,7 +217,7 @@ export function ProductCardCommerceRow({
         id: product.id,
         name: product.name,
         price: product.pricePaise / 100,
-        image: resolveMediaURL(product.images?.[0]) ?? "",
+        image: resolvePrimaryCurrentProductImage(product, "card").image?.url ?? "",
         slug: product.slug,
         detailsFabric: product.detailsFabric ?? null,
         reservationToken: reserveResult.reservation?.reservationToken ?? null,

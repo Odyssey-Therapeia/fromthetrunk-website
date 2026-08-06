@@ -6,6 +6,7 @@ import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import type { Product } from "@/types/domain";
 import type { HomePageContent } from "@/types/site-content";
 
@@ -26,7 +27,7 @@ export function FeaturedCollection({
   content,
 }: FeaturedCollectionProps) {
   const productCards = products.slice(0, 4).map((product, index) => {
-    const image = resolveMediaURL(product.images?.[0]);
+    const image = resolvePrimaryCurrentProductImage(product, "card").image?.url;
     return {
       name: product.name,
       description: `${product.detailsFabric ?? "Heirloom"}, ${formatCurrency(

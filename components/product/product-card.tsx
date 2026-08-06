@@ -1,14 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { formatCurrency } from "@/lib/formatters";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { buildSelectItemEvent } from "@/lib/analytics/ga4-ecommerce";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { ResilientProductImage } from "@/components/media/resilient-product-image";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { buildProductCardAlt } from "@/lib/seo/image-alt";
 import { cn } from "@/lib/utils";
 import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
@@ -35,7 +35,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
     getMountedSnapshot,
     getServerMountedSnapshot,
   );
-  const primaryImage = resolveMediaURL(product.images?.[0]);
+  const primaryImage = resolvePrimaryCurrentProductImage(product, "card").image?.url;
   const productImageAlt = buildProductCardAlt(product);
   const { stockStatus } = useLiveProductStock({
     enabled: false,
@@ -96,11 +96,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
         >
           <div className="relative aspect-3/4 @sm:aspect-4/5 overflow-hidden">
             {primaryImage ? (
-              <Image
+              <ResilientProductImage
                 src={primaryImage}
                 alt={productImageAlt}
                 fill
-                sizes="(max-width: 519px) calc(100vw - 1.5rem), (max-width: 767px) calc(50vw - 1.5rem), (max-width: 1023px) calc(33vw - 1.5rem), (max-width: 1279px) calc(33vw - 2rem), (max-width: 1720px) calc((100vw - 24rem) / 4), 320px"
+                loading="lazy"
+                sizes="(max-width: 519px) 100vw, (max-width: 767px) 50vw, (max-width: 1279px) 33vw, (max-width: 1720px) 25vw, 320px"
                 quality={70}
                 className={cn(
                   "object-cover transition duration-700 group-hover:scale-105",

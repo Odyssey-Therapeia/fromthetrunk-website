@@ -1,18 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { ResilientProductImage } from "@/components/media/resilient-product-image";
 import { cn } from "@/lib/utils";
 
 interface ProductGalleryProps {
   images: string[];
   alt: string;
   imageAlts?: string[];
+  thumbnailImages?: string[];
 }
 
-export function ProductGallery({ images, alt, imageAlts }: ProductGalleryProps) {
+export function ProductGallery({
+  images,
+  alt,
+  imageAlts,
+  thumbnailImages,
+}: ProductGalleryProps) {
   const galleryImages = useMemo(() => images.filter(Boolean), [images]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const activeIndex =
@@ -68,8 +74,8 @@ export function ProductGallery({ images, alt, imageAlts }: ProductGalleryProps) 
                   aria-label={`View image ${index + 1} of ${galleryImages.length}`}
                   aria-pressed={activeIndex === index}
                 >
-                  <Image
-                    src={image}
+                  <ResilientProductImage
+                    src={thumbnailImages?.[index] ?? image}
                     alt=""
                     fill
                     sizes="88px"
@@ -81,7 +87,7 @@ export function ProductGallery({ images, alt, imageAlts }: ProductGalleryProps) 
           ) : null}
 
           <div className="order-1 relative h-[min(68vh,620px)] min-h-[27rem] overflow-hidden rounded-[1.05rem] bg-[#FDF7F1] md:order-2 md:h-full md:min-h-0">
-            <Image
+            <ResilientProductImage
               src={activeImage}
               alt={activeAlt}
               fill

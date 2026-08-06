@@ -824,8 +824,8 @@ function CoverPage({
             : "min-h-[min(32rem,calc(100svh-19rem))] p-5 sm:p-6 lg:min-h-[min(34rem,calc(100svh-18rem))] lg:p-7",
         )}
       >
-        <div className="flex min-h-0 flex-col justify-between overflow-y-auto pr-1">
-          <motion.div variants={fadeUp}>
+        <div className="ftt-story-page flex min-h-0 min-w-0 max-w-full flex-col justify-between overflow-x-hidden overflow-y-auto pr-1">
+          <motion.div className="min-w-0 max-w-full" variants={fadeUp}>
             <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#B39152] hover:bg-[#FDF7F1]/10">
               FTT · Our Story
             </Badge>
@@ -834,7 +834,7 @@ function CoverPage({
               className={cn(
                 "mt-5 max-w-2xl text-balance font-serif font-medium leading-[0.88] tracking-[-0.035em]",
                 framed
-                  ? "text-[clamp(2.2rem,4.5vw,5.15rem)]"
+                  ? "ftt-story-cover-title"
                   : "text-[clamp(2.45rem,5.6vw,5.7rem)]",
               )}
             >
@@ -1033,7 +1033,7 @@ function StoryLeftPage({
   return (
     <section
       className={cn(
-        "relative border-b border-[#E7DDD4] p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-7",
+        "ftt-story-page relative min-w-0 max-w-full overflow-x-hidden border-b border-[#E7DDD4] p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-7",
         framed && "min-h-0 overflow-y-auto lg:p-6 xl:p-7",
       )}
     >
@@ -1060,7 +1060,7 @@ function StoryLeftPage({
           className={cn(
             "mt-4 max-w-2xl text-balance font-serif leading-[0.92] tracking-[-0.035em] text-[#141D46]",
             framed
-              ? "text-[clamp(1.85rem,3.65vw,4.2rem)]"
+              ? "ftt-story-chapter-title"
               : "text-[clamp(2rem,4.6vw,4.7rem)]",
           )}
         >
@@ -1139,7 +1139,7 @@ function StoryRightPage({
   return (
     <section
       className={cn(
-        "relative overflow-hidden p-5 sm:p-6 lg:p-7",
+        "ftt-story-page relative min-w-0 max-w-full overflow-hidden p-5 sm:p-6 lg:p-7",
         framed && "min-h-0 lg:p-6 xl:p-7",
       )}
     >
@@ -1159,11 +1159,11 @@ function StoryRightPage({
           framed && "h-full min-h-0 overflow-y-auto pr-1",
         )}
       >
-        <div className="space-y-4">
+        <div className="min-w-0 max-w-full space-y-4">
           {/* Margin note — note only (no label), with the FTT logo mark. */}
           <div className="overflow-hidden rounded-[1.35rem] border border-[#E7DDD4] bg-[#141D46] p-4 text-[#FDF7F1] shadow-[0_18px_50px_rgba(20,29,70,0.14)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div className="flex min-w-0 max-w-full items-start justify-between gap-4">
+              <div className="min-w-0 max-w-full flex-1">
                 <p className="font-serif text-xl leading-tight sm:text-2xl">
                   {chapter.marginNote}
                 </p>
@@ -1251,7 +1251,7 @@ function PromiseTypewriter({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <p
       aria-label={`${lineOne} ${lineTwo}`}
-      className="mt-3 font-serif text-[clamp(1.75rem,3.4vw,3.4rem)] leading-[0.95] text-[#FDF7F1]"
+      className="ftt-story-promise-type mt-3 max-w-full font-serif leading-[0.95] text-[#FDF7F1]"
     >
       <span aria-hidden="true" className="block">
         {displayLineOne}
@@ -1284,8 +1284,10 @@ function PromiseCombinedCard() {
       <div className="grid gap-4">
         {ideas.map((idea) => (
           <div key={idea.title}>
-            <p className="font-serif text-2xl text-[#141D46]">{idea.title}</p>
-            <p className="mt-1 text-sm leading-6 text-[#601D1C]/65">
+            <p className="ftt-story-promise-label font-serif text-2xl text-[#141D46]">
+              {idea.title}
+            </p>
+            <p className="ftt-story-promise-copy mt-1 text-sm leading-6 text-[#601D1C]/65">
               {idea.body}
             </p>
           </div>

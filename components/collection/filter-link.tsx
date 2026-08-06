@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 type FilterLinkProps = {
+  "aria-label"?: string;
+  "aria-pressed"?: boolean;
   href: string;
   className?: string;
   children: ReactNode;
@@ -14,42 +16,40 @@ type FilterLinkProps = {
 };
 
 /**
- * Anchor that updates the collection filters via a client transition
- * (`router.replace` + `scroll: false`) instead of a full navigation. Because the
+ * Accessible control that updates collection filters via a client transition.
+ * Because the
  * navigation runs inside `startTransition`, React keeps the current grid visible
  * until the new server render is ready — no `loading.tsx` skeleton flash and no
- * scroll jump. It still renders a real `href`, so it stays crawlable and
- * middle/⌘-click open in a new tab as expected.
+ * scroll jump. Filter combinations intentionally do not render crawlable links;
+ * the resulting URL remains shareable and is added to browser history.
  */
-export function FilterLink({ href, className, children, title }: FilterLinkProps) {
+export function FilterLink({
+  "aria-label": ariaLabel,
+  "aria-pressed": ariaPressed,
+  href,
+  className,
+  children,
+  title,
+}: FilterLinkProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   return (
-    <a
-      href={href}
+    <button
+      type="button"
       title={title}
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
       data-pending={isPending ? "" : undefined}
       aria-busy={isPending || undefined}
-      onClick={(event) => {
-        if (
-          event.defaultPrevented ||
-          event.button !== 0 ||
-          event.metaKey ||
-          event.ctrlKey ||
-          event.shiftKey ||
-          event.altKey
-        ) {
-          return;
-        }
-        event.preventDefault();
+      onClick={() => {
         startTransition(() => {
-          router.replace(href, { scroll: false });
+          router.push(href, { scroll: false });
         });
       }}
       className={cn("transition-opacity data-[pending]:opacity-60", className)}
     >
       {children}
-    </a>
+    </button>
   );
 }

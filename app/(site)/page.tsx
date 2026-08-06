@@ -22,7 +22,7 @@ import {
   getProducts,
 } from "@/lib/data/products";
 import { formatCurrency } from "@/lib/formatters";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
@@ -103,7 +103,7 @@ export default async function Home() {
   ];
   const landingProducts: LandingProductCard[] = landingProductSource
     .map((product) => {
-      const image = resolveMediaURL(product.images?.[0]);
+      const image = resolvePrimaryCurrentProductImage(product, "card").image?.url;
       if (!image) return null;
 
       const details = getProductDisplayDetails(product);
@@ -137,8 +137,23 @@ export default async function Home() {
   const socialSection = await SocialSection({ images: storyImages });
 
   return (
-    <HomeIntroGate>
-      <div className="bg-[#FDF7F1]">
+    <>
+      <link
+        rel="preload"
+        as="image"
+        href="/hero/mobile_1-lcp.webp"
+        media="(max-width: 767px)"
+        fetchPriority="high"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href="/hero/3-lcp.webp"
+        media="(min-width: 768px)"
+        fetchPriority="high"
+      />
+      <HomeIntroGate>
+        <div className="bg-[#FDF7F1]">
         {/* Section order: hero → our story → banner → fabric → social →
             featured (category) → testimonials → connect. */}
         <HeroSection content={heroContent} />
@@ -156,7 +171,8 @@ export default async function Home() {
         <TestimonialsSection />
         <SectionSeparator />
         <ConnectWithUsSection />
-      </div>
-    </HomeIntroGate>
+        </div>
+      </HomeIntroGate>
+    </>
   );
 }

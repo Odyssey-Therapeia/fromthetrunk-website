@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { searchProducts } from "@/lib/ports/catalog-search";
 import { CUSTOMER_NOINDEX_FOLLOW_ROBOTS } from "@/lib/seo/route-metadata";
+import { normalizePublicSearchQuery } from "@/lib/search/query";
 import type { Product } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
@@ -22,13 +23,17 @@ type SearchPageProps = {
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const resolvedParams = await searchParams;
-  const query = resolvedParams?.q?.trim() ?? "";
+  const query = normalizePublicSearchQuery(resolvedParams?.q);
 
   let results: Product[] = [];
 
   if (query.length >= 2) {
     // P6-03: use the catalog-search port (ILIKE over name/storyTitle/storyNarrative/attributes)
-    const result = await searchProducts({ query });
+    const result = await searchProducts({
+      query,
+      includeFacets: false,
+      limit: 24,
+    });
     results = result.products as unknown as Product[];
   }
 

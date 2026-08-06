@@ -97,6 +97,7 @@ export function NavDropdown({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onClick={() => setOpen(false)}
                 role="menuitem"
                 className="block rounded-lg px-4 py-3 text-sm font-semibold text-[#601D1C]/75 transition hover:bg-[#601D1C] hover:text-[#B39152]"

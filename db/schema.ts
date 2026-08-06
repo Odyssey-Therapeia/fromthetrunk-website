@@ -39,6 +39,19 @@ export const newsletterStatusEnum = pgEnum("newsletter_status", [
   "confirmed",
   "unsubscribed",
 ]);
+export const mediaDerivativeRoleEnum = pgEnum("media_derivative_role", [
+  "seo_master",
+  "pdp",
+  "card",
+  "thumbnail",
+  "social_og",
+  "feed",
+]);
+export const mediaDerivativeStatusEnum = pgEnum("media_derivative_status", [
+  "processing",
+  "ready",
+  "failed",
+]);
 
 export const users = pgTable(
   "users",
@@ -112,6 +125,71 @@ export const mediaAssets = pgTable(
   (table) => ({
     keyUnique: uniqueIndex("media_assets_key_unique").on(table.key),
   })
+);
+
+/**
+ * Immutable, bounded delivery variants generated from a media asset.
+ *
+ * The composite identity intentionally keeps one active row per generation
+ * policy. A source revision is rendered and uploaded first, then atomically
+ * replaces the row while the previous immutable Blob remains recoverable.
+ */
+export const mediaDerivatives = pgTable(
+  "media_derivatives",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mediaAssetId: uuid("media_asset_id")
+      .notNull()
+      .references(() => mediaAssets.id, { onDelete: "cascade" }),
+    role: mediaDerivativeRoleEnum("role").notNull(),
+    objectKey: text("object_key").notNull(),
+    url: text("url"),
+    mimeType: text("mime_type"),
+    byteSize: integer("byte_size"),
+    width: integer("width"),
+    height: integer("height"),
+    generationVersion: integer("generation_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }).notNull(),
+    status: mediaDerivativeStatusEnum("status").notNull().default("processing"),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    assetIdx: index("media_derivatives_asset_idx").on(table.mediaAssetId),
+    identityUnique: uniqueIndex("media_derivatives_asset_role_version_unique").on(
+      table.mediaAssetId,
+      table.role,
+      table.generationVersion,
+    ),
+    objectKeyUnique: uniqueIndex("media_derivatives_object_key_unique").on(
+      table.objectKey,
+    ),
+    generationVersionPositive: check(
+      "media_derivatives_generation_version_positive",
+      sql`${table.generationVersion} > 0`,
+    ),
+    readyMetadataComplete: check(
+      "media_derivatives_ready_metadata_complete",
+      sql`${table.status} <> 'ready' OR (
+        ${table.url} IS NOT NULL AND
+        ${table.mimeType} IS NOT NULL AND
+        ${table.byteSize} > 0 AND
+        ${table.width} > 0 AND
+        ${table.height} > 0
+      )`,
+    ),
+    readyUrlSafeShape: check(
+      "media_derivatives_ready_url_safe_shape",
+      sql`${table.status} <> 'ready' OR (
+        ${table.url} LIKE 'https://%' AND
+        position('?' in ${table.url}) = 0 AND
+        position('#' in ${table.url}) = 0 AND
+        position('/_next/image' in ${table.url}) = 0
+      )`,
+    ),
+  }),
 );
 
 /**

@@ -26,6 +26,16 @@ import {
   productTypes,
   tags,
 } from "@/db/schema";
+import type { MediaDerivativeRecord } from "@/db/queries/media-derivatives";
+import {
+  assertMediaAssetsReadyForPublication,
+  listReadyMediaDerivativesForAssets,
+} from "@/db/queries/media-derivatives";
+import {
+  isMediaDerivativeConsumptionEnabled,
+  isMediaDerivativePublishGuardEnabled,
+} from "@/lib/media/derivative-rollout";
+import { validateReadyMediaDerivative } from "@/lib/media/derivative-policy";
 import {
   DEFAULT_PRODUCT_SORT,
   type ProductSortOption,
@@ -67,7 +77,10 @@ export async function getBlouseProductIdSet(
 export type ProductWithRelations = ProductRecord & {
   collection: CollectionRecord | null;
   images: Array<{
-    media: MediaRecord;
+    media: MediaRecord & {
+      derivativeDeliveryActive?: boolean;
+      derivatives?: MediaDerivativeRecord[];
+    };
     sortOrder: number;
   }>;
   tags: TagRecord[];
@@ -185,6 +198,18 @@ export const hydrateProducts = async (
     ]),
   );
 
+  const derivativeDeliveryActive = isMediaDerivativeConsumptionEnabled();
+  const mediaIds = Array.from(new Set(imageRows.map((row) => row.media.id)));
+  const derivativeRows = derivativeDeliveryActive
+    ? await listReadyMediaDerivativesForAssets(mediaIds)
+    : [];
+  const derivativesByMediaId = new Map<string, MediaDerivativeRecord[]>();
+  for (const derivative of derivativeRows) {
+    const existing = derivativesByMediaId.get(derivative.mediaAssetId) ?? [];
+    existing.push(derivative);
+    derivativesByMediaId.set(derivative.mediaAssetId, existing);
+  }
+
   const collectionById = new Map(collectionRows.map((row) => [row.id, row]));
   const typeById = new Map(typeRows.map((row) => [row.id, row]));
   const imagesByProductId = new Map<
@@ -198,8 +223,36 @@ export const hydrateProducts = async (
 
   for (const row of imageRows) {
     const existing = imagesByProductId.get(row.productId) ?? [];
+    const derivatives = derivativesByMediaId.get(row.media.id) ?? [];
+    const cardDerivative = derivatives.find(
+      (derivative) =>
+        derivative.role === "card" &&
+        validateReadyMediaDerivative(derivative).valid,
+    );
+    const deliveryMedia = derivativeDeliveryActive
+      ? {
+          ...row.media,
+          blurDataUrl: null,
+          derivativeDeliveryActive: true,
+          derivatives,
+          filesize: cardDerivative?.byteSize ?? null,
+          height: cardDerivative?.height ?? null,
+          key: cardDerivative?.objectKey ?? "",
+          metadata: {
+            originalMediaAssetId: row.media.id,
+            source: "media-derivative",
+          },
+          mimeType: cardDerivative?.mimeType ?? null,
+          url: cardDerivative?.url ?? "",
+          width: cardDerivative?.width ?? null,
+        }
+      : {
+          ...row.media,
+          derivativeDeliveryActive: false,
+          derivatives,
+        };
     existing.push({
-      media: row.media,
+      media: deliveryMedia,
       sortOrder: row.sortOrder,
     });
     imagesByProductId.set(row.productId, existing);
@@ -552,6 +605,13 @@ export const createProduct = async (
 ): Promise<ProductWithRelations> => {
   const { imageMediaIds = [], tagIds = [], ...productData } = input;
 
+  if (
+    productData.status === "published" &&
+    isMediaDerivativePublishGuardEnabled()
+  ) {
+    await assertMediaAssetsReadyForPublication(imageMediaIds);
+  }
+
   const slug = await uniqueSlug(
     slugify(productData.slug ?? "untitled-product"),
   );
@@ -648,6 +708,32 @@ export const updateProduct = async (
 ): Promise<null | ProductWithRelations> => {
   const { imageMediaIds, tagIds, ...productData } = input;
 
+  if (isMediaDerivativePublishGuardEnabled()) {
+    const [current] = await withRetry(() =>
+      db
+        .select({ status: products.status })
+        .from(products)
+        .where(eq(products.id, productId))
+        .limit(1),
+    );
+    const targetPublished =
+      productData.status === "published" ||
+      (productData.status === undefined && current?.status === "published");
+    if (targetPublished && (productData.status !== undefined || imageMediaIds)) {
+      const mediaIds =
+        imageMediaIds ??
+        (
+          await withRetry(() =>
+            db
+              .select({ mediaId: productImages.mediaId })
+              .from(productImages)
+              .where(eq(productImages.productId, productId)),
+          )
+        ).map((row) => row.mediaId);
+      await assertMediaAssetsReadyForPublication(mediaIds);
+    }
+  }
+
   if (typeof productData.slug === "string") {
     productData.slug = await uniqueSlug(slugify(productData.slug), productId);
   }
@@ -712,6 +798,27 @@ export const updateProductsBatch = async (
   }
 
   try {
+    if (
+      input.status === "published" &&
+      isMediaDerivativePublishGuardEnabled()
+    ) {
+      const mediaRows = await withRetry(() =>
+        db
+          .select({
+            mediaId: productImages.mediaId,
+            productId: productImages.productId,
+          })
+          .from(productImages)
+          .where(inArray(productImages.productId, productIds)),
+      );
+      for (const productId of productIds) {
+        await assertMediaAssetsReadyForPublication(
+          mediaRows
+            .filter((row) => row.productId === productId)
+            .map((row) => row.mediaId),
+        );
+      }
+    }
     const updated = await withRetry(() =>
       db
         .update(products)

@@ -31,7 +31,10 @@ import {
 } from "@/components/ui/accordion";
 import { formatCurrency } from "@/lib/formatters";
 import { getProductBySlug, getProducts } from "@/lib/data/products";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import {
+  resolveCurrentProductImage,
+  resolvePrimaryCurrentProductImage,
+} from "@/lib/media/product-image-resolver";
 import {
   getProductDisplayDetails,
   type ProductDisplayDetails,
@@ -40,7 +43,6 @@ import { productJsonLd, breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { buildPdpTitle, buildPdpDescription } from "@/lib/seo/pdp-meta";
 import { getSiteOrigin } from "@/lib/config/site";
 import { absoluteUrl } from "@/lib/seo/site-url";
-import { toSeoImageUrl } from "@/lib/seo/image-urls";
 import { buildPdpGalleryImageAlt } from "@/lib/seo/image-alt";
 import {
   productSeoRobots,
@@ -84,18 +86,13 @@ export async function generateMetadata({
   const product = rawProduct as Product;
   const displayDetails = getProductDisplayDetails(product);
   const isEligibleForProductSocialPreview = isSeoEligibleProduct(product);
-  const primaryImage = product.images?.[0] as
-    | {
-        media?: {
-          alt?: null | string;
-          height?: null | number;
-          width?: null | number;
-        };
-      }
-    | undefined;
-  const image = resolveMediaURL(product.images?.[0]);
-  const imageUrl =
-    isEligibleForProductSocialPreview ? (toSeoImageUrl(image) ?? undefined) : undefined;
+  const { image: primarySeoImage } = resolvePrimaryCurrentProductImage(
+    product,
+    "social",
+  );
+  const imageUrl = isEligibleForProductSocialPreview
+    ? primarySeoImage?.url
+    : undefined;
   const canonical = absoluteUrl(`/collection/${product.slug}`);
 
   const pdpTitle = isEligibleForProductSocialPreview
@@ -113,9 +110,9 @@ export async function generateMetadata({
     imageUrl
       ? {
           url: imageUrl,
-          width: primaryImage?.media?.width,
-          height: primaryImage?.media?.height,
-          alt: primaryImage?.media?.alt ?? buildPdpGalleryImageAlt(product, 0),
+          width: primarySeoImage?.width,
+          height: primarySeoImage?.height,
+          alt: primarySeoImage?.alt ?? buildPdpGalleryImageAlt(product, 0),
         }
       : undefined,
   );
@@ -164,9 +161,19 @@ export default async function SareePage({ params }: ProductPageProps) {
 
   const displayDetails = getProductDisplayDetails(product);
   const fabricLanding = getFabricLandingForLabel(displayDetails.fabric);
-  const images = (product.images ?? [])
-    .map((img) => resolveMediaURL(img as unknown))
-    .filter(Boolean) as string[];
+  const galleryEntries = (product.images ?? []).flatMap((img) => {
+    const pdpImage = resolveCurrentProductImage(img, "pdp").image?.url;
+    const thumbnailImage = resolveCurrentProductImage(
+      img,
+      "thumbnail",
+    ).image?.url;
+    if (!pdpImage || !thumbnailImage) {
+      return [];
+    }
+    return [{ pdpImage, thumbnailImage: thumbnailImage ?? pdpImage }];
+  });
+  const images = galleryEntries.map((entry) => entry.pdpImage);
+  const thumbnailImages = galleryEntries.map((entry) => entry.thumbnailImage);
   const imageAlts = images.map((_, index) =>
     buildPdpGalleryImageAlt(product, index),
   );
@@ -228,6 +235,7 @@ export default async function SareePage({ params }: ProductPageProps) {
         <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.58fr)] md:items-stretch md:[--pdp-panel-height:min(72vh,760px)] lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.58fr)] lg:gap-7 lg:[--pdp-panel-height:min(74vh,800px)]">
           <ProductGallery
             images={images}
+            thumbnailImages={thumbnailImages}
             alt={imageAlts[0] ?? product.name}
             imageAlts={imageAlts}
           />

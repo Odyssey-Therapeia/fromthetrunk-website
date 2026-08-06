@@ -2,6 +2,26 @@ import type { NextConfig } from "next";
 
 const isStandaloneBuild = process.env.BUILD_STANDALONE === "true";
 
+const isVercelPublicBlobHost = (host: string) =>
+  /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/.test(host);
+
+const configuredMediaHosts = [
+  ...(process.env.FTT_MEDIA_SOURCE_HOSTS ?? "").split(","),
+  process.env.FTT_MEDIA_DERIVATIVE_DESTINATION_HOST ?? "",
+]
+  .map((host) => host.trim().toLowerCase())
+  .filter(isVercelPublicBlobHost);
+
+const mediaHosts = Array.from(
+  new Set([
+    "njufw8f4mlcjsl7g.public.blob.vercel-storage.com",
+    "ll1rv51y3jxrt1nr.public.blob.vercel-storage.com",
+    "mgkwfyatucnr0yzo.public.blob.vercel-storage.com",
+    ...configuredMediaHosts,
+  ]),
+);
+const MEDIA_CSP_SRC = mediaHosts.map((host) => `https://${host}`).join(" ");
+
 // Google Tag Manager + GA4 domains (consent-gated GTM loader; GA4 configured
 // inside GTM). Merged into the directives below. GTM Preview / Tag Assistant
 // need tagmanager.google.com + googletagmanager.com in script/frame/connect,
@@ -25,9 +45,9 @@ const cspReportOnly = [
   `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
   `script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
   "style-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://tagmanager.google.com https://fonts.googleapis.com",
-  `img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC}`,
+  `img-src 'self' data: blob: ${MEDIA_CSP_SRC} https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC}`,
   "font-src 'self' data: https://fonts.gstatic.com",
-  `connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://region1.google-analytics.com ${GA_CONNECT_SRC} https://photon.komoot.io https://*.tile.openstreetmap.org https://*.public.blob.vercel-storage.com`,
+  `connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://region1.google-analytics.com ${GA_CONNECT_SRC} https://photon.komoot.io https://*.tile.openstreetmap.org ${MEDIA_CSP_SRC}`,
   `frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com ${GTM_FRAME_SRC}`,
   "worker-src 'self' blob:",
   "report-uri /api/v2/security/csp-report",
@@ -49,32 +69,80 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
-    formats: ["image/avif", "image/webp"],
-    deviceSizes: [360, 414, 640, 750, 828, 1080, 1200, 1600, 1920],
-    imageSizes: [32, 48, 64, 96, 128, 192, 256, 384, 512],
+    formats: ["image/webp"],
+    deviceSizes: [360, 414, 640, 768, 1080, 1280, 1600, 1920],
+    imageSizes: [48, 64, 96, 128, 192, 256, 320, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30,
-    qualities: [70, 75, 80, 82, 85],
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**.public.blob.vercel-storage.com",
-      },
-      {
-        protocol: "https",
-        hostname: "behold.pictures",
-      },
-      {
-        protocol: "https",
-        hostname: "**.behold.pictures",
-      },
-      {
-        protocol: "https",
-        hostname: "**.cdninstagram.com",
-      },
+    qualities: [70, 75],
+    localPatterns: [
+      { pathname: "/404/**", search: "" },
+      { pathname: "/banner/**", search: "" },
+      { pathname: "/category/**", search: "" },
+      { pathname: "/footer/**", search: "" },
+      { pathname: "/founder/**", search: "" },
+      { pathname: "/hero/**", search: "" },
+      { pathname: "/media/**", search: "" },
+      { pathname: "/our-story/**", search: "" },
+      { pathname: "/packaging/**", search: "" },
+      { pathname: "/Blouse_size.png", search: "" },
+      { pathname: "/Ftt_logo_navbar.avif", search: "" },
     ],
+    remotePatterns: mediaHosts.map((hostname) =>
+      ({
+        protocol: "https",
+        hostname,
+        pathname: "/media/**",
+        search: "",
+      }) as const,
+    ),
   },
   async headers() {
     return [
+      {
+        source: "/banner/from-the-trunk-social-v1.jpg",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/founder/founders-cover-v1.webp",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/category/optimized-v1/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/video/welcoming-v2.webm",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/welcome-poster.avif",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [
@@ -123,6 +191,26 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: "/Welcoming.mp4",
+        destination: "/welcome-poster.avif",
+        permanent: true,
+      },
+      {
+        source: "/video/welcoming-v2.mp4",
+        destination: "/welcome-poster.avif",
+        permanent: true,
+      },
+      {
+        source: "/seo-candidates/welcoming-1080p-crf30-muted.mp4",
+        destination: "/welcome-poster.avif",
+        permanent: true,
+      },
+      {
+        source: "/Welcoming.webm",
+        destination: "/video/welcoming-v2.webm",
+        permanent: true,
+      },
       {
         source: "/faq",
         destination: "/faqs",

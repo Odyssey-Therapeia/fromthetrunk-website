@@ -5,7 +5,6 @@ import { Suspense, useCallback, useSyncExternalStore } from "react";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { GtmLoader } from "@/components/analytics/gtm-loader";
 import { GtmPageView } from "@/components/analytics/gtm-page-view";
-import { useConsentBannerVariant } from "@/components/analytics/use-consent-banner-variant";
 import {
   CONSENT_CHANGED_EVENT,
   notifyConsentChanged,
@@ -70,26 +69,8 @@ export function AnalyticsGate() {
   }
 
   if (consent === "unknown") {
-    return <ConsentBannerHost onAccept={accept} onDecline={decline} />;
+    return <ConsentBanner onAccept={accept} onDecline={decline} />;
   }
 
   return null;
-}
-
-/**
- * Hosts the consent banner and computes its section-aware visual variant. Split
- * into its own component so the scroll/resize listener in
- * `useConsentBannerVariant` only runs while the banner is actually shown.
- */
-function ConsentBannerHost({
-  onAccept,
-  onDecline,
-}: {
-  onAccept: () => void;
-  onDecline: () => void;
-}) {
-  const variant = useConsentBannerVariant();
-  return (
-    <ConsentBanner variant={variant} onAccept={onAccept} onDecline={onDecline} />
-  );
 }

@@ -75,6 +75,10 @@ vi.mock("next/headers", () => ({
   draftMode: vi.fn().mockResolvedValue({ isEnabled: false }),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/lib/data/products", () => ({
   getFeaturedProducts: vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 }),
   getProductsByCollection: vi

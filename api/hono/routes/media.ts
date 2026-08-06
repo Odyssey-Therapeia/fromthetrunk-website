@@ -3,9 +3,12 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { requireAdmin } from "@/api/hono/middleware/auth";
 import { errorSchema, idParamSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
-import { deleteMedia, listMedia } from "@/db/queries/media";
+import { deleteMedia, getMediaById, listMedia } from "@/db/queries/media";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { createMediaFromUpload, generateUploadUrl, MAX_IMAGE_BYTES } from "@/lib/media/blob-upload";
+import { generateMediaDerivatives } from "@/lib/media/derivative-generator";
+import { vercelDerivativeBlobStore } from "@/lib/media/derivative-blob-store";
+import { isMediaDerivativeUploadGenerationEnabled } from "@/lib/media/derivative-rollout";
 
 const uploadRequestSchema = z.object({
   contentType: z.string().trim().min(1).max(120),
@@ -22,6 +25,68 @@ export const completeUploadSchema = z.object({
 });
 
 export const registerMediaRoutes = (app: OpenAPIHono<HonoBindings>) => {
+  app.openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/derivatives",
+      request: { params: idParamSchema },
+      responses: {
+        200: { description: "Media derivatives generated or resumed" },
+        404: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Media not found",
+        },
+        409: {
+          content: { "application/json": { schema: errorSchema } },
+          description: "Derivative generation disabled",
+        },
+      },
+      tags: ["Media"],
+    }),
+    async (c) => {
+      const adminOrResponse = requireAdmin(c);
+      if (adminOrResponse instanceof Response) return adminOrResponse;
+      if (!isMediaDerivativeUploadGenerationEnabled()) {
+        return c.json(
+          {
+            code: "MEDIA_DERIVATIVE_GENERATION_DISABLED",
+            message: "Media derivative generation is not enabled.",
+          },
+          409,
+        );
+      }
+      const rateLimited = await rateLimitResponse(
+        c.req.raw,
+        `media:derivatives:${adminOrResponse.id}`,
+        { limit: 12, windowSeconds: 60 },
+      );
+      if (rateLimited) return rateLimited;
+      const { id } = c.req.valid("param");
+      const media = await getMediaById(id);
+      if (!media) {
+        return c.json(
+          { code: "MEDIA_NOT_FOUND", message: "Media not found." },
+          404,
+        );
+      }
+
+      const { mediaDerivativeRepository } = await import(
+        "@/lib/media/derivative-runtime"
+      );
+      const result = await generateMediaDerivatives({
+        blobStore: vercelDerivativeBlobStore,
+        repository: mediaDerivativeRepository,
+        source: {
+          id: media.id,
+          mimeType: media.mimeType,
+          updatedAt: media.updatedAt,
+          url: media.url,
+        },
+      });
+      return c.json(result, 200);
+    },
+  );
+
   app.openapi(
     createRoute({
       method: "get",

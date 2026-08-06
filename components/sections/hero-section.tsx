@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -12,9 +12,6 @@ import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 const SLIDE_DURATION_MS = 6000;
 const SLIDE_TRANSITION_MS = 1400;
 const HERO_GOLD = "#B39152";
-
-// TEMP (debugging): flip back to true to restore auto-advance.
-const AUTOPLAY_ENABLED = true;
 
 type HeadlinePart = {
   text: string;
@@ -60,6 +57,8 @@ const slides: Slide[] = [
     description: "Handcrafted pieces for women who lead with confidence.",
     mobileCopyClassName:
       "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0",
+    mobileHeadlineClassName:
+      "!text-[clamp(2.35rem,10.5vw,3.25rem)] !leading-[0.94]",
   },
   {
     image: "/hero/4-lcp.webp",
@@ -135,30 +134,6 @@ const slides: Slide[] = [
   },
 ];
 
-type HeroViewport = "mobile" | "tablet" | "desktop";
-
-function getHeroViewport(): HeroViewport {
-  if (typeof window === "undefined") return "desktop";
-  if (window.innerWidth < 768) return "mobile";
-  if (window.innerWidth < 1024) return "tablet";
-  return "desktop";
-}
-
-function useHeroViewport() {
-  const [viewport, setViewport] = useState<HeroViewport>("desktop");
-
-  useEffect(() => {
-    const updateViewport = () => setViewport(getHeroViewport());
-
-    updateViewport();
-    window.addEventListener("resize", updateViewport, { passive: true });
-
-    return () => window.removeEventListener("resize", updateViewport);
-  }, []);
-
-  return viewport;
-}
-
 function usePrefersReducedMotion() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
@@ -178,45 +153,49 @@ function usePrefersReducedMotion() {
 function HeroSlideImage({
   index,
   slide,
-  viewport,
   onFirstImageReady,
 }: {
   index: number;
   slide: Slide;
-  viewport: HeroViewport;
   onFirstImageReady: () => void;
 }) {
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const isFirstSlide = index === 0;
-  const isMobile = viewport === "mobile";
-  const imageSrc = isMobile ? slide.mobileImage : slide.image;
-  const objectPosition = isMobile
-    ? (slide.mobileImagePosition ?? "center center")
-    : viewport === "tablet"
-      ? (slide.tabletImagePosition ?? slide.imagePosition ?? "center center")
-      : (slide.imagePosition ?? "center center");
+  const imageSrc = slide.image;
 
   if (failedImageSrc === imageSrc) return null;
 
   return (
-    <Image
-      src={imageSrc}
-      alt=""
-      fill
-      priority={isFirstSlide}
-      loading={isFirstSlide ? undefined : "lazy"}
-      fetchPriority={isFirstSlide ? "high" : "auto"}
-      sizes="100vw"
-      className="object-cover"
-      style={{ objectPosition }}
-      onLoad={isFirstSlide ? onFirstImageReady : undefined}
-      onError={() => {
-        setFailedImageSrc(imageSrc);
-        if (isFirstSlide) {
-          onFirstImageReady();
+    <picture>
+      <source media="(max-width: 767px)" srcSet={slide.mobileImage} />
+      <img
+        src={imageSrc}
+        alt=""
+        fetchPriority={isFirstSlide ? "high" : "auto"}
+        loading={isFirstSlide ? "eager" : "lazy"}
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover [object-position:var(--hero-mobile-position)] md:[object-position:var(--hero-tablet-position)] lg:[object-position:var(--hero-desktop-position)]"
+        style={
+          {
+            "--hero-mobile-position":
+              slide.mobileImagePosition ?? "center center",
+            "--hero-tablet-position":
+              slide.tabletImagePosition ??
+              slide.imagePosition ??
+              "center center",
+            "--hero-desktop-position":
+              slide.imagePosition ?? "center center",
+          } as CSSProperties
         }
-      }}
-    />
+        onLoad={isFirstSlide ? onFirstImageReady : undefined}
+        onError={() => {
+          setFailedImageSrc(imageSrc);
+          if (isFirstSlide) {
+            onFirstImageReady();
+          }
+        }}
+      />
+    </picture>
   );
 }
 
@@ -318,7 +297,7 @@ export function HeroSection(props: HeroSectionProps) {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [initialHeroImageReady, setInitialHeroImageReady] = useState(false);
-  const viewport = useHeroViewport();
+  const [autoplayArmed, setAutoplayArmed] = useState(false);
   const lockedRef = useRef(false);
   const unlockTimeoutRef = useRef<number | null>(null);
   const { nudge } = useUiHaptics();
@@ -355,7 +334,7 @@ export function HeroSection(props: HeroSectionProps) {
   useEffect(() => {
     if (
       prefersReducedMotion ||
-      !AUTOPLAY_ENABLED ||
+      !autoplayArmed ||
       !isIntroReady ||
       !initialHeroImageReady
     ) {
@@ -369,6 +348,7 @@ export function HeroSection(props: HeroSectionProps) {
     return () => window.clearTimeout(timer);
   }, [
     activeImageIndex,
+    autoplayArmed,
     initialHeroImageReady,
     isIntroReady,
     nextSlide,
@@ -424,7 +404,6 @@ export function HeroSection(props: HeroSectionProps) {
               <HeroSlideImage
                 index={index}
                 slide={slide}
-                viewport={viewport}
                 onFirstImageReady={() => setInitialHeroImageReady(true)}
               />
             ) : null}
@@ -437,6 +416,7 @@ export function HeroSection(props: HeroSectionProps) {
         type="button"
         onClick={() => {
           nudge();
+          setAutoplayArmed(true);
           previousSlide();
         }}
         aria-label="Previous slide"
@@ -452,6 +432,7 @@ export function HeroSection(props: HeroSectionProps) {
         type="button"
         onClick={() => {
           nudge();
+          setAutoplayArmed(true);
           nextSlide();
         }}
         aria-label="Next slide"
@@ -489,6 +470,7 @@ export function HeroSection(props: HeroSectionProps) {
             type="button"
             onClick={() => {
               nudge();
+              setAutoplayArmed(true);
               changeSlide(index);
             }}
             aria-label={`Go to slide ${index + 1}`}

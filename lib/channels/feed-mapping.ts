@@ -21,10 +21,39 @@
 
 import type { ProductWithRelations } from "@/db/queries/products";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { getSiteOrigin } from "@/lib/config/site";
 
 export type FeedAvailability = "in_stock" | "out_of_stock";
+
+export class FeedDerivativeCoverageError extends Error {
+  readonly code = "FEED_SAFE_IMAGE_COVERAGE_INCOMPLETE";
+
+  constructor(readonly productSlugs: string[]) {
+    super("Feed safe direct-image coverage is incomplete.");
+    this.name = "FeedDerivativeCoverageError";
+  }
+}
+
+export const isProductFeedBusinessEligible = (
+  product: ProductWithRelations,
+): boolean =>
+  product.status === "published" &&
+  !product.name.toLowerCase().startsWith("test chiffon") &&
+  product.images.length > 0;
+
+export const assertActiveFeedDerivativeCoverage = (
+  products: ProductWithRelations[],
+): void => {
+  const missing = products
+    .filter(isProductFeedBusinessEligible)
+    .filter(
+      (product) =>
+        !resolvePrimaryCurrentProductImage(product, "feed").image,
+    )
+    .map((product) => product.slug);
+  if (missing.length > 0) throw new FeedDerivativeCoverageError(missing);
+};
 
 export type FeedItemData = {
   /** Stable product identifier — slug */
@@ -99,15 +128,12 @@ export function mapProductToFeedItem(
   const availability: FeedAvailability =
     product.stockStatus === "available" ? "in_stock" : "out_of_stock";
 
-  // Images: resolve absolute URLs for each image (sorted by sortOrder)
-  const sortedImages = [...product.images].sort(
-    (a, b) => a.sortOrder - b.sortOrder
-  );
-  const imageUrls = sortedImages
-    .map((img) => resolveMediaURL(img))
-    .filter((url): url is string => url !== null);
-
-  const [imageUrl = null, ...additionalImageUrls] = imageUrls;
+  // Phase 2A advertises one bounded, direct SEO/feed image only. The current
+  // schema has no explicit additional-image derivative role, so no original
+  // or card fallback is permitted here.
+  const { image } = resolvePrimaryCurrentProductImage(product, "feed");
+  const imageUrl = image?.url ?? null;
+  const additionalImageUrls: string[] = [];
 
   // Landing page URL: same canonical as the sitemap (app/sitemap.ts:75-80)
   const link = `${siteOrigin}/collection/${product.slug}`;

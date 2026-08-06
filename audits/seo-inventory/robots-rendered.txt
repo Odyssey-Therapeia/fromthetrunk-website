@@ -1,0 +1,14 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /api/
+Disallow: /api/debug/
+Disallow: /api/v2/docs
+Disallow: /api/v2/openapi.json
+Disallow: /cart
+Disallow: /checkout
+Disallow: /search
+Disallow: /wishlist
+
+Sitemap: https://www.fromthetrunk.shop/sitemap.xml

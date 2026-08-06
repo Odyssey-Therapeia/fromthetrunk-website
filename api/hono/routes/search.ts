@@ -5,13 +5,20 @@ import type { HonoBindings } from "@/api/hono/types";
 import { semanticSearchProducts } from "@/lib/ai/embeddings";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import { searchProducts } from "@/lib/ports/catalog-search";
+import {
+  MAX_PUBLIC_SEARCH_QUERY_LENGTH,
+  normalizePublicSearchQuery,
+} from "@/lib/search/query";
 
 const searchQuerySchema = z.object({
   limit: z
     .string()
     .optional()
     .transform((value) => (value ? Number(value) : 12)),
-  q: z.string().trim().min(2),
+  q: z
+    .string()
+    .transform(normalizePublicSearchQuery)
+    .pipe(z.string().min(2).max(MAX_PUBLIC_SEARCH_QUERY_LENGTH)),
 });
 
 const semanticSearchBodySchema = z.object({
@@ -48,12 +55,18 @@ export const registerSearchRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (rateLimited) return rateLimited;
 
       const query = c.req.valid("query");
-      const limit = Math.min(query.limit ?? 12, 50);
+      const requestedLimit = Number.isFinite(query.limit) ? query.limit : 12;
+      const limit = Math.max(1, Math.min(requestedLimit ?? 12, 24));
 
       // P6-03: delegate to the catalog-search port (ILIKE over name/storyTitle/storyNarrative/attributes)
       // Port is published-only and swappable (see lib/ports/catalog-search.ts upgrade comment).
-      const result = await searchProducts({ query: query.q });
-      const rows = result.products.slice(0, limit);
+      const result = await searchProducts({
+        query: query.q,
+        limit,
+        includeFacets: false,
+        includeTotal: false,
+      });
+      const rows = result.products;
 
       return c.json(
         {

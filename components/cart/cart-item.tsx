@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +36,7 @@ export function CartItem({ item, className }: CartItemProps) {
           aria-label={`View ${item.name}`}
         >
           {item.image ? (
-            <Image
+            <ResilientProductImage
               src={item.image}
               alt={item.name}
               fill
@@ -114,3 +113,4 @@ function formatReservationExpiry(value: null | string | undefined) {
     minute: "2-digit",
   }).format(date)}`;
 }
+import { ResilientProductImage } from "@/components/media/resilient-product-image";
