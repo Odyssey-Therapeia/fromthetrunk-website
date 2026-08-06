@@ -87,6 +87,126 @@ describe("proxy.ts — redirect consultation (P3-09 additive)", () => {
     });
     expect(resolveRedirectMock).not.toHaveBeenCalled();
   });
+
+  it("skips duplicate product existence work for RSC navigation", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection/my-saree?_rsc=abc123",
+        { headers: { RSC: "1" } },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(productSlugExistsMock).not.toHaveBeenCalled();
+    expect(resolveRedirectMock).not.toHaveBeenCalled();
+  });
+
+  it("does not query managed redirects for a reserved application route", async () => {
+    const response = await proxy(
+      new NextRequest("https://www.fromthetrunk.shop/our-story"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveRedirectMock).not.toHaveBeenCalled();
+    expect(dbSelectPageBySlugMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("proxy.ts — collection query preflight", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    productSlugExistsMock.mockResolvedValue(true);
+    resolveRedirectMock.mockResolvedValue(null);
+    getTokenMock.mockResolvedValue(null);
+  });
+
+  it("returns a real 404 before streaming malformed filter state", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?priceMin=not-a-number",
+      ),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("permanently redirects legacy promoted states to clean routes", async () => {
+    const topViewed = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?tags=top-viewed",
+      ),
+    );
+    const blouses = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?type=blouse",
+      ),
+    );
+
+    expect(topViewed.status).toBe(308);
+    expect(topViewed.headers.get("location")).toBe(
+      "https://www.fromthetrunk.shop/top-viewed",
+    );
+    expect(blouses.status).toBe(308);
+    expect(blouses.headers.get("location")).toBe(
+      "https://www.fromthetrunk.shop/blouses",
+    );
+  });
+
+  it("permanently normalizes aliases, ordering, and duplicate values", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?fabric=silk&colour=Blue&fabric=silk",
+      ),
+    );
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://www.fromthetrunk.shop/collection?fabric=silk&color=blue",
+    );
+  });
+
+  it("passes an already canonical filter URL through", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?fabric=cotton",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it.each([
+    "utm_source=newsletter",
+    "utm_medium=email",
+    "utm_campaign=summer",
+    "utm_content=hero",
+    "utm_term=sarees",
+    "gclid=google-click",
+    "fbclid=facebook-click",
+    "msclkid=microsoft-click",
+    "ttclid=tiktok-click",
+  ])("strips tracking state without returning a 404: %s", async (query) => {
+    const response = await proxy(
+      new NextRequest(
+        `https://www.fromthetrunk.shop/collection?fabric=silk&${query}`,
+      ),
+    );
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://www.fromthetrunk.shop/collection?fabric=silk",
+    );
+  });
+
+  it("passes canonical Next.js RSC navigation through", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/collection?fabric=silk&_rsc=abc123",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
 });
 
 describe("proxy.ts — auth behavior unchanged (money path regression)", () => {

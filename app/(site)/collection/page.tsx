@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { preload } from "react-dom";
 import Link from "next/link";
+import { getImageProps } from "next/image";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 import { TrackPageView } from "@/components/analytics/track-page-view";
 import {
@@ -36,7 +39,12 @@ import {
   normalizeColorSlug,
   normalizeFacetSlug,
 } from "@/lib/catalog/filter-taxonomy";
-import { hasCollectionFilterParams } from "@/lib/seo/collection-filter";
+import {
+  canonicalizeCollectionSearchParams,
+  getCanonicalCollectionLocation,
+  hasCollectionFilterParams,
+  isCollectionPaginationOnly,
+} from "@/lib/seo/collection-filter";
 import { absoluteUrl } from "@/lib/seo/site-url";
 import { breadcrumbJsonLd, safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
@@ -72,6 +80,22 @@ const DEFAULT_ITEMS_PER_PAGE = 10;
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50] as const;
 const MAX_COLLECTION_PAGE = 10;
 const MAX_VISIBLE_PRODUCTS = 100;
+
+const preloadCollectionHero = (src: string) => {
+  const { props } = getImageProps({
+    alt: "",
+    fill: true,
+    priority: true,
+    sizes: "(max-width: 1024px) 100vw, 52vw",
+    src,
+  });
+  preload(props.src, {
+    as: "image",
+    fetchPriority: "high",
+    imageSizes: props.sizes,
+    imageSrcSet: props.srcSet,
+  });
+};
 
 const shortSortLabels: Record<ProductSortOption, string> = {
   latest: "Newest",
@@ -120,19 +144,24 @@ export async function generateMetadata({
   searchParams,
 }: CollectionPageProps): Promise<Metadata> {
   const resolvedSearchParams = await Promise.resolve(searchParams);
-  const hasFilters = hasCollectionFilterParams(resolvedSearchParams);
+  const paginationOnly = isCollectionPaginationOnly(resolvedSearchParams);
+  const hasFilters =
+    hasCollectionFilterParams(resolvedSearchParams) && !paginationOnly;
+  const canonicalLocation = getCanonicalCollectionLocation(
+    resolvedSearchParams,
+  );
 
   return {
     ...publicPageMetadata({
       title: "Pre-Loved & Vintage Luxury Sarees – Shop All | From The Trunk",
       description:
         "Browse our full collection of authenticated pre-loved sarees — silk, chiffon, Banarasi and designer drapes. One-of-a-kind pieces, new arrivals weekly.",
-      path: "/collection",
+      path: paginationOnly ? canonicalLocation.href : "/collection",
     }),
     robots: hasFilters
       ? {
           index: false,
-          follow: true,
+          follow: false,
         }
       : {
           index: true,
@@ -274,6 +303,17 @@ export default async function CollectionPage({
   searchParams,
 }: CollectionPageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
+  const canonicalLocation = getCanonicalCollectionLocation(
+    resolvedSearchParams,
+  );
+  if (!canonicalLocation.isValid) notFound();
+  if (!canonicalLocation.isCanonical) redirect(canonicalLocation.href);
+  if (canonicalLocation.href === "/collection?tags=top-viewed") {
+    permanentRedirect("/top-viewed");
+  }
+  if (canonicalLocation.href === "/collection?type=blouse") {
+    permanentRedirect("/blouses");
+  }
   const perfRequestId =
     process.env.PERF_DEBUG === "1"
       ? buildPerfRequestId(resolvedSearchParams)
@@ -304,13 +344,16 @@ export default async function CollectionPage({
     requestedAvailability === "true" || requestedAvailability === "available"
       ? "available"
       : undefined;
-  const activeTags = toArray(resolvedSearchParams?.tags);
+  const activeTags = toSlugArray(resolvedSearchParams?.tags);
   // "top-viewed" is a virtual tag resolved by event-count ranking, not a real
   // product tag — split it out so only genuine tag slugs hit the tag filter.
   const wantsTopViewed = activeTags.includes(TOP_VIEWED_TAG);
   const realTags = activeTags.filter((tag) => tag !== TOP_VIEWED_TAG);
   const activeSleeves = toSlugArray(resolvedSearchParams?.sleeve);
   const isBlouseMode = activeTypes.includes("blouse");
+  preloadCollectionHero(
+    (isBlouseMode ? BLOUSE_BANNER_IMAGES : COLLECTION_BANNER_IMAGES)[0].src,
+  );
   // Blouses only appear via the Blouses menu (type=blouse); exclude them from
   // the general catalog otherwise.
   const excludeBlouseTypes = isBlouseMode ? undefined : ["blouse"];
@@ -348,6 +391,7 @@ export default async function CollectionPage({
     const resolved = await getCollectionBySlug(requestedCollectionSlug);
     if (resolved) activeCollection = resolved as unknown as Collection;
   }
+  if (requestedCollectionSlug && !activeCollection) notFound();
 
   const activeCollectionSlug = activeCollection?.slug;
   const cachedFacetsPromise = getCachedCatalogFacets({
@@ -424,6 +468,12 @@ export default async function CollectionPage({
     totalDocs = result.totalDocs;
     facets = cachedFacets;
   }
+
+  const maximumAvailablePage = Math.max(
+    1,
+    Math.ceil(Math.min(totalDocs, MAX_VISIBLE_PRODUCTS) / activeItemsPerPage),
+  );
+  if (currentPage > maximumAvailablePage) notFound();
 
   const hasMoreProducts =
     items.length < totalDocs && visibleLimit < MAX_VISIBLE_PRODUCTS;
@@ -595,7 +645,7 @@ export default async function CollectionPage({
     }
     for (const tag of nextTags) params.append("tags", tag);
 
-    const qs = params.toString();
+    const qs = canonicalizeCollectionSearchParams(params).toString();
     return `/collection${qs ? `?${qs}` : ""}`;
   };
   const toggleValue = (values: string[], value: string) =>
@@ -605,6 +655,8 @@ export default async function CollectionPage({
 
   const hasAnyFilter =
     !!activeCollectionSlug || hasFilters || activeSort !== DEFAULT_PRODUCT_SORT;
+  const hasClassBState =
+    hasAnyFilter || activeItemsPerPage !== DEFAULT_ITEMS_PER_PAGE;
   const toOptions = (
     facet: Record<string, number>,
     options: { color?: boolean } = {},
@@ -1118,16 +1170,16 @@ export default async function CollectionPage({
           totalDocs,
         }}
       />
-      {appliedFilterEvents.map((filter) => (
+      {appliedFilterEvents.length > 0 ? (
         <TrackPageView
-          key={`filter_applied:${filter.filterType}:${filter.filterValue}`}
-          eventKey={`filter_applied:${filter.filterType}:${filter.filterValue}`}
+          eventKey={`filter_applied:${appliedFilterEvents
+            .map((filter) => `${filter.filterType}:${filter.filterValue}`)
+            .sort()
+            .join("|")}`}
           type="filter_applied"
           payload={{
             collectionSlug: activeCollectionSlug ?? null,
-            filterLabel: filter.filterLabel,
-            filterType: filter.filterType,
-            filterValue: filter.filterValue,
+            filters: appliedFilterEvents,
             page: currentPage,
             resultCount: items.length,
             sort: activeSort,
@@ -1135,23 +1187,23 @@ export default async function CollectionPage({
             totalDocs,
           }}
         />
-      ))}
+      ) : null}
       <div className="mx-auto w-full max-w-[1720px] space-y-4 px-3 py-3 sm:px-5 md:px-6 lg:px-8 lg:py-6">
-        <section className="overflow-hidden rounded-[1.5rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_50px_rgba(20,29,70,0.13)] md:grid md:min-h-[340px] md:grid-cols-[0.48fr_0.52fr] lg:min-h-[460px] lg:grid-cols-[0.46fr_0.54fr] lg:rounded-[1.75rem] xl:min-h-[500px]">
+        <section className="flex flex-col overflow-hidden rounded-[1.5rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_50px_rgba(20,29,70,0.13)] md:grid md:min-h-[340px] md:grid-cols-[0.48fr_0.52fr] lg:min-h-[460px] lg:grid-cols-[0.46fr_0.54fr] lg:rounded-[1.75rem] xl:min-h-[500px]">
           <div
-            className="relative isolate min-h-[340px] overflow-hidden bg-[#141D46] p-5 text-[#FDF7F1] sm:min-h-[360px] sm:p-6 md:min-h-[340px] md:p-7 lg:min-h-[460px] lg:p-10 xl:min-h-[500px]"
+            className="relative isolate order-2 min-h-[320px] overflow-hidden bg-[#141D46] p-5 text-[#FDF7F1] sm:min-h-[340px] sm:p-6 md:order-1 md:min-h-[340px] md:p-7 lg:min-h-[460px] lg:p-10 xl:min-h-[500px]"
             // style={{
             //   background:
             //     "linear-gradient(135deg, #141D46 0%, #10183B 58%, #601D1C 145%)",
             // }}
           >
-            <div className="relative flex min-h-[298px] flex-col justify-between gap-6 sm:min-h-[312px] md:min-h-[286px] lg:min-h-[380px] lg:gap-8 xl:min-h-[420px]">
+            <div className="relative flex min-h-[278px] flex-col justify-between gap-5 sm:min-h-[292px] md:min-h-[286px] lg:min-h-[380px] lg:gap-8 xl:min-h-[420px]">
               <div className="max-w-xl space-y-4 lg:space-y-5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-[var(--ftt-gold)]">
                   {cms?.eyebrow ?? "The Collection"}
                 </p>
 
-                <h1 className="max-w-[12ch] text-balance font-serif text-4xl font-medium leading-[0.98] text-[#FDF7F1] sm:text-5xl lg:text-6xl lg:leading-[0.96]">
+                <h1 className="max-w-[12ch] text-balance font-serif text-3xl font-medium leading-[0.98] text-[#FDF7F1] sm:text-5xl lg:text-6xl lg:leading-[0.96]">
                   {isBlouseMode ? (
                     "Blouses with a story of their own"
                   ) : cms?.title ? (
@@ -1172,9 +1224,9 @@ export default async function CollectionPage({
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <HeroStat label="Live pieces" value={String(totalDocs)} />
-                <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+                <div className="rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
                   <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
                     Promise
                   </p>
@@ -1186,7 +1238,7 @@ export default async function CollectionPage({
             </div>
           </div>
 
-          <div className="relative min-h-[300px] overflow-hidden bg-[#141D46] sm:min-h-[340px] md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
+          <div className="relative order-1 min-h-[220px] overflow-hidden bg-[#141D46] sm:min-h-[300px] md:order-2 md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
             <CollectionHeroCarousel
               images={isBlouseMode ? BLOUSE_BANNER_IMAGES : COLLECTION_BANNER_IMAGES}
               prioritizeFirst
@@ -1230,8 +1282,24 @@ export default async function CollectionPage({
                 activeCount={appliedFilterCount}
                 groups={filterGroups}
                 preservedParams={{
+                  availability: activeAvailability ? [activeAvailability] : [],
+                  color: activeColors,
                   collection: activeCollectionSlug ? [activeCollectionSlug] : [],
-                  type: isBlouseMode ? activeTypes : [],
+                  fabric: activeFabrics,
+                  occasion: activeOccasions,
+                  pattern: activePatterns,
+                  priceMax:
+                    typeof activePriceMax === "number"
+                      ? [String(activePriceMax)]
+                      : [],
+                  priceMin:
+                    typeof activePriceMin === "number"
+                      ? [String(activePriceMin)]
+                      : [],
+                  sleeve: activeSleeves,
+                  tags: activeTags,
+                  type: activeTypes,
+                  work: activeWorks,
                 }}
                 perPage={
                   activeItemsPerPage === DEFAULT_ITEMS_PER_PAGE
@@ -1375,14 +1443,23 @@ export default async function CollectionPage({
 
                 {hasMoreProducts ? (
                   <div className="flex justify-center pt-2">
-                    <Link
-                      href={buildUrl({ page: currentPage + 1 })}
-                      prefetch={false}
-                      scroll={false}
-                      className="rounded-full bg-[var(--ftt-royal-navy)] px-8 py-3 text-sm font-semibold text-[var(--ftt-ivory)] shadow-[0_14px_34px_rgba(20,29,70,0.18)] transition hover:bg-[var(--ftt-midnight)]"
-                    >
-                      Load more
-                    </Link>
+                    {hasClassBState ? (
+                      <FilterLink
+                        href={buildUrl({ page: currentPage + 1 })}
+                        className="rounded-full bg-[var(--ftt-royal-navy)] px-8 py-3 text-sm font-semibold text-[var(--ftt-ivory)] shadow-[0_14px_34px_rgba(20,29,70,0.18)] transition hover:bg-[var(--ftt-midnight)]"
+                      >
+                        Load more
+                      </FilterLink>
+                    ) : (
+                      <Link
+                        href={buildUrl({ page: currentPage + 1 })}
+                        prefetch={false}
+                        scroll={false}
+                        className="rounded-full bg-[var(--ftt-royal-navy)] px-8 py-3 text-sm font-semibold text-[var(--ftt-ivory)] shadow-[0_14px_34px_rgba(20,29,70,0.18)] transition hover:bg-[var(--ftt-midnight)]"
+                      >
+                        Load more
+                      </Link>
+                    )}
                   </div>
                 ) : null}
               </>
@@ -1513,6 +1590,7 @@ function FilterPill({
   if (swatchOnly) {
     return (
       <FilterLink
+        aria-pressed={active}
         href={href}
         className={cn(
           "group relative inline-grid place-items-center rounded-full p-0.5",
@@ -1543,6 +1621,7 @@ function FilterPill({
 
   return (
     <FilterLink
+      aria-pressed={active}
       href={href}
       className={cn(
         "group relative inline-flex min-h-11 min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-[0.14em] transition",

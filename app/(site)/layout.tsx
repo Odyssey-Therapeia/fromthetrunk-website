@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Cormorant_Garamond, Jost } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AnalyticsGate } from "@/components/analytics/analytics-gate";
+import { ConsentBootstrapScript } from "@/components/analytics/consent-bootstrap-script";
 
 import "../globals.css";
 import { SiteFooterServer } from "@/components/layout/site-footer-server";
 import { SiteHeaderServer } from "@/components/layout/site-header-server";
 import { ThemeStyler } from "@/components/layout/theme-styler";
-import { Providers } from "@/components/providers";
+import { GlobalToaster } from "@/components/global-toaster";
 import { SiteWidgets } from "@/components/widgets/site-widgets";
 import {
   organizationJsonLd,
@@ -24,22 +24,9 @@ import {
   seoImageMetadata,
 } from "@/lib/seo/metadata";
 
-const serif = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const sans = Jost({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
 const baseUrl = getSiteOrigin();
 const defaultSocialImage = seoImageMetadata();
+const isVercelRuntime = process.env.VERCEL === "1";
 
 export const metadata: Metadata = {
   title: {
@@ -84,10 +71,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${serif.variable} ${sans.variable}`}
       suppressHydrationWarning
     >
       <head>
+        <ConsentBootstrapScript />
         {/* P3-07: Inject active theme tokens as :root CSS custom-property overrides.
             When no theme is saved, ThemeStyler returns null and globals.css defaults apply. */}
         <ThemeStyler />
@@ -116,15 +103,18 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           Skip to main content
         </a>
         <SiteHeaderServer />
-        <Providers>
-          <main id="main-content" className="min-h-[70vh]" role="main">
-            {children}
-          </main>
-        </Providers>
+        <main id="main-content" className="min-h-[70vh]" role="main">
+          {children}
+        </main>
         <SiteFooterServer />
         <SiteWidgets />
-        <Analytics />
-        <SpeedInsights />
+        <GlobalToaster />
+        {isVercelRuntime ? (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        ) : null}
         {/* Consent-gated Google Tag Manager + GA4 (GA4 is configured inside the
             GTM container). Loads nothing unless NEXT_PUBLIC_GTM_ID is set AND
             the visitor accepts analytics consent. */}

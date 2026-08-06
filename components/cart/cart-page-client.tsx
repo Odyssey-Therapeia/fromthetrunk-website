@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -20,7 +19,7 @@ import {
   trackWebsiteMetric,
 } from "@/lib/analytics/client";
 import { formatCurrency } from "@/lib/formatters";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 import type { Product } from "@/types/domain";
 
@@ -424,7 +423,7 @@ function FeaturedPick({
   product: Product;
   index: number;
 }) {
-  const image = resolveMediaURL(product.images?.[0]);
+  const image = resolvePrimaryCurrentProductImage(product, "thumbnail").image?.url;
 
   return (
     <Link
@@ -434,7 +433,7 @@ function FeaturedPick({
     >
       <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-[#601D1C]/10">
         {image ? (
-          <Image
+          <ResilientProductImage
             src={image}
             alt={product.name}
             fill
@@ -465,3 +464,4 @@ function FeaturedPick({
     </Link>
   );
 }
+import { ResilientProductImage } from "@/components/media/resilient-product-image";

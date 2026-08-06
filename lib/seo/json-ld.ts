@@ -1,4 +1,5 @@
 import type { Product } from "@/types/domain";
+import { resolveProductRowStockStatus } from "@/db/inventory";
 import { isGstInclusive } from "@/lib/config/flags";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { productSeoImageUrls } from "@/lib/seo/image-urls";
@@ -10,6 +11,10 @@ import { absoluteUrl } from "@/lib/seo/site-url";
  */
 export function productJsonLd(product: Product): Record<string, unknown> {
   const images = productSeoImageUrls(product);
+  const stockStatus = resolveProductRowStockStatus({
+    reservedUntil: product.reservedUntil,
+    stockStatus: product.stockStatus,
+  });
   const displayDetails = getProductDisplayDetails(product);
   const category = product.collection?.name ?? "Pre-loved saree";
   const additionalProperty = [
@@ -59,9 +64,9 @@ export function productJsonLd(product: Product): Record<string, unknown> {
       // valueAddedTaxIncluded signals this to structured-data consumers.
       ...(isGstInclusive() ? { valueAddedTaxIncluded: true } : {}),
       availability:
-        product.stockStatus === "sold"
+        stockStatus === "sold"
           ? "https://schema.org/OutOfStock"
-          : product.stockStatus === "reserved"
+          : stockStatus === "reserved"
             ? "https://schema.org/LimitedAvailability"
             : "https://schema.org/InStock",
       url: absoluteUrl(`/collection/${product.slug}`),

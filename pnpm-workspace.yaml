@@ -1,0 +1,12 @@
+packages:
+  - .
+
+overrides:
+  esbuild: 0.25.12
+  js-yaml: ^4.2.0
+  postcss: ^8.5.15
+  tmp: ^0.2.7
+  uuid: ^11.1.1
+
+patchedDependencies:
+  next@16.2.9: patches/next@16.2.9.patch

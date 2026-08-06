@@ -9,8 +9,8 @@ import { NavLink, NavUnderline } from "@/components/layout/nav-link";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
-  { href: "/collection?type=blouse", label: "Blouses" },
+  { href: "/top-viewed", label: "Top Viewed" },
+  { href: "/blouses", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
@@ -83,7 +83,7 @@ function SiteHeaderDesktopNavInner() {
           active={isCollectionActive}
         />
         <NavLink
-          href="/collection?tags=top-viewed"
+          href="/top-viewed"
           label="Top Viewed"
           active={isTopViewedActive}
         />
@@ -95,7 +95,7 @@ function SiteHeaderDesktopNavInner() {
         />
         */}
         <NavLink
-          href="/collection?type=blouse"
+          href="/blouses"
           label="Blouses"
           active={isBlouseActive}
         />

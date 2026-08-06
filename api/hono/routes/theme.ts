@@ -12,6 +12,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { revalidateTag } from "next/cache";
 
 import { requireAdmin } from "@/api/hono/middleware/auth";
 import { errorSchema } from "@/api/hono/schemas/common";
@@ -19,8 +20,17 @@ import type { HonoBindings } from "@/api/hono/types";
 import type { ContentStore } from "@/lib/ports/content-store";
 import { createLogger } from "@/lib/log";
 import { saveThemeBodySchema } from "@/lib/content/theme-settings.schema";
+import { PUBLIC_THEME_CACHE_TAG } from "@/lib/cache/public-content-cache";
 
 const log = createLogger("admin:theme");
+
+const invalidateThemeCache = () => {
+  try {
+    revalidateTag(PUBLIC_THEME_CACHE_TAG, "max");
+  } catch {
+    // Non-Next test/script contexts fall back to the five-minute TTL.
+  }
+};
 
 // -- Local schemas ------------------------------------------------------------
 
@@ -118,6 +128,7 @@ export const registerThemeRoutes = (
           body.tokens as Record<string, unknown>,
           adminId
         );
+        invalidateThemeCache();
         return c.json(saved, 200);
       } catch (err) {
         log.error("Failed to save theme settings", { err: err as Record<string, unknown> });
@@ -190,6 +201,7 @@ export const registerThemeRoutes = (
 
         // Restore: save the historical tokens as a new current + new version row
         const saved = await cs.saveThemeSettings(version.tokens, adminId);
+        invalidateThemeCache();
         return c.json(saved, 200);
       } catch (err) {
         log.error("Failed to restore theme version", { err: err as Record<string, unknown> });

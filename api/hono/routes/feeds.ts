@@ -19,15 +19,18 @@ import type { HonoBindings } from "@/api/hono/types";
 import { listProducts } from "@/db/queries/products";
 import type { ProductWithRelations } from "@/db/queries/products";
 import { resolveProductRowStockStatus } from "@/db/inventory";
-import { mapProductToFeedItem } from "@/lib/channels/feed-mapping";
+import {
+  assertActiveFeedDerivativeCoverage,
+  FeedDerivativeCoverageError,
+  isProductFeedBusinessEligible,
+  mapProductToFeedItem,
+} from "@/lib/channels/feed-mapping";
 
 // ---------------------------------------------------------------------------
 // Test-product exclusion identifier (P1-15)
 // The live "test chiffon do not buy if not authorized" product must never
 // appear in the feed. We match on the lower-cased name prefix.
 // ---------------------------------------------------------------------------
-const TEST_PRODUCT_NAME_PREFIX = "test chiffon";
-
 /**
  * Returns true if a product should be excluded from the feed.
  *
@@ -36,13 +39,11 @@ const TEST_PRODUCT_NAME_PREFIX = "test chiffon";
  *               but we guard here too in case the products array is injected
  *               directly (e.g. in tests).
  *  2. Test product — name starts with "test chiffon" (case-insensitive).
- *  3. Zero-image items — g:image_link is required by Google Merchant Center.
+ * Safe-image coverage is asserted for the whole otherwise-eligible set before
+ * serialisation. It must not be hidden by filtering products from the feed.
  */
 export function shouldExcludeFromFeed(product: ProductWithRelations): boolean {
-  if (product.status !== "published") return true;
-  if (product.name.toLowerCase().startsWith(TEST_PRODUCT_NAME_PREFIX)) return true;
-  if (product.images.length === 0) return true;
-  return false;
+  return !isProductFeedBusinessEligible(product);
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +76,7 @@ function el(tag: string, value: string | null | undefined): string {
  * lightweight stock API cannot disagree during the inventory-v2 transition.
  */
 export function buildGoogleMerchantFeedXml(products: ProductWithRelations[]): string {
+  assertActiveFeedDerivativeCoverage(products);
   const eligible = products.filter((p) => !shouldExcludeFromFeed(p));
 
   const items = eligible
@@ -168,6 +170,7 @@ const META_CSV_HEADERS = [
  * the canonical checkout source.
  */
 export function buildMetaCatalogCsv(products: ProductWithRelations[]): string {
+  assertActiveFeedDerivativeCoverage(products);
   const eligible = products.filter((p) => !shouldExcludeFromFeed(p));
 
   const headerRow = META_CSV_HEADERS.map(escapeCsvCell).join(",");
@@ -215,6 +218,25 @@ export function buildMetaCatalogCsv(products: ProductWithRelations[]): string {
 // Route registration
 // ---------------------------------------------------------------------------
 
+function feedCoverageUnavailableResponse(
+  error: FeedDerivativeCoverageError,
+): Response {
+  return new Response(
+    JSON.stringify({
+      error: error.code,
+      message: "The catalog feed is temporarily unavailable.",
+    }),
+    {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": "3600",
+      },
+    },
+  );
+}
+
 export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
   app.get("/google-merchant.xml", async (c) => {
     // Optional deterrent token gate
@@ -233,14 +255,23 @@ export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       offset: 0,
     });
 
-    const xml = buildGoogleMerchantFeedXml(products);
+    let xml: string;
+    try {
+      xml = buildGoogleMerchantFeedXml(products);
+    } catch (error) {
+      if (error instanceof FeedDerivativeCoverageError) {
+        return feedCoverageUnavailableResponse(error);
+      }
+      throw error;
+    }
 
     return new Response(xml, {
       status: 200,
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
-        // Instruct intermediate caches to hold the feed for 1 hour
-        "Cache-Control": "public, max-age=3600",
+        // Keep browsers fresh while letting Vercel's shared cache absorb crawler traffic.
+        "Cache-Control":
+          "public, max-age=0, s-maxage=3600, stale-while-revalidate=300",
       },
     });
   });
@@ -269,14 +300,23 @@ export const registerFeedsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       offset: 0,
     });
 
-    const csv = buildMetaCatalogCsv(products);
+    let csv: string;
+    try {
+      csv = buildMetaCatalogCsv(products);
+    } catch (error) {
+      if (error instanceof FeedDerivativeCoverageError) {
+        return feedCoverageUnavailableResponse(error);
+      }
+      throw error;
+    }
 
     return new Response(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        // Instruct intermediate caches to hold the feed for 1 hour
-        "Cache-Control": "public, max-age=3600",
+        // Keep browsers fresh while letting Vercel's shared cache absorb crawler traffic.
+        "Cache-Control":
+          "public, max-age=0, s-maxage=3600, stale-while-revalidate=300",
       },
     });
   });

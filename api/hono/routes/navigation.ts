@@ -12,14 +12,32 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { revalidateTag } from "next/cache";
 
 import { requireAdmin } from "@/api/hono/middleware/auth";
 import { errorSchema } from "@/api/hono/schemas/common";
 import type { HonoBindings } from "@/api/hono/types";
 import type { ContentStore, MenuSlot } from "@/lib/ports/content-store";
 import { createLogger } from "@/lib/log";
+import {
+  PUBLIC_FOOTER_NAV_CACHE_TAG,
+  PUBLIC_HEADER_NAV_CACHE_TAG,
+} from "@/lib/cache/public-content-cache";
 
 const log = createLogger("admin:navigation");
+
+const invalidateNavigationCache = (slot: MenuSlot) => {
+  try {
+    revalidateTag(
+      slot === "footer"
+        ? PUBLIC_FOOTER_NAV_CACHE_TAG
+        : PUBLIC_HEADER_NAV_CACHE_TAG,
+      "max",
+    );
+  } catch {
+    // Non-Next test/script contexts fall back to the five-minute TTL.
+  }
+};
 
 // ── href validation ───────────────────────────────────────────────────────────
 // Allowed href shapes:
@@ -189,6 +207,7 @@ export const registerNavigationRoutes = (
       try {
         const cs = await resolveStore();
         const saved = await cs.saveMenu(slot as MenuSlot, items as unknown[]);
+        invalidateNavigationCache(slot as MenuSlot);
         return c.json(saved, 200);
       } catch (err) {
         log.error("Failed to save menu", { err: err as Record<string, unknown>, slot });

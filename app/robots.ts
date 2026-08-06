@@ -21,6 +21,20 @@ export default function robots(): MetadataRoute.Robots {
           "/wishlist",
         ],
       },
+      {
+        // Advisory policy only. Enforcement belongs to verified-identity WAF
+        // rules; general Google/Bing and social-preview crawlers remain allowed.
+        userAgent: [
+          "Meta-ExternalAgent",
+          "GPTBot",
+          "ClaudeBot",
+          "anthropic-ai",
+          "CCBot",
+          "Bytespider",
+          "Google-Extended",
+        ],
+        disallow: "/",
+      },
     ],
     sitemap: absoluteUrl("/sitemap.xml"),
   };

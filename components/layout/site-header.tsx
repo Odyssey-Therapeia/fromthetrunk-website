@@ -24,8 +24,8 @@ import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection", strong: true },
-  { href: "/collection?tags=top-viewed", label: "Top Viewed" },
-  { href: "/collection?type=blouse", label: "Blouses" },
+  { href: "/top-viewed", label: "Top Viewed" },
+  { href: "/blouses", label: "Blouses" },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
@@ -148,6 +148,7 @@ export function SiteHeader() {
                 fetchPriority="high"
                 className="h-14 w-auto object-contain xl:h-[4.25rem]"
                 sizes="180px"
+                unoptimized
               />
               <span className="sr-only">From the Trunk</span>
             </Link>

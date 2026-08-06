@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
@@ -15,35 +15,14 @@ type CollectionHeroCarouselProps = {
   prioritizeFirst?: boolean;
 };
 
-const CAROUSEL_INTERVAL_MS = 3000;
-
 export function CollectionHeroCarousel({
   images,
   prioritizeFirst = true,
 }: CollectionHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [canMountInactiveSlides, setCanMountInactiveSlides] = useState(false);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const timer = window.setTimeout(() => {
-      setCanMountInactiveSlides(true);
-    }, CAROUSEL_INTERVAL_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [images.length]);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-    if (!canMountInactiveSlides) return;
-
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % images.length);
-    }, CAROUSEL_INTERVAL_MS);
-
-    return () => window.clearInterval(timer);
-  }, [canMountInactiveSlides, images.length]);
+  const [mountedIndices, setMountedIndices] = useState<ReadonlySet<number>>(
+    () => new Set([0]),
+  );
 
   if (images.length === 0) return null;
 
@@ -51,7 +30,7 @@ export function CollectionHeroCarousel({
     <div className="absolute inset-x-0 top-0 bottom-8 overflow-hidden sm:bottom-10 lg:bottom-12">
       {images.map((image, index) => {
         const isActive = activeIndex === index;
-        const shouldMountImage = isActive || canMountInactiveSlides;
+        const shouldMountImage = mountedIndices.has(index);
 
         return (
           <div
@@ -60,10 +39,10 @@ export function CollectionHeroCarousel({
             data-active={isActive ? "true" : "false"}
             data-collection-hero-slide={index}
             className={cn(
-              "absolute inset-0 transition duration-1000 ease-out",
+              "absolute inset-0",
               isActive
                 ? "translate-x-0 opacity-100"
-                : "translate-x-6 opacity-0",
+                : "pointer-events-none translate-x-6 opacity-0 transition duration-1000 ease-out",
             )}
           >
             {shouldMountImage ? (
@@ -89,7 +68,14 @@ export function CollectionHeroCarousel({
               key={image.src}
               type="button"
               aria-label={`Show collection banner ${index + 1}`}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => {
+                setMountedIndices((current) => {
+                  const next = new Set(current);
+                  next.add(index);
+                  return next;
+                });
+                setActiveIndex(index);
+              }}
               className={cn(
                 "h-2 rounded-full border border-[#FDF7F1]/60 transition-all",
                 activeIndex === index

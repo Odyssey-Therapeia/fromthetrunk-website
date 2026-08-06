@@ -59,6 +59,7 @@ export function writeClientConsent(state: Exclude<ConsentState, "unknown">): voi
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie =
     `${CONSENT_COOKIE}=${state}; path=/; max-age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+  document.documentElement.setAttribute("data-ftt-analytics-consent", state);
 }
 
 /**
@@ -72,6 +73,7 @@ export function clearClientConsent(): void {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie =
     `${CONSENT_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
+  document.documentElement.setAttribute("data-ftt-analytics-consent", "unknown");
 }
 
 /** Notify listeners (AnalyticsGate) that the consent decision changed. */

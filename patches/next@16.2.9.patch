@@ -1,0 +1,26 @@
+diff --git a/dist/esm/server/image-optimizer.js b/dist/esm/server/image-optimizer.js
+index 504c7b770eefea35d8cc7bb7bf0e5e8971987369..aeefc09042d0941560391617d02f092ced41021e 100644
+--- a/dist/esm/server/image-optimizer.js
++++ b/dist/esm/server/image-optimizer.js
+@@ -824,7 +824,7 @@ export async function fetchExternalImage(href, dangerouslyAllowLocalIP, maximumR
+         }
+     }
+     const res = await fetch(href, {
+-        signal: AbortSignal.timeout(7000),
++        signal: AbortSignal.timeout(20000),
+         redirect: 'manual'
+     }).catch((err)=>err);
+     if (res instanceof Error) {
+diff --git a/dist/server/image-optimizer.js b/dist/server/image-optimizer.js
+index 5961d5c104fedb0eab72a89c723e60a454c9ce18..08c06dceffe13cbff2eee6e96c4e77ad4f24461f 100644
+--- a/dist/server/image-optimizer.js
++++ b/dist/server/image-optimizer.js
+@@ -940,7 +940,7 @@ async function fetchExternalImage(href, dangerouslyAllowLocalIP, maximumResponse
+         }
+     }
+     const res = await fetch(href, {
+-        signal: AbortSignal.timeout(7000),
++        signal: AbortSignal.timeout(20000),
+         redirect: 'manual'
+     }).catch((err)=>err);
+     if (res instanceof Error) {

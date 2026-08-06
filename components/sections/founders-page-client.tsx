@@ -547,7 +547,7 @@ function MobileReadablePage({
         className="relative w-full overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_22px_70px_rgba(20,29,70,0.18)] sm:max-w-2xl sm:p-8"
       >
         <Image
-          src="/CoverPage.svg"
+          src="/founder/founders-cover-v1.webp"
           alt=""
           fill
           priority
@@ -596,13 +596,13 @@ function MobileReadablePage({
 
   if (page.kind === "back-cover") {
     return (
-      <article className="relative w-full overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_22px_70px_rgba(20,29,70,0.18)] sm:max-w-2xl sm:p-8">
+      <article className="ftt-founder-readable-page relative w-full overflow-hidden rounded-[1.5rem] border border-[#B39152]/22 bg-[#141D46] p-5 text-[#FDF7F1] shadow-[0_22px_70px_rgba(20,29,70,0.18)] sm:max-w-2xl sm:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(179,145,82,0.18),transparent_28%),linear-gradient(135deg,#141D46_0%,#10183B_62%,#601D1C_150%)]" />
-        <div className="relative z-10">
+        <div className="relative z-10 min-w-0 max-w-full">
           <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#B39152] hover:bg-[#FDF7F1]/10">
             The FTT promise
           </Badge>
-          <h2 className="mt-8 font-serif text-[clamp(3rem,15vw,5.5rem)] leading-[0.86]">
+          <h2 className="ftt-founder-readable-back-title mt-8 max-w-full text-balance font-serif leading-[0.86]">
             Authenticated. Restored. Remembered.
           </h2>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#FDF7F1]/76">
@@ -860,7 +860,7 @@ function CoverPage({
     <div className="relative h-full overflow-hidden bg-[#141D46] p-[7%] text-[#FDF7F1]">
       {/* CoverPage artwork as the book-cover background. */}
       <Image
-        src="/CoverPage.svg"
+        src="/founder/founders-cover-v1.webp"
         alt=""
         fill
         priority
@@ -877,7 +877,7 @@ function CoverPage({
           animate="show"
           custom={reduceMotion}
           variants={rowStagger}
-          className="pt-2"
+          className="ml-2 max-w-[calc(100%-0.5rem)] pt-2"
         >
           <motion.div custom={reduceMotion} variants={pageEnter}>
             <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#B39152] hover:bg-[#FDF7F1]/10">
@@ -1140,7 +1140,7 @@ function FounderMobilePage({
 function BackCoverPage() {
   return (
     <div
-      className="relative h-full overflow-hidden bg-[#141D46] p-5 text-[#FDF7F1]"
+      className="relative h-full min-w-0 max-w-full overflow-hidden bg-[#141D46] p-5 text-[#FDF7F1]"
       style={{
         background:
           "radial-gradient(circle at 78% 20%, rgba(179,145,82,.18), transparent 25%), linear-gradient(135deg, #141D46 0%, #10183B 62%, #601D1C 150%)",
@@ -1148,15 +1148,15 @@ function BackCoverPage() {
     >
       <div className="absolute inset-5 rounded-[1.35rem] border border-[#B39152]/18" />
 
-      <div className="relative z-10 flex h-full flex-col justify-between">
-        <div>
+      <div className="relative z-10 flex h-full min-w-0 max-w-full flex-col justify-between">
+        <div className="min-w-0 max-w-full">
           <Badge className="rounded-full border border-[#B39152]/35 bg-[#FDF7F1]/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#B39152] hover:bg-[#FDF7F1]/10">
             The FTT promise
           </Badge>
-          <h2 className="mt-6 font-serif text-[clamp(2.2rem,5.6vw,4.4rem)] leading-[0.9] text-[#FDF7F1]">
+          <h2 className="ftt-founder-back-title mt-6 max-w-full text-balance font-serif leading-[0.9] text-[#FDF7F1]">
             Authenticated. Restored. Remembered.
           </h2>
-          <p className="mt-5 max-w-md text-[clamp(0.76rem,0.96vw,0.9rem)] leading-6 text-[#FDF7F1]/78">
+          <p className="ftt-founder-back-copy mt-5 max-w-full leading-6 text-[#FDF7F1]/78">
             Every saree is authenticated, restored by hand, and given a story
             card of its own: proof of where it&apos;s been, and a start to where
             it&apos;s going.

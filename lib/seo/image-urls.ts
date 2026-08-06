@@ -1,5 +1,5 @@
 import type { Product } from "@/types/domain";
-import { resolveMediaURL } from "@/lib/media/resolve-media-url";
+import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { absoluteUrl } from "@/lib/seo/site-url";
 
 const STOCK_IMAGE_HOST = ["un", "splash"].join("");
@@ -31,10 +31,7 @@ export function toSeoImageUrl(src: string | null | undefined): string | null {
 }
 
 export function productSeoImageUrls(product: Pick<Product, "images">): string[] {
-  const urls = (product.images ?? [])
-    .map((entry) => resolveMediaURL(entry as unknown))
-    .map(toSeoImageUrl)
-    .filter((url): url is string => Boolean(url));
-
-  return Array.from(new Set(urls));
+  const { image } = resolvePrimaryCurrentProductImage(product, "seo");
+  const url = toSeoImageUrl(image?.url);
+  return url ? [url] : [];
 }

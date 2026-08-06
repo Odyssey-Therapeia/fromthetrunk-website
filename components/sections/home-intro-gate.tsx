@@ -1,23 +1,46 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-// WebM (~3MB) is served first; MP4 (~13MB) is the fallback for browsers that
-// can't play WebM (mainly older Safari). The lightweight AVIF poster paints
-// instantly so there's no blank flash before the video decodes.
-const INTRO_VIDEO_WEBM = "/Welcoming.webm";
-const INTRO_VIDEO_MP4 = "/Welcoming.mp4";
+// Versioned 1080p encodes keep the optional desktop intro below 1 MB per
+// browser-selected source. The lightweight AVIF poster paints immediately.
+const INTRO_VIDEO_WEBM = "/video/welcoming-v2.webm";
 const INTRO_VIDEO_POSTER = "/welcome-poster.avif";
 const INTRO_FADE_MS = 800;
 const INTRO_MAX_MS = 9500;
 const INTRO_SESSION_KEY = "ftt-home-intro-seen";
 
-type IntroPhase = "checking" | "playing" | "revealing" | "done";
+type IntroPhase = "playing" | "revealing" | "done";
 
 const HomeIntroReadyContext = createContext(true);
+
+const getIntroAvailabilitySnapshot = () =>
+  !window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
+  !window.matchMedia("(max-width: 767px)").matches &&
+  !hasSeenIntroThisSession();
+
+const subscribeToIntroAvailability = (callback: () => void) => {
+  const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const compact = window.matchMedia("(max-width: 767px)");
+  motion.addEventListener("change", callback);
+  compact.addEventListener("change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    motion.removeEventListener("change", callback);
+    compact.removeEventListener("change", callback);
+    window.removeEventListener("storage", callback);
+  };
+};
 
 const hasSeenIntroThisSession = () => {
   try {
@@ -45,32 +68,15 @@ interface HomeIntroGateProps {
 
 export function HomeIntroGate({ children }: HomeIntroGateProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [phase, setPhase] = useState<IntroPhase>("checking");
+  const [phase, setPhase] = useState<IntroPhase>("done");
+  const introAvailable = useSyncExternalStore(
+    subscribeToIntroAvailability,
+    getIntroAvailabilitySnapshot,
+    () => false,
+  );
 
   const shouldShowOverlay = phase === "playing" || phase === "revealing";
   const isIntroReady = phase === "done";
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const prefersReducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      const prefersCompactViewport = window.matchMedia(
-        "(max-width: 767px)",
-      ).matches;
-      const hasSeenIntro = hasSeenIntroThisSession();
-
-      if (prefersReducedMotion || prefersCompactViewport || hasSeenIntro) {
-        setPhase("done");
-        return;
-      }
-
-      markIntroSeenThisSession();
-      setPhase("playing");
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -110,6 +116,11 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
     setPhase((current) => (current === "done" ? current : "revealing"));
   };
 
+  const playIntro = () => {
+    markIntroSeenThisSession();
+    setPhase("playing");
+  };
+
   return (
     <HomeIntroReadyContext.Provider value={isIntroReady}>
       <div
@@ -117,6 +128,16 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
       >
         {children}
       </div>
+
+      {introAvailable && phase === "done" ? (
+        <button
+          type="button"
+          onClick={playIntro}
+          className="fixed bottom-5 left-5 z-30 hidden rounded-full border border-[#B39152]/45 bg-[#141D46]/88 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#FDF7F1] shadow-lg backdrop-blur transition hover:border-[#B39152] hover:bg-[#601D1C] md:inline-flex"
+        >
+          Watch intro
+        </button>
+      ) : null}
 
       {shouldShowOverlay && (
         <div
@@ -131,14 +152,12 @@ export function HomeIntroGate({ children }: HomeIntroGateProps) {
             className="h-full w-full object-cover"
             poster={INTRO_VIDEO_POSTER}
             muted
-            autoPlay
             playsInline
-            preload="metadata"
+            preload="none"
             onEnded={reveal}
             onError={reveal}
           >
             <source src={INTRO_VIDEO_WEBM} type="video/webm" />
-            <source src={INTRO_VIDEO_MP4} type="video/mp4" />
           </video>
           <button
             type="button"

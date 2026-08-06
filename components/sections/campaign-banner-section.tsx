@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
 type CampaignBanner = {
   alt: string;
   image: string;
 };
-
-const BANNER_DURATION_MS = 3000;
 
 const campaignBanners: CampaignBanner[] = [
   {
@@ -27,38 +25,37 @@ const campaignBanners: CampaignBanner[] = [
 
 export function CampaignBannerSection() {
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % campaignBanners.length);
-    }, BANNER_DURATION_MS);
-
-    return () => window.clearInterval(timer);
-  }, []);
+  const activeBanner = campaignBanners[activeIndex];
 
   return (
     <section className="bg-[#FDF7F1] px-6 py-14 sm:px-10 md:py-20 lg:px-12 xl:px-16">
       <div className="mx-auto max-w-[100rem]">
         <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-[#0E0D0E] shadow-[0_28px_90px_rgba(96,29,28,0.2)]">
-          {campaignBanners.map((banner, index) => (
-            <div
-              key={banner.image}
-              className={`absolute inset-0 transition-opacity duration-1100 ease-in-out ${
-                activeIndex === index ? "opacity-100" : "opacity-0"
-              }`}
-              aria-hidden={activeIndex !== index}
-            >
-              <Image
-                src={banner.image}
-                alt={activeIndex === index ? banner.alt : ""}
-                fill
-                fetchPriority="low"
-                sizes="(max-width: 768px) calc(100vw - 3rem), (max-width: 1280px) calc(100vw - 6rem), 1440px"
-                unoptimized={banner.image.endsWith(".gif") || banner.image.endsWith(".svg")}
-                className="object-cover"
+          <Image
+            key={activeBanner.image}
+            src={activeBanner.image}
+            alt={activeBanner.alt}
+            fill
+            fetchPriority="low"
+            sizes="(max-width: 1280px) 100vw, 1440px"
+            className="object-cover"
+          />
+          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+            {campaignBanners.map((banner, index) => (
+              <button
+                key={banner.image}
+                type="button"
+                aria-label={`Show campaign banner ${index + 1}`}
+                aria-current={activeIndex === index ? "true" : undefined}
+                onClick={() => setActiveIndex(index)}
+                className={
+                  activeIndex === index
+                    ? "h-2 w-7 rounded-full bg-[#FDF7F1]"
+                    : "h-2 w-2 rounded-full bg-[#FDF7F1]/45 hover:bg-[#FDF7F1]/75"
+                }
               />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

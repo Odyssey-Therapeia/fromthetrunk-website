@@ -8,9 +8,9 @@ export const OG_LOCALE = "en_IN";
 export const DEFAULT_TWITTER_CARD = "summary_large_image";
 
 export const DEFAULT_SOCIAL_IMAGE = {
-  url: "/banner/collection_banner.png",
-  width: 1920,
-  height: 1080,
+  url: "/banner/from-the-trunk-social-v1.jpg",
+  width: 1200,
+  height: 630,
   alt: "From The Trunk curated pre-loved luxury saree collection",
 } as const;
 

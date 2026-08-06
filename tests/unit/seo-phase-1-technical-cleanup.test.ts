@@ -238,7 +238,19 @@ describe("SEO Phase 1 technical cleanup", () => {
       name: "Gold Tissue Saree",
       slug: "gold-tissue-saree",
       storyNarrative: "A restored saree with provenance.",
-      images: [{ media: { url: "/media/gold-tissue.webp" } }],
+      images: [
+        {
+          media: {
+            url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/gold-tissue-seo.webp",
+            mimeType: "image/webp",
+            filesize: 300_000,
+            width: 1_400,
+            height: 1_800,
+            metadata: { source: "vercel-blob" },
+          },
+          sortOrder: 0,
+        },
+      ],
       pricePaise: 1250000,
       stockStatus: "available",
       tags: [],
@@ -247,7 +259,7 @@ describe("SEO Phase 1 technical cleanup", () => {
     const serialised = JSON.stringify(jsonLd);
 
     expect(jsonLd.image).toEqual([
-      "https://www.fromthetrunk.shop/media/gold-tissue.webp",
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/gold-tissue-seo.webp",
     ]);
     expect(jsonLd.itemCondition).toBe("https://schema.org/UsedCondition");
     expect(serialised).not.toContain("localhost");

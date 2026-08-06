@@ -111,7 +111,7 @@ describe("AEO/GEO FAQ expansion", () => {
     );
     expect(faqMetadata.twitter?.card).toBe("summary_large_image");
     expect(ogImage?.url).toBe(
-      "https://www.fromthetrunk.shop/banner/collection_banner.png",
+      "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
     );
     expect(ogImage?.alt).toBe(
       "From The Trunk FAQ guide for authenticated pre-loved sarees",

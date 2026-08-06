@@ -266,22 +266,11 @@ export function OurStorySection() {
   const storyImages = STORY_IMAGES;
   const { ref, visibleText } = useTypewriter(story, 8);
   const [activeImage, setActiveImage] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
 
   const activeStoryImage = storyImages[activeImage] ?? storyImages[0];
   const activeChapter =
     storyChapters[activeImage % storyChapters.length] ?? storyChapters[0];
   const isTyping = visibleText.length < story.length;
-
-  useEffect(() => {
-    if (isPaused || storyImages.length <= 1) return;
-
-    const timer = window.setInterval(() => {
-      setActiveImage((current) => (current + 1) % storyImages.length);
-    }, 3000);
-
-    return () => window.clearInterval(timer);
-  }, [isPaused, storyImages.length]);
 
   if (!activeStoryImage || !activeChapter) return null;
 
@@ -394,15 +383,8 @@ export function OurStorySection() {
 
         <div
           className="ftt-story-frame relative h-[clamp(34rem,66vh,46rem)] overflow-hidden rounded-[1.5rem] bg-[#601D1C] shadow-2xl shadow-[#601D1C]/20 md:h-[clamp(42rem,74vh,54rem)]"
-          data-paused={isPaused ? "true" : undefined}
           onPointerMove={handlePointerMove}
-          onPointerLeave={(event) => {
-            resetPointer(event);
-            setIsPaused(false);
-          }}
-          onMouseEnter={() => setIsPaused(true)}
-          onFocus={() => setIsPaused(true)}
-          onBlur={() => setIsPaused(false)}
+          onPointerLeave={resetPointer}
         >
           <Image
             key={`${activeStoryImage.src}-${activeImage}`}

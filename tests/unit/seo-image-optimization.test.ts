@@ -28,31 +28,48 @@ describe("SEO image optimization policy", () => {
     expect(toSeoImageUrl("data:image/png;base64,abc")).toBeNull();
   });
 
-  it("keeps HTTPS CDN images and dedupes product image arrays", () => {
+  it("keeps one bounded provenance-backed primary image and rejects originals", () => {
+    const safeUrl =
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/a.webp";
     const product = {
       images: [
-        { media: { url: "https://cdn.example.com/a.webp" } },
-        { media: { url: "https://cdn.example.com/a.webp" } },
+        {
+          media: {
+            url: safeUrl,
+            filesize: 300000,
+            height: 1800,
+            metadata: { source: "vercel-blob" },
+            mimeType: "image/webp",
+            width: 1400,
+          },
+          sortOrder: 0,
+        },
+        { media: { url: "https://cdn.example.com/original.webp" }, sortOrder: 1 },
         { media: { url: "https://images.unsplash.com/photo-1" } },
         { media: { url: "http://localhost:3000/private.jpg" } },
       ],
     };
 
-    expect(productSeoImageUrls(product as never)).toEqual([
-      "https://cdn.example.com/a.webp",
-    ]);
+    expect(productSeoImageUrls(product as never)).toEqual([safeUrl]);
   });
 
   it("uses modern explicit Next Image delivery formats and does not enable SVG optimization", () => {
-    expect(nextConfig.images?.formats).toEqual(["image/avif", "image/webp"]);
+    expect(nextConfig.images?.formats).toEqual(["image/webp"]);
     expect(nextConfig.images?.dangerouslyAllowSVG).not.toBe(true);
+    expect(nextConfig.images?.qualities).toEqual([70, 75]);
+    expect(nextConfig.images?.remotePatterns).toHaveLength(3);
     expect(nextConfig.images?.remotePatterns).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          hostname: "**.public.blob.vercel-storage.com",
+          hostname: "njufw8f4mlcjsl7g.public.blob.vercel-storage.com",
+          pathname: "/media/**",
           protocol: "https",
+          search: "",
         }),
       ]),
+    );
+    expect(JSON.stringify(nextConfig.images?.remotePatterns)).not.toContain(
+      "**.public.blob.vercel-storage.com",
     );
   });
 
@@ -66,6 +83,10 @@ describe("SEO image optimization policy", () => {
 
     expect(remotePatterns).not.toContain("unsplash");
     expect(csp).not.toContain("unsplash");
+    expect(csp).not.toContain("https://*.public.blob.vercel-storage.com");
+    expect(csp).toContain(
+      "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com",
+    );
   });
 
   it("keeps Unsplash out of production-facing fallback source files", () => {
@@ -82,7 +103,7 @@ describe("SEO image optimization policy", () => {
     }
   });
 
-  it("loads the shared navbar logo eagerly because it is the mobile LCP image", () => {
+  it("keeps the shared navbar logo eager without competing with page LCP priority", () => {
     const source = readFileSync(
       join(process.cwd(), "components/layout/site-header-server.tsx"),
       "utf8",
@@ -90,6 +111,6 @@ describe("SEO image optimization policy", () => {
 
     expect(source).toContain('src="/Ftt_logo_navbar.avif"');
     expect(source).toContain('loading="eager"');
-    expect(source).toContain('fetchPriority="high"');
+    expect(source).not.toContain('fetchPriority="high"');
   });
 });

@@ -9,7 +9,6 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "next dev --webpack",
@@ -32,6 +31,12 @@
     "agent:check": "pnpm run verify && pnpm run lhci:matrix",
     "lint": "eslint .",
     "seo:import-keywords": "tsx scripts/seo/import-keywords.ts",
+    "seo:media-coverage": "tsx scripts/seo/report-media-derivative-coverage.ts",
+    "seo:current-media": "tsx --env-file-if-exists=.env.local scripts/seo/report-current-product-media.ts",
+    "media:derivatives:backfill": "tsx scripts/media/backfill-derivatives.ts",
+    "media:derivatives:gate": "tsx scripts/media/report-derivative-release-gate.ts",
+    "media:cleanup:report": "tsx scripts/media/report-legacy-cleanup.ts",
+    "audit:phase2c:browser": "tsx --env-file-if-exists=.env.local scripts/phase2c-browser-network-audit.ts",
     "generate:icons": "node --import tsx scripts/generate-icons.ts",
     "demo:check": "node --import tsx scripts/demo-readiness.ts",
     "migrate:payload-to-drizzle": "node --import tsx scripts/archive/migrate-payload-to-drizzle.ts",
@@ -150,15 +155,6 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "esbuild": "0.25.12",
-      "js-yaml": "^4.2.0",
-      "postcss": "^8.5.15",
-      "tmp": "^0.2.7",
-      "uuid": "^11.1.1"
-    }
   },
   "lint-staged": {
     "*.{ts,tsx}": [

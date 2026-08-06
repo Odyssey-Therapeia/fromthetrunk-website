@@ -105,19 +105,21 @@ vi.mock("@/db", () => ({
 // ---------------------------------------------------------------------------
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
+const TEST_MEDIA_ORIGIN =
+  "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com";
 
 const mkMedia = (url: string) => ({
   id: "media-1",
   key: "media/img.jpg",
-  url,
+  url: `${TEST_MEDIA_ORIGIN}/media/${url.split("/").pop() ?? "img.jpg"}`,
   filename: "img.jpg",
   alt: null,
   mimeType: "image/jpeg",
-  filesize: null,
-  width: null,
-  height: null,
+  filesize: 300000,
+  width: 1400,
+  height: 1800,
   blurDataUrl: null,
-  metadata: null,
+  metadata: { source: "vercel-blob" },
   createdAt: NOW,
   updatedAt: NOW,
 });
@@ -507,13 +509,12 @@ describe("buildMetaCatalogCsv — CSV structure and required Meta fields", () =>
     expect(rows[0]["brand"]).toBe("From the Trunk");
   });
 
-  it("multiple images → additional_image_link column has extra images", () => {
+  it("multiple images do not leak untyped additional originals", () => {
     const csv = buildMetaCatalogCsv([
       multiImageProduct as Parameters<typeof mapProductToFeedItem>[0],
     ]);
     const { rows } = parseCsv(csv);
-    // additional_image_link should be populated with the second image
-    expect(rows[0]["additional_image_link"]).toMatch(/^https:\/\//);
+    expect(rows[0]["additional_image_link"]).toBe("");
   });
 
   it("empty product list → CSV with only header row", () => {
@@ -647,6 +648,7 @@ describe("Meta feed — Token gate (FEEDS_PUBLIC_TOKEN env var)", () => {
     const res = await app.fetch(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/csv");
+    expect(res.headers.get("cache-control")).toContain("s-maxage=3600");
   });
 });
 
@@ -690,6 +692,30 @@ describe("Meta feed route — content-type and CSV output (via HTTP)", () => {
     expect(headers).toContain("price");
     expect(headers).toContain("image_link");
     expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it("returns an explicit non-cacheable 503 when safe image coverage is incomplete", async () => {
+    delete process.env.FEEDS_PUBLIC_TOKEN;
+    const unsafe = mkProduct({
+      images: [
+        {
+          media: { ...mkMedia("unsafe.jpg"), width: null, height: null },
+          sortOrder: 0,
+        },
+      ],
+    });
+    setupDbForProducts([unsafe]);
+    const app = (await import("@/api/hono/app")).default;
+    const res = await app.fetch(
+      new Request("http://localhost/api/v2/feeds/meta-catalog.csv"),
+    );
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("retry-after")).toBe("3600");
+    await expect(res.json()).resolves.toMatchObject({
+      error: "FEED_SAFE_IMAGE_COVERAGE_INCOMPLETE",
+    });
   });
 
   it("route uses same listProducts query as Google (exclusions work end-to-end)", async () => {

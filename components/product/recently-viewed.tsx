@@ -1,7 +1,6 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { formatCurrency } from "@/lib/formatters";
@@ -88,7 +87,7 @@ export function RecentlyViewed({ excludeId, limit = 6 }: RecentlyViewedProps) {
           >
             <div className="relative aspect-4/5 overflow-hidden rounded-xl bg-muted">
               {item.image ? (
-                <Image
+                <ResilientProductImage
                   src={item.image}
                   alt={item.name}
                   fill
@@ -115,3 +114,4 @@ export function RecentlyViewed({ excludeId, limit = 6 }: RecentlyViewedProps) {
     </section>
   );
 }
+import { ResilientProductImage } from "@/components/media/resilient-product-image";

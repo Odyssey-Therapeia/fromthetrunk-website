@@ -1,0 +1,874 @@
+{
+  "generatedAt": "2026-07-22T15:21:16.378Z",
+  "baseUrl": "http://127.0.0.1:3100",
+  "urls": [
+    {
+      "url": "/",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/collection",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection",
+      "type": "collection page"
+    },
+    {
+      "url": "/top-viewed",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/top-viewed",
+      "type": "collection page"
+    },
+    {
+      "url": "/our-story",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/our-story",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/our-team",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/our-team",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/faqs",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/faqs",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/contact",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/contact",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/how-it-works",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/how-it-works",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/authentication",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/authentication",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/policies",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies",
+      "type": "policy page"
+    },
+    {
+      "url": "/why",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/why",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/sell-your-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/sell-your-saree",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/packing",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/packing",
+      "type": "public SEO page"
+    },
+    {
+      "url": "/policies/privacy-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/privacy-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/return-refund-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/return-refund-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/shipping-delivery-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/shipping-delivery-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/terms-of-service",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/terms-of-service",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/authentication-condition-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/authentication-condition-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/care-packaging-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/care-packaging-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/cancellation-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/cancellation-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/sell-with-us-policy",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/sell-with-us-policy",
+      "type": "policy page"
+    },
+    {
+      "url": "/policies/grievance-redressal",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/policies/grievance-redressal",
+      "type": "policy page"
+    },
+    {
+      "url": "/collection/fabric/silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/fabric/silk",
+      "type": "collection page"
+    },
+    {
+      "url": "/blouses",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/blouses",
+      "type": "collection page"
+    },
+    {
+      "url": "/guides/what-is-a-pre-loved-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/guides/what-is-a-pre-loved-saree",
+      "type": "public SEO page / guide"
+    },
+    {
+      "url": "/guides/pre-loved-vs-second-hand-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/guides/pre-loved-vs-second-hand-saree",
+      "type": "public SEO page / guide"
+    },
+    {
+      "url": "/collection/tangerine-noir-floral-border-weave",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/tangerine-noir-floral-border-weave",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/sunset-ombr-chiffon-draped-dream",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/sunset-ombr-chiffon-draped-dream",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/indigo-plum-tied-silk-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/indigo-plum-tied-silk-saree",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/forest-flame-tie-dye-silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/forest-flame-tie-dye-silk",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/moonstone-cream-mauve-border-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/moonstone-cream-mauve-border-saree",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/marigold-moss-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/marigold-moss-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/midnight-garden-georgette-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/midnight-garden-georgette-saree",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/verdant-bloom-silk-burgundy-gold-border",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/verdant-bloom-silk-burgundy-gold-border",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/pink-katan-triangle-zari-edge",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/pink-katan-triangle-zari-edge",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/forest-green-silk-black-gold",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/forest-green-silk-black-gold",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/teal-blue-moody-silk-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/teal-blue-moody-silk-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/rose-silk-green-brown-stripe",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/rose-silk-green-brown-stripe",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/mustard-organza-brown-border-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/mustard-organza-brown-border-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/charcoal-gold-organza-heirloom-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/charcoal-gold-organza-heirloom-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/beige-organza-peach-bloom",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/beige-organza-peach-bloom",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/maroon-chettinad-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/maroon-chettinad-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/deep-wine-organza",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/deep-wine-organza",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/indigo-dusk-silk-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/indigo-dusk-silk-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/reddish-mango-cotton-orange-border",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/reddish-mango-cotton-orange-border",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/magenta-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/magenta-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/red-blue-madras-check-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/red-blue-madras-check-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/twilight-orange-cotton-weave",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/twilight-orange-cotton-weave",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/lime-and-gold-cotton-classic",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/lime-and-gold-cotton-classic",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/midnight-tribe-gold-border-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/midnight-tribe-gold-border-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/autumn-ember-golden-leaf-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/autumn-ember-golden-leaf-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/orange-blossom-cotton-weave",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/orange-blossom-cotton-weave",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/midnight-kesari-cotton-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/midnight-kesari-cotton-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/blush-green-handwoven-cotton-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/blush-green-handwoven-cotton-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/brown-kapi-cotton-black-line-border",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/brown-kapi-cotton-black-line-border",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/brown-and-mustard-light-silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/brown-and-mustard-light-silk",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/kesari-sunset-chiffon-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/kesari-sunset-chiffon-saree",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/magenta-mist-chiffon-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/magenta-mist-chiffon-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/green-chiffon-with-fancy-border",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/green-chiffon-with-fancy-border",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/rani-pink-georgette-garden-party",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/rani-pink-georgette-garden-party",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/midnight-zari-georgette",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/midnight-zari-georgette",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/pressed-bloom-sheer-chiffon",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/pressed-bloom-sheer-chiffon",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/mayil-peacock-kanjivaram-mix",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/mayil-peacock-kanjivaram-mix",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/burnt-orange-temple-border-kanjivaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/burnt-orange-temple-border-kanjivaram",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/semmanjal-turmeric-gold-kanjeevaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/semmanjal-turmeric-gold-kanjeevaram",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/thangam-golden-weave-kanjivaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/thangam-golden-weave-kanjivaram",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/violet-bloom-cotton-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/violet-bloom-cotton-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/moss-green-lightweight-silk-selai",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/moss-green-lightweight-silk-selai",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/heritage-zari-border-kanjivaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/heritage-zari-border-kanjivaram",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/nava-pazham-kanjeevaram-silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/nava-pazham-kanjeevaram-silk",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/nila-blue-gold-zari-silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/nila-blue-gold-zari-silk",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/colorful-vintage-kanjeevaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/colorful-vintage-kanjeevaram",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/gulabi-kota-cotton",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/gulabi-kota-cotton",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/kempu-pachai-and-bandhani",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/kempu-pachai-and-bandhani",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/pachai-linen-golden-border-drape",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/pachai-linen-golden-border-drape",
+      "type": "product page"
+    },
+    {
+      "url": "/404",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/404",
+      "type": "utility page"
+    },
+    {
+      "url": "/account/addresses",
+      "status": 307,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in?callbackUrl=http%3A%2F%2Flocalhost%3A3100%2Faccount%2Faddresses",
+      "type": "redirect"
+    },
+    {
+      "url": "/account/orders",
+      "status": 307,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in?callbackUrl=http%3A%2F%2Flocalhost%3A3100%2Faccount%2Forders",
+      "type": "redirect"
+    },
+    {
+      "url": "/account",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/account",
+      "type": "utility page"
+    },
+    {
+      "url": "/account/profile",
+      "status": 307,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in?callbackUrl=http%3A%2F%2Flocalhost%3A3100%2Faccount%2Fprofile",
+      "type": "redirect"
+    },
+    {
+      "url": "/account/profile/verify-email",
+      "status": 307,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in?callbackUrl=http%3A%2F%2Flocalhost%3A3100%2Faccount%2Fprofile%2Fverify-email",
+      "type": "redirect"
+    },
+    {
+      "url": "/account/sign-in",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in",
+      "type": "utility page"
+    },
+    {
+      "url": "/account/sign-up",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-up",
+      "type": "utility page"
+    },
+    {
+      "url": "/account/wishlist",
+      "status": 307,
+      "finalStatus": 200,
+      "finalUrl": "/account/sign-in?callbackUrl=http%3A%2F%2Flocalhost%3A3100%2Faccount%2Fwishlist",
+      "type": "redirect"
+    },
+    {
+      "url": "/cart",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/cart",
+      "type": "utility page"
+    },
+    {
+      "url": "/checkout/confirmation",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/checkout/confirmation",
+      "type": "utility page"
+    },
+    {
+      "url": "/checkout",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/checkout",
+      "type": "utility page"
+    },
+    {
+      "url": "/founders",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/our-team",
+      "type": "redirect"
+    },
+    {
+      "url": "/privacy-policy",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/policies/privacy-policy",
+      "type": "redirect"
+    },
+    {
+      "url": "/return-policy",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/policies/return-refund-policy",
+      "type": "redirect"
+    },
+    {
+      "url": "/search",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/search",
+      "type": "utility page"
+    },
+    {
+      "url": "/shipping-policy",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/policies/shipping-delivery-policy",
+      "type": "redirect"
+    },
+    {
+      "url": "/terms-of-service",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/policies/terms-of-service",
+      "type": "redirect"
+    },
+    {
+      "url": "/_global-error",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/_global-error",
+      "type": "unknown / 404"
+    },
+    {
+      "url": "/_not-found",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/_not-found",
+      "type": "unknown / 404"
+    },
+    {
+      "url": "/.well-known/appspecific/com.chrome.devtools.json",
+      "status": 500,
+      "finalStatus": 500,
+      "finalUrl": "/.well-known/appspecific/com.chrome.devtools.json",
+      "type": "API / metadata endpoint"
+    },
+    {
+      "url": "/collection/fabric/chiffon",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/fabric/chiffon",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection/fabric/georgette",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/fabric/georgette",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection/fabric/kanjeevaram",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/fabric/kanjeevaram",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection/occasion/festive",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/occasion/festive",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection/occasion/wedding",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/occasion/wedding",
+      "type": "collection page"
+    },
+    {
+      "url": "/robots.txt",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/robots.txt",
+      "type": "API / metadata endpoint"
+    },
+    {
+      "url": "/faq",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/faqs",
+      "type": "redirect"
+    },
+    {
+      "url": "/about",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/our-story",
+      "type": "redirect"
+    },
+    {
+      "url": "/stories",
+      "status": 308,
+      "finalStatus": 200,
+      "finalUrl": "/our-story",
+      "type": "redirect"
+    },
+    {
+      "url": "/search?q=silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/search?q=silk",
+      "type": "utility page"
+    },
+    {
+      "url": "/collection?fabric=silk",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection?fabric=silk",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection?occasion=wedding",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection?occasion=wedding",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection?tags=top-viewed",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection?tags=top-viewed",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection?type=blouse",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection?type=blouse",
+      "type": "collection page"
+    },
+    {
+      "url": "/collection?sort=price-asc",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection?sort=price-asc",
+      "type": "collection page"
+    },
+    {
+      "url": "/seo-audit-definitely-missing",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/seo-audit-definitely-missing",
+      "type": "unknown / 404"
+    },
+    {
+      "url": "/admin",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/admin",
+      "type": "admin/private"
+    },
+    {
+      "url": "/admin/orders/seo-audit-placeholder/packing-slip",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/admin/orders/seo-audit-placeholder/packing-slip",
+      "type": "admin/private"
+    },
+    {
+      "url": "/api/v2/docs",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/api/v2/docs",
+      "type": "API / metadata endpoint"
+    },
+    {
+      "url": "/api/v2/openapi.json",
+      "status": 404,
+      "finalStatus": 404,
+      "finalUrl": "/api/v2/openapi.json",
+      "type": "API / metadata endpoint"
+    },
+    {
+      "url": "/api/auth/session",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/api/auth/session",
+      "type": "API / metadata endpoint"
+    },
+    {
+      "url": "/collection/stretchfit-blouse",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/stretchfit-blouse",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/stretchfit-blouse-1",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/stretchfit-blouse-1",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/sleeveless-cerise-pink-stretchfit-blouse",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/sleeveless-cerise-pink-stretchfit-blouse",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/sleeveless-marigold-orange-stretchfit",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/sleeveless-marigold-orange-stretchfit",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/sleeveless-black-stretchfit",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/sleeveless-black-stretchfit",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/rose-vine-stripe-chiffon-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/rose-vine-stripe-chiffon-saree",
+      "type": "product page"
+    },
+    {
+      "url": "/collection/coral-sunrise-chiffon-georgette-saree",
+      "status": 200,
+      "finalStatus": 200,
+      "finalUrl": "/collection/coral-sunrise-chiffon-georgette-saree",
+      "type": "product page"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-07-22T14:23:55.646Z",
+  "source": "Configured local Drizzle/Neon data source, queried read-only",
+  "pages": [
+    {
+      "slug": "georgetta-saree",
+      "title": "Georgetta Saree",
+      "status": "draft",
+      "hasPublishedVersion": false,
+      "seo": {
+        "title": "Georgetta Saree | From The Trunk",
+        "description": "Explore georgetta saree at From The Trunk — hand-curated vintage sarees, thoughtful stories, and a refined online shopping experience."
+      },
+      "updatedAt": "2026-06-28T07:07:56.149Z"
+    }
+  ],
+  "redirects": [
+    {
+      "fromPath": "/collection",
+      "toPath": "/neel",
+      "createdAt": "2026-06-28T15:33:18.100Z"
+    }
+  ],
+  "menus": {
+    "header": [],
+    "footer": []
+  }
+}

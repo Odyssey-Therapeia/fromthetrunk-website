@@ -72,7 +72,7 @@ module.exports = {
   ci: {
     collect: {
       url: urlPaths.map((path) => new URL(path, baseUrl).toString()),
-      startServerCommand: "npm run serve:lhci",
+      startServerCommand: "pnpm run serve:lhci",
       startServerReadyPattern: "Ready",
       startServerReadyTimeout: 60_000,
       numberOfRuns,

@@ -207,11 +207,11 @@ export function ContactWizard({
 
       {/* Progress */}
       <div className="grid gap-2">
-        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.22em] text-[#601D1C]/55">
+        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.22em] text-[#601D1C]/75">
           <span>
             Step {step + 1} of {CONTACT_WIZARD_STEPS}
           </span>
-          <span className="text-[#B39152]">{STEP_QUESTIONS[step]}</span>
+          <span className="text-[#74531B]">{STEP_QUESTIONS[step]}</span>
         </div>
         <div
           className="h-1 w-full overflow-hidden rounded-full bg-[#601D1C]/10"
