@@ -210,7 +210,7 @@ function renderHeadline(parts: HeadlinePart[]) {
         part.accent ? (
           <span
             key={`${part.text}-${index}`}
-            className="inline-block text-[1.18em] font-semibold md:font-bold"
+            className="text-[1.18em] font-semibold md:font-bold"
             style={{ color: HERO_GOLD }}
           >
             {part.text}
