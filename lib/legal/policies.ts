@@ -43,7 +43,7 @@ export const policies: LegalPolicy[] = [
       "How From the Trunk collects, uses, protects, and handles personal information.",
     metaDescription:
       "How From The Trunk collects, uses and protects your personal information.",
-    lastUpdated: "June 29, 2026",
+    lastUpdated: "August 26, 2026",
     sections: [
       {
         id: "information-we-collect",
@@ -96,6 +96,18 @@ export const policies: LegalPolicy[] = [
           "Optional analytics cookies: with your consent, we use analytics cookies (including Google Analytics, loaded through Google Tag Manager) to measure website traffic and understand how the site is browsed — for example, how many people visit, which pages are viewed, and which links or buttons are used. This is aggregate usage information used only to see how much traffic the website receives and to improve it. Nothing else.",
           "What we do NOT do: we do not use analytics to steal, sell, or trade your personal data. Analytics runs only inside your web browser and only reads or writes the small cookies for this website. It does not access your phone's or device's memory, files, photos, contacts, messages, or other apps, and it does not track your activity on other websites.",
           "Your choice: when you first visit, a banner lets you “Allow cookies” or “Continue without cookies.” If you continue without cookies, no analytics cookies are set and no analytics data is collected. You can change your choice at any time using “Cookie settings” in the website footer, or through your browser settings. Some features may not work properly if essential cookies are disabled in your browser.",
+        ],
+      },
+      {
+        id: "ai-virtual-drape",
+        title: "AI Virtual Drape",
+        body: [
+          "Purpose: the optional AI Virtual Drape feature creates a styling preview of a selected saree on a photo that you choose. The preview is generated only after a deliberate Create, confirmed background, or Regenerate action; simply opening a product or the Drape Room does not send your photo for generation.",
+          "Browser-local storage: your processed working photo and generated previews are stored as local browser data on your device. They are not placed in From the Trunk's database, object storage, Redis, filesystem, server cache, CDN cache, logs, or analytics events. You can remove the working photo and locally stored previews using Clear my try-on data. Replacing your photo removes previews associated with the previous photo. Browser privacy settings, storage eviction, clearing site data, or using another browser or device may also remove or make those previews unavailable.",
+          "Transient processing: when you deliberately request a preview, the working photo and an approved image of the selected saree pass transiently through our hosting infrastructure in memory and are sent to the AI provider identified in the Drape Room disclosure. From the Trunk does not retain either image after the response is returned. The provider may process or retain inputs and outputs under its own API data policy, safety practices, and account configuration; we do not claim Zero Data Retention unless it has been verified for the configured provider, account, and endpoint.",
+          "Consent and control: before the first paid generation, and again after a material provider, disclosure, or privacy-policy change, you must confirm that you have the right to use the photo and agree to the disclosed provider processing. Do not upload another person's photo without their authority. Downloaded images and copies shared to other apps are controlled by your device and those apps, not by browser deletion controls.",
+          "Operational metadata: for abuse prevention, idempotency, service reliability, and cost control, we may retain a metadata-only record such as a pseudonymous session tag, request identifier, product identifier, background choice, configured provider/model, status, timing, byte count, and estimated or actual cost. This ledger does not contain customer or generated images, image URLs, filenames, raw photo digests, prompts, notes, raw IP addresses, full user agents, or provider request/response bodies.",
+          "Accuracy: an AI drape is an illustrative preview, not a product photograph or a guarantee of fit, colour, scale, texture, motif, border, pallu, fabric fall, body shape, or final appearance. Use the product page photographs and description as the authoritative product reference before purchasing.",
         ],
       },
       {

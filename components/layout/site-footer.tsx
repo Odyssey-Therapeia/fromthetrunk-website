@@ -38,9 +38,10 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
     links: [
       { href: "/policies/shipping-delivery-policy", label: "Shipping" },
       { href: "/policies/return-refund-policy", label: "Returns & Refunds" },
+      { href: "/authentication", label: "How We Authenticate" },
       {
         href: "/policies/authentication-condition-policy",
-        label: "Authentication",
+        label: "Authentication Policy",
       },
       { href: "/policies/care-packaging-policy", label: "Care & Packaging" },
       { href: "/policies/sell-with-us-policy", label: "Sell With Us" },
@@ -62,6 +63,43 @@ const CONTACT_FOOTER_LINK = {
   href: "/contact",
   label: "Contact Support",
 } as const;
+
+/**
+ * SEO remediation pass 1 (finding D): /authentication had zero internal links
+ * anywhere on the site. The footer sections are CMS-managed
+ * (navigation_menus), so a code-only default cannot guarantee the link is
+ * present — this mirrors the existing ensureContactFooterLink guarantee
+ * instead of editing managed content.
+ */
+const AUTHENTICATION_FOOTER_LINK = {
+  href: "/authentication",
+  label: "How We Authenticate",
+} as const;
+
+function ensureFooterLink(
+  footerSections: FooterSection[],
+  link: { href: string; label: string },
+  preferredSectionTitle: string,
+): FooterSection[] {
+  if (
+    footerSections.some((section) =>
+      section.links.some((existing) => existing.href === link.href),
+    )
+  ) {
+    return footerSections;
+  }
+
+  const targetIndex = footerSections.findIndex(
+    (section) => section.title === preferredSectionTitle,
+  );
+  const insertIndex = targetIndex >= 0 ? targetIndex : 0;
+
+  return footerSections.map((section, index) =>
+    index === insertIndex
+      ? { ...section, links: [...section.links, link] }
+      : section,
+  );
+}
 
 function ensureContactFooterLink(
   footerSections: FooterSection[],
@@ -321,7 +359,11 @@ export function SiteFooter({
   footerSections?: FooterSection[];
 }) {
   const year = new Date().getFullYear();
-  const resolvedFooterSections = ensureContactFooterLink(footerSections);
+  const resolvedFooterSections = ensureFooterLink(
+    ensureContactFooterLink(footerSections),
+    AUTHENTICATION_FOOTER_LINK,
+    "Customer Care",
+  );
 
   const footerNavGridClass =
     resolvedFooterSections.length <= 3

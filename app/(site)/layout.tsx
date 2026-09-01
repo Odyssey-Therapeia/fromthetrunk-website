@@ -11,6 +11,7 @@ import { SiteHeaderServer } from "@/components/layout/site-header-server";
 import { ThemeStyler } from "@/components/layout/theme-styler";
 import { GlobalToaster } from "@/components/global-toaster";
 import { SiteWidgets } from "@/components/widgets/site-widgets";
+import { DrapeRoomPortalHost } from "@/components/drape-room/drape-room-portal-host";
 import {
   organizationJsonLd,
   safeJsonLd,
@@ -108,6 +109,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </main>
         <SiteFooterServer />
         <SiteWidgets />
+        <DrapeRoomPortalHost
+          enabledHint={process.env.FTT_TRYON_ENABLED === "true"}
+        />
         <GlobalToaster />
         {isVercelRuntime ? (
           <>

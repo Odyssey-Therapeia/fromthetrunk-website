@@ -16,8 +16,14 @@ import {
   validateReadyMediaDerivative,
 } from "@/lib/media/derivative-policy";
 
-const MAX_SOURCE_BYTES = 12 * 1_024 * 1_024;
-const MAX_SOURCE_PIXELS = 24_000_000;
+const MAX_LIVE_DERIVATIVE_SOURCE_BYTES = 12 * 1_024 * 1_024;
+const MAX_LIVE_DERIVATIVE_SOURCE_PIXELS = 24_000_000;
+const MAX_LIVE_DERIVATIVE_SOURCE_EDGE = 8_192;
+export const MAX_LEGACY_DERIVATIVE_SOURCE_BYTES = 48 * 1_024 * 1_024;
+export const MAX_LEGACY_DERIVATIVE_SOURCE_PIXELS = 100_000_000;
+export const MAX_LEGACY_DERIVATIVE_SOURCE_EDGE = 12_000;
+const WORKING_SOURCE_MAX_WIDTH = 2_400;
+const WORKING_SOURCE_MAX_HEIGHT = 3_600;
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
 
 export type DerivativeFailureCode =
@@ -45,6 +51,14 @@ export type DerivativeSourceAsset = {
   mimeType: string | null;
   updatedAt: Date;
   url: string;
+};
+
+export type DerivativeSourceMode = "legacy_backfill" | "live";
+
+export type DerivativeSourceLimits = {
+  maxBytes: number;
+  maxEdge: number;
+  maxPixels: number;
 };
 
 export type DerivativeBlobUpload = {
@@ -96,6 +110,7 @@ export type DerivativeRepository = {
 
 export type SourceLoader = (
   source: DerivativeSourceAsset,
+  limits: DerivativeSourceLimits,
 ) => Promise<Buffer>;
 
 type GeneratedOutput = {
@@ -200,7 +215,30 @@ export const renderMediaDerivative = async (
   throw new DerivativeGenerationError("output_over_budget");
 };
 
-export const loadDerivativeSource: SourceLoader = async (source) => {
+const sourceLimitsFor = (
+  mode: DerivativeSourceMode,
+): DerivativeSourceLimits =>
+  mode === "legacy_backfill"
+    ? {
+        maxBytes: MAX_LEGACY_DERIVATIVE_SOURCE_BYTES,
+        maxEdge: MAX_LEGACY_DERIVATIVE_SOURCE_EDGE,
+        maxPixels: MAX_LEGACY_DERIVATIVE_SOURCE_PIXELS,
+      }
+    : {
+        maxBytes: MAX_LIVE_DERIVATIVE_SOURCE_BYTES,
+        maxEdge: MAX_LIVE_DERIVATIVE_SOURCE_EDGE,
+        maxPixels: MAX_LIVE_DERIVATIVE_SOURCE_PIXELS,
+      };
+
+export const derivativeSourceBytesAllowed = (
+  byteSize: number,
+  mode: DerivativeSourceMode = "live",
+): boolean =>
+  Number.isSafeInteger(byteSize) &&
+  byteSize > 0 &&
+  byteSize <= sourceLimitsFor(mode).maxBytes;
+
+export const loadDerivativeSource: SourceLoader = async (source, limits) => {
   if (!isApprovedSourceMediaUrl(source.url)) {
     throw new DerivativeGenerationError("invalid_source_url");
   }
@@ -212,37 +250,104 @@ export const loadDerivativeSource: SourceLoader = async (source) => {
     throw new DerivativeGenerationError("invalid_source_url");
   }
   const contentLength = Number(response.headers.get("content-length") ?? "0");
-  if (contentLength > MAX_SOURCE_BYTES) {
+  if (contentLength > limits.maxBytes) {
     throw new DerivativeGenerationError("source_too_large");
   }
   const body = Buffer.from(await response.arrayBuffer());
-  if (body.byteLength <= 0 || body.byteLength > MAX_SOURCE_BYTES) {
+  if (body.byteLength <= 0 || body.byteLength > limits.maxBytes) {
     throw new DerivativeGenerationError("source_too_large");
   }
   return body;
 };
 
+export const derivativeSourceDimensionsAllowed = (
+  width: number,
+  height: number,
+  mode: DerivativeSourceMode = "live",
+): boolean => {
+  const limits = sourceLimitsFor(mode);
+  return (
+    Number.isSafeInteger(width) &&
+    Number.isSafeInteger(height) &&
+    width > 0 &&
+    height > 0 &&
+    width <= limits.maxEdge &&
+    height <= limits.maxEdge &&
+    width * height <= limits.maxPixels
+  );
+};
+
 const validateSource = async (
   source: DerivativeSourceAsset,
   body: Buffer,
+  limits: DerivativeSourceLimits,
 ): Promise<void> => {
+  if (body.byteLength <= 0 || body.byteLength > limits.maxBytes) {
+    throw new DerivativeGenerationError("source_too_large");
+  }
   if (
     source.mimeType &&
     !APPROVED_SOURCE_MIME_TYPES.has(source.mimeType.toLowerCase())
   ) {
     throw new DerivativeGenerationError("unsupported_source_mime");
   }
-  const metadata = await sharp(body).metadata();
+  let metadata;
+  try {
+    metadata = await sharp(body, {
+      failOn: "error",
+      limitInputPixels: limits.maxPixels,
+      sequentialRead: true,
+    }).metadata();
+  } catch (error) {
+    if (error instanceof Error && /pixel limit/i.test(error.message)) {
+      throw new DerivativeGenerationError("source_pixels_exceeded");
+    }
+    throw error;
+  }
   const detectedMime = metadata.format === "jpg" ? "jpeg" : metadata.format;
   if (!detectedMime || !["avif", "jpeg", "png", "webp"].includes(detectedMime)) {
     throw new DerivativeGenerationError("unsupported_source_mime");
   }
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
-  if (width <= 0 || height <= 0 || width * height > MAX_SOURCE_PIXELS) {
+  if (
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    width > limits.maxEdge ||
+    height > limits.maxEdge ||
+    width * height > limits.maxPixels
+  ) {
     throw new DerivativeGenerationError("source_pixels_exceeded");
   }
 };
+
+/**
+ * Decode a trusted legacy original once, then reuse this bounded, metadata-free
+ * working image for every derivative role. This keeps backfill memory and CPU
+ * predictable instead of repeatedly decoding a 50-100 MP source.
+ */
+export const prepareDerivativeWorkingSource = async (
+  source: Buffer,
+  mode: DerivativeSourceMode = "legacy_backfill",
+): Promise<Buffer> =>
+  sharp(source, {
+    failOn: "error",
+    limitInputPixels: sourceLimitsFor(mode).maxPixels,
+    sequentialRead: true,
+  })
+    .rotate()
+    .resize({
+      fit: "inside",
+      height: WORKING_SOURCE_MAX_HEIGHT,
+      width: WORKING_SOURCE_MAX_WIDTH,
+      withoutEnlargement: true,
+    })
+    .toColourspace("srgb")
+    .flatten({ background: "#ffffff" })
+    .jpeg({ chromaSubsampling: "4:4:4", mozjpeg: true, quality: 94 })
+    .toBuffer();
 
 export const sanitizeDerivativeFailure = (
   error: unknown,
@@ -255,104 +360,118 @@ export const generateMediaDerivatives = async ({
   repository,
   roles = MEDIA_DERIVATIVE_ROLES,
   source,
+  sourceMode = "live",
 }: {
   blobStore: DerivativeBlobStore;
   loadSource?: SourceLoader;
   repository: DerivativeRepository;
   roles?: readonly MediaDerivativeRole[];
   source: DerivativeSourceAsset;
+  sourceMode?: DerivativeSourceMode;
 }): Promise<MediaDerivativeGenerationResult> => {
-  const sourceBody = await loadSource(source);
-  await validateSource(source, sourceBody);
+  const sourceLimits = sourceLimitsFor(sourceMode);
+  const sourceBody = await loadSource(source, sourceLimits);
+  await validateSource(source, sourceBody, sourceLimits);
   const sourceHash = createHash("sha256").update(sourceBody).digest("hex");
   const existing = await repository.listForAsset(source.id);
   const roleResults: MediaDerivativeRoleResult[] = [];
+  let workingSource: Buffer | null = null;
+  let workingSourcePromise: Promise<Buffer> | null = null;
 
-  for (const role of roles) {
-    const current = existing.find(
-      (row) =>
-        row.role === role &&
-        row.generationVersion === MEDIA_DERIVATIVE_GENERATION_VERSION,
-    );
-    if (
-      current?.sourceHash === sourceHash &&
-      validateReadyMediaDerivative(current).valid
-    ) {
-      roleResults.push({
-        byteSize: current.byteSize ?? 0,
-        reason: null,
-        role,
-        status: "skipped",
-      });
-      continue;
-    }
+  try {
+    for (const role of roles) {
+      const current = existing.find(
+        (row) =>
+          row.role === role &&
+          row.generationVersion === MEDIA_DERIVATIVE_GENERATION_VERSION,
+      );
+      if (
+        current?.sourceHash === sourceHash &&
+        validateReadyMediaDerivative(current).valid
+      ) {
+        roleResults.push({
+          byteSize: current.byteSize ?? 0,
+          reason: null,
+          role,
+          status: "skipped",
+        });
+        continue;
+      }
 
-    const objectKey = derivativeObjectKey({
-      mediaAssetId: source.id,
-      role,
-      sourceHash,
-    });
-    try {
-      await repository.markProcessing({
-        generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
+      const objectKey = derivativeObjectKey({
         mediaAssetId: source.id,
-        objectKey,
         role,
         sourceHash,
-        sourceUpdatedAt: source.updatedAt,
       });
-      const output = await renderMediaDerivative(sourceBody, role);
-      const uploaded = await blobStore.uploadImmutable({
-        body: output.body,
-        contentType: output.mimeType,
-        objectKey,
-      });
-      if (uploaded.byteSize !== output.body.byteLength) {
-        throw new DerivativeGenerationError("upload_verification_failed");
+      try {
+        await repository.markProcessing({
+          generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
+          mediaAssetId: source.id,
+          objectKey,
+          role,
+          sourceHash,
+          sourceUpdatedAt: source.updatedAt,
+        });
+        workingSourcePromise ??= prepareDerivativeWorkingSource(
+          sourceBody,
+          sourceMode,
+        );
+        workingSource ??= await workingSourcePromise;
+        const output = await renderMediaDerivative(workingSource, role);
+        const uploaded = await blobStore.uploadImmutable({
+          body: output.body,
+          contentType: output.mimeType,
+          objectKey,
+        });
+        if (uploaded.byteSize !== output.body.byteLength) {
+          throw new DerivativeGenerationError("upload_verification_failed");
+        }
+        if (!isApprovedDerivativeDestinationUrl(uploaded.url)) {
+          throw new DerivativeGenerationError("unapproved_derivative_url");
+        }
+        const ready = await repository.saveReady({
+          byteSize: output.body.byteLength,
+          generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
+          height: output.height,
+          mediaAssetId: source.id,
+          mimeType: output.mimeType,
+          objectKey,
+          role,
+          sourceHash,
+          sourceUpdatedAt: source.updatedAt,
+          url: uploaded.url,
+          width: output.width,
+        });
+        if (!validateReadyMediaDerivative(ready).valid) {
+          throw new DerivativeGenerationError("upload_verification_failed");
+        }
+        roleResults.push({
+          byteSize: output.body.byteLength,
+          reason: null,
+          role,
+          status: "generated",
+        });
+      } catch (error) {
+        const failureReason = sanitizeDerivativeFailure(error);
+        await repository.recordFailure({
+          failureReason,
+          generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
+          mediaAssetId: source.id,
+          objectKey,
+          role,
+          sourceHash,
+          sourceUpdatedAt: source.updatedAt,
+        });
+        roleResults.push({
+          byteSize: 0,
+          reason: failureReason,
+          role,
+          status: "failed",
+        });
       }
-      if (!isApprovedDerivativeDestinationUrl(uploaded.url)) {
-        throw new DerivativeGenerationError("unapproved_derivative_url");
-      }
-      const ready = await repository.saveReady({
-        byteSize: output.body.byteLength,
-        generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
-        height: output.height,
-        mediaAssetId: source.id,
-        mimeType: output.mimeType,
-        objectKey,
-        role,
-        sourceHash,
-        sourceUpdatedAt: source.updatedAt,
-        url: uploaded.url,
-        width: output.width,
-      });
-      if (!validateReadyMediaDerivative(ready).valid) {
-        throw new DerivativeGenerationError("upload_verification_failed");
-      }
-      roleResults.push({
-        byteSize: output.body.byteLength,
-        reason: null,
-        role,
-        status: "generated",
-      });
-    } catch (error) {
-      const failureReason = sanitizeDerivativeFailure(error);
-      await repository.recordFailure({
-        failureReason,
-        generationVersion: MEDIA_DERIVATIVE_GENERATION_VERSION,
-        mediaAssetId: source.id,
-        objectKey,
-        role,
-        sourceHash,
-        sourceUpdatedAt: source.updatedAt,
-      });
-      roleResults.push({
-        byteSize: 0,
-        reason: failureReason,
-        role,
-        status: "failed",
-      });
     }
+  } finally {
+    workingSource?.fill(0);
   }
 
   return {

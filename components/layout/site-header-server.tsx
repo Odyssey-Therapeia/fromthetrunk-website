@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
+import { DrapeRoomPhotoMenu } from "@/components/drape-room/drape-room-photo-menu";
 
 const NAV_ITEMS = [
   { href: "/collection", label: "Collection" },
@@ -104,6 +105,7 @@ export async function SiteHeaderServer() {
                 <button className="rounded-r-full bg-[#601D1C] px-4 text-sm font-medium text-[#FDF7F1]" type="submit">Search</button>
               </form>
             </details>
+            <DrapeRoomPhotoMenu />
             <Link href="/account" prefetch={false} className={iconLinkClass} aria-label="Your account"><AccountIcon /></Link>
             <Link href="/account/wishlist" prefetch={false} className={`${iconLinkClass} hidden sm:grid`} aria-label="Liked products"><HeartIcon /></Link>
             <Link href="/cart" prefetch={false} className={iconLinkClass} aria-label="View cart"><BagIcon /></Link>

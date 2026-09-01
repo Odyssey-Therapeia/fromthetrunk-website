@@ -93,6 +93,11 @@ const assertExecutionConfirmation = () => {
       "Production additionally requires --confirm-production=I_UNDERSTAND_PRODUCTION_MEDIA_WRITES.",
     );
   }
+  if (environment === "production" && concurrency !== 1) {
+    throw new Error(
+      "Production backfill requires --concurrency=1 to bound legacy-image memory usage.",
+    );
+  }
   if (process.env.FTT_MEDIA_DERIVATIVES_ACTIVE === "1") {
     throw new Error("Backfill refuses to run while derivative consumption is active.");
   }
@@ -225,6 +230,7 @@ async function main() {
               updatedAt: media.updatedAt,
               url: media.url,
             },
+            sourceMode: "legacy_backfill",
           }),
         );
       } catch (error) {

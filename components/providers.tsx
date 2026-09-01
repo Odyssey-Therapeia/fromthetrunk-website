@@ -13,8 +13,17 @@ const WishlistMergeOnLogin = dynamic(
   { ssr: false },
 );
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function CommerceProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+
+  return (
+    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </SessionProvider>
+  );
+}
+
+function DeferredWishlistMerge() {
   const [deferredEffectsReady, setDeferredEffectsReady] = useState(false);
 
   useEffect(() => {
@@ -22,14 +31,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, []);
 
+  return deferredEffectsReady ? <WishlistMergeOnLogin /> : null;
+}
+
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <QueryClientProvider client={queryClient}>
-        {/* Session-scoped guest wishlist merge — runs on every page after login,
-            not only on pages that happen to mount a WishlistButton. */}
-        {deferredEffectsReady ? <WishlistMergeOnLogin /> : null}
-        {children}
-      </QueryClientProvider>
-    </SessionProvider>
+    <CommerceProviders>
+      {/* Route-scoped guest wishlist merge. The global Drape Room reuses only
+          CommerceProviders so this side effect is never mounted twice. */}
+      <DeferredWishlistMerge />
+      {children}
+    </CommerceProviders>
   );
 }

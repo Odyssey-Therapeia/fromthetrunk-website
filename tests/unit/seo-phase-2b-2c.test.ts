@@ -142,7 +142,14 @@ describe("SEO Phase 2B image alt implementation", () => {
     expect(productCard).toContain("buildProductCardAlt");
     expect(productPage).toContain("buildPdpGalleryImageAlt");
     expect(gallery).toContain("alt={activeAlt}");
-    expect(gallery).toContain('alt=""');
+
+    // SEO remediation pass 1 (finding C): gallery thumbnails previously
+    // rendered alt="" and so declared the primary product photography
+    // decorative. They now take their alt from the same approved helper as the
+    // main image, via imageAlts[index]. Genuinely decorative artwork keeps
+    // empty alt — see "keeps decorative hero and editorial images empty-alt".
+    expect(gallery).not.toContain('alt=""');
+    expect(gallery).toContain("alt={thumbnailAlt(index)}");
   });
 
   it("keeps decorative hero and editorial images empty-alt", () => {

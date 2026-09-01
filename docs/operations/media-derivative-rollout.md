@@ -68,7 +68,7 @@ pnpm exec tsx --env-file=.env.staging \
   --confirm-database-fingerprint=<sanitized-hash> \
   --confirm-blob-store-fingerprint=<sanitized-hash> \
   --confirm-write=GENERATE_IMMUTABLE_DERIVATIVES \
-  --concurrency=2 \
+  --concurrency=1 \
   --report-dir=reports/media-derivatives/staging
 ```
 
@@ -84,6 +84,15 @@ rejects ready rows carrying failures, and HEAD-verifies pathname, byte size,
 MIME type and destination host for every ready object. A second full run must
 produce zero uploads and zero duplicate rows.
 
+Legacy source originals may be larger than the live Drape Room's 12 MiB / 24
+MP safety ceiling. The protected backfill alone accepts the reviewed catalogue
+range up to 48 MiB, 100 MP, and 12,000 px per edge, decodes each source once
+into a bounded working image, and then generates every role from that working
+image. Use `--concurrency=1` for the first staging pass and all production
+execution. Production execution refuses a higher value so two large legacy
+decodes cannot overlap. Live uploads and the admin regeneration route retain
+the lower 12 MiB / 24 MP policy.
+
 ## Stage C: staging activation
 
 Only after 100% coverage, rendered SEO/feed parity, browser network budgets,
@@ -96,6 +105,87 @@ tests and mobile Lighthouse all pass:
 
 Production requires a new explicit authorization and the same sequence. This
 runbook is not production authorization.
+
+## Production cutover commands (run only after explicit approval)
+
+Use a dedicated, gitignored `.env.production.media`; do not `source` an env
+file into the shell. Keep try-on and all three media rollout flags disabled for
+the first deployment. The production file must bind the exact production Neon
+database and derivative Blob store identities described above.
+
+Apply the additive table with Node's env-file parser so shell metacharacters in
+credentials are never evaluated:
+
+```sh
+media_rollout_db_url=$(node --env-file=.env.production.media -p \
+  'process.env.DATABASE_URL || ""')
+test -n "$media_rollout_db_url"
+
+/opt/homebrew/opt/libpq/bin/psql "$media_rollout_db_url" \
+  -X \
+  -v ON_ERROR_STOP=1 \
+  --single-transaction \
+  -f drizzle/0027_media_derivatives.sql
+
+/opt/homebrew/opt/libpq/bin/psql "$media_rollout_db_url" \
+  -X -Atqc \
+  "select coalesce(to_regclass('public.media_derivatives')::text, 'missing')"
+```
+
+The verification output must be `media_derivatives`. Then inspect the
+read-only plan and its sanitized resource fingerprints:
+
+```sh
+pnpm exec tsx --env-file=.env.production.media \
+  scripts/media/backfill-derivatives.ts \
+  --environment=production \
+  --concurrency=1
+```
+
+Execute first for one reviewed product, then for all published media. Copy the
+fingerprints from the dry run; never substitute unverified values:
+
+```sh
+pnpm exec tsx --env-file=.env.production.media \
+  scripts/media/backfill-derivatives.ts \
+  --execute \
+  --environment=production \
+  --product-id=<reviewed-product-uuid> \
+  --confirm-environment=production \
+  --confirm-database-fingerprint=<sanitized-hash> \
+  --confirm-blob-store-fingerprint=<sanitized-hash> \
+  --confirm-write=GENERATE_IMMUTABLE_DERIVATIVES \
+  --confirm-production=I_UNDERSTAND_PRODUCTION_MEDIA_WRITES \
+  --concurrency=1 \
+  --report-dir=reports/media-derivatives/production-canary
+
+pnpm exec tsx --env-file=.env.production.media \
+  scripts/media/backfill-derivatives.ts \
+  --execute \
+  --environment=production \
+  --confirm-environment=production \
+  --confirm-database-fingerprint=<sanitized-hash> \
+  --confirm-blob-store-fingerprint=<sanitized-hash> \
+  --confirm-write=GENERATE_IMMUTABLE_DERIVATIVES \
+  --confirm-production=I_UNDERSTAND_PRODUCTION_MEDIA_WRITES \
+  --concurrency=1 \
+  --report-dir=reports/media-derivatives/production
+```
+
+Re-run the full backfill to prove zero new uploads, then run the release gate:
+
+```sh
+pnpm exec tsx --env-file=.env.production.media \
+  scripts/media/report-derivative-release-gate.ts
+```
+
+After the gate reports `releaseAllowed: true`, set publication guard and
+derivative uploads to `1`, leave consumption at `0`, and deploy. Set
+`FTT_MEDIA_DERIVATIVES_ACTIVE=1` only in the next deployment. Keep
+`FTT_TRYON_ENABLED=false` until that deployment passes the derivative gate,
+the Drape Room config preflight, and one deliberately approved canary. A
+production allowed-origin list must contain only production HTTPS origins;
+never copy the localhost origin from a development file.
 
 ## Rollback
 

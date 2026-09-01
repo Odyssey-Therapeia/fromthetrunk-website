@@ -86,6 +86,9 @@ function isSensitiveLogKey(key: string): boolean {
     normalized.includes("razorpay") ||
     normalized.includes("apikey") ||
     normalized.includes("apisecret") ||
+    normalized === "connectionstring" ||
+    normalized === "databaseurl" ||
+    normalized === "dsn" ||
     normalized.includes("secret") ||
     normalized.includes("password") ||
     normalized.endsWith("token")
@@ -95,8 +98,19 @@ function isSensitiveLogKey(key: string): boolean {
 function redactString(value: string): string {
   return value
     .replace(/params:\s*[\s\S]*$/i, `params: ${REDACTED_SQL_PARAMS}`)
+    .replace(
+      /(database[_-]?url|connection[_-]?string|dsn|api[_-]?key|api[_-]?secret)\s*[:=]\s*["']?[^"',\s}]+/gi,
+      "$1=[redacted]"
+    )
+    .replace(
+      /([a-z][a-z0-9+.-]*:\/\/)[^/\s:@]+:[^@\s/]+@/gi,
+      "$1[redacted]@"
+    )
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
-    .replace(/\+?[1-9][\d\s().-]{7,}\d/g, "[redacted-phone]")
+    .replace(
+      /(?<![A-Za-z0-9-])(?:\+[1-9][\d\s().-]{7,}\d|[1-9]\d{9,14})(?![A-Za-z0-9-])/g,
+      "[redacted-phone]"
+    )
     .replace(
       /(authorization|cookie|otp|challengeToken|loginTicket|registrationToken|token|razorpay[^:=\s]*|api[_-]?secret|secret|password)\s*[:=]\s*["']?[^"',\s}]+/gi,
       "$1=[redacted]"

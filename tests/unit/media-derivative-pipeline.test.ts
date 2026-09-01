@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import type { MediaDerivativeRecord } from "@/db/queries/media-derivatives";
 import {
+  derivativeSourceBytesAllowed,
+  derivativeSourceDimensionsAllowed,
   generateMediaDerivatives,
+  prepareDerivativeWorkingSource,
   renderMediaDerivative,
   type DerivativeBlobStore,
   type DerivativeRepository,
@@ -116,6 +119,55 @@ const makeBlobStore = () => {
 };
 
 describe("media derivative generation pipeline", () => {
+  it("keeps large legacy bytes out of live generation while permitting reviewed backfill", () => {
+    expect(derivativeSourceBytesAllowed(43_104_094)).toBe(false);
+    expect(
+      derivativeSourceBytesAllowed(43_104_094, "legacy_backfill"),
+    ).toBe(true);
+    expect(
+      derivativeSourceBytesAllowed(48 * 1_024 * 1_024 + 1, "legacy_backfill"),
+    ).toBe(false);
+  });
+
+  it("accepts the observed legacy catalogue dimensions only in offline backfill policy", () => {
+    expect(derivativeSourceDimensionsAllowed(5_678, 8_517)).toBe(false);
+    expect(
+      derivativeSourceDimensionsAllowed(5_678, 8_517, "legacy_backfill"),
+    ).toBe(true);
+    expect(
+      derivativeSourceDimensionsAllowed(6_912, 10_368, "legacy_backfill"),
+    ).toBe(true);
+    expect(
+      derivativeSourceDimensionsAllowed(8_000, 12_000, "legacy_backfill"),
+    ).toBe(true);
+    expect(
+      derivativeSourceDimensionsAllowed(10_000, 10_001, "legacy_backfill"),
+    ).toBe(false);
+    expect(
+      derivativeSourceDimensionsAllowed(12_001, 1_000, "legacy_backfill"),
+    ).toBe(false);
+  });
+
+  it("creates one bounded working image before role rendering", async () => {
+    const legacy = await sharp({
+      create: {
+        background: "#7a2f3b",
+        channels: 3,
+        height: 4_200,
+        width: 2_800,
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const working = await prepareDerivativeWorkingSource(legacy);
+    const metadata = await sharp(working).metadata();
+
+    expect(metadata.format).toBe("jpeg");
+    expect(metadata.width).toBeLessThanOrEqual(2_400);
+    expect(metadata.height).toBeLessThanOrEqual(3_600);
+  });
+
   it("is idempotent for the same source and generation version", async () => {
     const sourceBody = await fixture("#7a2f3b");
     const { repository, rows } = makeRepository();

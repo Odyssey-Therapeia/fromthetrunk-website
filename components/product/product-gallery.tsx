@@ -11,6 +11,12 @@ interface ProductGalleryProps {
   alt: string;
   imageAlts?: string[];
   thumbnailImages?: string[];
+  /**
+   * Product display name, used to build descriptive thumbnail control labels
+   * ("View Midnight Garden Georgette Saree detail view 2"). Falls back to the
+   * main image alt when absent.
+   */
+  productName?: string;
 }
 
 export function ProductGallery({
@@ -18,6 +24,7 @@ export function ProductGallery({
   alt,
   imageAlts,
   thumbnailImages,
+  productName,
 }: ProductGalleryProps) {
   const galleryImages = useMemo(() => images.filter(Boolean), [images]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -28,6 +35,22 @@ export function ProductGallery({
   const activeImage = galleryImages[activeIndex] ?? "";
   const activeAlt = imageAlts?.[activeIndex] ?? alt;
   const hasMultipleImages = galleryImages.length > 1;
+  const subject = productName?.trim() || alt;
+
+  /**
+   * Thumbnails are real product photography, not decoration, so each one gets
+   * its own alt text. `imageAlts` already varies per index
+   * (buildPdpGalleryImageAlt), which keeps these distinct rather than repeating
+   * one keyword-stuffed string across the gallery.
+   */
+  const thumbnailAlt = (index: number) =>
+    imageAlts?.[index] ??
+    (index === 0 ? alt : `${subject} detail view ${index + 1}`);
+
+  const thumbnailLabel = (index: number) =>
+    index === 0
+      ? `View ${subject} main image`
+      : `View ${subject} detail view ${index + 1}`;
 
   const showPrevious = () => {
     setSelectedIndex((current) =>
@@ -71,12 +94,12 @@ export function ProductGallery({
                       ? "border-[#B39152] shadow-[0_10px_24px_rgba(179,145,82,0.16)]"
                       : "border-[#E7DDD4] hover:border-[#B39152]/55",
                   )}
-                  aria-label={`View image ${index + 1} of ${galleryImages.length}`}
+                  aria-label={thumbnailLabel(index)}
                   aria-pressed={activeIndex === index}
                 >
                   <ResilientProductImage
                     src={thumbnailImages?.[index] ?? image}
-                    alt=""
+                    alt={thumbnailAlt(index)}
                     fill
                     sizes="88px"
                     className="object-cover"

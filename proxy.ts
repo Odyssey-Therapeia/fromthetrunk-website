@@ -42,6 +42,7 @@ const PUBLIC_FILE =
 
 const publicAssetPrefixes = [
   "/dev-uploads/",
+  "/drape-room/",
   "/media/",
   "/banner/",
   "/category/",
@@ -209,12 +210,25 @@ export async function proxy(request: NextRequest) {
       canonicalQuery ? `?${canonicalQuery}` : ""
     }`;
 
+    // Unfiltered pagination is redundant: /collection server-renders every
+    // public non-blouse product, so /collection?page=N is a strict subset of
+    // the URL it would canonicalise to. Promote page-ONLY states to the bare
+    // collection. Anything carrying a filter, sort or perPage is left alone and
+    // keeps the existing canonical/noindex policy.
+    //
+    // This has to live here rather than in the page: by the time the route
+    // handler can decide, the 200 response has already begun streaming and Next
+    // can only degrade a redirect to a client-side hint.
+    const isPaginationOnly = canonical.size === 1 && canonical.has("page");
+
     const promotedHref =
       canonicalHref === "/collection?tags=top-viewed"
         ? "/top-viewed"
         : canonicalHref === "/collection?type=blouse"
           ? "/blouses"
-          : canonicalHref;
+          : isPaginationOnly
+            ? "/collection"
+            : canonicalHref;
 
     if (
       promotedHref !== canonicalHref ||

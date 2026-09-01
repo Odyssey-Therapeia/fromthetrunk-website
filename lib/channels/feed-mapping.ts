@@ -20,6 +20,10 @@
  */
 
 import type { ProductWithRelations } from "@/db/queries/products";
+import {
+  resolveFeedCondition,
+  type FeedCondition,
+} from "@/lib/commerce/product-condition";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { getSiteOrigin } from "@/lib/config/site";
@@ -74,8 +78,12 @@ export type FeedItemData = {
   additionalImageUrls: string[];
   /** Absolute landing-page URL — same canonical as the sitemap */
   link: string;
-  /** Always "used" for preloved */
-  condition: "used";
+  /**
+   * Resolved by the shared commerce-condition resolver so the feed and the
+   * PDP JSON-LD can never disagree: pre-loved sarees are "used", newly
+   * manufactured stock (blouses) is "new".
+   */
+  condition: FeedCondition;
   /** Always false — GTIN exemption for preloved one-of-one items */
   identifierExists: false;
   /** Store brand */
@@ -148,7 +156,7 @@ export function mapProductToFeedItem(
     imageUrl,
     additionalImageUrls,
     link,
-    condition: "used",
+    condition: resolveFeedCondition(product),
     identifierExists: false,
     brand: "From the Trunk",
   };

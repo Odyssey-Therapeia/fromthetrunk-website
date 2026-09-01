@@ -144,8 +144,10 @@ export function SiteHeader() {
                 alt=""
                 width={180}
                 height={100}
+                // Still eager so the header never flashes empty, but the
+                // high-priority fetch hint has been removed: it competed with
+                // the PDP hero image for the first high-priority slot.
                 loading="eager"
-                fetchPriority="high"
                 className="h-14 w-auto object-contain xl:h-[4.25rem]"
                 sizes="180px"
                 unoptimized

@@ -16,6 +16,8 @@ import { useCartStore } from "@/lib/store/cart-store";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { ProductCardCommerceRow } from "@/components/product/product-card-commerce-row";
+import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
+import { projectDrapeRoomEntry } from "@/lib/drape-room/product";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import type { Product, StockStatus } from "@/types/domain";
 
@@ -49,6 +51,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const isSold = stockStatus === "sold";
   const isReserved = stockStatus === "reserved";
   const isBlouse = isBlouseProduct(product);
+  const drapeSaree = projectDrapeRoomEntry(product);
   const trackProductCardClick = () => {
     trackWebsiteMetric(
       "product_card_click",
@@ -148,6 +151,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
             />
           </div>
         )}
+        {drapeSaree.eligible ? (
+          <div className="absolute bottom-2 right-2 z-10 @sm:bottom-3 @sm:right-3">
+            <DrapeRoomTrigger product={drapeSaree.saree} />
+          </div>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-1 flex-col p-2 @sm:p-4">
         <Link

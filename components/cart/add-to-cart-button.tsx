@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DrapeRoomActionTile } from "@/components/drape-room/drape-room-action-tile";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
 import { isBlouseProduct } from "@/lib/products/product-type";
@@ -16,10 +18,21 @@ import {
 import { resolveMediaURL } from "@/lib/media/resolve-media-url";
 import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
 import { useCartStore } from "@/lib/store/cart-store";
+import { cn } from "@/lib/utils";
 import type { Product, StockStatus } from "@/types/domain";
 
+export type AddToCartProduct = Pick<
+  Product,
+  "detailsFabric" | "id" | "name" | "pricePaise" | "slug" | "stockStatus"
+> & {
+  imageUrl?: string;
+  images?: Product["images"];
+  tags?: Array<{ name?: null | string; slug?: null | string }>;
+  typeSlug?: null | string;
+};
+
 interface AddToCartButtonProps {
-  product: Product;
+  product: AddToCartProduct;
   /**
    * P4-05: optional flag-gated override for the initial stock status.
    * When isInventoryV2() is ON, the PDP passes effectiveStockStatus (derived
@@ -32,6 +45,10 @@ interface AddToCartButtonProps {
   onMissingRequiredOption?: () => void;
   requiresBlouseSize?: boolean;
   selectedOptions?: SelectedOptions;
+  /** Reuses the same reservation path in compact commerce surfaces. */
+  presentation?: "default" | "drape-room";
+  className?: string;
+  analyticsSource?: string;
 }
 
 const stockLabels: Record<StockStatus, string> = {
@@ -46,6 +63,9 @@ export function AddToCartButton({
   onMissingRequiredOption,
   requiresBlouseSize,
   selectedOptions,
+  presentation = "default",
+  className,
+  analyticsSource = "pdp",
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
   const existingItem = useCartStore((state) =>
@@ -56,7 +76,7 @@ export function AddToCartButton({
   );
   const [added, setAdded] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
-  const image = resolveMediaURL(product.images?.[0]) ?? "";
+  const image = product.imageUrl ?? resolveMediaURL(product.images?.[0]) ?? "";
   const isBlouse = isBlouseProduct(product);
   const inCart = Boolean(existingItem);
   const selectedSize = normalizeBlouseSize(selectedOptions?.size);
@@ -129,7 +149,7 @@ export function AddToCartButton({
           pricePaise: product.pricePaise,
           productId: product.id,
           slug: product.slug,
-          source: "pdp",
+          source: analyticsSource,
           stockStatus,
         },
         buildAddToCartEvent(
@@ -141,7 +161,7 @@ export function AddToCartButton({
             variant: selectedSize ?? product.detailsFabric,
           },
           {
-            source: "pdp",
+            source: analyticsSource,
             stockStatus,
           },
         ),
@@ -157,9 +177,52 @@ export function AddToCartButton({
     }
   };
 
+  if (presentation === "drape-room") {
+    const unavailableReason =
+      stockStatus === "sold"
+        ? "This one-of-one saree has sold."
+        : stockStatus === "reserved" && !inCart
+          ? "This saree is reserved by another buyer."
+          : inCart
+            ? "This saree is already in your bag."
+            : undefined;
+
+    return (
+      <DrapeRoomActionTile
+        icon={<ShoppingBag aria-hidden="true" />}
+        label={isReserving ? "Reserving…" : "Add to bag"}
+        status={
+          added
+            ? "Added"
+            : inCart
+              ? "In your bag"
+              : stockStatus === "sold"
+                ? "Sold"
+                : stockStatus === "reserved"
+                  ? "Reserved"
+                  : undefined
+        }
+        aria-busy={isReserving}
+        aria-label={
+          unavailableReason
+            ? `Add to cart. ${unavailableReason}`
+            : "Add to cart"
+        }
+        title={unavailableReason}
+        className={className}
+        disabled={
+          isReserving ||
+          stockStatus !== "available" ||
+          (inCart && !canUpdateSelectedOptions)
+        }
+        onClick={handleAddToCart}
+      />
+    );
+  }
+
   if (stockStatus === "sold") {
     return (
-      <Button className="w-full rounded-full py-6" disabled>
+      <Button className={cn("w-full rounded-full py-6", className)} disabled>
         Sold
       </Button>
     );
@@ -167,7 +230,7 @@ export function AddToCartButton({
 
   if (stockStatus === "reserved" && !inCart) {
     return (
-      <Button className="w-full rounded-full py-6" disabled>
+      <Button className={cn("w-full rounded-full py-6", className)} disabled>
         Reserved by another buyer
       </Button>
     );
@@ -176,7 +239,7 @@ export function AddToCartButton({
   if (inCart && !canUpdateSelectedOptions) {
     const sizeLabel = getSelectedSizeLabel(existingItem?.selectedOptions);
     return (
-      <Button className="w-full rounded-full py-6" disabled>
+      <Button className={cn("w-full rounded-full py-6", className)} disabled>
         {sizeLabel ? `${sizeLabel} in your bag` : "Already in your bag"}
       </Button>
     );
@@ -184,7 +247,7 @@ export function AddToCartButton({
 
   return (
     <Button
-      className="w-full rounded-full py-6 text-[#FDF7F1]"
+      className={cn("w-full rounded-full py-6 text-[#FDF7F1]", className)}
       disabled={
         isReserving ||
         (stockStatus !== "available" && !canUpdateSelectedOptions) ||

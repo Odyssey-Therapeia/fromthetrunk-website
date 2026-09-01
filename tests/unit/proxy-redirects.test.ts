@@ -209,6 +209,27 @@ describe("proxy.ts — collection query preflight", () => {
   });
 });
 
+describe("proxy.ts — Drape Room vision assets", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resolveRedirectMock.mockResolvedValue(null);
+  });
+
+  it.each([
+    "/drape-room/vision/mediapipe-1.0.1/wasm/vision_wasm_internal.wasm",
+    "/drape-room/vision/mediapipe-1.0.1/models/pose_landmarker_lite.task",
+    "/drape-room/vision/mediapipe-1.0.1/models/blaze_face_full_range.tflite",
+  ])("passes the local binary through without CMS redirect lookup: %s", async (pathname) => {
+    const response = await proxy(
+      new NextRequest(`https://www.fromthetrunk.shop${pathname}`),
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveRedirectMock).not.toHaveBeenCalled();
+    expect(dbSelectPageBySlugMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("proxy.ts — auth behavior unchanged (money path regression)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
