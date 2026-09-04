@@ -90,17 +90,14 @@ describe("Drape Room authoritative product reference", () => {
       fetchImpl as typeof fetch,
     );
 
-    expect(loaded.references).toHaveLength(2);
+    expect(loaded.references).toHaveLength(1);
     expect(loaded.references[0].bytes).toHaveLength(bytes.byteLength);
-    expect(loaded.references[1].bytes).toHaveLength(bytes.byteLength);
     expect(loaded.references[0].mimeType).toBe("image/jpeg");
-    expect(loaded.references[1].mimeType).toBe("image/jpeg");
     expect(loaded.references[0].version).toMatch(
-      new RegExp(`^source:${MEDIA_ID}:[a-z0-9]+:2100000:3456x5184$`),
+      new RegExp(`^source:${MEDIA_ID}:nohash:[a-z0-9]+:2100000:3456x5184$`),
     );
-    expect(loaded.references[1].version).toBe(loaded.references[0].version);
     expect(loaded.saree.productReferenceVersion).toMatch(
-      new RegExp(`^gallery-v1:${MEDIA_ID}:${MEDIA_ID}:[a-f0-9]{16}$`),
+      new RegExp(`^gallery-v2:single:${MEDIA_ID}:[a-f0-9]{16}$`),
     );
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -179,7 +176,7 @@ describe("Drape Room authoritative product reference", () => {
       expect.stringContaining(detailId),
     ]);
     expect(loaded.saree.productReferenceVersion).toContain(
-      `gallery-v1:${fullLookId}:${detailId}:`,
+      `gallery-v2:dual:${fullLookId}:${detailId}:`,
     );
   });
 

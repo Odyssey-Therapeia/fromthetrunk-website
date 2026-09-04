@@ -16,6 +16,7 @@ export function DrapeRoomConfirmationDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancel",
   isBusy = false,
   destructive = false,
   onCancel,
@@ -25,6 +26,7 @@ export function DrapeRoomConfirmationDialog({
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   isBusy?: boolean;
   destructive?: boolean;
   onCancel: () => void;
@@ -53,7 +55,7 @@ export function DrapeRoomConfirmationDialog({
             onClick={onCancel}
             className="min-h-11 rounded-full border-ftt-border bg-ftt-card text-ftt-burgundy"
           >
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             type="button"

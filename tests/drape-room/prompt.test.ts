@@ -8,7 +8,7 @@ import {
 
 describe("Classic Nivi prompt", () => {
   it("locks the only selectable axis and prompt version", () => {
-    const prompt = buildClassicNiviPrompt("festival");
+    const prompt = buildClassicNiviPrompt("festival", "dual");
     const headings = prompt
       .split("\n")
       .filter((line) => /^[A-Z ]+$/.test(line) && line.length > 3);
@@ -34,13 +34,13 @@ describe("Classic Nivi prompt", () => {
           "BACKGROUND",
           "DO NOT",
         ],
-        "promptVersion": "nivi-v3",
+        "promptVersion": "nivi-v4",
       }
     `);
   });
 
   it("pins identity, fabric fidelity, Nivi topology, and one-image output", () => {
-    const prompt = buildClassicNiviPrompt("wedding");
+    const prompt = buildClassicNiviPrompt("wedding", "dual");
 
     expect(prompt).toContain("five to seven crisp front knife pleats");
     expect(prompt).toContain("diagonally across the front torso");
@@ -49,11 +49,17 @@ describe("Classic Nivi prompt", () => {
     expect(prompt).toContain("exactly three reference images");
     expect(prompt).toContain("IMAGE 2 is the strongest full-look");
     expect(prompt).toContain("IMAGE 3 is a complementary detail reference");
-    expect(prompt).toContain("Both product images are textile sources only");
-    expect(prompt).toContain("Never copy or blend any human identity");
+    expect(prompt).toContain("IMAGE 2 and IMAGE 3 are textile sources only");
+    expect(prompt).toContain("Never copy or blend any model, mannequin, face");
     expect(prompt).toContain("Match every generated area of exposed body skin continuously to the face");
-    expect(prompt).toContain("pose, and camera-perspective cue that is actually visible");
-    expect(prompt).toContain("body or lower body is not visible");
+    expect(prompt).toContain(
+      "IMAGE 1 is the only human identity, face, skin tone, age, hair, body, height, proportion, and pose source",
+    );
+    expect(prompt).toContain(
+      "Preserve the full-body pose, camera perspective, identity, height, body proportions, build, and stance",
+    );
+    expect(prompt).toContain("Make only minimal arm adjustments");
+    expect(prompt).toContain("Do not change the customer's build");
     expect(prompt).toContain("Reproduce the border exactly");
     expect(prompt).toContain("Reproduce the pallu's distinct design");
     expect(prompt).toContain("exact hue, saturation, tonal depth");
@@ -64,14 +70,24 @@ describe("Classic Nivi prompt", () => {
     expect(prompt).not.toContain("ADDITIONAL INSTRUCTIONS");
   });
 
+  it("uses a truthful two-image contract for one product reference", () => {
+    const prompt = buildClassicNiviPrompt("studio", "single");
+
+    expect(prompt).toContain("exactly two reference images");
+    expect(prompt).toContain("IMAGE 2 is the sole authoritative textile reference");
+    expect(prompt).toContain("represented by IMAGE 2");
+    expect(prompt).not.toContain("IMAGE 3");
+    expect(prompt).not.toContain("IMAGE 2 and IMAGE 3");
+  });
+
   it("rejects a background outside the fixed enum", () => {
     expect(() =>
-      buildClassicNiviPrompt("outdoor" as never),
+      buildClassicNiviPrompt("outdoor" as never, "dual"),
     ).toThrow("invalid_drape_background");
   });
 
   it("keeps birthday decor free of readable personal text", () => {
-    expect(buildClassicNiviPrompt("birthday")).toContain(
+    expect(buildClassicNiviPrompt("birthday", "single")).toContain(
       "without readable banners, names, numbers, ages, text, or logos",
     );
   });

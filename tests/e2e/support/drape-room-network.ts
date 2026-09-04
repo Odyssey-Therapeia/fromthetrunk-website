@@ -132,7 +132,7 @@ export async function installNetworkHarness(
           body: JSON.stringify({
             code: "PROVIDER_UNAVAILABLE",
             message:
-              "Deterministic failed regeneration; the previous image is kept.",
+              "Deterministic failed background generation; the previous image is kept.",
           }),
         });
         return;
@@ -150,6 +150,8 @@ export async function installNetworkHarness(
           "X-FTT-Tryon-Provider": CONFIG.provider,
           "X-FTT-Tryon-Model": CONFIG.model,
           "X-FTT-Tryon-Prompt-Version": CONFIG.promptVersion,
+          "X-FTT-Tryon-Reference-Contract-Version":
+            CONFIG.referenceContractVersion,
           "X-FTT-Tryon-Engine-Version": CONFIG.engineVersion,
           "X-FTT-Tryon-Output-Version": CONFIG.outputVersion,
           "X-FTT-Tryon-Product-Reference-Version": RESULT_REFERENCE_VERSION,

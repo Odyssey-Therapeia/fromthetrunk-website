@@ -9,7 +9,7 @@ type TryonObservationContext = {
   traceId: string;
 };
 
-type TryonObservationLevel = "debug" | "info" | "warn";
+type TryonObservationLevel = "debug" | "warn";
 
 const observationContext = new AsyncLocalStorage<TryonObservationContext>();
 const log = createLogger("drape-room:generate");
@@ -26,16 +26,27 @@ function elapsedMs(context: TryonObservationContext): number {
   return Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed)) : 0;
 }
 
-function errorField(error: unknown, field: string): unknown {
-  return typeof error === "object" && error !== null
-    ? Reflect.get(error, field)
-    : undefined;
+/**
+ * Reads one bounded scalar off an error. Anything that is not a short string or
+ * a finite number is dropped, so an adapter that ever attaches a provider
+ * request/response object cannot widen the log line.
+ */
+function errorField(error: unknown, field: string): string | number | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  const value: unknown = Reflect.get(error, field);
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.length <= 64) return value;
+  return undefined;
 }
 
 /**
  * Creates one request-local correlation scope. Only bounded metadata may be
  * passed to the observation helpers: never photos, prompts, headers, cookies,
  * provider bodies, URLs, session/IP tags, or secrets.
+ *
+ * Stage observations are deliberately `debug`: a healthy request prints one
+ * terminal line (see `observeTryonSucceeded` / `observeTryonFailed`). Run with
+ * `LOG_LEVEL=debug` to replay the full per-stage trace.
  */
 export function withTryonObservability<T>(
   run: () => Promise<T>,
@@ -48,7 +59,7 @@ export function withTryonObservability<T>(
   } satisfies TryonObservationContext;
 
   return observationContext.run(context, async () => {
-    observeTryonStage("request_received", undefined, "info");
+    observeTryonStage("request_received");
     return run();
   });
 }
@@ -71,6 +82,34 @@ export function observeTryonStage(
     ...meta,
   };
   log[level]("Try-on stage reached", fields);
+}
+
+/** One line per completed generation: the success half of the request outcome. */
+export function observeTryonSucceeded(meta?: Record<string, unknown>): void {
+  if (!shouldEmitObservations()) return;
+  const context = observationContext.getStore();
+  log.info("Try-on image generated", {
+    durationMs: context ? elapsedMs(context) : null,
+    traceId: context?.traceId ?? "unscoped",
+    ...meta,
+  });
+}
+
+/** One line per rejected or failed generation: the failure half of the outcome. */
+export function observeTryonFailed(
+  code: string,
+  status: number,
+  meta?: Record<string, unknown>,
+): void {
+  if (!shouldEmitObservations()) return;
+  const context = observationContext.getStore();
+  log.warn("Try-on image generation failed", {
+    code,
+    durationMs: context ? elapsedMs(context) : null,
+    status,
+    traceId: context?.traceId ?? "unscoped",
+    ...meta,
+  });
 }
 
 export function observeTryonRejection(
@@ -104,7 +143,10 @@ export function observeTryonFailure(
     errorName:
       error instanceof Error ? error.name : typeof error,
     errorStatus: errorField(error, "status"),
-    err: error,
+    // Only an Error is narrowed to message/name/stack by the logger. A thrown
+    // provider payload object would be walked key by key, so it never gets
+    // passed through: its bounded code/name/status fields above are enough.
+    err: error instanceof Error ? error : undefined,
     stage,
     traceId: context?.traceId ?? "unscoped",
     ...meta,

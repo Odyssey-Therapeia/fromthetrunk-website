@@ -158,12 +158,17 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Will opening the same saree generate another image?",
     answer:
-      "No. Opening a product or the Drape Room never starts a paid generation. If the matching preview is already stored in this browser it is shown locally; a new request happens only when you explicitly choose Create my drape, confirm an uncached background, or choose Regenerate.",
+      "No. Opening a product or the Drape Room never starts an AI generation. If the matching preview is already saved in this browser, it opens locally without another request. A new request happens only when you explicitly create the first preview or confirm an uncached background that is marked as using 1 generation.",
+  },
+  {
+    question: "Does changing the AI preview background use another generation?",
+    answer:
+      "Only when that background has not been created yet. A background marked Saved opens from this browser for free and uses no AI generation. An uncached background is marked Uses 1 generation and opens a confirmation first. Opening the picker, cancelling the confirmation, or returning to a saved background does not start another request.",
   },
   {
     question: "What happens when I replace my photo?",
     answer:
-      "When replacement succeeds, the previous working photo is replaced and all previews created from it are removed from this browser. You will also be asked to confirm the current provider disclosure before a new AI request if the disclosure or privacy-policy version has changed.",
+      "When replacement succeeds, the previous working photo is replaced and all previews created from it are removed from this browser. Nothing is generated automatically, and replacing the photo does not reset the daily generation limit. After the new photo passes the local check, you can explicitly create a new preview using 1 generation. You will also be asked to confirm the current provider disclosure before a new AI request if the disclosure or privacy-policy version has changed.",
   },
 ];
 

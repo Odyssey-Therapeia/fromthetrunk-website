@@ -19,10 +19,10 @@ const SEMAPHORE_ACQUIRE_SCRIPT = `
 `;
 
 const RELEASE_LOCK_SCRIPT = `
-  if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-  end
-  return 0
+  local current = redis.call('GET', KEYS[1])
+  if not current then return -1 end
+  if current ~= ARGV[1] then return 0 end
+  return redis.call('DEL', KEYS[1])
 `;
 
 const RELEASE_SEMAPHORE_SCRIPT = `
@@ -37,8 +37,20 @@ export interface TryonRedisClient {
   ): Promise<unknown>;
 }
 
+export type TryonLeaseReleaseState =
+  | "already_absent"
+  | "failed"
+  | "not_owned"
+  | "released";
+
+export type TryonLeaseReleaseResult = {
+  complete: boolean;
+  global: TryonLeaseReleaseState;
+  session: TryonLeaseReleaseState;
+};
+
 export type TryonGenerationLease = {
-  release(): Promise<void>;
+  release(): Promise<TryonLeaseReleaseResult>;
 };
 
 export type TryonLeaseAdmission =
@@ -116,20 +128,44 @@ export async function acquireTryonGenerationLeaseDetailed(
     throw error;
   }
 
-  let released = false;
+  let completeResult: TryonLeaseReleaseResult | null = null;
   return {
     acquired: true,
     lease: {
       async release() {
-        if (released) return;
-        released = true;
-        await Promise.allSettled([
+        if (completeResult) return completeResult;
+        const [sessionResult, globalResult] = await Promise.allSettled([
           redis.eval(RELEASE_LOCK_SCRIPT, [sessionKey], [leaseId]),
           redis.eval(RELEASE_SEMAPHORE_SCRIPT, [globalKey], [leaseId]),
         ]);
+        const session = releaseState(sessionResult, "session");
+        const global = releaseState(globalResult, "global");
+        const result = {
+          complete: session !== "failed" && global !== "failed",
+          global,
+          session,
+        } satisfies TryonLeaseReleaseResult;
+        // Cache only a confirmed complete attempt. A caller may retry a failed
+        // REST operation while the token-checked Lua scripts remain idempotent.
+        if (result.complete) completeResult = result;
+        return result;
       },
     },
   };
+}
+
+function releaseState(
+  result: PromiseSettledResult<unknown>,
+  component: "global" | "session",
+): TryonLeaseReleaseState {
+  if (result.status === "rejected") return "failed";
+  const numeric = Number(result.value);
+  if (numeric === 1) return "released";
+  if (numeric === 0) {
+    return component === "session" ? "not_owned" : "already_absent";
+  }
+  if (numeric === -1 && component === "session") return "already_absent";
+  return "failed";
 }
 
 export async function acquireTryonGenerationLease(

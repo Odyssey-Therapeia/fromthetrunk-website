@@ -1,7 +1,6 @@
 import type { DrapeSaree } from "@/lib/drape-room/product";
 import {
   type DrapeRoomBackground,
-  type DrapeRoomGenerationReason,
   type DrapeRoomMaybePromise,
   type DrapeRoomPhotoView,
   type DrapeRoomRenderView,
@@ -47,18 +46,12 @@ export interface DrapeRoomResult extends DrapeRoomRenderView {
   blob: Blob;
   userPhotoDigest: string;
   productReferenceVersion: string;
+  referenceContractVersion: "gallery-v2";
   provider: string;
   model: string;
   promptVersion: string;
   engineVersion: string;
   outputVersion: string;
-}
-
-export interface DrapeRoomGenerateRequest {
-  product: DrapeSaree;
-  subjectPhoto: DrapeRoomPhotoView;
-  background: DrapeRoomBackground;
-  reason: DrapeRoomGenerationReason;
 }
 
 export function formatDrapeRoomPrice(pricePaise: number): string {
@@ -72,7 +65,6 @@ export function formatDrapeRoomPrice(pricePaise: number): string {
 export type {
   DrapeSaree,
   DrapeRoomBackground,
-  DrapeRoomGenerationReason,
   DrapeRoomMaybePromise,
   DrapeRoomPhotoView,
 };

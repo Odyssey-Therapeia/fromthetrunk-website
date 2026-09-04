@@ -3,46 +3,36 @@ import type { TryonRedisClient } from "@/lib/drape-room/security/redis-guard";
 export const TRYON_PRODUCT_DAILY_LIMIT = 3 as const;
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1_000;
+const PROVISIONAL_CLAIM_MS = 5 * 60 * 1_000;
 const IP_TAG_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const CLAIM_SCRIPT = `
-  local existing = redis.call('EXISTS', KEYS[2])
-  local used = tonumber(redis.call('GET', KEYS[1]) or '0')
+  redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[3])
+  local provisional = redis.call('ZSCORE', KEYS[1], ARGV[5])
+  local committed = redis.call('ZSCORE', KEYS[1], ARGV[6])
+  local used = redis.call('ZCARD', KEYS[1])
+  if provisional or committed then return {1, used} end
+  if used >= tonumber(ARGV[1]) then return {0, used} end
 
-  if existing == 1 then
-    if used < 1 then
-      used = 1
-      redis.call('SET', KEYS[1], used)
-      redis.call('PEXPIREAT', KEYS[1], ARGV[2])
-    end
-    return {1, used}
-  end
-
-  if used >= tonumber(ARGV[1]) then
-    return {0, used}
-  end
-
-  used = redis.call('INCR', KEYS[1])
+  redis.call('ZADD', KEYS[1], ARGV[4], ARGV[5])
   redis.call('PEXPIREAT', KEYS[1], ARGV[2])
-  redis.call('SET', KEYS[2], '1')
-  redis.call('PEXPIREAT', KEYS[2], ARGV[2])
+  used = redis.call('ZCARD', KEYS[1])
   return {1, used}
 `;
 
 const RELEASE_SCRIPT = `
-  if redis.call('DEL', KEYS[2]) ~= 1 then
-    return tonumber(redis.call('GET', KEYS[1]) or '0')
-  end
+  redis.call('ZREM', KEYS[1], ARGV[1])
+  return redis.call('ZCARD', KEYS[1])
+`;
 
-  local used = tonumber(redis.call('GET', KEYS[1]) or '0')
-  if used <= 1 then
-    redis.call('DEL', KEYS[1])
-    return 0
-  end
-
-  return redis.call('DECR', KEYS[1])
+const COMMIT_SCRIPT = `
+  if redis.call('ZSCORE', KEYS[1], ARGV[2]) then return 1 end
+  if redis.call('ZREM', KEYS[1], ARGV[1]) ~= 1 then return 0 end
+  redis.call('ZADD', KEYS[1], ARGV[3], ARGV[2])
+  redis.call('PEXPIREAT', KEYS[1], ARGV[3])
+  return 1
 `;
 
 type QuotaCount = 0 | 1 | 2 | 3;
@@ -60,7 +50,7 @@ export type ProductDailyQuotaClaim =
       allowed: true;
       quota: ProductDailyQuota;
       releaseBeforeProvider(): Promise<void>;
-      commitProviderStarted(): void;
+      commitProviderDispatchAttempted(): Promise<void>;
     }
   | {
       allowed: false;
@@ -147,14 +137,22 @@ export async function claimProductDailyQuota(
   }
 
   const window = productDailyQuotaWindow(now);
-  const countKey =
-    `ftt:tryon:v2:product-day:${window.dayKey}:${ipTag}:${productId}`;
-  const claimKey = `${countKey}:claim:${ledgerRequestId}`;
+  const quotaKey =
+    `ftt:tryon:v3:product-day:${window.dayKey}:${ipTag}:${productId}`;
+  const provisionalMember = `p:${ledgerRequestId}`;
+  const committedMember = `c:${ledgerRequestId}`;
   const [allowed, usedValue] = parseClaimResult(
     await redis.eval(
       CLAIM_SCRIPT,
-      [countKey, claimKey],
-      [TRYON_PRODUCT_DAILY_LIMIT, window.resetAt],
+      [quotaKey],
+      [
+        TRYON_PRODUCT_DAILY_LIMIT,
+        window.resetAt,
+        now,
+        Math.min(window.resetAt, now + PROVISIONAL_CLAIM_MS),
+        provisionalMember,
+        committedMember,
+      ],
     ),
   );
   const quota = quotaFor(usedValue, window);
@@ -174,12 +172,26 @@ export async function claimProductDailyQuota(
   return {
     allowed: true,
     quota,
-    commitProviderStarted() {
-      if (!released) committed = true;
+    async commitProviderDispatchAttempted() {
+      if (committed) return;
+      if (released) {
+        throw new Error("TRYON_PRODUCT_DAILY_QUOTA_ALREADY_RELEASED");
+      }
+      const result = Number(
+        await redis.eval(
+          COMMIT_SCRIPT,
+          [quotaKey],
+          [provisionalMember, committedMember, window.resetAt],
+        ),
+      );
+      if (result !== 1) {
+        throw new Error("TRYON_PRODUCT_DAILY_QUOTA_COMMIT_FAILED");
+      }
+      committed = true;
     },
     async releaseBeforeProvider() {
       if (committed || released) return;
-      await redis.eval(RELEASE_SCRIPT, [countKey, claimKey], []);
+      await redis.eval(RELEASE_SCRIPT, [quotaKey], [provisionalMember]);
       released = true;
     },
   };
@@ -187,5 +199,10 @@ export async function claimProductDailyQuota(
 
 export const TRYON_PRODUCT_DAILY_QUOTA_SCRIPTS_FOR_TESTS = Object.freeze({
   claim: CLAIM_SCRIPT,
+  commit: COMMIT_SCRIPT,
   release: RELEASE_SCRIPT,
+});
+
+export const TRYON_PRODUCT_DAILY_QUOTA_POLICY = Object.freeze({
+  provisionalClaimMs: PROVISIONAL_CLAIM_MS,
 });

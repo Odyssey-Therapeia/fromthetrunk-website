@@ -18,15 +18,9 @@ const FETCH_TIMEOUT_MS = 12_000;
 
 export type AuthoritativeTryonProduct = {
   saree: DrapeSaree;
-  references: [{
-    bytes: Uint8Array;
-    mimeType: string;
-    version: string;
-  }, {
-    bytes: Uint8Array;
-    mimeType: string;
-    version: string;
-  }];
+  references:
+    | [LoadedAuthoritativeReference]
+    | [LoadedAuthoritativeReference, LoadedAuthoritativeReference];
 };
 
 export type TryonProductFailure =
@@ -103,7 +97,7 @@ export async function loadAuthoritativeTryonProduct(
     });
     throw new TryonProductError("PRODUCT_REFERENCE_UNAVAILABLE");
   }
-  const selected = [referenceSet.primary, referenceSet.secondary] as const;
+  const selected = referenceSet.references;
   selected.forEach((reference, index) =>
     observeTryonStage(
       "catalogue_reference_selected",
@@ -118,7 +112,6 @@ export async function loadAuthoritativeTryonProduct(
         referencePosition: index + 2,
         referenceVersion: reference.version,
       },
-      "info",
     ),
   );
 
@@ -131,23 +124,21 @@ export async function loadAuthoritativeTryonProduct(
       fetchImpl,
       invocationSignal,
     );
-    const secondary =
-      referenceSet.secondary.url === referenceSet.primary.url &&
-      referenceSet.secondary.version === referenceSet.primary.version
-        ? {
-            bytes: Uint8Array.from(primaryLoaded.bytes),
-            mimeType: primaryLoaded.mimeType,
-            version: primaryLoaded.version,
-          }
-        : await fetchAuthoritativeReference(
-            referenceSet.secondary,
-            3,
-            fetchImpl,
-            invocationSignal,
-          );
+    if (referenceSet.mode === "single") {
+      return {
+        saree: projection.saree,
+        references: [primaryLoaded],
+      };
+    }
+    const detail = await fetchAuthoritativeReference(
+      referenceSet.detail,
+      3,
+      fetchImpl,
+      invocationSignal,
+    );
     return {
       saree: projection.saree,
-      references: [primaryLoaded, secondary],
+      references: [primaryLoaded, detail],
     };
   } catch (error) {
     primaryLoaded?.bytes.fill(0);
@@ -226,7 +217,6 @@ async function fetchAuthoritativeReference(
     observeTryonStage(
       "catalogue_reference_body_verified",
       { actualBytes: bytes.byteLength, referencePosition },
-      "info",
     );
     return { bytes, mimeType, version: reference.version };
   } finally {

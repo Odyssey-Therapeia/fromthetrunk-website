@@ -1,4 +1,4 @@
-export const CLASSIC_NIVI_PROMPT_VERSION = "nivi-v3" as const;
+export const CLASSIC_NIVI_PROMPT_VERSION = "nivi-v4" as const;
 
 export const DRAPE_BACKGROUNDS = [
   "studio",
@@ -9,6 +9,7 @@ export const DRAPE_BACKGROUNDS = [
 ] as const;
 
 export type DrapeBackground = (typeof DRAPE_BACKGROUNDS)[number];
+export type DrapeProductReferenceMode = "single" | "dual";
 
 const BACKGROUND_INSTRUCTIONS: Record<DrapeBackground, string> = {
   studio:
@@ -26,7 +27,8 @@ const BACKGROUND_INSTRUCTIONS: Record<DrapeBackground, string> = {
 const IDENTITY_RULES = [
   "Preserve the subject's face exactly: facial structure, eyes, nose, mouth, eyebrows, expression, and age must remain unmistakably the same person.",
   "Preserve her exact facial skin tone and undertone. Match every generated area of exposed body skin continuously to the face and any other visible skin from IMAGE 1; never lighten, darken, beautify, smooth, or reinterpret her complexion.",
-  "Preserve every body feature, proportion, pose, and camera-perspective cue that is actually visible in IMAGE 1. If the body or lower body is not visible, extend the portrait into a natural, proportional, camera-facing standing body without changing the face; do not claim invented anatomy came from the source.",
+  "Preserve the full-body pose, camera perspective, identity, height, body proportions, build, and stance visible in IMAGE 1.",
+  "Make only minimal arm adjustments when necessary to reveal the saree. Do not change the customer's build, limb proportions, stance, or body shape.",
   "Keep existing visible jewellery, bindi, glasses, and footwear when present unless the saree naturally occludes them. Do not invent accessories.",
 ];
 
@@ -41,7 +43,7 @@ const FABRIC_RULES = [
 const REALISM_RULES = [
   "Render believable pleat depth, fabric tension, gravity, occlusion, and contact shadows where fabric meets the body and floor.",
   "Render natural hands, fingers, arms, and feet with anatomically correct placement and proportions.",
-  "Preserve the subject photo's visible camera perspective; when the source omits the body, extend the composition naturally into a full-length portrait and integrate it into the requested background lighting.",
+  "Preserve IMAGE 1's full-body framing and camera perspective while integrating the person naturally into the requested background lighting.",
   "Produce a single photorealistic, sharp, high-end fashion e-commerce photograph.",
 ];
 
@@ -64,22 +66,42 @@ export function isDrapeBackground(value: unknown): value is DrapeBackground {
   );
 }
 
-/** Fixed prompt: the only variable axis is an allowlisted background. */
-export function buildClassicNiviPrompt(background: DrapeBackground): string {
+/** Fixed prompt: only the allowlisted background and trusted reference shape vary. */
+export function buildClassicNiviPrompt(
+  background: DrapeBackground,
+  referenceMode: DrapeProductReferenceMode,
+): string {
   if (!isDrapeBackground(background)) {
     throw new Error("invalid_drape_background");
   }
+  if (referenceMode !== "single" && referenceMode !== "dual") {
+    throw new Error("invalid_product_reference_mode");
+  }
+
+  const referenceContract =
+    referenceMode === "single"
+      ? [
+          "You are given exactly two reference images in this order:",
+          "- IMAGE 1 is the only human identity, face, skin tone, age, hair, body, height, proportion, and pose source.",
+          "- IMAGE 2 is the sole authoritative textile reference selected from the exact product's gallery. Use only its visible textile, colour, weave, motifs, border, and pallu evidence. Keep any necessary continuation consistent with what is visible; do not invent a conflicting hidden pattern or design.",
+          "- IMAGE 2 is a textile source only. Never copy or blend any model, mannequin, face, skin, body, hair, age, hands, pose, blouse, jewellery, background, accessory, or anatomy from it into the result.",
+          "",
+          "Generate exactly one photorealistic, full-length image of the camera-facing person from IMAGE 1 wearing the exact saree represented by IMAGE 2 in a Classic Nivi drape.",
+        ]
+      : [
+          "You are given exactly three reference images in this order:",
+          "- IMAGE 1 is the only human identity, face, skin tone, age, hair, body, height, proportion, and pose source.",
+          "- IMAGE 2 is the strongest full-look or drape reference selected from the exact product's complete gallery. Use only its textile, colour, weave, motifs, border, and pallu.",
+          "- IMAGE 3 is a complementary detail reference selected from that same exact product gallery. Use it to recover border, pallu, motif, weave, texture, and design details that are clearer there.",
+          "- IMAGE 2 and IMAGE 3 are textile sources only. Never copy or blend any model, mannequin, face, skin, body, hair, age, hands, pose, blouse, jewellery, background, accessory, or anatomy from either product image into the result.",
+          "",
+          "Generate exactly one photorealistic, full-length image of the camera-facing person from IMAGE 1 wearing the exact saree represented jointly by IMAGE 2 and IMAGE 3 in a Classic Nivi drape.",
+        ];
 
   return [
     "You are a virtual try-on engine for an Indian saree label.",
     "",
-    "You are given exactly three reference images in this order:",
-    "- IMAGE 1 is a real customer. Use her visible face as the authoritative identity and skin-tone reference. Other visible body, pose, and camera cues are helpful when present but are optional.",
-    "- IMAGE 2 is the strongest full-look or drape reference selected from the exact product's complete gallery. Use only its textile, colour, weave, motifs, border, and pallu.",
-    "- IMAGE 3 is a complementary detail reference selected from that same exact product gallery. Use it to recover border, pallu, motif, weave, texture, and design details that are clearer there.",
-    "- If IMAGE 2 or IMAGE 3 contains a model, mannequin, hands, face, body, blouse, jewellery, background, or pose, ignore all of those. Both product images are textile sources only. Never copy or blend any human identity, face, skin, body, hair, age, pose, accessory, or anatomy from either product image into the result.",
-    "",
-    "Generate exactly one photorealistic, full-length image of the camera-facing person from IMAGE 1 wearing the exact saree represented jointly by IMAGE 2 and IMAGE 3 in a Classic Nivi drape.",
+    ...referenceContract,
     "",
     "CLASSIC NIVI DRAPE",
     "- Wrap and tuck the saree securely at the waist, form five to seven crisp front knife pleats centred directly below the navel, and let the pleats fall vertically to the floor.",

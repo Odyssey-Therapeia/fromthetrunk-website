@@ -24,20 +24,28 @@ export function deriveTryonIpTag(
   nodeEnv = process.env.NODE_ENV,
 ): string | null {
   if (!validSecret(secret)) return null;
-  const direct = normalizeIp(request.headers.get("x-real-ip"));
-  const fallback =
+  // Vercel overwrites both headers at the trusted platform edge. Production
+  // prefers the documented Vercel chain and permits x-real-ip only as the
+  // platform fallback. Generic XFF is accepted solely for local/test proxies.
+  const vercelForwarded = normalizeIp(
+    request.headers.get("x-vercel-forwarded-for")?.split(",", 1)[0],
+  );
+  const realIp = normalizeIp(request.headers.get("x-real-ip"));
+  const localForwarded =
     nodeEnv === "production"
       ? null
       : normalizeIp(request.headers.get("x-forwarded-for")?.split(",", 1)[0]);
-  const ip = direct ?? fallback;
+  const ip =
+    nodeEnv === "production"
+      ? vercelForwarded ?? realIp
+      : realIp ?? localForwarded;
   return ip ? hmac(secret, "ftt-tryon-ip:v1", ip) : null;
 }
 
 function normalizeIp(value: string | null | undefined): string | null {
   const candidate = value?.trim();
   if (!candidate || candidate.length > 64 || /[\s\0]/.test(candidate)) return null;
-  // Vercel supplies a canonical x-real-ip. This admission guard deliberately
-  // accepts only IP-literal characters and never stores the literal itself.
+  // Accept only IP-literal characters and never store the literal itself.
   return /^[0-9a-f:.]+$/i.test(candidate) ? candidate.toLowerCase() : null;
 }
 
@@ -51,4 +59,3 @@ function hmac(secret: string, domain: string, value: string): string {
     .update(value)
     .digest("base64url");
 }
-

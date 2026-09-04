@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
+import { SiteHeaderCommerceControls } from "@/components/layout/site-header-commerce-controls";
 import { DrapeRoomPhotoMenu } from "@/components/drape-room/drape-room-photo-menu";
 
 const NAV_ITEMS = [
@@ -27,23 +28,6 @@ function AccountIcon() {
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.1" aria-hidden="true">
       <circle cx="12" cy="8" r="3.25" />
       <path d="M5.5 20c1.1-3.6 3.3-5.4 6.5-5.4s5.4 1.8 6.5 5.4" />
-    </svg>
-  );
-}
-
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.1" aria-hidden="true">
-      <path d="M19.5 5.8c-1.8-1.8-4.7-1.6-6.4.4L12 7.5l-1.1-1.3c-1.7-2-4.6-2.2-6.4-.4-1.9 1.9-1.9 5 0 6.9L12 20l7.5-7.3c1.9-1.9 1.9-5 0-6.9Z" />
-    </svg>
-  );
-}
-
-function BagIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.1" aria-hidden="true">
-      <path d="M5 8h14l-1 12H6L5 8Z" />
-      <path d="M9 9V6a3 3 0 0 1 6 0v3" />
     </svg>
   );
 }
@@ -107,8 +91,10 @@ export async function SiteHeaderServer() {
             </details>
             <DrapeRoomPhotoMenu />
             <Link href="/account" prefetch={false} className={iconLinkClass} aria-label="Your account"><AccountIcon /></Link>
-            <Link href="/account/wishlist" prefetch={false} className={`${iconLinkClass} hidden sm:grid`} aria-label="Liked products"><HeartIcon /></Link>
-            <Link href="/cart" prefetch={false} className={iconLinkClass} aria-label="View cart"><BagIcon /></Link>
+            {/* Wishlist + cart are the only header controls that need live client
+                state (counts, and the cart Sheet). They live in one small island
+                so this header stays a server component. */}
+            <SiteHeaderCommerceControls />
 
             <details className="group/menu relative xl:hidden">
               <summary className={`${iconLinkClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`} aria-label="Open menu"><MenuIcon /></summary>
@@ -122,7 +108,14 @@ export async function SiteHeaderServer() {
                   {NAV_ITEMS.map((item) => (
                     <Link key={item.href} href={item.href} prefetch={false} className="rounded-xl px-3 py-2.5 text-base font-medium text-[#601D1C] hover:bg-[#B39152]/10">{item.label}</Link>
                   ))}
-                  <Link href="/account/wishlist" prefetch={false} className="rounded-xl px-3 py-2.5 text-base font-medium text-[#601D1C] hover:bg-[#B39152]/10 sm:hidden">Liked products</Link>
+                  {/* Compact fallback for headers too narrow to carry the heart
+                      icon. Mirrors the icon's own gate in
+                      components/layout/site-header-commerce-controls.tsx
+                      (`hidden min-[375px]:grid`) so exactly one wishlist entry
+                      point is offered at any width — the icon from 375px up,
+                      this link below it. Was `sm:hidden` (640px), which
+                      duplicated the entry point across 375–639px. */}
+                  <Link href="/account/wishlist" prefetch={false} className="rounded-xl px-3 py-2.5 text-base font-medium text-[#601D1C] hover:bg-[#B39152]/10 min-[375px]:hidden">Liked products</Link>
                 </nav>
               </div>
             </details>

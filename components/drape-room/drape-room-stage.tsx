@@ -13,7 +13,6 @@ import type {
   DrapeRoomBackground,
   DrapeRoomConfigStatus,
   DrapeRoomDailyQuota,
-  DrapeRoomGenerationReason,
   DrapeRoomPhotoView,
   PublicTryOnConfig,
 } from "@/lib/drape-room/client/types";
@@ -61,10 +60,7 @@ export interface DrapeRoomStageProps {
   onPhotoSelect: (file: File) => Promise<void>;
   onConsentChange: (accepted: boolean) => void;
   onSelectCachedBackground: (background: DrapeRoomBackground) => void;
-  onGenerate: (
-    reason: DrapeRoomGenerationReason,
-    background: DrapeRoomBackground,
-  ) => DrapeRoomMaybePromise<void>;
+  onGenerate: (background: DrapeRoomBackground) => DrapeRoomMaybePromise<void>;
   onClearLocalData: () => DrapeRoomMaybePromise<void>;
   onSaveResult: (result: DrapeRoomResult) => DrapeRoomMaybePromise<void>;
   onVisitProduct: (product: DrapeSaree) => DrapeRoomMaybePromise<void>;
@@ -108,7 +104,6 @@ export function DrapeRoomStage({
   const consentId = React.useId();
   const [pendingBackground, setPendingBackground] =
     React.useState<DrapeRoomBackground | null>(null);
-  const [confirmRegenerate, setConfirmRegenerate] = React.useState(false);
   const [confirmReplace, setConfirmReplace] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [photoSelectedThisVisit, setPhotoSelectedThisVisit] =
@@ -119,7 +114,6 @@ export function DrapeRoomStage({
   >(null);
   const hasOpenConfirmation =
     pendingBackground !== null ||
-    confirmRegenerate ||
     confirmReplace ||
     confirmClear;
   const confirmationDismissGuard = React.useRef(false);
@@ -202,7 +196,8 @@ export function DrapeRoomStage({
           </DialogTitle>
           <DialogDescription id="drape-room-description" className="sr-only">
             Preview this saree in a fixed Classic Nivi drape. No image is
-            generated until you explicitly choose a paid action.
+            generated until you explicitly create a preview or confirm a new
+            background.
           </DialogDescription>
 
           {!onboardingComplete ? (
@@ -259,7 +254,7 @@ export function DrapeRoomStage({
                       dailyQuota?.remaining === 0
                         ? "You have used today’s three previews for this saree. Your saved images remain available, and you can create more after midnight."
                         : !photoReady
-                          ? "Choose a new photo with one clear visible face before creating another preview."
+                          ? "Choose a clear, full-body photo of one person before creating another preview."
                           : !generationAvailable
                             ? undefined
                             : null
@@ -271,9 +266,6 @@ export function DrapeRoomStage({
                     onBackgroundSelect={requestBackground}
                     onSave={() => void onSaveResult(currentResult)}
                     onVisit={() => void onVisitProduct(product)}
-                    onRegenerate={() => {
-                      if (generationAllowed) setConfirmRegenerate(true);
-                    }}
                   />
                 ) : (
                   <DrapeRoomSetupView
@@ -295,7 +287,7 @@ export function DrapeRoomStage({
                     onPhotoSelect={handlePhoto}
                     onAskReplace={() => setConfirmReplace(true)}
                     onConsentChange={onConsentChange}
-                    onCreate={() => void onGenerate("first-look", "studio")}
+                    onCreate={() => void onGenerate("studio")}
                     onClear={() => setConfirmClear(true)}
                   />
                 )}
@@ -314,36 +306,23 @@ export function DrapeRoomStage({
       <DrapeRoomConfirmationDialog
         open={pendingBackground !== null}
         title={`Create the ${backgroundLabel(pendingBackground ?? "studio")} setting?`}
-        description={`Creating the ${backgroundLabel(pendingBackground ?? "studio")} setting will generate a new AI image. Continue?`}
-        confirmLabel="Continue and generate"
+        description={`This background has not been created for this photo and saree. Creating it uses 1 of your ${dailyQuota?.remaining ?? 3} remaining AI generations today. Your saved ${backgroundLabel(activeBackground)} preview will remain available.`}
+        cancelLabel="Keep current preview"
+        confirmLabel="Use 1 generation"
         isBusy={isGenerating}
         onCancel={() => setPendingBackground(null)}
         onConfirm={() => {
           const background = pendingBackground;
           setPendingBackground(null);
           if (background && generationAllowed) {
-            void onGenerate("background-change", background);
-          }
-        }}
-      />
-      <DrapeRoomConfirmationDialog
-        open={confirmRegenerate}
-        title="Regenerate this preview?"
-        description="Regenerating creates a new AI image and may use another generation. Your current locally saved preview will be replaced for this saree and setting. Continue?"
-        confirmLabel="Regenerate"
-        isBusy={isGenerating}
-        onCancel={() => setConfirmRegenerate(false)}
-        onConfirm={() => {
-          setConfirmRegenerate(false);
-          if (generationAllowed) {
-            void onGenerate("regenerate", activeBackground);
+            void onGenerate(background);
           }
         }}
       />
       <DrapeRoomConfirmationDialog
         open={confirmReplace}
         title="Replace your photo?"
-        description="Changing your photo will make your existing AI drape previews incompatible with the new photo. New previews will need to be generated when you open a saree. Your existing images will not be regenerated automatically."
+        description="Changing your photo will remove the AI previews saved in this browser for the current photo. Nothing will be generated automatically, and your daily generation limit will not reset. After the new photo passes the local check, choose Create preview with new photo to use 1 generation."
         confirmLabel="Choose new photo"
         onCancel={() => setConfirmReplace(false)}
         onConfirm={() => {

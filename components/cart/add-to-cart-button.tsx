@@ -10,6 +10,7 @@ import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
+import { showAddedToCartToast } from "@/lib/cart/reservation-toast";
 import {
   getSelectedSizeLabel,
   normalizeBlouseSize,
@@ -23,7 +24,13 @@ import type { Product, StockStatus } from "@/types/domain";
 
 export type AddToCartProduct = Pick<
   Product,
-  "detailsFabric" | "id" | "name" | "pricePaise" | "slug" | "stockStatus"
+  | "detailsFabric"
+  | "id"
+  | "name"
+  | "originalPricePaise"
+  | "pricePaise"
+  | "slug"
+  | "stockStatus"
 > & {
   imageUrl?: string;
   images?: Product["images"];
@@ -49,6 +56,17 @@ interface AddToCartButtonProps {
   presentation?: "default" | "drape-room";
   className?: string;
   analyticsSource?: string;
+  /**
+   * Fired once, after a reservation succeeds and the line is in the store.
+   *
+   * The cart drawer auto-opens on any increase in cart quantity
+   * (components/cart/cart-drawer.tsx) — one authority, no per-caller wiring.
+   * A caller that is itself an `aria-modal` surface must use this hook to close
+   * ITSELF here, so the bag never opens on top of it and leaves two modals
+   * stacked with the lower one inert. Not fired for a size-only update, which
+   * changes no quantity and therefore opens nothing.
+   */
+  onAdded?: () => void;
 }
 
 const stockLabels: Record<StockStatus, string> = {
@@ -66,6 +84,7 @@ export function AddToCartButton({
   presentation = "default",
   className,
   analyticsSource = "pdp",
+  onAdded,
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
   const existingItem = useCartStore((state) =>
@@ -136,6 +155,7 @@ export function AddToCartButton({
         id: product.id,
         name: product.name,
         price: product.pricePaise / 100,
+        originalPricePaise: product.originalPricePaise ?? null,
         image,
         slug: product.slug,
         detailsFabric: product.detailsFabric ?? null,
@@ -167,11 +187,17 @@ export function AddToCartButton({
         ),
       );
       setAdded(true);
-      toast.success(
-        selectedSize
+      showAddedToCartToast({
+        noun: isBlouse ? "blouse" : "saree",
+        title: selectedSize
           ? `Added to bag, Size ${selectedSize}`
           : `${product.name} added to your bag`,
-      );
+      });
+      // Same batch as addItem above, so a modal caller unmounts in the SAME
+      // commit that raises the cart quantity. The drawer's quantity effect then
+      // opens the bag in the next commit — the two surfaces are never active
+      // together.
+      onAdded?.();
     } finally {
       setIsReserving(false);
     }

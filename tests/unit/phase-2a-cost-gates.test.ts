@@ -64,10 +64,12 @@ describe("Phase 2A cost regression gates", () => {
     const grandfathered = new Set([
       "public/Blouse_size.png",
       "public/banner/collection-banner2.png",
-      "public/banner/newbanner1.png",
-      "public/banner/newbanner2.png",
-      "public/banner/newbanner3.png",
-      "public/banner/newbanner4.png",
+      // public/banner/newbanner{1,2,3,4}.png were replaced by
+      // public/banner/banner{1,2,3,4}.avif (34-137 KB each) and no longer
+      // exist. The assertion below is an exact set equality, so a stale
+      // allowlist entry fails just as loudly as a new oversized PNG — that is
+      // the point of the gate, and removing only the four deleted paths keeps
+      // it intact.
       "public/founder/abraham-founder.png",
       "public/hero/1.png",
       "public/hero/2.png",

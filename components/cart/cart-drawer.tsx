@@ -18,11 +18,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CartDeliveryEstimateCard } from "@/components/cart/cart-delivery-estimate-card";
 import { CartItem } from "@/components/cart/cart-item";
+import { CartSavingsBanner } from "@/components/cart/cart-savings-banner";
+import { CommerceCountBadge } from "@/components/layout/commerce-count-badge";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -36,8 +40,9 @@ import {
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { formatCurrency } from "@/lib/formatters";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { cn } from "@/lib/utils";
 
-export function CartDrawer() {
+export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const previousTotalItems = useRef<number | null>(null);
@@ -46,7 +51,7 @@ export function CartDrawer() {
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
   const removeItem = useCartStore((state) => state.removeItem);
-  const { subtotal, totalItems } = getCartTotals(items);
+  const { savingsPaise, subtotal, totalItems } = getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
   const lastAvailabilityCheckRef = useRef(0);
   const hasReservedCartItem = items.some((item) => Boolean(item.reservedUntil));
@@ -76,22 +81,11 @@ export function CartDrawer() {
         transition: { duration: 0.28, ease: "easeOut" },
       };
 
-  useEffect(() => {
-    const handleCartUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{ quantity?: number }>).detail;
-
-      if ((detail?.quantity ?? 1) > 0) {
-        setNowMs(Date.now());
-        setOpen(true);
-      }
-    };
-
-    window.addEventListener("ftt:cart-updated", handleCartUpdated);
-
-    return () => {
-      window.removeEventListener("ftt:cart-updated", handleCartUpdated);
-    };
-  }, []);
+  // Auto-open has exactly ONE authority: the cart-store total effect below.
+  // The `ftt:cart-updated` event is dispatched only by the product card (it
+  // also drives the fly-to-cart animation), so listening for it here would both
+  // duplicate the open and miss the PDP, blouse, and Drape Room flows. Reading
+  // the store instead covers every add path with no per-caller wiring.
 
   const recheckCartAvailability = useCallback(async () => {
     if (!hasHydrated || items.length === 0) return;
@@ -186,12 +180,16 @@ export function CartDrawer() {
   useEffect(() => {
     if (!hasHydrated) return;
 
+    // First post-hydration pass only records the baseline, so a persisted cart
+    // restored on page load never pops the drawer open.
     if (previousTotalItems.current === null) {
       previousTotalItems.current = totalItems;
       return;
     }
 
+    // Opens on an increase only — removals and re-renders leave it closed.
     if (totalItems > previousTotalItems.current) {
+      setNowMs(Date.now());
       setOpen(true);
     }
 
@@ -202,6 +200,10 @@ export function CartDrawer() {
     !hasHydrated || totalItems === 0
       ? "Your bag is empty"
       : `${totalItems} ${totalItems === 1 ? "piece" : "pieces"} in your bag`;
+  const cartTriggerLabel =
+    hasHydrated && totalItems > 0
+      ? `Open bag, ${totalItems} ${totalItems === 1 ? "item" : "items"}`
+      : "Open bag, empty";
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (nextOpen) {
@@ -220,24 +222,24 @@ export function CartDrawer() {
           : "Your bag is empty"}
       </div>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative rounded-full text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#141D46]"
-          aria-label={`View cart${hasHydrated && totalItems > 0 ? `, ${totalItems} items` : ""}`}
+        {/* A real button, never a link to /cart: opening the bag must not
+            navigate away from the page the customer is shopping. */}
+        <button
+          type="button"
+          className={cn(
+            "relative grid size-11 shrink-0 place-items-center rounded-full text-[#601D1C] transition hover:bg-[#601D1C]/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]",
+            triggerClassName,
+          )}
+          aria-label={cartTriggerLabel}
           data-ftt-cart-target
         >
-          <ShoppingBag className="h-7 w-7" strokeWidth={2.4} />
-          {hasHydrated && totalItems > 0 ? (
-            <span
-              data-ftt-cart-count
-              className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#B39152]/70 bg-[#141D46] px-1 text-[10px] font-medium text-[#FDF7F1]"
-              aria-hidden="true"
-            >
-              {totalItems}
-            </span>
+          <ShoppingBag className="h-7 w-7" strokeWidth={2.1} aria-hidden="true" />
+          {/* data-ftt-cart-count is the animation hook read by
+              components/product/product-card-commerce-row.tsx — keep the name. */}
+          {hasHydrated ? (
+            <CommerceCountBadge count={totalItems} data-ftt-cart-count />
           ) : null}
-        </Button>
+        </button>
       </SheetTrigger>
 
       <SheetContent className="flex w-full flex-col gap-0 border-l border-[#E7DDD4] bg-[#FDF7F1] p-0 text-[#0E0D0E] shadow-[0_24px_80px_rgba(20,29,70,0.22)] sm:max-w-[480px]">
@@ -250,6 +252,10 @@ export function CartDrawer() {
               <SheetTitle className="shrink-0 font-serif text-3xl font-medium leading-none text-[#141D46]">
                 Shopping Bag
               </SheetTitle>
+              <SheetDescription className="sr-only">
+                Review the pieces in your bag, then continue to checkout or open
+                the full bag page.
+              </SheetDescription>
               <div className="flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
                 <span className="rounded-full border border-[#B39152]/45 bg-[#B39152]/10 px-3 py-1 text-xs font-medium text-[#141D46]">
                   {hasHydrated ? itemLabel : "Loading"}
@@ -302,6 +308,10 @@ export function CartDrawer() {
             />
           ) : (
             <div className="space-y-3">
+              {/* Savings sits above the pieces so the markdown is the first
+                  thing read in the bag, never buried under the list. */}
+              <CartSavingsBanner savingsPaise={savingsPaise} variant="drawer" />
+
               <AnimatePresence initial={false}>
                 {items.map((item, index) => (
                   <motion.div
@@ -324,13 +334,15 @@ export function CartDrawer() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+
+              <CartDeliveryEstimateCard variant="drawer" />
             </div>
           )}
         </div>
 
         <motion.div
           {...softEnterMotion}
-          className="border-t border-[#E7DDD4] bg-[#FFFCF8]/95 px-5 py-5 shadow-[0_-18px_50px_rgba(20,29,70,0.08)] backdrop-blur"
+          className="border-t border-[#E7DDD4] bg-[#FFFCF8]/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_50px_rgba(20,29,70,0.08)] backdrop-blur"
         >
           <div className="mb-4 grid grid-cols-3 gap-2">
             <CartPromise icon={<ShieldCheck className="h-3.5 w-3.5" />}>
@@ -350,6 +362,14 @@ export function CartDrawer() {
               {hasHydrated ? formatCurrency(subtotal) : "—"}
             </span>
           </div>
+          {hasHydrated && savingsPaise > 0 ? (
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-[#0F5132]">Savings</span>
+              <span className="font-semibold text-[#0F5132]">
+                -{formatCurrency(savingsPaise / 100)}
+              </span>
+            </div>
+          ) : null}
           <p className="mt-2 text-xs leading-5 text-[#6B625B]">
             Shipping, taxes, and final availability are confirmed at checkout.
           </p>
@@ -373,15 +393,31 @@ export function CartDrawer() {
             </Button>
           )}
 
-          <Button
-            asChild
-            variant="outline"
-            className="mt-3 h-11 w-full rounded-full border-[#B39152]/45 bg-transparent text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#601D1C]"
-          >
-            <Link href="/collection" onClick={() => setOpen(false)}>
-              Continue Shopping
-            </Link>
-          </Button>
+          {/* The drawer is the quick view; the full bag page stays reachable on
+              purpose, just never as the header icon's default action. Both
+              secondary actions share one row so Checkout stays above the fold
+              on a short mobile viewport. */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button
+              asChild
+              variant="outline"
+              className="h-11 w-full rounded-full border-[#B39152]/45 bg-transparent px-2 text-[13px] text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#601D1C]"
+            >
+              <Link href="/cart" onClick={() => setOpen(false)}>
+                View full bag
+              </Link>
+            </Button>
+
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full rounded-full px-2 text-[13px] text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#601D1C]"
+            >
+              <Link href="/collection" onClick={() => setOpen(false)}>
+                Continue shopping
+              </Link>
+            </Button>
+          </div>
         </motion.div>
       </SheetContent>
     </Sheet>

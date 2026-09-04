@@ -22,6 +22,7 @@ const publicConfigSchema = z
     providerDisplayName: z.string().trim().min(1).max(200),
     model: z.string().trim().min(1).max(200),
     promptVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
+    referenceContractVersion: z.literal("gallery-v2"),
     engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
     outputVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/),
     outputMimeType: z.literal("image/jpeg"),
@@ -49,6 +50,7 @@ const generationIdentitySchema = z
     provider: z.enum(["google", "openai"]),
     model: z.string().trim().min(1).max(200),
     promptVersion: z.string().trim().min(1).max(200),
+    referenceContractVersion: z.literal("gallery-v2"),
     engineVersion: z.string().trim().min(1).max(200),
     outputVersion: z.string().trim().min(1).max(200),
     productReferenceVersion: z.string().trim().min(1).max(200),
@@ -125,7 +127,7 @@ export async function fetchPublicTryOnConfig(
   return { config: parsed.data, consentToken };
 }
 
-/** Called only from an explicit Create/background-confirm/Regenerate handler. */
+/** Called only from an explicit Create or confirmed-background handler. */
 export async function generateDrapeRoomImage(
   input: DrapeRoomGenerateInput,
   fetchImpl: typeof fetch = fetch,
@@ -141,17 +143,6 @@ export async function generateDrapeRoomImage(
   form.set("productId", input.product.productId);
   form.set("background", input.background);
   form.set("idempotencyKey", input.idempotencyKey);
-  if (input.regeneration) form.set("regeneration", "true");
-
-  if (process.env.NODE_ENV === "development") {
-    console.info("[FTT Drape Room] generation request started", {
-      background: input.background,
-      photoBytes: input.photo.size,
-      photoMimeType: input.photo.type,
-      productId: input.product.productId,
-      regeneration: input.regeneration,
-    });
-  }
 
   const response = await fetchImpl("/api/tryon/generate", {
     method: "POST",
@@ -254,6 +245,10 @@ function readGenerationIdentity(headers: Headers): DrapeRoomGenerationIdentity {
     provider: requiredHeader(headers, "X-FTT-Tryon-Provider"),
     model: requiredHeader(headers, "X-FTT-Tryon-Model"),
     promptVersion: requiredHeader(headers, "X-FTT-Tryon-Prompt-Version"),
+    referenceContractVersion: requiredHeader(
+      headers,
+      "X-FTT-Tryon-Reference-Contract-Version",
+    ),
     engineVersion: requiredHeader(headers, "X-FTT-Tryon-Engine-Version"),
     outputVersion: requiredHeader(headers, "X-FTT-Tryon-Output-Version"),
     productReferenceVersion: requiredHeader(

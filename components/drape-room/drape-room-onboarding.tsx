@@ -193,7 +193,7 @@ export function DrapeRoomOnboarding({
                             aria-hidden="true"
                           />
                           <p className="mt-3 text-sm font-semibold">
-                            Add one clear photo of your face
+                            Add one clear full-body photo
                           </p>
                         </div>
                       </div>
@@ -221,8 +221,9 @@ export function DrapeRoomOnboarding({
                 }
               >
                 <p>
-                  Use a well-lit photo with one clear visible face. Your body,
-                  pose, framing, and background are optional.
+                  Use a well-lit portrait photo of one person with the complete
+                  head, shoulders, hips, knees, ankles, and feet visible. Keep
+                  the torso clear and avoid crossed arms.
                 </p>
                 <p className="mt-2">
                   Your browser resizes the image and removes EXIF/GPS data.

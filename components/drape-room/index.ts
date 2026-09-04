@@ -17,7 +17,5 @@ export {
 } from "./types";
 export type {
   DrapeRoomBackground,
-  DrapeRoomGenerateRequest,
-  DrapeRoomGenerationReason,
   DrapeRoomResult,
 } from "./types";

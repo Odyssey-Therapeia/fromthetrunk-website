@@ -89,7 +89,7 @@ describe("Drape Room product projection", () => {
     });
     if (projection.eligible) {
       expect(projection.saree.productReferenceVersion).toMatch(
-        /^gallery-v1:22222222-2222-4222-8222-222222222222:22222222-2222-4222-8222-222222222222:[a-f0-9]{16}$/,
+        /^gallery-v2:single:22222222-2222-4222-8222-222222222222:[a-f0-9]{16}$/,
       );
       expect(projection.saree.productReferenceVersion.length).toBeLessThanOrEqual(
         200,
@@ -99,6 +99,9 @@ describe("Drape Room product projection", () => {
           "displayImageUrl",
           "fabric",
           "generationReady",
+          // Public catalogue listing price — carried so the Drape Room's
+          // Add to bag records the same markdown as the PDP.
+          "originalPricePaise",
           "pricePaise",
           "productId",
           "productImageId",
@@ -151,10 +154,187 @@ describe("Drape Room product projection", () => {
         displayImageUrl: approvedUrl,
         generationReady: true,
         productId: product.id,
-        productReferenceVersion: expect.stringMatching(/^gallery-v1:/),
+        productReferenceVersion: expect.stringMatching(/^gallery-v2:single:/),
       }),
     });
     expect(projectDrapeSaree(product).eligible).toBe(true);
+  });
+
+  it("keeps one trusted gallery image in single-reference mode", () => {
+    const references = resolveDrapeProductReferences(makeProduct());
+
+    expect(references?.mode).toBe("single");
+    expect(references?.references).toHaveLength(1);
+  });
+
+  it("uses two safe originals in dual mode without derivatives", () => {
+    const product = makeProduct();
+    const first = product.images[0]!;
+    first.media.derivatives = [];
+    first.media.mimeType = "image/jpeg";
+    first.media.filesize = 1_200_000;
+    first.media.width = 1_200;
+    first.media.height = 1_800;
+    first.media.alt = "Full length front saree look";
+    product.images.push({
+      sortOrder: 1,
+      media: {
+        ...first.media,
+        id: "44444444-4444-4444-8444-444444444444",
+        url: `https://${mediaHost}/media/pallu-detail.jpg`,
+        alt: "Pallu border motif detail",
+        width: 1_400,
+        height: 1_400,
+      },
+    });
+
+    const references = resolveDrapeProductReferences(product);
+
+    expect(references?.mode).toBe("dual");
+    expect(references?.references).toHaveLength(2);
+    expect(
+      references?.references.every((reference) => reference.kind === "source"),
+    ).toBe(true);
+  });
+
+  it("keeps two full-look images single when neither has textile-detail evidence", () => {
+    const product = makeProduct();
+    const first = product.images[0]!;
+    first.media.alt = "Full length front model look";
+    first.media.filename = "full-length-front-look.webp";
+    first.media.key = "media/full-length-front-look.webp";
+    const secondId = "44444444-4444-4444-8444-444444444444";
+    const secondUrl = `https://${mediaHost}/media/derivatives/second-look.webp`;
+    product.images.push({
+      sortOrder: 1,
+      media: {
+        ...first.media,
+        id: secondId,
+        alt: "Full body rear model look",
+        filename: "full-body-rear-look.webp",
+        key: "media/full-body-rear-look.webp",
+        url: secondUrl,
+        derivatives: [
+          {
+            ...first.media.derivatives![0]!,
+            id: "55555555-5555-4555-8555-555555555555",
+            mediaAssetId: secondId,
+            sourceHash: "b".repeat(64),
+            url: secondUrl,
+          },
+        ],
+      },
+    });
+
+    const references = resolveDrapeProductReferences(product);
+
+    expect(references?.mode).toBe("single");
+    expect(references?.references).toHaveLength(1);
+  });
+
+  /**
+   * The reviewed threshold (MIN_COMPLEMENTARY_DETAIL_SCORE) is what stops a
+   * merely-different second image from buying a third provider image on every
+   * generation. These cases pin it from both sides, and pin the vocabulary that
+   * is allowed to qualify an image at all — without them the whole suite still
+   * passes with the threshold set to 0.
+   */
+  describe("complementary detail threshold", () => {
+    const secondId = "44444444-4444-4444-8444-444444444444";
+    const secondUrl = `https://${mediaHost}/media/derivatives/second.webp`;
+
+    const withSecondImage = (
+      alt: string,
+      width: number,
+      height: number,
+      names: { filename?: string; key?: string } = {},
+    ) => {
+      const product = makeProduct();
+      const first = product.images[0]!;
+      first.media.alt = "Full length front model look";
+      first.media.filename = "full-length-front-look.webp";
+      first.media.key = "media/full-length-front-look.webp";
+      product.images.push({
+        sortOrder: 1,
+        media: {
+          ...first.media,
+          id: secondId,
+          alt,
+          filename: names.filename ?? `${alt.replaceAll(" ", "-") || "second"}.webp`,
+          key: names.key ?? `media/${secondId}.webp`,
+          url: secondUrl,
+          width,
+          height,
+          derivatives: [
+            {
+              ...first.media.derivatives![0]!,
+              id: "55555555-5555-4555-8555-555555555555",
+              mediaAssetId: secondId,
+              sourceHash: "b".repeat(64),
+              url: secondUrl,
+              width,
+              height,
+            },
+          ],
+        },
+      });
+      return product;
+    };
+
+    it("stays single for a detail keyword that scores below the threshold", () => {
+      // One strong term, portrait framing (ratio 1.6 falls outside the detail
+      // band), sortOrder 1 -> 35 + 0 + 3 - 1 = 37, under 45.
+      const references = resolveDrapeProductReferences(
+        withSecondImage("Border", 1_000, 1_600),
+      );
+
+      expect(references?.mode).toBe("single");
+      expect(references?.references).toHaveLength(1);
+    });
+
+    it("goes dual once the same evidence clears the threshold", () => {
+      // Same single strong term, but square detail framing and higher
+      // resolution -> 35 + 10 + 3 - 1 = 47, at or above 45.
+      const references = resolveDrapeProductReferences(
+        withSecondImage("Border", 1_600, 1_600),
+      );
+
+      expect(references?.mode).toBe("dual");
+      expect(references?.references).toHaveLength(2);
+      expect(references?.mode === "dual" && references.detail.mediaId).toBe(
+        secondId,
+      );
+    });
+
+    it("does not treat a generic filename or storage key as textile-detail evidence", () => {
+      // "design" / "pattern" appear constantly in exported filenames and object
+      // keys with no textile meaning. Alone they must not buy IMAGE 3.
+      const references = resolveDrapeProductReferences(
+        withSecondImage("", 1_600, 1_600, {
+          filename: "saree-design-2.webp",
+          key: "media/pattern/saree-design-2.webp",
+        }),
+      );
+
+      expect(references?.mode).toBe("single");
+      expect(references?.references).toHaveLength(1);
+    });
+
+    it("does not treat an incidental 'designer' substring as detail evidence", () => {
+      const references = resolveDrapeProductReferences(
+        withSecondImage("Designer patterned studio shot", 1_600, 1_600),
+      );
+
+      expect(references?.mode).toBe("single");
+    });
+
+    it("still goes dual for curated close-up language", () => {
+      const references = resolveDrapeProductReferences(
+        withSecondImage("Pallu zari weave close-up", 1_600, 1_600),
+      );
+
+      expect(references?.mode).toBe("dual");
+    });
   });
 
   it("selects a full-look image and a complementary detail from the complete gallery", () => {
@@ -205,10 +385,11 @@ describe("Drape Room product projection", () => {
 
     const references = resolveDrapeProductReferences(product);
 
+    expect(references?.mode).toBe("dual");
     expect(references?.primary.mediaId).toBe(fullLookId);
-    expect(references?.secondary.mediaId).toBe(detailId);
+    expect(references?.references[1]?.mediaId).toBe(detailId);
     expect(references?.version).toMatch(
-      new RegExp(`^gallery-v1:${fullLookId}:${detailId}:[a-f0-9]{16}$`),
+      new RegExp(`^gallery-v2:dual:${fullLookId}:${detailId}:[a-f0-9]{16}$`),
     );
     expect(projectDrapeSaree(product)).toEqual({
       eligible: true,
@@ -218,6 +399,94 @@ describe("Drape Room product projection", () => {
         productReferenceVersion: references?.version,
       }),
     });
+  });
+
+  it("collapses duplicate media asset IDs to one garment reference", () => {
+    const product = makeProduct();
+    const original = product.images[0]!;
+    const derivative = original.media.derivatives![0]!;
+    const duplicateUrl = `https://${mediaHost}/media/derivatives/duplicate.webp`;
+    product.images = [
+      original,
+      {
+        sortOrder: 1,
+        media: {
+          ...original.media,
+          alt: "Pallu border detail",
+          url: duplicateUrl,
+          derivatives: [
+            {
+              ...derivative,
+              id: "66666666-6666-4666-8666-666666666666",
+              sourceHash: "b".repeat(64),
+              url: duplicateUrl,
+            },
+          ],
+        },
+      },
+    ];
+
+    const references = resolveDrapeProductReferences(product);
+
+    expect(references?.mode).toBe("single");
+    expect(references?.references).toHaveLength(1);
+  });
+
+  it("collapses distinct media rows with the same authoritative source hash", () => {
+    const product = makeProduct();
+    const original = product.images[0]!;
+    const derivative = original.media.derivatives![0]!;
+    const duplicateMediaId = "77777777-7777-4777-8777-777777777777";
+    const duplicateUrl = `https://${mediaHost}/media/derivatives/source-copy.webp`;
+    product.images = [
+      original,
+      {
+        sortOrder: 1,
+        media: {
+          ...original.media,
+          id: duplicateMediaId,
+          alt: "Pallu border detail",
+          url: duplicateUrl,
+          derivatives: [
+            {
+              ...derivative,
+              id: "88888888-8888-4888-8888-888888888888",
+              mediaAssetId: duplicateMediaId,
+              url: duplicateUrl,
+            },
+          ],
+        },
+      },
+    ];
+
+    const references = resolveDrapeProductReferences(product);
+
+    expect(references?.mode).toBe("single");
+    expect(references?.references).toHaveLength(1);
+  });
+
+  it("defensively collapses legacy source rows with the same canonical URL and no hash", () => {
+    const product = makeProduct();
+    const original = product.images[0]!;
+    original.media.derivatives = [];
+    original.media.metadata = null;
+    product.images = [
+      original,
+      {
+        sortOrder: 1,
+        media: {
+          ...original.media,
+          id: "99999999-9999-4999-8999-999999999999",
+          alt: "Legacy pallu detail",
+          metadata: null,
+        },
+      },
+    ];
+
+    const references = resolveDrapeProductReferences(product);
+
+    expect(references?.mode).toBe("single");
+    expect(references?.references).toHaveLength(1);
   });
 
   it("allows a trusted 8.13 MB original and versions it from server-owned metadata", () => {
@@ -233,7 +502,9 @@ describe("Drape Room product projection", () => {
     const projection = projectDrapeSaree(product);
     expect(projection.eligible).toBe(true);
     if (!projection.eligible) throw new Error("expected eligible original");
-    expect(projection.saree.productReferenceVersion).toMatch(/^gallery-v1:/);
+    expect(projection.saree.productReferenceVersion).toMatch(
+      /^gallery-v2:single:/,
+    );
   });
 
   it("does not expose an entry for an unapproved display image", () => {
@@ -256,7 +527,9 @@ describe("Drape Room product projection", () => {
     const projection = projectDrapeSaree(product);
     expect(projection.eligible).toBe(true);
     if (!projection.eligible) throw new Error("expected source fallback");
-    expect(projection.saree.productReferenceVersion).toMatch(/^gallery-v1:/);
+    expect(projection.saree.productReferenceVersion).toMatch(
+      /^gallery-v2:single:/,
+    );
   });
 
   it("uses the next current bounded derivative before considering an original", () => {
@@ -298,6 +571,49 @@ describe("Drape Room product projection", () => {
       saree: expect.objectContaining({
         generationReady: false,
         productId: product.id,
+      }),
+    });
+  });
+
+  it("keeps the trigger visible when a later gallery image is displayable", () => {
+    const product = makeProduct();
+    const leading = product.images[0]!;
+    leading.media.derivatives = [];
+    leading.media.mimeType = "image/jpeg";
+    leading.media.filesize = 16_549_365;
+    leading.media.width = 6_912;
+    leading.media.height = 10_368;
+    leading.media.url = `https://${mediaHost}/media/legacy-leading.jpg`;
+
+    const laterMediaId = "44444444-4444-4444-8444-444444444444";
+    const laterUrl = `https://${mediaHost}/media/legacy-visible.jpg`;
+    product.images.push({
+      sortOrder: 1,
+      media: {
+        ...leading.media,
+        id: laterMediaId,
+        url: laterUrl,
+        filename: "legacy-visible.jpg",
+        key: "media/legacy-visible.jpg",
+        filesize: 11_970_235,
+        width: 5_884,
+        height: 8_237,
+      },
+    });
+
+    expect(resolveDrapeProductReferences(product)).toBeNull();
+    expect(projectDrapeSaree(product)).toEqual({
+      eligible: false,
+      reason: "missing_reference",
+    });
+    expect(projectDrapeRoomEntry(product)).toEqual({
+      eligible: true,
+      saree: expect.objectContaining({
+        displayImageUrl: laterUrl,
+        generationReady: false,
+        productId: product.id,
+        productImageId: laterMediaId,
+        productReferenceVersion: `display-only:${laterMediaId}`,
       }),
     });
   });

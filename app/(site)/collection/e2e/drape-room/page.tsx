@@ -13,6 +13,7 @@ const E2E_SAREE: DrapeSaree = {
   productName: "E2E Classic Nivi Saree",
   fabric: "Silk",
   pricePaise: 125_000,
+  originalPricePaise: 150_000,
   stockStatus: "available",
   displayImageUrl: "/Ftt_logo_navbar.avif",
   productImageId: "22222222-2222-4222-8222-222222222222",

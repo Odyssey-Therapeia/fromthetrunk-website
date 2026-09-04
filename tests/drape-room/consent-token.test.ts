@@ -33,7 +33,7 @@ function enabledConfig(
     FTT_TRYON_MODEL: "gemini-3.1-flash-image",
     FTT_TRYON_MONTHLY_LIMIT_MICRO_USD: "5000000",
     FTT_TRYON_OUTPUT_VERSION: "jpeg-1k-v1",
-    FTT_TRYON_PROMPT_VERSION: "nivi-v3",
+    FTT_TRYON_PROMPT_VERSION: "nivi-v4",
     FTT_TRYON_PROVIDER: "google",
     FTT_TRYON_PROVIDER_TIMEOUT_MS: "210000",
     FTT_TRYON_SESSION_SECRET: secret("session"),
@@ -165,7 +165,8 @@ describe("Drape Room consent token", () => {
       { ...config, model: "gpt-image-2" },
       { ...config, disclosureVersion: "provider-disclosure-v2" },
       { ...config, privacyPolicyVersion: "2026-09-ai-v2" },
-      { ...config, promptVersion: "nivi-v4" },
+      { ...config, promptVersion: "nivi-v5" },
+      { ...config, referenceContractVersion: "gallery-v3" },
       { ...config, engineVersion: "storefront-v2" },
       { ...config, outputVersion: "jpeg-1k-v2" },
       {

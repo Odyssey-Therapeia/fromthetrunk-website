@@ -72,6 +72,7 @@ export interface StoredDrapeRender {
   productSlug: string;
   productName: string;
   productReferenceVersion: string;
+  referenceContractVersion: "gallery-v2";
   drape: typeof DRAPE_ROOM_STYLE;
   background: DrapeRoomBackground;
   provider: DrapeRoomProviderId;
@@ -93,6 +94,7 @@ export interface SaveDrapeRenderInput {
   productSlug: string;
   productName: string;
   productReferenceVersion: string;
+  referenceContractVersion: "gallery-v2";
   background: DrapeRoomBackground;
   provider: DrapeRoomProviderId;
   model: string;
@@ -145,6 +147,7 @@ export interface RenderCacheKeyInput {
   userPhotoDigest: string;
   productId: string;
   productReferenceVersion: string;
+  referenceContractVersion: "gallery-v2";
   background: DrapeRoomBackground;
   provider: string;
   model: string;

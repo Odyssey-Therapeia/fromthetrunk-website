@@ -48,7 +48,7 @@ const PUBLIC_MESSAGES: Record<TryonPublicErrorCode, string> = {
   TRYON_BUDGET_PAUSED: "The Drape Room has reached its current studio limit.",
   PROVIDER_REJECTED: "The AI provider could not use that photo.",
   PROVIDER_TIMEOUT:
-    "The provider did not finish in time. We did not retry automatically, so you are not silently charged for another attempt.",
+    "The provider may have processed this request, but the preview could not be returned. We have not retried automatically. It is conservatively counted in today’s limit.",
   PROVIDER_UNAVAILABLE: "The AI provider is temporarily unavailable.",
   OUTPUT_INVALID: "The generated preview could not be verified.",
   LOCAL_STORAGE_UNAVAILABLE:

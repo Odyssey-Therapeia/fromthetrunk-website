@@ -23,7 +23,6 @@ import {
 import type {
   DrapeRoomBackground,
   DrapeRoomDailyQuota,
-  DrapeRoomGenerationReason,
   PublicTryOnConfig,
 } from "@/lib/drape-room/client/types";
 import type { DrapeSaree } from "@/lib/drape-room/product";
@@ -94,10 +93,7 @@ export function useDrapeRoomGeneration({
   const fail = useDrapeRoomOperationalStore((state) => state.fail);
   const requestInFlight = React.useRef(false);
 
-  const generate = async (
-    reason: DrapeRoomGenerationReason,
-    background: DrapeRoomBackground,
-  ) => {
+  const generate = async (background: DrapeRoomBackground) => {
     let refreshConsentConfig = false;
     if (requestInFlight.current || phase === "generating") return;
     if (
@@ -118,7 +114,7 @@ export function useDrapeRoomGeneration({
       photo.readiness.policyVersion !== PHOTO_READINESS_POLICY_VERSION
     ) {
       setErrorMessage(
-        "Choose a new photo with one clear visible face before generating.",
+        "Choose a clear, full-body photo of one person before generating.",
       );
       return;
     }
@@ -175,7 +171,6 @@ export function useDrapeRoomGeneration({
         product,
         background,
         idempotencyKey,
-        regeneration: reason === "regenerate",
       });
       onDailyQuota(requestProductId, generated.dailyQuota);
       assertAuthoritativeDrapeRoomIdentity(config, generated.identity);
@@ -192,6 +187,7 @@ export function useDrapeRoomGeneration({
         userPhotoDigest: requestPhotoDigest,
         productId: product.productId,
         productReferenceVersion: generated.identity.productReferenceVersion,
+        referenceContractVersion: generated.identity.referenceContractVersion,
         background,
         provider: generated.identity.provider,
         model: generated.identity.model,
@@ -213,6 +209,7 @@ export function useDrapeRoomGeneration({
         productSlug: product.productSlug,
         productName: product.productName,
         productReferenceVersion: generated.identity.productReferenceVersion,
+        referenceContractVersion: generated.identity.referenceContractVersion,
         background,
         provider: generated.identity.provider,
         model: generated.identity.model,
@@ -266,7 +263,7 @@ export function useDrapeRoomGeneration({
           ? error.message
           : "The Drape Room could not create this preview. Your current image was kept.",
       );
-      // Existing result remains untouched, including on failed regeneration.
+      // Existing results remain untouched when a new background fails.
     } finally {
       requestInFlight.current = false;
       setActiveRequestId(null);

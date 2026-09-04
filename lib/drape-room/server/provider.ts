@@ -1,13 +1,19 @@
 export const IMAGE_PROVIDER_MODELS = {
   google: {
     model: "gemini-3.1-flash-image",
-    conservativeEstimateMicroUsd: 100_000,
-    pricingVersion: "google-1k-ceiling-2026-08-v2",
+    /** Two-reference operational reserve; not a provider billing maximum. */
+    baseReservationMicroUsd: 100_000,
+    additionalReferenceReservationMicroUsd: 560,
+    reservationVersion:
+      "google-gemini-3.1-flash-image-1k-operational-reserve-2026-09-v1",
   },
   openai: {
     model: "gpt-image-2",
-    conservativeEstimateMicroUsd: 200_000,
-    pricingVersion: "openai-1k-ceiling-2026-08-v1",
+    /** Two-reference operational reserve; not a provider billing maximum. */
+    baseReservationMicroUsd: 200_000,
+    additionalReferenceReservationMicroUsd: 20_000,
+    reservationVersion:
+      "openai-gpt-image-2-medium-1024x1536-operational-reserve-2026-09-v1",
   },
 } as const;
 
@@ -33,12 +39,19 @@ export type BinaryImage = {
   mimeType: SupportedImageMimeType;
 };
 
+export type TryOnGarmentReferences =
+  | [BinaryImage]
+  | [BinaryImage, BinaryImage];
+
+/** Person plus one or two product references. */
+export type TryOnReferenceCount = 2 | 3;
+
 export type TryOnGenerationInput = {
   model: string;
   prompt: string;
   person: BinaryImage;
-  /** IMAGE 2 full-look reference, then IMAGE 3 complementary textile detail. */
-  garments: [BinaryImage, BinaryImage];
+  /** IMAGE 2 sole/full-look reference, optionally followed by IMAGE 3 detail. */
+  garments: TryOnGarmentReferences;
   aspectRatio: "3:4";
   imageSize: "1K";
   signal: AbortSignal;
@@ -57,6 +70,13 @@ export type TryOnGenerationResult = {
   servedModel: string;
   usage: TryOnProviderUsage;
   latencyMs: number;
+};
+
+export type TryOnCostReservation = {
+  /** Admission reserve, not a provider invoice or guaranteed provider maximum. */
+  basis: "operational_reserve";
+  microUsd: number;
+  reservationVersion: string;
 };
 
 export type ProviderDisclosure = {
@@ -89,15 +109,11 @@ export interface TryOnImageProvider {
   readonly disclosure: ProviderDisclosure;
   supportsModel(model: string): boolean;
   generate(input: TryOnGenerationInput): Promise<TryOnGenerationResult>;
-  estimateMaximumCost(input: {
+  estimateCostReservation(input: {
     model: string;
-    referenceCount: 3;
+    referenceCount: TryOnReferenceCount;
     imageSize: "1K";
-  }): {
-    microUsd: number;
-    conservative: true;
-    pricingVersion: string;
-  };
+  }): TryOnCostReservation;
 }
 
 export type DrapeProviderErrorCode =
@@ -164,18 +180,37 @@ export function isAllowedProviderModelPair(
   );
 }
 
-export function estimateProviderMaximumCost(
+/**
+ * Returns the amount temporarily reserved by admission controls.
+ *
+ * The Google third-reference increment is the published 1,120 image-input
+ * tokens at $0.50/M tokens: 560 microUSD. OpenAI does not publish a static
+ * GPT Image 2 edit-input formula, so its $0.02 increment is an explicitly
+ * operational margin (2,500 input tokens at the current $8/M image rate),
+ * not a claim about exact or maximum provider billing.
+ */
+export function estimateProviderCostReservation(
   provider: ImageProviderId,
   model: string,
-): { microUsd: number; conservative: true; pricingVersion: string } {
+  referenceCount: TryOnReferenceCount,
+): TryOnCostReservation {
   if (!isAllowedProviderModelPair(provider, model)) {
     throw new DrapeProviderError("model_not_found", 500);
   }
+  if (referenceCount !== 2 && referenceCount !== 3) {
+    throw new DrapeProviderError("invalid_request", 500);
+  }
   const entry = IMAGE_PROVIDER_MODELS[provider];
+  const microUsd =
+    entry.baseReservationMicroUsd +
+    (referenceCount - 2) * entry.additionalReferenceReservationMicroUsd;
+  if (!Number.isSafeInteger(microUsd) || microUsd <= 0) {
+    throw new DrapeProviderError("invalid_request", 500);
+  }
   return {
-    conservative: true,
-    microUsd: entry.conservativeEstimateMicroUsd,
-    pricingVersion: entry.pricingVersion,
+    basis: "operational_reserve",
+    microUsd,
+    reservationVersion: entry.reservationVersion,
   };
 }
 

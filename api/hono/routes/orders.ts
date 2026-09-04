@@ -159,6 +159,8 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
         ? await db
             .select({
               id: products.id,
+              pricePaise: products.pricePaise,
+              originalPricePaise: products.originalPricePaise,
               slug: products.slug,
               stockStatus: products.stockStatus,
               reservedUntil: products.reservedUntil,
@@ -180,7 +182,18 @@ export const registerOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
           productId: item.productId,
           slug: product?.slug ?? null,
           name: item.name,
-          pricePaise: item.pricePaise,
+          // Reordering re-buys the piece at TODAY's catalogue price: checkout
+          // re-prices server-side from products.price_paise
+          // (api/hono/routes/payments.ts), so the bag must not show the frozen
+          // order-item price. Both halves of the savings pair come from the same
+          // current row — mixing the historic charged price with the current
+          // list price overstates the saving and disagrees with what is charged.
+          // The order-item price stays the fallback for a product row that no
+          // longer exists, which `available` already gates off.
+          pricePaise: product?.pricePaise ?? item.pricePaise,
+          // Optional and never invented: absent stays null so the cart renders
+          // no savings rather than a fabricated one.
+          originalPricePaise: product?.originalPricePaise ?? null,
           image: item.imageUrl ?? null,
           selectedOptions: item.selectedOptions ?? {},
           // Only offer pieces we can actually add to the cart (still buyable + have a slug).

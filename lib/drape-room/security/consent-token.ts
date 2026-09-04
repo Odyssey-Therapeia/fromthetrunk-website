@@ -20,6 +20,7 @@ export type TryonConsentIdentity = {
   disclosureVersion: string;
   privacyPolicyVersion: string;
   promptVersion: string;
+  referenceContractVersion: string;
   engineVersion: string;
   outputVersion: string;
   disclosure: {
@@ -162,6 +163,7 @@ function serializeIdentity(config: TryonConsentIdentity): string | null {
     config.disclosureVersion,
     config.privacyPolicyVersion,
     config.promptVersion,
+    config.referenceContractVersion,
     config.engineVersion,
     config.outputVersion,
     config.disclosure.providerDisplayName,

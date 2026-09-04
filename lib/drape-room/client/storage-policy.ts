@@ -63,6 +63,10 @@ export async function createRenderCacheKey(
       input.productReferenceVersion,
       "product reference version",
     ),
+    normalizeCacheKeyPart(
+      input.referenceContractVersion,
+      "reference contract version",
+    ),
     DRAPE_ROOM_STYLE,
     input.background,
     normalizeCacheKeyPart(input.provider, "provider"),
@@ -117,6 +121,7 @@ export function createRenderRecord(
       input.productReferenceVersion,
       "product reference version",
     ),
+    referenceContractVersion: input.referenceContractVersion,
     drape: DRAPE_ROOM_STYLE,
     background: input.background,
     provider: normalizeProvider(input.provider),
@@ -168,6 +173,9 @@ export function assertRenderInput(input: SaveDrapeRenderInput): void {
     input.productReferenceVersion,
     "product reference version",
   );
+  if (input.referenceContractVersion !== "gallery-v2") {
+    throw new Error("The reference contract version is invalid.");
+  }
   if (!isDrapeRoomBackground(input.background)) {
     throw new Error("The render background is invalid.");
   }
@@ -241,6 +249,7 @@ export function isStoredRender(value: unknown): value is StoredDrapeRender {
     record.productName.length > 0 &&
     typeof record.productReferenceVersion === "string" &&
     record.productReferenceVersion.length > 0 &&
+    record.referenceContractVersion === "gallery-v2" &&
     record.drape === DRAPE_ROOM_STYLE &&
     isDrapeRoomBackground(record.background) &&
     (record.provider === "google" || record.provider === "openai") &&

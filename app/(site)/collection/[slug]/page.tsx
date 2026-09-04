@@ -16,12 +16,14 @@ import {
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { getDisplayOriginalPricePaise } from "@/lib/cart/cart-totals";
 import { BlousePurchaseControls } from "@/components/product/blouse-purchase-controls";
 import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
-import { RestockNotifyButton } from "@/components/product/restock-notify-button";
+// Parked alongside the commented-out usage below.
+// import { RestockNotifyButton } from "@/components/product/restock-notify-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -166,6 +168,11 @@ export default async function SareePage({ params }: ProductPageProps) {
     stockStatus: product.stockStatus,
   });
   const drapeSaree = projectDrapeRoomEntry(product);
+  // Only advertise a markdown the cart will actually credit.
+  const displayOriginalPricePaise = getDisplayOriginalPricePaise(
+    product.pricePaise,
+    product.originalPricePaise,
+  );
 
   const displayDetails = getProductDisplayDetails(product);
   const fabricLanding = getFabricLandingForLabel(displayDetails.fabric);
@@ -292,9 +299,11 @@ export default async function SareePage({ params }: ProductPageProps) {
                 <span className="text-2xl font-semibold text-[#141D46]">
                   {formatCurrency(product.pricePaise / 100)}
                 </span>
-                {product.originalPricePaise ? (
+                {/* Only show a struck-through price when it is a real markdown —
+                    the same rule the cart savings banner applies. */}
+                {displayOriginalPricePaise !== null ? (
                   <span className="pb-0.5 text-sm text-[#601D1C]/45 line-through">
-                    {formatCurrency(product.originalPricePaise / 100)}
+                    {formatCurrency(displayOriginalPricePaise / 100)}
                   </span>
                 ) : null}
                 {product.storyEra ? (
@@ -378,10 +387,17 @@ export default async function SareePage({ params }: ProductPageProps) {
                         ? "This piece has found its next wardrobe."
                         : "This piece is currently reserved by another buyer."}
                     </p>
+                    {/* Restock notify is parked. The button captured an email
+                        into restock_notify_requests, but nothing ever reads that
+                        table — no cron, no sender — so it promised "we'll let
+                        you know" and then told nobody. Left commented rather
+                        than deleted: the endpoint, table and component all still
+                        exist, so re-enabling is just uncommenting this once a
+                        sender is built.
                     <RestockNotifyButton
                       productId={product.id}
                       productName={product.name}
-                    />
+                    /> */}
                   </div>
                 )}
               </div>

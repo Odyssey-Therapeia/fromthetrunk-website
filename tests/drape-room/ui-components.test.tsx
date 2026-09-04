@@ -64,14 +64,13 @@ describe("Drape Room UI contracts", () => {
     ]);
   });
 
-  it("renders exactly four primary controls plus separate Regenerate", () => {
+  it("renders exactly four primary controls with no general regenerate action", () => {
     const html = renderToStaticMarkup(
       <DrapeRoomResultActions
         onSave={vi.fn()}
         onVisitProduct={vi.fn()}
         onWishlist={vi.fn()}
         onAddToCart={vi.fn()}
-        onRegenerate={vi.fn()}
       />,
     );
     expect(html.match(/data-drape-primary-action=/g)).toHaveLength(4);
@@ -81,7 +80,8 @@ describe("Drape Room UI contracts", () => {
     expect(html).toContain(">Visit product</span>");
     expect(html).toContain(">Wishlist</span>");
     expect(html).toContain(">Add to bag</span>");
-    expect(html.match(/data-drape-regenerate/g)).toHaveLength(1);
+    expect(html).not.toContain("data-drape-regenerate");
+    expect(html).not.toContain("Regenerate preview");
     expect(html).not.toContain("Share");
     expect(html).toContain("auto-rows-fr");
     expect(html.match(/flex h-full min-w-0/g)).toHaveLength(4);
@@ -105,7 +105,7 @@ describe("Drape Room UI contracts", () => {
     expect(html).not.toContain("<a");
   });
 
-  it("keeps all three generation calls behind explicit click/confirm handlers", () => {
+  it("keeps both generation calls behind explicit create or confirm handlers", () => {
     const stageSource = readFileSync(
       join(process.cwd(), "components/drape-room/drape-room-stage.tsx"),
       "utf8",
@@ -122,10 +122,10 @@ describe("Drape Room UI contracts", () => {
       join(process.cwd(), "components/drape-room/drape-room-setup-view.tsx"),
       "utf8",
     );
-    expect(stageSource.match(/void onGenerate\(/g)).toHaveLength(3);
-    expect(stageSource).toContain('onCreate={() => void onGenerate("first-look", "studio")}');
-    expect(stageSource).toContain('void onGenerate("background-change", background)');
-    expect(stageSource).toContain('void onGenerate("regenerate", activeBackground)');
+    expect(stageSource.match(/void onGenerate\(/g)).toHaveLength(2);
+    expect(stageSource).toContain('onCreate={() => void onGenerate("studio")}');
+    expect(stageSource).toContain("void onGenerate(background)");
+    expect(stageSource).not.toContain("regenerate");
     expect(generationSource.match(/transport\.generate\(/g)).toHaveLength(1);
     expect(generationSource).toContain("consentToken,");
     expect(generationSource).toContain('if (code === "CONSENT_REQUIRED")');
@@ -135,6 +135,12 @@ describe("Drape Room UI contracts", () => {
     expect(generationSource.indexOf("if (!cacheLookupReady)")).toBeLessThan(
       generationSource.indexOf("transport.generate("),
     );
+    expect(generationSource).toContain(
+      "photo.readiness.policyVersion !== PHOTO_READINESS_POLICY_VERSION",
+    );
+    expect(
+      generationSource.indexOf("photo.readiness?.state !== \"ready\""),
+    ).toBeLessThan(generationSource.indexOf("transport.generate("));
     expect(setupSource).toContain("isCacheChecking");
     expect(setupSource).toContain("Checking saved previews…");
     expect(hostSource).toContain("ssr: false");
@@ -142,6 +148,8 @@ describe("Drape Room UI contracts", () => {
     expect(hostSource).toContain("setActivated(true)");
     expect(hostSource).toContain("state.selectedSaree");
     expect(hostSource).not.toContain(".generate(");
+    expect(hostSource).not.toContain("@mediapipe/tasks-vision");
+    expect(hostSource).not.toContain("photo-readiness-mediapipe");
     expect(hostSource).toContain('import("./drape-room-commerce-shell")');
     expect(hostSource).not.toContain("drape-room-readiness-dialog");
     expect(hostSource).toContain("setUiAvailability(true)");
@@ -195,6 +203,9 @@ describe("Drape Room UI contracts", () => {
     expect(shellSource).toContain("lg:max-w-[54rem]");
     expect(shellSource).not.toContain("h-[96dvh]");
     expect(onboardingSource).toContain("@sm:pr-16");
+    expect(experienceSource).toContain(
+      'import("@/lib/drape-room/client/photo-readiness-mediapipe")',
+    );
   });
 
   it("keeps the navbar replacement input mounted outside its popover portal", () => {
@@ -268,7 +279,7 @@ describe("Drape Room UI contracts", () => {
     );
     expect(catchBlock).not.toContain("setResults(");
     expect(catchBlock).not.toContain("deleteRender(");
-    expect(source).toContain("Existing result remains untouched");
+    expect(source).toContain("Existing results remain untouched");
   });
 
   it("keeps the full setup visible and fail-closed without provider config", () => {
@@ -327,6 +338,7 @@ describe("Drape Room UI contracts", () => {
           userPhotoDigest: "a".repeat(64),
           productId: product.productId,
           productReferenceVersion: product.productReferenceVersion,
+          referenceContractVersion: "gallery-v2",
           background: "studio",
           provider: "google",
           model: "image-model-v1",
@@ -351,7 +363,6 @@ describe("Drape Room UI contracts", () => {
         onBackgroundSelect={vi.fn()}
         onSave={vi.fn()}
         onVisit={vi.fn()}
-        onRegenerate={vi.fn()}
       />,
     );
 
@@ -361,13 +372,56 @@ describe("Drape Room UI contracts", () => {
       )?.[0] ?? "";
     expect(html.match(/data-drape-primary-action=/g)).toHaveLength(4);
     expect(html).toContain("used today’s three previews for this saree");
-    expect(html).toContain("Daily limit reached · available tomorrow");
+    expect(html).toContain(
+      "Daily limit reached. Saved backgrounds remain free to view.",
+    );
+    expect(html).toContain("Saved · Opens free");
+    expect(html).toContain("Create · Daily limit reached");
     expect(backgroundTag("festival")).not.toContain(' disabled=""');
     expect(backgroundTag("wedding")).toContain(' disabled=""');
-    expect(html).toMatch(/data-drape-regenerate[^>]*disabled=""/);
+    expect(html).not.toContain("data-drape-regenerate");
     const actionTiles = html.match(/<button[^>]*data-drape-action-tile[^>]*>/g) ?? [];
     expect(actionTiles).toHaveLength(4);
     expect(actionTiles.every((tag) => !tag.includes('disabled=""'))).toBe(true);
+  });
+
+  it("marks cached backgrounds as free and uncached backgrounds as one generation", () => {
+    const html = renderToStaticMarkup(
+      <DrapeRoomResultView
+        product={product}
+        result={{
+          cacheKey: `tryon:${"b".repeat(64)}`,
+          blob: new Blob(["cached"], { type: "image/jpeg" }),
+          previewUrl: "blob:cached-result",
+          userPhotoDigest: "a".repeat(64),
+          productId: product.productId,
+          productReferenceVersion: product.productReferenceVersion,
+          referenceContractVersion: "gallery-v2",
+          background: "studio",
+          provider: "google",
+          model: "image-model-v1",
+          promptVersion: "prompt-v1",
+          engineVersion: "engine-v1",
+          outputVersion: "output-v1",
+          createdAt: 2,
+        }}
+        activeBackground="studio"
+        cachedBackgrounds={new Set(["studio", "festival"])}
+        generationAvailable
+        remainingGenerations={2}
+        isGenerating={false}
+        isCacheChecking={false}
+        onBackgroundSelect={vi.fn()}
+        onSave={vi.fn()}
+        onVisit={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Saved backgrounds open instantly and use no AI generation.");
+    expect(html).toContain("2 generations left today.");
+    expect(html).toContain("Current · Saved");
+    expect(html).toContain("Saved · Opens free");
+    expect(html.match(/Create · Uses 1 generation/g)).toHaveLength(3);
   });
 
   it("defers the welcome popup while Drape Room owns the modal layer", () => {

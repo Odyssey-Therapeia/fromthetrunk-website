@@ -12,6 +12,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
+import { showAddedToCartToast } from "@/lib/cart/reservation-toast";
 import { trackWebsiteMetric } from "@/lib/analytics/client";
 import { buildAddToCartEvent } from "@/lib/analytics/ga4-ecommerce";
 import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
@@ -80,6 +81,7 @@ export function ProductCardCommerceRow({
   const hasCartItem = useCartStore((store) => store.hasItem(product.id));
   const inCart = hasMounted && hasHydrated && hasCartItem;
   const isBlouse = isBlouseProduct(product);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const resetTimerRef = useRef<number | null>(null);
   const labelRef = useRef(compactLabel);
@@ -98,6 +100,22 @@ export function ProductCardCommerceRow({
   useEffect(() => {
     labelRef.current = label;
   }, [label]);
+
+  /**
+   * `data-ftt-cart-border` is set imperatively during the add animation, but the
+   * card's steady "in bag" glow comes from `data-ftt-in-bag`, which
+   * product-card.tsx renders straight from the cart store. If the piece leaves
+   * the bag from anywhere else — the drawer, the cart page, an expired
+   * reservation, another tab — React drops its own attribute while the
+   * imperative one lingers and the border keeps orbiting. Clearing it here makes
+   * the animation state follow the store from every surface.
+   */
+  useEffect(() => {
+    if (inCart || state !== "idle") return;
+
+    const card = rowRef.current?.closest<HTMLElement>("[data-ftt-product-card]");
+    card?.removeAttribute("data-ftt-cart-border");
+  }, [inCart, state]);
 
   const stockText = String(product.status ?? product.stockStatus ?? "")
     .trim()
@@ -217,6 +235,7 @@ export function ProductCardCommerceRow({
         id: product.id,
         name: product.name,
         price: product.pricePaise / 100,
+        originalPricePaise: product.originalPricePaise ?? null,
         image: resolvePrimaryCurrentProductImage(product, "card").image?.url ?? "",
         slug: product.slug,
         detailsFabric: product.detailsFabric ?? null,
@@ -251,12 +270,20 @@ export function ProductCardCommerceRow({
       const cartTarget = getCartTarget();
       if (cartTarget) pulseCartTarget(cartTarget);
 
+      showAddedToCartToast({
+        noun: isBlouse ? "blouse" : "saree",
+        title: `${product.name} added to your bag`,
+      });
+
       setState("added");
       setMotionLabel("In bag");
       sourceCard?.setAttribute("data-ftt-cart-border", "added");
 
       resetTimerRef.current = window.setTimeout(() => {
         setState("idle");
+        // The flash is done; data-ftt-in-bag keeps the border lit from here, so
+        // the imperative attribute must not stay behind and outlive the item.
+        sourceCard?.removeAttribute("data-ftt-cart-border");
       }, ADDED_HOLD_MS);
     } catch (error) {
       sourceCard?.setAttribute("data-ftt-cart-border", "error");
@@ -324,6 +351,7 @@ export function ProductCardCommerceRow({
 
   return (
     <div
+      ref={rowRef}
       className={cn(
         "mt-3 flex min-h-12 min-w-0 items-center justify-between gap-2 border-t border-[#E7DDD4]/80 pt-3 @sm:min-h-13 @sm:gap-2.5",
         className,

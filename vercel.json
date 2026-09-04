@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tryon-reconcile",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -265,7 +265,7 @@ export function DrapeRoomExperience({
         if (!active) throw new Error("photo_readiness_cancelled");
         setIsPhotoBusy(true);
         setErrorMessage(null);
-        setDrapeRoomProgressMessage("Checking your face locally…");
+        setDrapeRoomProgressMessage("Checking your full-body framing locally…");
         return import("@/lib/drape-room/client/photo-readiness-mediapipe");
       })
       .then(({ analyzePhotoReadiness }) => analyzePhotoReadiness(currentPhoto.blob))
@@ -291,7 +291,7 @@ export function DrapeRoomExperience({
         setDrapeRoomProgressMessage(null);
         installPhoto(updated);
         if (readiness.ready) {
-          setStatusMessage("Face checked locally and ready.");
+          setStatusMessage("Full-body photo checked locally and ready.");
         } else {
           setErrorMessage(readiness.message);
         }
@@ -299,7 +299,7 @@ export function DrapeRoomExperience({
       .catch(() => {
         if (!active) return;
         setErrorMessage(
-          "This browser could not check that your face is clearly visible. Choose a new photo or try a current Chrome or Safari browser.",
+          "This browser could not check your full-body photo. Choose a new photo or try a current Chrome or Safari browser.",
         );
       })
       .finally(() => {
@@ -464,7 +464,7 @@ export function DrapeRoomExperience({
             photoPreparation.current === controller
           ) {
             setDrapeRoomProgressMessage(
-              "Checking your face locally…",
+              "Checking your full-body framing locally…",
             );
           }
         },
@@ -584,12 +584,23 @@ export function DrapeRoomExperience({
             name: product.productName,
             slug: product.productSlug,
             pricePaise: product.pricePaise,
+            originalPricePaise: product.originalPricePaise ?? null,
             detailsFabric: product.fabric,
             stockStatus: product.stockStatus,
             imageUrl: product.displayImageUrl,
           }}
           presentation="drape-room"
           analyticsSource="drape-room"
+          // Drape Room -> Add to cart -> Drape Room closes -> Shopping Bag
+          // opens. The bag auto-opens on any cart-quantity increase, so without
+          // this the Sheet would mount on top of this still-open dialog: two
+          // aria-modal surfaces, with the Drape Room subtree left inert and
+          // unreachable by assistive technology.
+          //
+          // close() rather than handleClose(): the bag takes focus next, so the
+          // trigger-focus restore in handleClose would fight it. The generated
+          // preview stays in IndexedDB and reopens free from the AI-star.
+          onAdded={close}
         />
       }
       onOpenChange={(nextOpen) => {

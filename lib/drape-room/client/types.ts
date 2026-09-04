@@ -19,6 +19,7 @@ export interface PublicTryOnConfig {
   providerDisplayName: string;
   model: string;
   promptVersion: string;
+  referenceContractVersion: "gallery-v2";
   engineVersion: string;
   outputVersion: string;
   outputMimeType: "image/jpeg";
@@ -55,11 +56,6 @@ export interface DrapeRoomAvailability {
   consentToken: string | null;
 }
 
-export type DrapeRoomGenerationReason =
-  | "first-look"
-  | "background-change"
-  | "regenerate";
-
 export interface DrapeRoomPhotoView {
   digest: string;
   previewUrl: string;
@@ -83,7 +79,6 @@ export interface DrapeRoomGenerateInput {
   product: DrapeSaree;
   background: DrapeRoomBackground;
   idempotencyKey: string;
-  regeneration: boolean;
 }
 
 export interface DrapeRoomGenerationIdentity {
@@ -91,6 +86,7 @@ export interface DrapeRoomGenerationIdentity {
   provider: DrapeRoomProviderId;
   model: string;
   promptVersion: string;
+  referenceContractVersion: "gallery-v2";
   engineVersion: string;
   outputVersion: string;
   productReferenceVersion: string;

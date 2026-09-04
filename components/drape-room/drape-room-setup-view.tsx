@@ -75,7 +75,6 @@ export function DrapeRoomSetupView({
                 src={product.displayImageUrl}
                 alt={product.productName}
                 fill
-                unoptimized
                 sizes="(min-width:768px) 15rem, 46vw"
                 className="object-cover"
               />
@@ -144,7 +143,7 @@ export function DrapeRoomSetupView({
             </label>
           )}
           <p className="text-[11px] leading-4 text-ftt-burgundy/60">
-            One clear visible face · body optional · max 15 MB
+            One person · full body and face visible · max 15 MB
           </p>
         </div>
       </div>
@@ -217,7 +216,7 @@ export function DrapeRoomSetupView({
               ? "You have used today’s three previews for this saree. Your saved images remain available, and you can create more after midnight."
               : subjectPhoto && !photoReady
               ? isPhotoBusy
-                ? "Checking your face locally. Your photo has not been sent."
+                ? "Checking your full-body framing locally. Your photo has not been sent."
                 : "Choose a clear photo containing one visible face. Your body and pose are optional."
               : configStatus === "ready" && config
               ? "New AI generation is temporarily unavailable while this saree’s secure reference is completed. Your photo has not been sent."
@@ -251,7 +250,7 @@ export function DrapeRoomSetupView({
             : isCacheChecking
               ? "Checking saved previews…"
               : photoSelectedThisVisit
-                ? "Use photo and generate"
+                ? "Create preview with new photo"
               : remainingGenerations === 0
                 ? "Daily limit reached"
                 : "Create my drape"}

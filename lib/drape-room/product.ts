@@ -20,6 +20,7 @@ import {
   MAX_TRYON_IMAGE_EDGE,
   MAX_TRYON_IMAGE_PIXELS,
 } from "@/lib/drape-room/server/image-limits";
+import { DRAPE_REFERENCE_CONTRACT_VERSION } from "@/lib/drape-room/reference-contract";
 
 export type DrapeSaree = {
   productId: string;
@@ -27,6 +28,12 @@ export type DrapeSaree = {
   productName: string;
   fabric: string | null;
   pricePaise: number;
+  /**
+   * Catalogue listing price before markdown, in paise. Optional so previously
+   * cached Drape Room renders deserialise unchanged; the live selection always
+   * carries it because it is projected fresh from the product row.
+   */
+  originalPricePaise?: null | number;
   stockStatus: StockStatus;
   displayImageUrl: string;
   productImageId: string;
@@ -54,19 +61,35 @@ export type DrapeProductReferenceSource = {
   kind: "derivative" | "source";
   mediaId: string;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
+  /** SHA-256 identity of the authoritative source bytes, when available. */
+  sourceHash: string | null;
   url: string;
   version: string;
   width: number;
 };
 
-export type DrapeProductReferenceSet = {
-  /** IMAGE 2: strongest available drape / full-look reference. */
-  primary: DrapeProductReferenceSource;
-  /** IMAGE 3: strongest complementary textile-detail reference. */
-  secondary: DrapeProductReferenceSource;
-  /** Compact identity covering both selected server-owned source versions. */
-  version: string;
-};
+export type DrapeProductReferenceSet =
+  | {
+      mode: "single";
+      /** IMAGE 2: the sole trusted product reference. */
+      primary: DrapeProductReferenceSource;
+      references: [DrapeProductReferenceSource];
+      /** Compact identity covering the selected server-owned source version. */
+      version: string;
+    }
+  | {
+      mode: "dual";
+      /** IMAGE 2: strongest available drape / full-look reference. */
+      primary: DrapeProductReferenceSource;
+      /** IMAGE 3: strongest complementary textile-detail reference. */
+      detail: DrapeProductReferenceSource;
+      references: [
+        DrapeProductReferenceSource,
+        DrapeProductReferenceSource,
+      ];
+      /** Compact identity covering both selected server-owned source versions. */
+      version: string;
+    };
 
 const TRYON_SOURCE_MIME_TYPES = new Set([
   "image/jpeg",
@@ -132,7 +155,10 @@ const FULL_LOOK_TERMS = [
   "look",
 ] as const;
 
-const DETAIL_TERMS = [
+// Unambiguous textile-detail vocabulary. A hit here is genuine evidence that
+// the image was shot to show the cloth itself, so only these terms may QUALIFY
+// a second image for dual mode.
+const STRONG_DETAIL_TERMS = [
   "detail",
   "close up",
   "close-up",
@@ -141,10 +167,26 @@ const DETAIL_TERMS = [
   "motif",
   "weave",
   "texture",
-  "pattern",
   "zari",
+] as const;
+
+// "design" and "pattern" are real detail words but far too generic to stand
+// alone: they appear constantly in storage keys and export filenames
+// ("saree-design-2.jpg", "media/pattern/…") with no textile-detail meaning, and
+// keywordScore matches substrings, so "designer" and "patterned" hit too. They
+// still add supporting score once a strong term has qualified the image, but on
+// their own they must never buy a third provider image.
+const DETAIL_TERMS = [
+  ...STRONG_DETAIL_TERMS,
+  "pattern",
   "design",
 ] as const;
+
+// A second distinct gallery image is not automatically useful to the model.
+// The reviewed threshold requires explicit textile-detail language plus enough
+// supporting score (detail framing/resolution or multiple detail terms) before
+// paying for and sending IMAGE 3. Two ordinary full-look images stay single.
+const MIN_COMPLEMENTARY_DETAIL_SCORE = 45;
 
 const keywordScore = (text: string, terms: readonly string[]): number =>
   terms.reduce((score, term) => score + (text.includes(term) ? 1 : 0), 0);
@@ -172,6 +214,19 @@ const detailScore = (candidate: RankedDrapeProductReference): number => {
     Math.min(12, Math.max(0, candidate.sortOrder))
   );
 };
+
+// Both arms are load-bearing, and neither alone is sufficient:
+//   - a STRONG term proves the image is *about* the textile, not merely a
+//     second view of the same look;
+//   - the score proves the shot is actually usable as IMAGE 3 (framing and
+//     resolution), so a stray keyword on a thumbnail cannot buy a third image.
+// Without a strong term the product stays in single mode, which is the correct
+// default: IMAGE 3 costs a provider image on every generation.
+const hasComplementaryDetailEvidence = (
+  candidate: RankedDrapeProductReference,
+): boolean =>
+  keywordScore(candidate.searchText, STRONG_DETAIL_TERMS) > 0 &&
+  detailScore(candidate) >= MIN_COMPLEMENTARY_DETAIL_SCORE;
 
 // Deterministic cache fingerprint, not a security primitive. Authoritative
 // media identity and versions remain server-owned and are included as input.
@@ -213,6 +268,7 @@ function resolveDrapeImageReference(
       mediaId: imageRelation.media.id,
       mimeType:
         readyDerivative.mimeType as DrapeProductReferenceSource["mimeType"],
+      sourceHash: readyDerivative.sourceHash,
       url: readyDerivative.url,
       version: [
         "derivative",
@@ -253,10 +309,19 @@ function resolveDrapeImageReference(
     kind: "source",
     mediaId: imageRelation.media.id,
     mimeType: current.mimeType as DrapeProductReferenceSource["mimeType"],
+    sourceHash:
+      typeof imageRelation.media.metadata?.sourceSha256 === "string" &&
+      /^[a-f0-9]{64}$/i.test(imageRelation.media.metadata.sourceSha256)
+        ? imageRelation.media.metadata.sourceSha256.toLowerCase()
+        : null,
     url: current.url,
     version: [
       "source",
       imageRelation.media.id,
+      typeof imageRelation.media.metadata?.sourceSha256 === "string" &&
+      /^[a-f0-9]{64}$/i.test(imageRelation.media.metadata.sourceSha256)
+        ? imageRelation.media.metadata.sourceSha256.toLowerCase()
+        : "nohash",
       timestampVersion(imageRelation.media.updatedAt),
       current.filesize,
       `${current.width}x${current.height}`,
@@ -266,11 +331,11 @@ function resolveDrapeImageReference(
 }
 
 /**
- * Select two complementary references from the complete product gallery.
- * IMAGE 2 prefers a full-look/drape view; IMAGE 3 prefers textile detail.
+ * Select one or two trusted references from the complete product gallery.
+ * IMAGE 2 prefers a full-look/drape view; an optional IMAGE 3 prefers textile detail.
  * Metadata, shape, resolution, and gallery order form a deterministic score.
- * A one-image legacy product repeats its sole trusted source so the product
- * remains eligible without accepting a browser-controlled URL.
+ * A one-image product remains eligible without duplicating its sole trusted
+ * source or accepting a browser-controlled URL.
  */
 export function resolveDrapeProductReferences(
   product: ProductWithRelations,
@@ -300,7 +365,14 @@ export function resolveDrapeProductReferences(
         all.findIndex(
           (other) =>
             other.reference.mediaId === candidate.reference.mediaId ||
-            other.reference.url === candidate.reference.url,
+            (other.reference.sourceHash !== null &&
+              candidate.reference.sourceHash !== null &&
+              other.reference.sourceHash === candidate.reference.sourceHash) ||
+            // Media ID and source hash remain authoritative. Exact canonical
+            // URL equality is a defensive fallback for legacy rows whose
+            // source hash predates upload-time hashing.
+            new URL(other.reference.url).href ===
+              new URL(candidate.reference.url).href,
         ) === index,
     );
   if (candidates.length === 0) return null;
@@ -311,29 +383,49 @@ export function resolveDrapeProductReferences(
       left.sortOrder - right.sortOrder ||
       left.reference.mediaId.localeCompare(right.reference.mediaId),
   )[0]!;
-  const secondaryCandidate =
-    [...candidates]
-      .filter(
-        (candidate) =>
-          candidate.reference.mediaId !== primaryCandidate.reference.mediaId,
-      )
-      .sort(
-        (left, right) =>
-          detailScore(right) - detailScore(left) ||
-          left.sortOrder - right.sortOrder ||
-          left.reference.mediaId.localeCompare(right.reference.mediaId),
-      )[0] ?? primaryCandidate;
+  const detailCandidate = [...candidates]
+    .filter(
+      (candidate) =>
+        candidate.reference.mediaId !== primaryCandidate.reference.mediaId &&
+        hasComplementaryDetailEvidence(candidate),
+    )
+    .sort(
+      (left, right) =>
+        detailScore(right) - detailScore(left) ||
+        left.sortOrder - right.sortOrder ||
+        left.reference.mediaId.localeCompare(right.reference.mediaId),
+    )[0];
+  if (!detailCandidate) {
+    return {
+      mode: "single",
+      primary: primaryCandidate.reference,
+      references: [primaryCandidate.reference],
+      version: [
+        DRAPE_REFERENCE_CONTRACT_VERSION,
+        "single",
+        primaryCandidate.reference.mediaId,
+        referenceFingerprint(primaryCandidate.reference.version),
+      ].join(":"),
+    };
+  }
+
   const sourceIdentity = [
     primaryCandidate.reference.version,
-    secondaryCandidate.reference.version,
+    detailCandidate.reference.version,
   ].join("|");
   return {
+    mode: "dual",
     primary: primaryCandidate.reference,
-    secondary: secondaryCandidate.reference,
+    references: [
+      primaryCandidate.reference,
+      detailCandidate.reference,
+    ],
+    detail: detailCandidate.reference,
     version: [
-      "gallery-v1",
+      DRAPE_REFERENCE_CONTRACT_VERSION,
+      "dual",
       primaryCandidate.reference.mediaId,
-      secondaryCandidate.reference.mediaId,
+      detailCandidate.reference.mediaId,
       referenceFingerprint(sourceIdentity),
     ].join(":"),
   };
@@ -379,6 +471,7 @@ export function projectDrapeSaree(
       productName: product.name,
       fabric: product.detailsFabric,
       pricePaise: product.pricePaise,
+      originalPricePaise: product.originalPricePaise ?? null,
       stockStatus,
       displayImageUrl: references.primary.url,
       productImageId: references.primary.mediaId,
@@ -409,16 +502,20 @@ export function projectDrapeRoomEntry(
     return generationProjection;
   }
 
-  const primaryImageRelation = [...product.images].sort(
-    (left, right) => left.sortOrder - right.sortOrder,
-  )[0];
-  const displayImage = resolvePrimaryCurrentProductImage(product, "pdp").image;
-  if (!primaryImageRelation || !displayImage) {
+  // Entry visibility must follow the complete gallery, not only relation zero.
+  // Legacy catalogue rows can have an oversized first original while a later
+  // image is already safe for storefront display. The card resolver scans the
+  // complete ordered gallery and prefers a bounded derivative/variant before
+  // falling back to the smallest approved current original.
+  const displayImage = resolvePrimaryCurrentProductImage(product, "card").image;
+  if (!displayImage?.mediaId) {
     return { eligible: false, reason: "missing_reference" };
   }
+  const displayImageBelongsToProduct = product.images.some(
+    (imageRelation) => imageRelation.media.id === displayImage.mediaId,
+  );
   if (
-    !displayImage.mediaId ||
-    displayImage.mediaId !== primaryImageRelation.media.id ||
+    !displayImageBelongsToProduct ||
     !isApprovedMediaUrl(displayImage.url)
   ) {
     return { eligible: false, reason: "unapproved_reference" };
@@ -432,6 +529,7 @@ export function projectDrapeRoomEntry(
       productName: product.name,
       fabric: product.detailsFabric,
       pricePaise: product.pricePaise,
+      originalPricePaise: product.originalPricePaise ?? null,
       stockStatus: "available",
       displayImageUrl: displayImage.url,
       productImageId: displayImage.mediaId,

@@ -217,8 +217,8 @@ describe("proxy.ts — Drape Room vision assets", () => {
 
   it.each([
     "/drape-room/vision/mediapipe-1.0.1/wasm/vision_wasm_internal.wasm",
+    "/drape-room/vision/mediapipe-1.0.1/wasm/vision_wasm_nosimd_internal.wasm",
     "/drape-room/vision/mediapipe-1.0.1/models/pose_landmarker_lite.task",
-    "/drape-room/vision/mediapipe-1.0.1/models/blaze_face_full_range.tflite",
   ])("passes the local binary through without CMS redirect lookup: %s", async (pathname) => {
     const response = await proxy(
       new NextRequest(`https://www.fromthetrunk.shop${pathname}`),
@@ -227,6 +227,50 @@ describe("proxy.ts — Drape Room vision assets", () => {
     expect(response.status).toBe(200);
     expect(resolveRedirectMock).not.toHaveBeenCalled();
     expect(dbSelectPageBySlugMock).not.toHaveBeenCalled();
+  });
+
+  it("also passes the manifest itself through", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://www.fromthetrunk.shop/drape-room/vision/mediapipe-1.0.1/manifest.json",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  // `/drape-room/` is a public-asset prefix, so before the reserved-namespace
+  // guard a missing asset fell into the CMS catch-all and streamed a 200 HTML
+  // page. That made "the asset returns 200" useless as a deploy check and fed
+  // MediaPipe HTML where it expects a binary.
+  it.each([
+    "/drape-room/vision/mediapipe-1.0.1/models/does_not_exist.task",
+    "/drape-room/vision/mediapipe-1.0.1/wasm/does_not_exist.wasm",
+    // Removed as unused: only PoseLandmarker is ever constructed, so the face
+    // model is no longer shipped and must now 404 like any other unknown path.
+    "/drape-room/vision/mediapipe-1.0.1/models/blaze_face_full_range.tflite",
+    "/drape-room/vision/mediapipe-1.0.1/wasm/vision_wasm_module_internal.wasm",
+    "/drape-room/vision/mediapipe-9.9.9/models/pose_landmarker_lite.task",
+    "/drape-room/vision/",
+    "/drape-room/vision/anything-else",
+  ])("404s an unknown path in the reserved namespace: %s", async (pathname) => {
+    const response = await proxy(
+      new NextRequest(`https://www.fromthetrunk.shop${pathname}`),
+    );
+
+    expect(response.status).toBe(404);
+    // Never consults the CMS: the namespace is reserved, not content.
+    expect(resolveRedirectMock).not.toHaveBeenCalled();
+    expect(dbSelectPageBySlugMock).not.toHaveBeenCalled();
+  });
+
+  it("leaves ordinary CMS paths untouched", async () => {
+    const response = await proxy(
+      new NextRequest("https://www.fromthetrunk.shop/drape-room-guide"),
+    );
+
+    // Not inside the reserved namespace, so the normal CMS pipeline still runs.
+    expect(response.status).not.toBe(404);
   });
 });
 

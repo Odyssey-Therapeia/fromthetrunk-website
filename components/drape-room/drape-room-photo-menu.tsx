@@ -153,7 +153,10 @@ export function DrapeRoomPhotoMenu({ className }: DrapeRoomPhotoMenuProps) {
       });
       installPhoto(saved);
       notifyPhotoChanged();
-      toast.success(photoWarningCopy(processed.warnings) ?? "Your Drape Room photo was replaced.");
+      toast.success(
+        photoWarningCopy(processed.warnings) ??
+          "Your new photo is ready. Saved previews from the previous photo were removed.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "That photo could not be prepared.");
     } finally {
@@ -283,7 +286,7 @@ export function DrapeRoomPhotoMenu({ className }: DrapeRoomPhotoMenuProps) {
       <ConfirmMenuAction
         open={replaceOpen}
         title="Replace your photo?"
-        description="Changing your photo will make your existing AI drape previews incompatible with the new photo. New previews will need to be generated when you open a saree. Your existing images will not be regenerated automatically."
+        description="Changing your photo will remove the AI previews saved in this browser for the current photo. Nothing will be generated automatically, and your daily generation limit will not reset. After the new photo passes the local check, choose Create preview with new photo to use 1 generation."
         confirmLabel="Choose new photo"
         onClose={() => setReplaceOpen(false)}
         onConfirm={() => { setReplaceOpen(false); inputRef.current?.click(); }}

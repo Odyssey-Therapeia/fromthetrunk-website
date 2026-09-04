@@ -2,7 +2,7 @@ import {
   IMAGE_PROVIDER_MODELS,
   PROVIDER_DISCLOSURES,
   emptyProviderUsage,
-  estimateProviderMaximumCost,
+  estimateProviderCostReservation,
   type BinaryImage,
   type ImageModelId,
   type ImageProviderId,
@@ -11,6 +11,7 @@ import {
   type TryOnGenerationResult,
   type TryOnImageProvider,
   type TryOnProviderUsage,
+  type TryOnReferenceCount,
 } from "@/lib/drape-room/server/provider";
 
 export type FakeImageProviderOptions = {
@@ -23,6 +24,7 @@ export type FakeImageProviderOptions = {
   onGenerate?: (
     input: TryOnGenerationInput,
   ) => void | Promise<void>;
+  estimateMicroUsd?: (referenceCount: TryOnReferenceCount) => number;
 };
 
 /** Test-only deterministic provider with no transport or network fallback. */
@@ -31,6 +33,7 @@ export class FakeImageProvider implements TryOnImageProvider {
   readonly model: ImageModelId;
   readonly disclosure: ProviderDisclosure;
   readonly requests: TryOnGenerationInput[] = [];
+  readonly estimatedReferenceCounts: TryOnReferenceCount[] = [];
 
   constructor(private readonly options: FakeImageProviderOptions) {
     this.id = options.provider ?? "google";
@@ -46,12 +49,20 @@ export class FakeImageProvider implements TryOnImageProvider {
     return model === this.model;
   }
 
-  estimateMaximumCost(input: {
+  estimateCostReservation(input: {
     model: string;
-    referenceCount: 3;
+    referenceCount: TryOnReferenceCount;
     imageSize: "1K";
   }) {
-    return estimateProviderMaximumCost(this.id, input.model);
+    this.estimatedReferenceCounts.push(input.referenceCount);
+    const estimate = estimateProviderCostReservation(
+      this.id,
+      input.model,
+      input.referenceCount,
+    );
+    return this.options.estimateMicroUsd
+      ? { ...estimate, microUsd: this.options.estimateMicroUsd(input.referenceCount) }
+      : estimate;
   }
 
   async generate(input: TryOnGenerationInput): Promise<TryOnGenerationResult> {

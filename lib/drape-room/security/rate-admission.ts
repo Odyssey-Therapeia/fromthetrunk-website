@@ -48,7 +48,18 @@ export async function checkTryonRateAdmission(
       retryAfterSeconds: Math.max(1, Math.ceil((resetAt - now) / 1_000)),
     };
   }
+  return { allowed: true, retryAfterSeconds: 0 };
+}
 
+/**
+ * Charges scarce storefront-wide capacity only after the authoritative product
+ * and its references have passed validation. Invalid product probes therefore
+ * cannot exhaust the paid-generation global window.
+ */
+export async function checkTryonGlobalRateAdmission(
+  limiter: RateLimiterPort = getRateLimiter(),
+  now = Date.now(),
+): Promise<TryonRateAdmission> {
   const global = await limiter.check("ftt:tryon:v1:rate:global:1h", {
     ...TRYON_RATE_LIMITS.globalHour,
   });

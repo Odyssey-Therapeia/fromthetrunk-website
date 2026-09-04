@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   claimProductDailyQuota,
   productDailyQuotaWindow,
+  TRYON_PRODUCT_DAILY_QUOTA_POLICY,
   TRYON_PRODUCT_DAILY_QUOTA_SCRIPTS_FOR_TESTS,
 } from "@/lib/drape-room/security/product-daily-quota";
 import type { TryonRedisClient } from "@/lib/drape-room/security/redis-guard";
@@ -21,8 +22,22 @@ const requestId = (digit: number) =>
 
 class QuotaRedis implements TryonRedisClient {
   readonly counts = new Map<string, number>();
-  readonly claims = new Set<string>();
   readonly calls: Array<{ keys: string[]; args: Array<number | string> }> = [];
+  private readonly entries = new Map<string, Map<string, number>>();
+
+  private entryMap(key: string): Map<string, number> {
+    const existing = this.entries.get(key);
+    if (existing) return existing;
+    const created = new Map<string, number>();
+    this.entries.set(key, created);
+    return created;
+  }
+
+  private updateCount(key: string, entries: Map<string, number>): number {
+    if (entries.size === 0) this.counts.delete(key);
+    else this.counts.set(key, entries.size);
+    return entries.size;
+  }
 
   async eval(
     script: string,
@@ -30,24 +45,35 @@ class QuotaRedis implements TryonRedisClient {
     args: Array<number | string>,
   ): Promise<unknown> {
     this.calls.push({ keys, args });
-    const [countKey, claimKey] = keys;
+    const [quotaKey] = keys;
+    const entries = this.entryMap(quotaKey);
     if (script === TRYON_PRODUCT_DAILY_QUOTA_SCRIPTS_FOR_TESTS.claim) {
-      const used = this.counts.get(countKey) ?? 0;
-      if (this.claims.has(claimKey)) return [1, Math.max(1, used)];
+      const now = Number(args[2]);
+      for (const [member, score] of entries) {
+        if (score <= now) entries.delete(member);
+      }
+      const provisionalMember = String(args[4]);
+      const committedMember = String(args[5]);
+      const used = this.updateCount(quotaKey, entries);
+      if (entries.has(provisionalMember) || entries.has(committedMember)) {
+        return [1, used];
+      }
       if (used >= Number(args[0])) return [0, used];
-      const next = used + 1;
-      this.counts.set(countKey, next);
-      this.claims.add(claimKey);
-      return [1, next];
+      entries.set(provisionalMember, Number(args[3]));
+      return [1, this.updateCount(quotaKey, entries)];
     }
     if (script === TRYON_PRODUCT_DAILY_QUOTA_SCRIPTS_FOR_TESTS.release) {
-      if (!this.claims.delete(claimKey)) {
-        return this.counts.get(countKey) ?? 0;
-      }
-      const next = Math.max(0, (this.counts.get(countKey) ?? 0) - 1);
-      if (next === 0) this.counts.delete(countKey);
-      else this.counts.set(countKey, next);
-      return next;
+      entries.delete(String(args[0]));
+      return this.updateCount(quotaKey, entries);
+    }
+    if (script === TRYON_PRODUCT_DAILY_QUOTA_SCRIPTS_FOR_TESTS.commit) {
+      const provisionalMember = String(args[0]);
+      const committedMember = String(args[1]);
+      if (entries.has(committedMember)) return 1;
+      if (!entries.delete(provisionalMember)) return 0;
+      entries.set(committedMember, Number(args[2]));
+      this.updateCount(quotaKey, entries);
+      return 1;
     }
     throw new Error("unexpected Redis script");
   }
@@ -176,8 +202,8 @@ describe("Drape Room product daily quota", () => {
       NOW,
     );
     if (!committed.allowed) throw new Error("expected allowed claim");
-    committed.commitProviderStarted();
-    committed.commitProviderStarted();
+    await committed.commitProviderDispatchAttempted();
+    await committed.commitProviderDispatchAttempted();
     await committed.releaseBeforeProvider();
     expect([...committedRedis.counts.values()]).toEqual([1]);
   });
@@ -195,10 +221,38 @@ describe("Drape Room product daily quota", () => {
     const serialized = JSON.stringify(call);
 
     expect(call.keys[0]).toBe(
-      `ftt:tryon:v2:product-day:2026-08-27:${IP_TAG}:${PRODUCT_ID}`,
+      `ftt:tryon:v3:product-day:2026-08-27:${IP_TAG}:${PRODUCT_ID}`,
     );
     expect(call.args[1]).toBe(Date.parse("2026-08-27T18:30:00.000Z"));
+    expect(call.args[3]).toBe(
+      NOW + TRYON_PRODUCT_DAILY_QUOTA_POLICY.provisionalClaimMs,
+    );
     expect(serialized).not.toContain("203.0.113.10");
+  });
+
+  it("automatically evicts an abandoned provisional claim before the next attempt", async () => {
+    const redis = new QuotaRedis();
+    for (const digit of [1, 2, 3]) {
+      await claimProductDailyQuota(
+        redis,
+        IP_TAG,
+        PRODUCT_ID,
+        requestId(digit),
+        NOW,
+      );
+    }
+    const afterExpiry = await claimProductDailyQuota(
+      redis,
+      IP_TAG,
+      PRODUCT_ID,
+      requestId(4),
+      NOW + TRYON_PRODUCT_DAILY_QUOTA_POLICY.provisionalClaimMs + 1,
+    );
+
+    expect(afterExpiry).toMatchObject({
+      allowed: true,
+      quota: { used: 1, remaining: 2 },
+    });
   });
 
   it("rejects a raw IP or malformed opaque identity before Redis", async () => {

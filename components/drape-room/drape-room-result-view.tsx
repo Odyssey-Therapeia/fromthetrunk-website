@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import * as React from "react";
 import Image from "next/image";
 import {
   Building2,
@@ -44,12 +44,11 @@ export interface DrapeRoomResultViewProps {
   generationBlockedReason?: string | null;
   isGenerating: boolean;
   isCacheChecking: boolean;
-  wishlistControl?: ReactNode;
-  addToCartControl?: ReactNode;
+  wishlistControl?: React.ReactNode;
+  addToCartControl?: React.ReactNode;
   onBackgroundSelect: (background: DrapeRoomBackground) => void;
   onSave: () => void;
   onVisit: () => void;
-  onRegenerate: () => void;
 }
 
 export function DrapeRoomResultView({
@@ -67,7 +66,6 @@ export function DrapeRoomResultView({
   onBackgroundSelect,
   onSave,
   onVisit,
-  onRegenerate,
 }: DrapeRoomResultViewProps) {
   return (
     <div className="mx-auto grid w-full min-w-0 max-w-[54rem] gap-4 overflow-x-clip p-4 pb-0 @sm:p-5 @sm:pb-0 @3xl:grid-cols-[minmax(16rem,0.94fr)_minmax(19rem,1.06fr)] @3xl:gap-5">
@@ -114,7 +112,6 @@ export function DrapeRoomResultView({
               src={product.displayImageUrl}
               alt={product.productName}
               fill
-              unoptimized
               sizes="64px"
               className="object-cover"
             />
@@ -133,6 +130,7 @@ export function DrapeRoomResultView({
           selected={activeBackground}
           cachedBackgrounds={cachedBackgrounds}
           generationAvailable={generationAvailable}
+          remainingGenerations={remainingGenerations}
           disabled={isGenerating || isCacheChecking}
           onSelect={onBackgroundSelect}
         />
@@ -162,13 +160,10 @@ export function DrapeRoomResultView({
 
         <DrapeRoomResultActions
           isBusy={isGenerating}
-          generationDisabled={isCacheChecking || !generationAvailable}
-          remainingGenerations={remainingGenerations}
           wishlistControl={wishlistControl}
           addToCartControl={addToCartControl}
           onSave={onSave}
           onVisitProduct={onVisit}
-          onRegenerate={onRegenerate}
         />
       </div>
     </div>
@@ -179,61 +174,123 @@ function DrapeRoomBackgroundPicker({
   selected,
   cachedBackgrounds,
   generationAvailable,
+  remainingGenerations,
   disabled,
   onSelect,
 }: {
   selected: DrapeRoomBackground;
   cachedBackgrounds: ReadonlySet<DrapeRoomBackground>;
   generationAvailable: boolean;
+  remainingGenerations: 0 | 1 | 2 | 3;
   disabled: boolean;
   onSelect: (background: DrapeRoomBackground) => void;
 }) {
+  const helpId = React.useId();
+  const canCreateBackground = generationAvailable && remainingGenerations > 0;
+
   return (
     <div className="min-w-0 max-w-full">
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ftt-burgundy/60">
         Change background
       </p>
+      <p id={helpId} className="mt-1.5 text-[11px] leading-4 text-ftt-burgundy/70">
+        Saved backgrounds open instantly and use no AI generation. Creating a
+        new background uses 1 generation. {remainingGenerationCopy(remainingGenerations)}
+      </p>
       <div
         role="group"
         aria-label="Choose a Drape Room background"
+        aria-describedby={helpId}
         className="-mx-1 mt-3 flex max-w-full gap-2 overflow-x-auto px-1 pb-2 @3xl:grid @3xl:grid-cols-5 @3xl:overflow-visible"
       >
         {DRAPE_ROOM_BACKGROUNDS.map((background) => {
           const Icon = BACKGROUND_ICONS[background.id];
           const cached = cachedBackgrounds.has(background.id);
+          const selectedBackground = selected === background.id;
+          const state = backgroundState({
+            cached,
+            generationAvailable: canCreateBackground,
+            remainingGenerations,
+            selected: selectedBackground,
+          });
           return (
             <button
               key={background.id}
               type="button"
               data-drape-background={background.id}
-              aria-pressed={selected === background.id}
-              disabled={disabled || (!cached && !generationAvailable)}
+              aria-label={`${background.label}. ${state.announcement}`}
+              aria-pressed={selectedBackground}
+              disabled={disabled || (!cached && !canCreateBackground)}
               onClick={() => onSelect(background.id)}
               className={cn(
-                "relative min-h-14 min-w-28 shrink-0 rounded-xl border px-3 py-2 text-left text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold disabled:opacity-50 @3xl:min-w-0",
-                selected === background.id
+                "relative min-h-[4.75rem] min-w-28 shrink-0 rounded-xl border px-3 py-2 text-left text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold disabled:opacity-55 @3xl:min-w-0",
+                selectedBackground
                   ? "border-ftt-navy bg-ftt-navy text-ftt-ivory"
                   : "border-ftt-border bg-ftt-card text-ftt-navy",
               )}
             >
               <span className="flex items-center justify-between gap-2">
                 <Icon className="size-4" aria-hidden="true" />
-                {selected === background.id ? (
-                  <Check className="size-3" aria-label="Selected" />
-                ) : cached ? (
-                  <Check
-                    className="size-3"
-                    aria-label="Saved in this browser"
-                  />
+                {selectedBackground || cached ? (
+                  <Check className="size-3" aria-hidden="true" />
                 ) : null}
               </span>
               <span className="mt-2 block">{background.label}</span>
+              <span className="mt-0.5 block text-[9px] font-medium leading-3 opacity-75">
+                {state.visible}
+              </span>
             </button>
           );
         })}
       </div>
     </div>
   );
+}
+
+function remainingGenerationCopy(remaining: 0 | 1 | 2 | 3): string {
+  if (remaining === 0) return "Daily limit reached. Saved backgrounds remain free to view.";
+  return `${remaining} generation${remaining === 1 ? "" : "s"} left today.`;
+}
+
+function backgroundState({
+  cached,
+  generationAvailable,
+  remainingGenerations,
+  selected,
+}: {
+  cached: boolean;
+  generationAvailable: boolean;
+  remainingGenerations: 0 | 1 | 2 | 3;
+  selected: boolean;
+}): { announcement: string; visible: string } {
+  if (selected) {
+    return {
+      announcement: "Current saved preview. No AI generation is used.",
+      visible: "Current · Saved",
+    };
+  }
+  if (cached) {
+    return {
+      announcement: "Saved in this browser. No AI generation is used.",
+      visible: "Saved · Opens free",
+    };
+  }
+  if (remainingGenerations === 0) {
+    return {
+      announcement: "Not created. Available after the daily limit resets.",
+      visible: "Create · Daily limit reached",
+    };
+  }
+  if (!generationAvailable) {
+    return {
+      announcement: "Not created. AI generation is unavailable.",
+      visible: "Create · Unavailable",
+    };
+  }
+  return {
+    announcement: "Not created. Creating it uses 1 AI generation.",
+    visible: "Create · Uses 1 generation",
+  };
 }
 
 function backgroundLabel(background: DrapeRoomBackground): string {

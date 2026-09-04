@@ -16,7 +16,7 @@ vi.mock("browser-image-compression", () => ({
 const compress = vi.mocked(imageCompression);
 const readinessPass = vi.fn().mockResolvedValue({
   ready: true as const,
-  policyVersion: "face-visible-v1" as const,
+  policyVersion: "full-body-pose-v1" as const,
 });
 
 function jpegFile(size = 1_024, name = "portrait.jpg"): File {
@@ -105,7 +105,7 @@ describe("Drape Room photo processing", () => {
     expect(result.blob).toBeInstanceOf(Blob);
     expect(result.readiness).toMatchObject({
       state: "ready",
-      policyVersion: "face-visible-v1",
+      policyVersion: "full-body-pose-v1",
     });
     expect(readinessPass).toHaveBeenCalledWith(result.blob);
   });
@@ -166,7 +166,7 @@ describe("Drape Room photo processing", () => {
     );
   });
 
-  it("blocks a failed local face check before returning provider input", async () => {
+  it("blocks a failed local full-body check before returning provider input", async () => {
     vi.stubGlobal(
       "createImageBitmap",
       vi
@@ -177,14 +177,106 @@ describe("Drape Room photo processing", () => {
     compress.mockResolvedValue(jpegFile(32_000));
     const blocked = vi.fn().mockResolvedValue({
       ready: false as const,
-      policyVersion: "face-visible-v1" as const,
-      reason: "no-face" as const,
-      message: "Choose a photo where your face is clearly visible.",
+      policyVersion: "full-body-pose-v1" as const,
+      reason: "feet-not-visible" as const,
+      message: "Keep both ankles or feet visible inside the frame.",
     });
 
     await expect(
       processUserPhoto(jpegFile(), { analyzeReadiness: blocked }),
     ).rejects.toMatchObject({ code: "readiness-failed" });
     expect(blocked).toHaveBeenCalledTimes(1);
+  });
+
+  // A 404 on the wasm or the .task model rejects inside FilesetResolver /
+  // PoseLandmarker.createFromOptions, which surfaces here as a THROWN detector
+  // rather than a resolved not-ready verdict. That distinction matters: an
+  // unavailable detector must fail closed exactly like a blocked photo, never
+  // fall through as "no verdict, carry on".
+  it("fails closed when the MediaPipe assets cannot be loaded at all", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi
+        .fn()
+        .mockResolvedValueOnce(bitmap(900, 1_200))
+        .mockResolvedValueOnce(bitmap(900, 1_200)),
+    );
+    compress.mockResolvedValue(jpegFile(32_000));
+    const unavailable = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("Failed to fetch /drape-room/vision/mediapipe-1.0.1/wasm/vision_wasm_internal.js"),
+      );
+
+    await expect(
+      processUserPhoto(jpegFile(), { analyzeReadiness: unavailable }),
+    ).rejects.toMatchObject({ code: "readiness-unavailable" });
+    expect(unavailable).toHaveBeenCalledTimes(1);
+  });
+
+  it("never returns provider input when the detector is unavailable", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi
+        .fn()
+        .mockResolvedValueOnce(bitmap(900, 1_200))
+        .mockResolvedValueOnce(bitmap(900, 1_200)),
+    );
+    compress.mockResolvedValue(jpegFile(32_000));
+
+    // Whatever the failure mode, processUserPhoto must reject rather than
+    // resolve — the paid path only ever receives a fulfilled ProcessedUserPhoto.
+    const outcome = await processUserPhoto(jpegFile(), {
+      analyzeReadiness: vi.fn().mockRejectedValue(new Error("404")),
+    }).then(
+      (value) => ({ resolved: true as const, value }),
+      (error: unknown) => ({ resolved: false as const, error }),
+    );
+
+    expect(outcome.resolved).toBe(false);
+    expect(outcome).toMatchObject({
+      error: { code: "readiness-unavailable" },
+    });
+  });
+});
+
+/**
+ * The paid request itself is gated one layer above, in
+ * components/drape-room/use-drape-room-generation.ts. Pin the ordering so a
+ * refactor cannot move the provider call ahead of the readiness gate.
+ */
+describe("Drape Room paid-generation readiness gate", () => {
+  it("returns before the provider call unless readiness is ready and current", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const source = readFileSync(
+      join(process.cwd(), "components/drape-room/use-drape-room-generation.ts"),
+      "utf8",
+    );
+
+    const gateIndex = source.indexOf('photo.readiness?.state !== "ready"');
+    const versionIndex = source.indexOf(
+      "photo.readiness.policyVersion !== PHOTO_READINESS_POLICY_VERSION",
+    );
+    const generateIndex = source.indexOf("transport.generate(");
+
+    expect(gateIndex).toBeGreaterThan(-1);
+    expect(versionIndex).toBeGreaterThan(-1);
+    expect(generateIndex).toBeGreaterThan(-1);
+    expect(gateIndex).toBeLessThan(generateIndex);
+    expect(versionIndex).toBeLessThan(generateIndex);
+    // The gate is an early return, not a warning.
+    expect(source.slice(gateIndex, generateIndex)).toContain("return;");
+  });
+
+  it("refuses to persist a photo whose readiness never passed", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const policy = readFileSync(
+      join(process.cwd(), "lib/drape-room/client/storage-policy.ts"),
+      "utf8",
+    );
+
+    expect(policy).toContain('input.readiness?.state !== "ready"');
   });
 });

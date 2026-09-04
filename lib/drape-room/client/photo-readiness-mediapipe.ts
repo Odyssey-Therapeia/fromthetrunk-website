@@ -1,6 +1,9 @@
 "use client";
 
-import type { FaceDetector } from "@mediapipe/tasks-vision";
+import type {
+  NormalizedLandmark,
+  PoseLandmarker,
+} from "@mediapipe/tasks-vision";
 import {
   evaluatePhotoReadiness,
   type PhotoReadinessObservation,
@@ -9,27 +12,30 @@ import {
 
 const ASSET_ROOT = "/drape-room/vision/mediapipe-1.0.1";
 
-interface FaceReadinessDetector {
-  face: FaceDetector;
+interface PhotoReadinessDetector {
+  pose: PoseLandmarker;
 }
 
-let detectorPromise: Promise<FaceReadinessDetector> | null = null;
+let detectorPromise: Promise<PhotoReadinessDetector> | null = null;
 
-async function loadDetector(): Promise<FaceReadinessDetector> {
+async function loadDetector(): Promise<PhotoReadinessDetector> {
   if (!detectorPromise) {
     detectorPromise = (async () => {
-      const { FaceDetector, FilesetResolver } = await import(
+      const { FilesetResolver, PoseLandmarker } = await import(
         "@mediapipe/tasks-vision"
       );
       const files = await FilesetResolver.forVisionTasks(`${ASSET_ROOT}/wasm`);
-      const face = await FaceDetector.createFromOptions(files, {
-          baseOptions: {
-            modelAssetPath: `${ASSET_ROOT}/models/blaze_face_full_range.tflite`,
-          },
-          runningMode: "IMAGE",
-          minDetectionConfidence: 0.6,
-        });
-      return { face };
+      const pose = await PoseLandmarker.createFromOptions(files, {
+        baseOptions: {
+          modelAssetPath: `${ASSET_ROOT}/models/pose_landmarker_lite.task`,
+        },
+        runningMode: "IMAGE",
+        numPoses: 2,
+        minPoseDetectionConfidence: 0.55,
+        minPosePresenceConfidence: 0.55,
+        outputSegmentationMasks: false,
+      });
+      return { pose };
     })().catch((error) => {
       detectorPromise = null;
       throw error;
@@ -75,25 +81,49 @@ async function decodeImage(blob: Blob): Promise<{
   };
 }
 
+function poseBounds(
+  landmarks: readonly NormalizedLandmark[],
+  width: number,
+  height: number,
+): { x: number; y: number; width: number; height: number } | null {
+  const points = landmarks.filter(
+    (point) =>
+      Number.isFinite(point.x) &&
+      Number.isFinite(point.y) &&
+      point.visibility >= 0.5,
+  );
+  if (points.length === 0) return null;
+  const xs = points.map((point) => point.x * width);
+  const ys = points.map((point) => point.y * height);
+  const x = Math.max(0, Math.min(...xs));
+  const y = Math.max(0, Math.min(...ys));
+  return {
+    x,
+    y,
+    width: Math.max(1, Math.min(width - x, Math.max(...xs) - x)),
+    height: Math.max(1, Math.min(height - y, Math.max(...ys) - y)),
+  };
+}
+
 function estimateSharpness(
   source: CanvasImageSource,
   width: number,
   height: number,
-  face: { x: number; y: number; width: number; height: number },
+  bounds: { x: number; y: number; width: number; height: number },
 ): number {
   if (typeof document === "undefined") return Number.POSITIVE_INFINITY;
   const canvas = document.createElement("canvas");
-  const paddingX = face.width * 0.12;
-  const paddingY = face.height * 0.12;
-  const sourceX = Math.max(0, face.x - paddingX);
-  const sourceY = Math.max(0, face.y - paddingY);
+  const paddingX = bounds.width * 0.08;
+  const paddingY = bounds.height * 0.04;
+  const sourceX = Math.max(0, bounds.x - paddingX);
+  const sourceY = Math.max(0, bounds.y - paddingY);
   const sourceWidth = Math.max(
     1,
-    Math.min(width - sourceX, face.width + paddingX * 2),
+    Math.min(width - sourceX, bounds.width + paddingX * 2),
   );
   const sourceHeight = Math.max(
     1,
-    Math.min(height - sourceY, face.height + paddingY * 2),
+    Math.min(height - sourceY, bounds.height + paddingY * 2),
   );
   const sampleWidth = Math.max(32, Math.min(160, Math.round(sourceWidth)));
   const sampleHeight = Math.max(
@@ -123,7 +153,9 @@ function estimateSharpness(
     for (let x = 1; x < canvas.width - 1; x += 1) {
       const offset = (y * canvas.width + x) * 4;
       const gray = (index: number) =>
-        pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114;
+        pixels[index] * 0.299 +
+        pixels[index + 1] * 0.587 +
+        pixels[index + 2] * 0.114;
       const laplacian =
         gray(offset - canvas.width * 4) +
         gray(offset + canvas.width * 4) +
@@ -145,23 +177,29 @@ export async function analyzePhotoReadiness(
 ): Promise<PhotoReadinessResult> {
   const decoded = await decodeImage(blob);
   try {
-    const { face } = await loadDetector();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const faceResult = face.detect(decoded.source);
-    const faces = faceResult.detections.flatMap((detection) => {
-      const box = detection.boundingBox;
-      return box
-        ? [{ x: box.originX, y: box.originY, width: box.width, height: box.height }]
-        : [];
-    });
+    const { pose } = await loadDetector();
+    if (typeof requestAnimationFrame === "function") {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    const result = pose.detect(decoded.source);
+    const bounds =
+      result.landmarks.length === 1
+        ? poseBounds(result.landmarks[0]!, decoded.width, decoded.height)
+        : null;
     const observation: PhotoReadinessObservation = {
       width: decoded.width,
       height: decoded.height,
-      faces,
-      sharpness:
-        faces.length === 1
-          ? estimateSharpness(decoded.source, decoded.width, decoded.height, faces[0]!)
-          : Number.POSITIVE_INFINITY,
+      poses: result.landmarks.map((landmarks) =>
+        landmarks.map(({ x, y, visibility }) => ({ x, y, visibility })),
+      ),
+      sharpness: bounds
+        ? estimateSharpness(
+            decoded.source,
+            decoded.width,
+            decoded.height,
+            bounds,
+          )
+        : Number.POSITIVE_INFINITY,
     };
     return evaluatePhotoReadiness(observation);
   } finally {

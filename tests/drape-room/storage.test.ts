@@ -24,7 +24,7 @@ const PHOTO_DIGEST = "a".repeat(64);
 const OTHER_DIGEST = "b".repeat(64);
 const PHOTO_READY = {
   state: "ready" as const,
-  policyVersion: "face-visible-v1",
+  policyVersion: "full-body-pose-v1",
   checkedAt: 1_700_000_000_000,
 };
 const CONSENT = {
@@ -57,10 +57,11 @@ function renderInput(
     productSlug: `product-${index}`,
     productName: `Product ${index}`,
     productReferenceVersion: `pdp:hash-${index}:v1`,
+    referenceContractVersion: "gallery-v2",
     background: "studio",
     provider: "google",
     model: "gemini-3.1-flash-image",
-    promptVersion: "nivi-v3",
+    promptVersion: "nivi-v4",
     engineVersion: "engine-v1",
     outputVersion: "jpeg-v1",
     ...overrides,
@@ -458,11 +459,12 @@ describe("Drape Room browser storage", () => {
     const base = {
       userPhotoDigest: PHOTO_DIGEST,
       productId: "product-1",
-      productReferenceVersion: "pdp:asset-v3:v1",
+      productReferenceVersion: "gallery-v2:single:asset-v3:hash-v1",
+      referenceContractVersion: "gallery-v2" as const,
       background: "wedding" as const,
       provider: "google",
       model: "gemini-3.1-flash-image",
-      promptVersion: "nivi-v3",
+      promptVersion: "nivi-v4",
       engineVersion: "engine-v1",
       outputVersion: "jpeg-v1",
     };
@@ -473,11 +475,12 @@ describe("Drape Room browser storage", () => {
     const changes = [
       { userPhotoDigest: OTHER_DIGEST },
       { productId: "product-2" },
-      { productReferenceVersion: "pdp:asset-v4:v1" },
+      { productReferenceVersion: "gallery-v1:single:asset-v3:hash-v1" },
+      { referenceContractVersion: "gallery-v3" as never },
       { background: "party" as const },
       { provider: "openai" },
       { model: "gpt-image-2" },
-      { promptVersion: "nivi-v4" },
+      { promptVersion: "nivi-v5" },
       { engineVersion: "engine-v2" },
       { outputVersion: "jpeg-v2" },
     ];

@@ -1,11 +1,18 @@
 import type { ParsedTryonMultipart } from "@/lib/drape-room/http/multipart";
 import type {
+  BindTryonRequestProductInput,
   BudgetReservation,
   FinalizeTryonBudgetInput,
   ReserveTryonBudgetInput,
 } from "@/lib/drape-room/ledger/budget";
 import type { TryonRateAdmission } from "@/lib/drape-room/security/rate-admission";
 import type { ProductDailyQuotaClaim } from "@/lib/drape-room/security/product-daily-quota";
+import type { ProductAdmissionGuard } from "@/lib/drape-room/security/product-admission-guard";
+import type {
+  ProviderCircuitAdmission,
+  ProviderCircuitFailureCode,
+  ProviderCircuitProbe,
+} from "@/lib/drape-room/security/provider-circuit-breaker";
 import type {
   TryonGenerationLease,
   TryonLeaseAdmission,
@@ -20,15 +27,16 @@ import type { TryOnImageProvider } from "@/lib/drape-room/server/provider";
 
 export type LoadedTryonProduct = {
   saree: { productReferenceVersion: string };
-  references: [{
-    bytes: Uint8Array;
-    mimeType: string;
-    version: string;
-  }, {
-    bytes: Uint8Array;
-    mimeType: string;
-    version: string;
-  }];
+  references: [LoadedTryonProductReference] | [
+    LoadedTryonProductReference,
+    LoadedTryonProductReference,
+  ];
+};
+
+export type LoadedTryonProductReference = {
+  bytes: Uint8Array;
+  mimeType: string;
+  version: string;
 };
 
 export type TryonGenerateDependencies = {
@@ -43,6 +51,7 @@ export type TryonGenerateDependencies = {
     sessionTag: string,
     ipTag: string,
   ) => Promise<TryonRateAdmission>;
+  checkGlobalRateAdmission?: () => Promise<TryonRateAdmission>;
   createRedisClient?: () => TryonRedisClient | null;
   acquireLease?: (
     redis: TryonRedisClient,
@@ -57,12 +66,44 @@ export type TryonGenerateDependencies = {
     ledgerRequestId: string,
     now: number,
   ) => Promise<ProductDailyQuotaClaim>;
+  checkProductAdmissionGuard?: (
+    redis: TryonRedisClient,
+    ipTag: string,
+  ) => Promise<ProductAdmissionGuard>;
+  recordInvalidProductAdmission?: (
+    redis: TryonRedisClient,
+    ipTag: string,
+  ) => Promise<number>;
+  checkProviderCircuit?: (
+    redis: TryonRedisClient,
+    provider: EnabledDrapeRoomConfig["provider"],
+    model: string,
+  ) => Promise<ProviderCircuitAdmission>;
+  recordProviderCircuitFailure?: (
+    redis: TryonRedisClient,
+    provider: EnabledDrapeRoomConfig["provider"],
+    model: string,
+    code: ProviderCircuitFailureCode,
+    probe?: ProviderCircuitProbe,
+  ) => Promise<number>;
+  recordProviderCircuitSuccess?: (
+    redis: TryonRedisClient,
+    provider: EnabledDrapeRoomConfig["provider"],
+    model: string,
+    probe?: ProviderCircuitProbe,
+  ) => Promise<void>;
+  releaseProviderCircuitProbe?: (
+    redis: TryonRedisClient,
+    provider: EnabledDrapeRoomConfig["provider"],
+    model: string,
+    probe: ProviderCircuitProbe,
+  ) => Promise<void>;
   reserveBudget?: (
     input: ReserveTryonBudgetInput,
   ) => Promise<BudgetReservation>;
-  markProviderStarted?: (requestId: string) => Promise<boolean>;
+  markProviderDispatchAttempted?: (requestId: string) => Promise<boolean>;
   finalizeBudget?: (input: FinalizeTryonBudgetInput) => Promise<boolean>;
-  bindProduct?: (requestId: string, productId: string) => Promise<boolean>;
+  bindProduct?: (input: BindTryonRequestProductInput) => Promise<boolean>;
   loadProduct?: (
     productId: string,
     signal?: AbortSignal,
@@ -76,13 +117,12 @@ export type TryonGenerateDependencies = {
 
 export type AdmittedTryonRequest = {
   config: EnabledDrapeRoomConfig;
-  forecastMicroUsd: number;
+  idempotencyHash: string;
   ipTag: string;
-  lease: TryonGenerationLease;
-  ledgerRequestId: string;
   parsed: ParsedTryonMultipart;
   provider: TryOnImageProvider;
   redis: TryonRedisClient;
+  sessionTag: string;
 };
 
 export async function defaultLoadProduct(

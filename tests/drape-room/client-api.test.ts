@@ -31,7 +31,8 @@ const PUBLIC_CONFIG = {
   provider: "google" as const,
   providerDisplayName: "Google Gemini",
   model: "gemini-3.1-flash-image",
-  promptVersion: "nivi-v3",
+  promptVersion: "nivi-v4",
+  referenceContractVersion: "gallery-v2",
   engineVersion: "engine-v1",
   outputVersion: "jpeg-v1",
   outputMimeType: "image/jpeg" as const,
@@ -43,7 +44,7 @@ const PUBLIC_CONFIG = {
   providerRetentionSummary: "The provider processes this image to create the preview.",
 };
 
-function input(regeneration: boolean): DrapeRoomGenerateInput {
+function input(): DrapeRoomGenerateInput {
   return {
     photo: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
       type: "image/jpeg",
@@ -53,7 +54,6 @@ function input(regeneration: boolean): DrapeRoomGenerateInput {
     product,
     background: "studio",
     idempotencyKey: "11111111-1111-4111-8111-111111111111",
-    regeneration,
   };
 }
 
@@ -69,7 +69,8 @@ function jpegResponse(): Response {
         "X-FTT-Tryon-Request-Id": "request-1",
         "X-FTT-Tryon-Provider": "google",
         "X-FTT-Tryon-Model": "gemini-3.1-flash-image",
-        "X-FTT-Tryon-Prompt-Version": "nivi-v3",
+        "X-FTT-Tryon-Prompt-Version": "nivi-v4",
+        "X-FTT-Tryon-Reference-Contract-Version": "gallery-v2",
         "X-FTT-Tryon-Engine-Version": "engine-v1",
         "X-FTT-Tryon-Output-Version": "jpeg-v1",
         "X-FTT-Tryon-Product-Reference-Version": "pdp:hash:v1",
@@ -168,7 +169,7 @@ describe("Drape Room client transport", () => {
     )).toBe(false);
   });
 
-  it("omits regeneration for ordinary Create and sends only allowed fields", async () => {
+  it("never exposes regeneration and sends only allowed public fields", async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       const form = init?.body;
       expect(form).toBeInstanceOf(FormData);
@@ -186,7 +187,7 @@ describe("Drape Room client transport", () => {
     });
 
     await expect(
-      generateDrapeRoomImage(input(false), fetchImpl as typeof fetch),
+      generateDrapeRoomImage(input(), fetchImpl as typeof fetch),
     ).resolves.toMatchObject({
       dailyQuota: {
         limit: 3,
@@ -203,7 +204,7 @@ describe("Drape Room client transport", () => {
     const fetchImpl = vi.fn();
     await expect(
       generateDrapeRoomImage(
-        { ...input(false), consentToken: "invalid-token" },
+        { ...input(), consentToken: "invalid-token" },
         fetchImpl as typeof fetch,
       ),
     ).rejects.toMatchObject({ code: "CONSENT_REQUIRED" });
@@ -221,18 +222,8 @@ describe("Drape Room client transport", () => {
       ),
     );
     await expect(
-      generateDrapeRoomImage(input(false), fetchImpl as typeof fetch),
+      generateDrapeRoomImage(input(), fetchImpl as typeof fetch),
     ).rejects.toMatchObject({ code: "CONSENT_REQUIRED" });
-  });
-
-  it("sets regeneration to exact true only after confirmed regenerate", async () => {
-    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      const form = init?.body as FormData;
-      expect(form.get("regeneration")).toBe("true");
-      return jpegResponse();
-    });
-    await generateDrapeRoomImage(input(true), fetchImpl as typeof fetch);
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces the daily product limit with authoritative quota and retry metadata", async () => {
@@ -257,7 +248,7 @@ describe("Drape Room client transport", () => {
     );
 
     await expect(
-      generateDrapeRoomImage(input(false), fetchImpl as typeof fetch),
+      generateDrapeRoomImage(input(), fetchImpl as typeof fetch),
     ).rejects.toMatchObject({
       code: "TRYON_PRODUCT_DAILY_LIMIT",
       dailyQuota: {
@@ -275,7 +266,7 @@ describe("Drape Room client transport", () => {
     missing.headers.delete("X-FTT-Tryon-Daily-Reset-At");
     await expect(
       generateDrapeRoomImage(
-        input(false),
+        input(),
         vi.fn(async () => missing) as unknown as typeof fetch,
       ),
     ).rejects.toMatchObject({ code: "OUTPUT_INVALID" });
@@ -284,7 +275,7 @@ describe("Drape Room client transport", () => {
     inconsistent.headers.set("X-FTT-Tryon-Daily-Remaining", "1");
     await expect(
       generateDrapeRoomImage(
-        input(false),
+        input(),
         vi.fn(async () => inconsistent) as unknown as typeof fetch,
       ),
     ).rejects.toMatchObject({ code: "OUTPUT_INVALID" });
@@ -307,7 +298,7 @@ describe("Drape Room client transport", () => {
     );
 
     await expect(
-      generateDrapeRoomImage(input(false), fetchImpl as typeof fetch),
+      generateDrapeRoomImage(input(), fetchImpl as typeof fetch),
     ).rejects.toMatchObject({
       code: "PROVIDER_TIMEOUT",
       dailyQuota: { used: 2, remaining: 1 },
@@ -320,7 +311,7 @@ describe("Drape Room client transport", () => {
       urls.push(url);
       return jpegResponse();
     });
-    await generateDrapeRoomImage(input(false), fetchImpl as typeof fetch);
+    await generateDrapeRoomImage(input(), fetchImpl as typeof fetch);
     expect(urls).toEqual(["/api/tryon/generate"]);
     expect(urls.join(" ")).not.toMatch(/googleapis|generativelanguage|api\.openai/i);
   });

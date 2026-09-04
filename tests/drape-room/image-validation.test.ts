@@ -148,6 +148,21 @@ describe("Drape Room image validation", () => {
     );
   });
 
+  it("pads a smaller provider image without enlarging its image content", async () => {
+    const sourceWidth = 640;
+    const sourceHeight = 800;
+    const normalized = await validateAndNormalizeProviderImage({
+      bytes: await image("png", sourceWidth, sourceHeight),
+      mimeType: "image/png",
+    });
+    const trimmed = await sharp(normalized.bytes)
+      .trim({ background: "#ffffff", threshold: 10 })
+      .toBuffer({ resolveWithObject: true });
+
+    expect(trimmed.info.width).toBe(sourceWidth);
+    expect(trimmed.info.height).toBe(sourceHeight);
+  });
+
   it.each([
     [
       "magic/MIME mismatch",

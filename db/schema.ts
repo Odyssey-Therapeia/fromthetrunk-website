@@ -1294,6 +1294,10 @@ export const aiTryonRequests = pgTable(
     productId: uuid("product_id").references(() => products.id, {
       onDelete: "set null",
     }),
+    referenceContractVersion: text("reference_contract_version"),
+    productReferenceVersion: text("product_reference_version"),
+    referenceMode: text("reference_mode"),
+    referenceCount: integer("reference_count"),
     background: text("background").notNull(),
     provider: text("provider").notNull(),
     requestedModel: text("requested_model").notNull(),
@@ -1344,6 +1348,14 @@ export const aiTryonRequests = pgTable(
     knownBackground: check(
       "ai_tryon_requests_known_background",
       sql`${table.background} IN ('studio', 'festival', 'wedding', 'party', 'birthday')`,
+    ),
+    referenceMetadataConsistent: check(
+      "ai_tryon_requests_reference_metadata_consistent",
+      sql`(
+        (${table.referenceContractVersion} IS NULL AND ${table.productReferenceVersion} IS NULL AND ${table.referenceMode} IS NULL AND ${table.referenceCount} IS NULL)
+        OR
+        (${table.referenceContractVersion} IS NOT NULL AND ${table.productReferenceVersion} IS NOT NULL AND ${table.referenceMode} IS NOT NULL AND ${table.referenceCount} IS NOT NULL AND ${table.referenceContractVersion} = 'gallery-v2' AND length(${table.productReferenceVersion}) BETWEEN 1 AND 256 AND ((${table.referenceMode} = 'single' AND ${table.referenceCount} = 2) OR (${table.referenceMode} = 'dual' AND ${table.referenceCount} = 3)))
+      )`,
     ),
   }),
 );

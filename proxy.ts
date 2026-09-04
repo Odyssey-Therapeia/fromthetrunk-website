@@ -5,6 +5,10 @@ import { getToken } from "next-auth/jwt";
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
 import {
+  isKnownVisionAssetPath,
+  isReservedVisionPath,
+} from "@/lib/drape-room/vision-asset-paths";
+import {
   canonicalizeCollectionSearchParams,
   collectionRoutingSearchParams,
   hasCollectionTrackingParams,
@@ -188,6 +192,19 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
   const isDraftModeRequest = request.cookies.has(DRAFT_MODE_COOKIE);
+
+  // ─── Reserved Drape Room vision namespace ──────────────────────
+  // Must precede the public-asset pass-through: `/drape-room/` is a public
+  // asset prefix, so a MISSING file under it would otherwise fall into the CMS
+  // catch-all and stream a 200 HTML page instead of 404ing. The namespace is
+  // fully enumerated by the pinned manifest, so an unknown path is always a
+  // hard 404 and a known one continues to Next's static handler untouched.
+  if (isReservedVisionPath(pathname)) {
+    if (!isKnownVisionAssetPath(pathname)) {
+      return rewriteNotFound(request, startedAt);
+    }
+    return withProxyTiming(response, request, startedAt);
+  }
 
   if (isPublicAssetPath(pathname)) {
     return withProxyTiming(response, request, startedAt);

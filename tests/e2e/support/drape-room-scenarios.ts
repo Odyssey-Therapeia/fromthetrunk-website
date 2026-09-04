@@ -96,7 +96,7 @@ export async function expectCachedReadOnlyNavbarViewer({
   await expect(dialog.locator("[data-drape-regenerate]")).toHaveCount(0);
   await expect(
     dialog.getByRole("button", {
-      name: /^(Create my drape|Use photo and generate|Regenerate)$/i,
+      name: /^(Create my drape|Create preview with new photo)$/i,
     }),
   ).toHaveCount(0);
   await page.waitForTimeout(500);
@@ -119,6 +119,19 @@ export async function captureResponsiveResultScreenshots({
   resultImage: Locator;
 }): Promise<void> {
   await page.setViewportSize({ width: 390, height: 844 });
+  const backgrounds = dialog.getByRole("group", {
+    name: "Choose a Drape Room background",
+  });
+  // The action tray is intentionally sticky on narrow screens. Explicitly
+  // centre the background picker in the scroll body so the visual artifact
+  // proves the cost states themselves, rather than only the sticky actions.
+  await backgrounds.evaluate((element) =>
+    element.scrollIntoView({ block: "center", inline: "nearest" }),
+  );
+  await expectNoDialogHorizontalOverflow(dialog);
+  await page.screenshot({
+    path: "test-results/drape-room-mobile-backgrounds.png",
+  });
   await actions.scrollIntoViewIfNeeded();
   await expectTwoByTwoActionGrid(actions);
   await expect(actions.locator("xpath=..")).toHaveCSS("position", "sticky");
@@ -195,6 +208,12 @@ export async function replacePhotoFromNavbar(
   await page.getByRole("button", { name: "Replace photo", exact: true }).click();
   const replaceDialog = page.getByRole("dialog", { name: "Replace your photo?" });
   await expect(replaceDialog).toBeVisible();
+  await expect(replaceDialog).toContainText(
+    "will remove the AI previews saved in this browser",
+  );
+  await expect(replaceDialog).toContainText(
+    "daily generation limit will not reset",
+  );
   const fileChooserPromise = page.waitForEvent("filechooser");
   await replaceDialog
     .getByRole("button", { name: "Choose new photo", exact: true })
@@ -310,6 +329,7 @@ export async function seedBrowserLocalDrapeRoomResults(
           productSlug: "e2e-classic-nivi-saree",
           productName,
           productReferenceVersion: referenceVersion,
+          referenceContractVersion: config.referenceContractVersion,
           drape: "nivi",
           background,
           provider: config.provider,
@@ -349,10 +369,7 @@ export function expectTransportEnvelope(
   expect(records).toHaveLength(3);
   expect(multipartField(records[0]!.bytes, "background")).toBe("studio");
   expect(multipartField(records[1]!.bytes, "background")).toBe("festival");
-  expect(records[0]!.text).not.toContain('name="regeneration"');
-  expect(records[1]!.text).not.toContain('name="regeneration"');
-  expect(multipartField(records[2]!.bytes, "background")).toBe("studio");
-  expect(multipartField(records[2]!.bytes, "regeneration")).toBe("true");
+  expect(multipartField(records[2]!.bytes, "background")).toBe("wedding");
 
   for (const record of records) {
     expect(record.consentToken).toBe(CONSENT_TOKEN);
@@ -360,6 +377,7 @@ export function expectTransportEnvelope(
     expect(record.text).toContain('name="photo"; filename="photo.jpg"');
     expect(record.photoBytes).toBeLessThanOrEqual(2_000_000);
     expect(record.bytes.byteLength).toBeLessThanOrEqual(3_500_000);
+    expect(record.text).not.toContain('name="regeneration"');
     for (const forbiddenField of [
       "provider",
       "model",

@@ -9,6 +9,10 @@ import {
   type ProviderDisclosure,
 } from "@/lib/drape-room/server/provider";
 import { parseTryonAllowedOrigins } from "@/lib/drape-room/security/origin";
+import {
+  DRAPE_REFERENCE_CONTRACT_VERSION,
+  type DrapeReferenceContractVersion,
+} from "@/lib/drape-room/reference-contract";
 import { z } from "zod";
 
 const MIN_PROVIDER_TIMEOUT_MS = 5_000;
@@ -72,6 +76,7 @@ export type PublicTryOnConfig = {
   providerDisplayName: string;
   model: string;
   promptVersion: string;
+  referenceContractVersion: DrapeReferenceContractVersion;
   engineVersion: string;
   outputVersion: string;
   outputMimeType: "image/jpeg";
@@ -95,7 +100,8 @@ export type EnabledDrapeRoomConfig = {
   apiKey: string;
   requestTimeoutMs: number;
   allowedOrigins: ReadonlySet<string>;
-  promptVersion: "nivi-v3";
+  promptVersion: "nivi-v4";
+  referenceContractVersion: DrapeReferenceContractVersion;
   engineVersion: string;
   outputVersion: string;
   disclosureVersion: string;
@@ -278,6 +284,7 @@ function publicConfig(input: {
     outputVersion: input.outputVersion,
     privacyPolicyVersion: input.privacyPolicyVersion,
     promptVersion: input.promptVersion,
+    referenceContractVersion: DRAPE_REFERENCE_CONTRACT_VERSION,
     provider: input.provider,
     providerDisplayName: disclosure.providerDisplayName,
     providerPolicyUrl: disclosure.policyUrl,
@@ -319,7 +326,7 @@ export function disabledPublicTryOnConfig(
       env[ENV.privacyPolicyVersion],
       "2026-08-ai-v1",
     ),
-    promptVersion: "nivi-v3",
+    promptVersion: "nivi-v4",
     provider,
   });
 }
@@ -365,7 +372,7 @@ export function readDrapeRoomConfig(
   if (!originResult.ok) throw new DrapeRoomConfigError("invalid_origins");
 
   const promptVersion = readVersion(env[ENV.promptVersion]);
-  if (promptVersion !== "nivi-v3") {
+  if (promptVersion !== "nivi-v4") {
     throw new DrapeRoomConfigError("invalid_version");
   }
   const engineVersion = readVersion(env[ENV.engineVersion]);
@@ -407,6 +414,7 @@ export function readDrapeRoomConfig(
     outputVersion,
     privacyPolicyVersion,
     promptVersion,
+    referenceContractVersion: DRAPE_REFERENCE_CONTRACT_VERSION,
     provider,
     publicConfig: clientConfig,
     requestTimeoutMs: parseTimeout(env[ENV.providerTimeoutMs]),

@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { dispatchWishlistUpdated } from "@/lib/wishlist/wishlist-events";
 
 interface WishlistButtonProps {
   productId: string;
@@ -75,8 +76,11 @@ export function WishlistButton({
       return res.json();
     },
     onMutate: () => setOptimisticWished(true),
-    onSuccess: () => {
+    onSuccess: (_data, targetProductId) => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      // The header island runs its own QueryClient, so the invalidation above
+      // never reaches it. The shared event does.
+      dispatchWishlistUpdated({ reason: "add", productId: targetProductId });
       toast.success("Saved to your trunk");
     },
     onError: () => {
@@ -99,6 +103,7 @@ export function WishlistButton({
     onMutate: () => setOptimisticWished(false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      dispatchWishlistUpdated({ reason: "remove", productId });
       toast(`${productName} removed from wishlist`);
     },
     onError: () => {

@@ -23,7 +23,8 @@ export const CONFIG = {
   provider: "google",
   providerDisplayName: "Google Gemini API",
   model: "gemini-3.1-flash-image",
-  promptVersion: "nivi-v3",
+  promptVersion: "nivi-v4",
+  referenceContractVersion: "gallery-v2",
   engineVersion: "drape-engine-v1",
   outputVersion: "jpeg-3x4-v1",
   outputMimeType: "image/jpeg",
@@ -52,6 +53,14 @@ export type EntryName =
 
 export type DrapeRoomImageFixtures = {
   generatedJpeg: Buffer;
+  /**
+   * A real headshot: the head-and-shoulders region of the same real subject,
+   * cropped so hips, knees and feet are outside the frame. Derived from the
+   * committed full-body photo so the negative case uses genuine image data
+   * (real MediaPipe must actually find a person, then reject the framing)
+   * rather than synthetic landmarks.
+   */
+  headshotJpeg: Buffer;
   replacementJpeg: Buffer;
   subjectJpeg: Buffer;
 };
@@ -70,8 +79,35 @@ export async function buildDrapeRoomImageFixtures(): Promise<DrapeRoomImageFixtu
     .modulate({ brightness: 1.02, saturation: 0.96 })
     .jpeg({ quality: 90 })
     .toBuffer();
+  const headshotJpeg = await buildHeadshot(subjectJpeg);
 
-  return { generatedJpeg, replacementJpeg, subjectJpeg };
+  return { generatedJpeg, headshotJpeg, replacementJpeg, subjectJpeg };
+}
+
+/**
+ * Crop the top of the full-body frame to head-and-shoulders and upscale it back
+ * to a normal portrait size, so the result is a plausible headshot upload
+ * rather than a thin strip. Deterministic: same input bytes -> same output.
+ */
+async function buildHeadshot(subjectJpeg: Buffer): Promise<Buffer> {
+  const { height = 0, width = 0 } = await sharp(subjectJpeg).metadata();
+  if (!width || !height) {
+    throw new Error("The full-body fixture is missing image dimensions.");
+  }
+  // The subject stands centred; the head occupies roughly the top fifth. Taking
+  // the top 28% keeps head and shoulders and drops the hips entirely.
+  const cropHeight = Math.round(height * 0.28);
+  const cropWidth = Math.round(width * 0.6);
+  return sharp(subjectJpeg)
+    .extract({
+      left: Math.round((width - cropWidth) / 2),
+      top: 0,
+      width: cropWidth,
+      height: cropHeight,
+    })
+    .resize({ width: 900, height: 1_200, fit: "cover", position: "top" })
+    .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
+    .toBuffer();
 }
 
 async function deterministicJpeg(

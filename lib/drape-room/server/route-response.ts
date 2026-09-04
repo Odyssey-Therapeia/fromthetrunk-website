@@ -30,6 +30,7 @@ export function rawTryonImageResponse(input: {
   provider: string;
   model: string;
   promptVersion: string;
+  referenceContractVersion: string;
   engineVersion: string;
   outputVersion: string;
   productReferenceVersion: string;
@@ -40,6 +41,7 @@ export function rawTryonImageResponse(input: {
     input.provider,
     input.model,
     input.promptVersion,
+    input.referenceContractVersion,
     input.engineVersion,
     input.outputVersion,
     input.productReferenceVersion,
@@ -62,6 +64,8 @@ export function rawTryonImageResponse(input: {
       "X-FTT-Tryon-Product-Reference-Version":
         input.productReferenceVersion,
       "X-FTT-Tryon-Prompt-Version": input.promptVersion,
+      "X-FTT-Tryon-Reference-Contract-Version":
+        input.referenceContractVersion,
       "X-FTT-Tryon-Provider": input.provider,
       "X-FTT-Tryon-Request-Id": input.requestId,
   });

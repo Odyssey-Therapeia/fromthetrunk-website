@@ -34,6 +34,7 @@ export function createDrapeRoomCacheNamespaceIdentity({
           config.provider,
           config.model,
           config.promptVersion,
+          config.referenceContractVersion,
           config.engineVersion,
           config.outputVersion,
         ]
@@ -71,6 +72,7 @@ export async function loadCachedDrapeRoomResults({
         userPhotoDigest: photo.digest,
         productId: product.productId,
         productReferenceVersion: product.productReferenceVersion,
+        referenceContractVersion: config.referenceContractVersion,
         background,
         provider: config.provider,
         model: config.model,
@@ -96,6 +98,7 @@ export function selectBrowserLocalDrapeRoomResults(
         record.userPhotoDigest === photo.digest &&
         record.productId === product.productId &&
         record.productReferenceVersion === product.productReferenceVersion &&
+        record.referenceContractVersion === "gallery-v2" &&
         record.drape === "nivi",
     )
     .sort(
@@ -130,6 +133,7 @@ export function toDrapeRoomResult(
     userPhotoDigest: record.userPhotoDigest,
     productId: record.productId,
     productReferenceVersion: record.productReferenceVersion,
+    referenceContractVersion: record.referenceContractVersion,
     background: record.background,
     provider: record.provider,
     model: record.model,
@@ -165,6 +169,7 @@ export function isCurrentDrapeRoomResult({
   }
   return config
     ? result.provider === config.provider &&
+        result.referenceContractVersion === config.referenceContractVersion &&
         result.model === config.model &&
         result.promptVersion === config.promptVersion &&
         result.engineVersion === config.engineVersion &&
@@ -177,6 +182,7 @@ function renderNamespace(record: StoredDrapeRender): string {
     record.provider,
     record.model,
     record.promptVersion,
+    record.referenceContractVersion,
     record.engineVersion,
     record.outputVersion,
   ]);
@@ -190,6 +196,7 @@ export function assertAuthoritativeDrapeRoomIdentity(
     identity.provider !== config.provider ||
     identity.model !== config.model ||
     identity.promptVersion !== config.promptVersion ||
+    identity.referenceContractVersion !== config.referenceContractVersion ||
     identity.engineVersion !== config.engineVersion ||
     identity.outputVersion !== config.outputVersion
   ) {

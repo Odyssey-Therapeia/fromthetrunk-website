@@ -3,7 +3,7 @@ import {
   DrapeProviderError,
   IMAGE_PROVIDER_MODELS,
   PROVIDER_DISCLOSURES,
-  estimateProviderMaximumCost,
+  estimateProviderCostReservation,
   normalizedUnitCount,
   unknownToProviderError,
   type ProviderDisclosure,
@@ -12,6 +12,7 @@ import {
   type TryOnGenerationResult,
   type TryOnImageProvider,
   type TryOnProviderUsage,
+  type TryOnReferenceCount,
 } from "@/lib/drape-room/server/provider";
 import { z } from "zod";
 
@@ -22,7 +23,6 @@ export type OpenAiImageEditRequest = {
   n: 1;
   size: "1024x1536";
   quality: "medium";
-  input_fidelity: "high";
   background: "opaque";
   output_format: "jpeg";
   output_compression: 90;
@@ -69,6 +69,25 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function openAiUsageCostMicroUsd(
+  inputTokens: number | null,
+  outputTokens: number | null,
+): number | null {
+  if (inputTokens === null || outputTokens === null) return null;
+  // GPT Image 2 usage currently reports aggregate input tokens. Price all of
+  // them at the higher Standard image-input rate ($8/M), rather than assuming
+  // the lower text or cached-input rates; output is $30/M. This is a
+  // conservative usage-derived settlement, not an exact provider invoice.
+  const inputMicroUsd = inputTokens * 8;
+  const outputMicroUsd = outputTokens * 30;
+  const total = inputMicroUsd + outputMicroUsd;
+  return Number.isSafeInteger(inputMicroUsd) &&
+    Number.isSafeInteger(outputMicroUsd) &&
+    Number.isSafeInteger(total)
+    ? total
+    : null;
+}
+
 function normalizeUsage(value: unknown): TryOnProviderUsage {
   const usage = asRecord(value);
   if (!usage) {
@@ -77,15 +96,17 @@ function normalizeUsage(value: unknown): TryOnProviderUsage {
       inputUnits: null,
       outputUnits: null,
       providerReported: false,
-      usageVersion: "openai-images-v1",
+      usageVersion: "openai-images-standard-upper-bound-2026-09-v2",
     };
   }
+  const inputUnits = normalizedUnitCount(usage.input_tokens);
+  const outputUnits = normalizedUnitCount(usage.output_tokens);
   return {
-    actualMicroUsd: null,
-    inputUnits: normalizedUnitCount(usage.input_tokens),
-    outputUnits: normalizedUnitCount(usage.output_tokens),
+    actualMicroUsd: openAiUsageCostMicroUsd(inputUnits, outputUnits),
+    inputUnits,
+    outputUnits,
     providerReported: true,
-    usageVersion: "openai-images-v1",
+    usageVersion: "openai-images-standard-upper-bound-2026-09-v2",
   };
 }
 
@@ -172,15 +193,22 @@ export class OpenAiImageProvider implements TryOnImageProvider {
     return model === IMAGE_PROVIDER_MODELS.openai.model;
   }
 
-  estimateMaximumCost(input: {
+  estimateCostReservation(input: {
     model: string;
-    referenceCount: 3;
+    referenceCount: TryOnReferenceCount;
     imageSize: "1K";
   }) {
-    if (input.referenceCount !== 3 || input.imageSize !== "1K") {
+    if (
+      (input.referenceCount !== 2 && input.referenceCount !== 3) ||
+      input.imageSize !== "1K"
+    ) {
       throw new DrapeProviderError("invalid_request", 500);
     }
-    return estimateProviderMaximumCost(this.id, input.model);
+    return estimateProviderCostReservation(
+      this.id,
+      input.model,
+      input.referenceCount,
+    );
   }
 
   async generate(input: TryOnGenerationInput): Promise<TryOnGenerationResult> {
@@ -209,9 +237,10 @@ export class OpenAiImageProvider implements TryOnImageProvider {
           image: [
             imageFile("subject", input.person),
             imageFile("product-context", input.garments[0]),
-            imageFile("product-detail", input.garments[1]),
+            ...(input.garments[1]
+              ? [imageFile("product-detail", input.garments[1])]
+              : []),
           ],
-          input_fidelity: "high",
           model: IMAGE_PROVIDER_MODELS.openai.model,
           n: 1,
           output_compression: 90,

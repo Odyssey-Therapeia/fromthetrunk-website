@@ -55,6 +55,7 @@ test.describe("Drape Room guarded browser flow", () => {
     const network = await installNetworkHarness(page, images);
     await page.setViewportSize({ width: 1_280, height: 900 });
     await navigateToHarness(page);
+    expect(network.configRequests).toBe(0);
 
     const cardTrigger = entryTrigger(page, "Product card entry");
     await expect(cardTrigger).toBeVisible({ timeout: 20_000 });
@@ -91,6 +92,7 @@ test.describe("Drape Room guarded browser flow", () => {
       const before = page.url();
       await entryTrigger(page, entry).click();
       await expect(drapeDialog(page)).toBeVisible();
+      await expect.poll(() => network.configRequests).toBeGreaterThan(0);
       await expect(drapeDialog(page)).toContainText(PRODUCT_NAME);
       expect(page.url()).toBe(before);
       expect(network.generateRecords).toHaveLength(0);
@@ -225,7 +227,7 @@ test.describe("Drape Room guarded browser flow", () => {
     await expect(dialog.getByRole("checkbox")).toHaveCount(0);
     await expect(
       dialog.getByRole("button", {
-        name: "Use photo and generate",
+        name: "Create preview with new photo",
         exact: true,
       }),
     ).toBeDisabled();
@@ -309,7 +311,7 @@ test.describe("Drape Room guarded browser flow", () => {
     await expect(actions.getByText("Visit product", { exact: true })).toBeVisible();
     await expect(actions.getByText("Wishlist", { exact: true })).toBeVisible();
     await expect(actions.getByText("Add to bag", { exact: true })).toBeVisible();
-    await expect(dialog.locator("[data-drape-regenerate]")).toBeDisabled();
+    await expect(dialog.locator("[data-drape-regenerate]")).toHaveCount(0);
     await expect(
       dialog.locator('[data-drape-background="studio"]'),
     ).toBeEnabled();
@@ -415,7 +417,7 @@ test.describe("Drape Room guarded browser flow", () => {
     expect(network.providerRequests).toEqual([]);
   });
 
-  test("explicit generation survives close/reopen, caches, performs actions, preserves failed regeneration, and clears local data", async ({
+  test("explicit generation survives close/reopen, caches, performs actions, preserves a failed new background, and clears local data", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -451,7 +453,7 @@ test.describe("Drape Room guarded browser flow", () => {
     });
     await consent.check();
     const create = dialog.getByRole("button", {
-      name: "Use photo and generate",
+      name: "Create preview with new photo",
       exact: true,
     });
     await expect(create).toBeEnabled({ timeout: 20_000 });
@@ -560,11 +562,8 @@ test.describe("Drape Room guarded browser flow", () => {
     await expect(wishlistDialog).toBeHidden();
     await expect(dialog).toBeVisible();
 
-    await actions.getByRole("button", { name: "Add to cart", exact: true }).click();
-    await expect.poll(() => network.cartReserveRequests).toBe(1);
-    await expect(actions.getByText("Added", { exact: true })).toBeVisible();
-    await expect(dialog).toBeVisible();
-
+    // Responsive capture happens BEFORE Add to cart: adding deliberately closes
+    // the Drape Room, so the dialog must still be the active surface here.
     await captureResponsiveResultScreenshots({
       actions,
       dialog,
@@ -573,7 +572,41 @@ test.describe("Drape Room guarded browser flow", () => {
     });
 
     await page.setViewportSize({ width: 1_280, height: 900 });
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+
+    // Drape Room -> Add to cart -> Drape Room closes -> Shopping Bag opens.
+    // Exactly one aria-modal surface is active at any point; the bag must never
+    // mount on top of the Drape Room and leave it inert.
+    const urlBeforeAdd = page.url();
+    const providerCallsBeforeAdd = network.providerRequests.length;
+    const generationsBeforeAdd = network.generateRecords.length;
+    const shoppingBag = page.getByRole("dialog", { name: "Shopping Bag" });
+    await expect(shoppingBag).toBeHidden();
+
+    await actions.getByRole("button", { name: "Add to cart", exact: true }).click();
+    await expect.poll(() => network.cartReserveRequests).toBe(1);
+
+    await expect(dialog).toBeHidden();
+    await expect(shoppingBag).toBeVisible();
+    // Exactly one modal surface is live: the bag. Before the fix the Sheet
+    // mounted on top of the still-open Drape Room dialog, leaving the lower
+    // one in the DOM but inert and unreachable by assistive technology.
+    await expect(page.locator('[role="dialog"]:visible')).toHaveCount(1);
+    expect(page.url()).toBe(urlBeforeAdd);
+
+    // Focus lands inside the bag, not back on the AI-star trigger.
+    expect(
+      await shoppingBag.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
+
+    // Reserving is not a generation: the preview stays local and free.
+    expect(network.providerRequests).toHaveLength(providerCallsBeforeAdd);
+    expect(network.generateRecords).toHaveLength(generationsBeforeAdd);
+    await expect(page.locator("[data-ftt-cart-count]")).toHaveText("1");
+
+    await shoppingBag.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(shoppingBag).toBeHidden();
     await expect(dialog).toBeHidden();
     for (const mode of ["disabled", "unavailable"] as const) {
       await expectCachedReadOnlyNavbarViewer({
@@ -599,7 +632,7 @@ test.describe("Drape Room guarded browser flow", () => {
     await expect(festivalDialog).toBeVisible();
     await expect(drapeDialogSurface(page)).toBeVisible();
     await festivalDialog
-      .getByRole("button", { name: "Continue and generate", exact: true })
+      .getByRole("button", { name: "Use 1 generation", exact: true })
       .click();
     await expect.poll(() => network.generateRecords.length).toBe(2);
     await expect(dialog.getByText("AI preview · Festival", { exact: true })).toBeVisible();
@@ -611,28 +644,48 @@ test.describe("Drape Room guarded browser flow", () => {
     expect(network.generateRecords).toHaveLength(2);
 
     const preservedSrc = await resultImage.getAttribute("src");
-    await dialog.locator("[data-drape-regenerate]").click();
-    const regenerateDialog = page.getByRole("dialog", {
-      name: "Regenerate this preview?",
+    await expect(dialog.locator("[data-drape-regenerate]")).toHaveCount(0);
+    await dialog.getByRole("button", { name: /Wedding/ }).click();
+    const weddingDialog = page.getByRole("dialog", {
+      name: "Create the Wedding setting?",
     });
-    await expect(regenerateDialog).toBeVisible();
+    await expect(weddingDialog).toBeVisible();
     await expect(drapeDialogSurface(page)).toBeVisible();
-    await regenerateDialog
-      .getByRole("button", { name: "Regenerate", exact: true })
+    await weddingDialog
+      .getByRole("button", { name: "Keep current preview", exact: true })
+      .click();
+    await expect(weddingDialog).toBeHidden();
+    expect(network.generateRecords).toHaveLength(2);
+
+    await dialog.getByRole("button", { name: /Wedding/ }).click();
+    await expect(weddingDialog).toBeVisible();
+    await weddingDialog
+      .getByRole("button", { name: "Use 1 generation", exact: true })
       .click();
     await expect.poll(() => network.generateRecords.length).toBe(3);
     await expect(dialog.getByRole("alert")).toContainText(
-      "Deterministic failed regeneration",
+      "Deterministic failed background generation",
     );
     await expect(resultImage).toHaveAttribute("src", preservedSrc ?? "");
     await expect(
-      dialog.getByText("Daily limit reached · available tomorrow", {
-        exact: true,
-      }),
+      dialog.getByText(/Daily limit reached\. Saved backgrounds remain free to view\./),
     ).toBeVisible();
-    await expect(dialog.locator("[data-drape-regenerate]")).toBeDisabled();
-    await expect(regenerateDialog).toBeHidden();
+    await expect(dialog.locator('[data-drape-background="studio"]')).toBeEnabled();
+    await expect(dialog.locator('[data-drape-background="festival"]')).toBeEnabled();
+    await expect(dialog.locator('[data-drape-background="wedding"]')).toBeDisabled();
+    await expect(weddingDialog).toBeHidden();
     await expect(dialog).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await dialog
+      .getByRole("group", { name: "Choose a Drape Room background" })
+      .evaluate((element) =>
+        element.scrollIntoView({ block: "center", inline: "nearest" }),
+      );
+    await assertDialogInsideViewport(page, dialog);
+    await page.screenshot({
+      path: "test-results/drape-room-mobile-daily-limit.png",
+    });
 
     await actions
       .getByRole("button", { name: "Visit product", exact: true })
@@ -695,6 +748,67 @@ test.describe("Drape Room guarded browser flow", () => {
       network.generateRecords,
       images.generatedJpeg.byteLength,
     );
+    expect(network.providerRequests).toEqual([]);
+    expect(hasProviderRequest(network.blockedExternalRequests)).toBe(false);
+  });
+});
+
+/**
+ * Real-image proof of the local readiness gate.
+ *
+ * tests/drape-room/photo-readiness-policy.test.ts pins the POLICY against
+ * hand-built landmark arrays; these two tests pin the whole pipeline — the
+ * same-origin wasm and .task model, real MediaPipe pose inference, and the
+ * policy — against real photographs, and assert that a rejected photo never
+ * reaches the paid provider.
+ */
+test.describe("Drape Room local readiness on real photographs", () => {
+  test("accepts the real full-body subject and blocks a real headshot", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const network = await installNetworkHarness(page, images);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await navigateToHarness(page);
+
+    await entryTrigger(page, "Product card entry").click();
+    const dialog = drapeDialog(page);
+    const intro = onboarding(dialog);
+    await expect(dialog).toBeVisible();
+    await expect(intro).toBeVisible();
+
+    // 1. A real full-body photograph passes the local check.
+    await intro.locator('input[type="file"]').setInputFiles({
+      name: "full-body-subject.jpg",
+      mimeType: "image/jpeg",
+      buffer: images.subjectJpeg,
+    });
+    await expect(
+      intro.getByText(/photo ready\. review the disclosure/i),
+    ).toBeVisible({ timeout: 60_000 });
+    // Passing the local check must not itself spend anything.
+    expect(network.generateRecords).toHaveLength(0);
+    expect(network.providerRequests).toEqual([]);
+
+    // 2. A real headshot of the same subject is rejected. The crop keeps head
+    //    and shoulders and drops the hips, so MediaPipe finds a person and the
+    //    policy blocks the framing — the "hips-not-visible" branch.
+    await intro.locator('input[type="file"]').setInputFiles({
+      name: "headshot-subject.jpg",
+      mimeType: "image/jpeg",
+      buffer: images.headshotJpeg,
+    });
+    await expect(
+      intro.getByText(
+        /full-body photo with both hips visible|full-body photo with both knees visible|complete body, including head and feet/i,
+      ),
+    ).toBeVisible({ timeout: 60_000 });
+    await expect(
+      intro.getByText(/photo ready\. review the disclosure/i),
+    ).toHaveCount(0);
+
+    // 3. The blocked photo never reached the provider.
+    expect(network.generateRecords).toHaveLength(0);
     expect(network.providerRequests).toEqual([]);
     expect(hasProviderRequest(network.blockedExternalRequests)).toBe(false);
   });

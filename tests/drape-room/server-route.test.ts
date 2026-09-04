@@ -60,7 +60,7 @@ function enabledEnv(
     FTT_TRYON_MODEL: "gemini-3.1-flash-image",
     FTT_TRYON_MONTHLY_LIMIT_MICRO_USD: "5000000",
     FTT_TRYON_OUTPUT_VERSION: "jpeg-1k-v1",
-    FTT_TRYON_PROMPT_VERSION: "nivi-v3",
+    FTT_TRYON_PROMPT_VERSION: "nivi-v4",
     FTT_TRYON_PROVIDER: "google",
     FTT_TRYON_PROVIDER_TIMEOUT_MS: "210000",
     FTT_TRYON_SESSION_SECRET: secret("session"),
@@ -179,7 +179,7 @@ async function harness(
   const finalizations: FinalizeTryonBudgetInput[] = [];
   const reservations: ReserveTryonBudgetInput[] = [];
   const bindProduct = vi.fn(async () => true);
-  const commitDailyQuota = vi.fn();
+  const commitDailyQuota = vi.fn(async () => undefined);
   const releaseDailyQuota = vi.fn(async () => undefined);
   const claimProductDailyQuota = vi.fn(async () => ({
     allowed: true as const,
@@ -190,10 +190,14 @@ async function harness(
       resetAt: DAILY_RESET_AT,
       used: 1 as const,
     },
-    commitProviderStarted: commitDailyQuota,
+    commitProviderDispatchAttempted: commitDailyQuota,
     releaseBeforeProvider: releaseDailyQuota,
   }));
-  const release = vi.fn(async () => undefined);
+  const release = vi.fn(async () => ({
+    complete: true,
+    global: "released" as const,
+    session: "released" as const,
+  }));
   return {
     dependencies: {
       acquireLease: async () => ({
@@ -201,6 +205,18 @@ async function harness(
         lease: { release },
       }),
       checkRateAdmission: async () => ({
+        allowed: true,
+        retryAfterSeconds: 0,
+      }),
+      checkGlobalRateAdmission: async () => ({
+        allowed: true,
+        retryAfterSeconds: 0,
+      }),
+      checkProductAdmissionGuard: async () => ({
+        allowed: true,
+        retryAfterSeconds: 0,
+      }),
+      checkProviderCircuit: async () => ({
         allowed: true,
         retryAfterSeconds: 0,
       }),
@@ -229,9 +245,12 @@ async function harness(
         ],
         saree: { productReferenceVersion: REFERENCE_VERSION },
       }),
-      markProviderStarted: async () => true,
+      markProviderDispatchAttempted: async () => true,
       now: () => NOW,
       rateLimitsReady: () => true,
+      recordInvalidProductAdmission: async () => 0,
+      recordProviderCircuitFailure: async () => 0,
+      recordProviderCircuitSuccess: async () => undefined,
       readConfig: () => config,
       reserveBudget: async (input) => {
         reservations.push(input);
@@ -354,7 +373,7 @@ describe("Drape Room generation application service", () => {
     expect(response.headers.get("x-ftt-tryon-model")).toBe(
       "gemini-3.1-flash-image",
     );
-    expect(response.headers.get("x-ftt-tryon-prompt-version")).toBe("nivi-v3");
+    expect(response.headers.get("x-ftt-tryon-prompt-version")).toBe("nivi-v4");
     expect(response.headers.get("x-ftt-tryon-engine-version")).toBe(
       "storefront-v1",
     );
@@ -372,6 +391,8 @@ describe("Drape Room generation application service", () => {
     );
     expect(body.byteLength).toBeLessThanOrEqual(3_800_000);
     expect(test.provider.requests).toHaveLength(1);
+    expect(test.reservations).toHaveLength(1);
+    expect(test.reservations[0]).not.toHaveProperty("regeneration");
     expect(test.claimProductDailyQuota).toHaveBeenCalledOnce();
     expect(test.claimProductDailyQuota.mock.calls[0]?.slice(1)).toEqual([
       expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
@@ -381,10 +402,14 @@ describe("Drape Room generation application service", () => {
     ]);
     expect(test.commitDailyQuota).toHaveBeenCalledOnce();
     expect(test.releaseDailyQuota).not.toHaveBeenCalled();
-    expect(test.bindProduct).toHaveBeenCalledExactlyOnceWith(
-      REQUEST_ID,
-      PRODUCT_ID,
-    );
+    expect(test.bindProduct).toHaveBeenCalledExactlyOnceWith({
+      productId: PRODUCT_ID,
+      productReferenceVersion: REFERENCE_VERSION,
+      referenceContractVersion: "gallery-v2",
+      referenceCount: 3,
+      referenceMode: "dual",
+      requestId: REQUEST_ID,
+    });
     expect(test.finalizations).toEqual([
       expect.objectContaining({
         actualMicroUsd: null,
@@ -394,6 +419,72 @@ describe("Drape Room generation application service", () => {
       }),
     ]);
     expect(test.release).toHaveBeenCalledOnce();
+  });
+
+  it("prices a single product reference as two total provider images", async () => {
+    const singleReferenceVersion =
+      "gallery-v2:single:44444444-4444-4444-8444-444444444444:abcdef0123456789";
+    const provider = createFakeImageProvider({
+      estimateMicroUsd: (referenceCount) => referenceCount * 100_000,
+      output: { bytes: await jpeg(768, 1_024), mimeType: "image/jpeg" },
+    });
+    const test = await harness({
+      createProvider: async () => provider,
+      loadProduct: async () => ({
+        references: [
+          {
+            bytes: await jpeg(),
+            mimeType: "image/jpeg",
+            version: "single-product-reference-v1",
+          },
+        ],
+        saree: { productReferenceVersion: singleReferenceVersion },
+      }),
+    });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    expect(
+      response.headers.get("x-ftt-tryon-product-reference-version"),
+    ).toBe(singleReferenceVersion);
+    expect(provider.requests).toHaveLength(1);
+    expect(provider.requests[0]?.garments).toHaveLength(1);
+    expect(provider.requests[0]?.prompt).toContain(
+      "exactly two reference images",
+    );
+    expect(provider.estimatedReferenceCounts).toEqual([3, 2]);
+    expect(test.reservations[0]?.forecastMicroUsd).toBe(200_000);
+    expect(test.bindProduct).toHaveBeenCalledExactlyOnceWith({
+      productId: PRODUCT_ID,
+      productReferenceVersion: singleReferenceVersion,
+      referenceContractVersion: "gallery-v2",
+      referenceCount: 2,
+      referenceMode: "single",
+      requestId: REQUEST_ID,
+    });
+  });
+
+  it("prices dual product references as three total provider images", async () => {
+    const provider = createFakeImageProvider({
+      estimateMicroUsd: (referenceCount) => referenceCount * 100_000,
+      output: { bytes: await jpeg(768, 1_024), mimeType: "image/jpeg" },
+    });
+    const test = await harness({ createProvider: async () => provider });
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    expect(provider.estimatedReferenceCounts).toEqual([3, 3]);
+    expect(test.reservations[0]?.forecastMicroUsd).toBe(300_000);
+    expect(test.bindProduct).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceCount: 3, referenceMode: "dual" }),
+    );
   });
 
   it("keeps browser cache identity on the configured model while auditing the served model", async () => {
@@ -434,18 +525,36 @@ describe("Drape Room generation application service", () => {
     }
   });
 
-  it("rejects invalid bounded multipart scalars at the Zod boundary", async () => {
+  it("rejects invalid scalars and the removed public regeneration field", async () => {
     for (const requestOptions of [
       { background: "custom-scene" },
       { regeneration: "false" },
+      { regeneration: "true" },
     ]) {
-      const test = await harness();
+      const checkGlobalRateAdmission = vi.fn(async () => ({
+        allowed: true as const,
+        retryAfterSeconds: 0 as const,
+      }));
+      const acquireLease = vi.fn(async () => {
+        throw new Error("lease must not be acquired");
+      });
+      const markProviderDispatchAttempted = vi.fn(async () => true);
+      const test = await harness({
+        acquireLease,
+        checkGlobalRateAdmission,
+        markProviderDispatchAttempted,
+      });
       const response = await handleTryonGenerateRequest(
         await requestFor({ config: enabledConfig(), ...requestOptions }),
         test.dependencies,
       );
       expect(response.status).toBe(400);
+      expect(checkGlobalRateAdmission).not.toHaveBeenCalled();
+      expect(acquireLease).not.toHaveBeenCalled();
+      expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
       expect(test.reservations).toHaveLength(0);
+      expect(test.bindProduct).not.toHaveBeenCalled();
+      expect(markProviderDispatchAttempted).not.toHaveBeenCalled();
       expect(test.provider.requests).toHaveLength(0);
     }
   });
@@ -661,10 +770,11 @@ describe("Drape Room generation application service", () => {
     });
     expect(test.provider.requests).toHaveLength(0);
     expect(test.finalizations).toHaveLength(0);
-    expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
+    expect(test.claimProductDailyQuota).toHaveBeenCalledOnce();
+    expect(test.releaseDailyQuota).toHaveBeenCalledOnce();
   });
 
-  it("returns the authoritative daily quota and releases the budget on the fourth generation", async () => {
+  it("returns the authoritative daily quota before reserving budget on the fourth generation", async () => {
     const retryAfterSeconds = 3_600;
     const test = await harness({
       claimProductDailyQuota: async () => ({
@@ -696,13 +806,14 @@ describe("Drape Room generation application service", () => {
       new Date(DAILY_RESET_AT).toISOString(),
     );
     expect(test.provider.requests).toHaveLength(0);
-    expect(test.finalizations).toEqual([
-      expect.objectContaining({ actualMicroUsd: 0, status: "failed_pre_provider" }),
-    ]);
+    expect(test.reservations).toHaveLength(0);
+    expect(test.finalizations).toHaveLength(0);
   });
 
   it("releases a claimed daily slot when the provider-start ledger transition fails", async () => {
-    const test = await harness({ markProviderStarted: async () => false });
+    const test = await harness({
+      markProviderDispatchAttempted: async () => false,
+    });
     const response = await handleTryonGenerateRequest(
       await requestFor({ config: enabledConfig() }),
       test.dependencies,
@@ -717,8 +828,12 @@ describe("Drape Room generation application service", () => {
     ]);
   });
 
-  it("releases reservation and calls provider zero times for sold products", async () => {
+  it("rejects sold products before scarce admission or reservation", async () => {
+    const checkGlobalRateAdmission = vi.fn();
+    const acquireLease = vi.fn();
     const test = await harness({
+      acquireLease,
+      checkGlobalRateAdmission,
       loadProduct: async () => {
         const error = new Error("metadata-only product failure");
         error.name = "TryonProductError";
@@ -736,13 +851,20 @@ describe("Drape Room generation application service", () => {
     expect(test.provider.requests).toHaveLength(0);
     expect(test.bindProduct).not.toHaveBeenCalled();
     expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
-    expect(test.finalizations).toEqual([
-      expect.objectContaining({ actualMicroUsd: 0, status: "failed_pre_provider" }),
-    ]);
+    expect(checkGlobalRateAdmission).not.toHaveBeenCalled();
+    expect(acquireLease).not.toHaveBeenCalled();
+    expect(test.reservations).toHaveLength(0);
+    expect(test.finalizations).toHaveLength(0);
   });
 
   it("does not claim daily quota when normalized references fail validation", async () => {
+    const checkProviderCircuit = vi.fn();
+    const checkGlobalRateAdmission = vi.fn();
+    const acquireLease = vi.fn();
     const test = await harness({
+      acquireLease,
+      checkGlobalRateAdmission,
+      checkProviderCircuit,
       loadProduct: async () => ({
         references: [
           {
@@ -769,6 +891,125 @@ describe("Drape Room generation application service", () => {
     });
     expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
     expect(test.provider.requests).toHaveLength(0);
+    expect(checkProviderCircuit).not.toHaveBeenCalled();
+    expect(checkGlobalRateAdmission).not.toHaveBeenCalled();
+    expect(acquireLease).not.toHaveBeenCalled();
+  });
+
+  it("checks the distributed provider circuit after image normalization and before scarce admission", async () => {
+    const checkGlobalRateAdmission = vi.fn();
+    const acquireLease = vi.fn();
+    const test = await harness({
+      acquireLease,
+      checkGlobalRateAdmission,
+      checkProviderCircuit: async () => ({
+        allowed: false,
+        retryAfterSeconds: 120,
+      }),
+    });
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("120");
+    expect(await errorBody(response)).toMatchObject({
+      code: "PROVIDER_UNAVAILABLE",
+    });
+    expect(checkGlobalRateAdmission).not.toHaveBeenCalled();
+    expect(acquireLease).not.toHaveBeenCalled();
+    expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
+    expect(test.reservations).toHaveLength(0);
+  });
+
+  it("does not acquire provider concurrency when the validated request hits the global rate limit", async () => {
+    const acquireLease = vi.fn();
+    const test = await harness({
+      acquireLease,
+      checkGlobalRateAdmission: async () => ({
+        allowed: false,
+        retryAfterSeconds: 90,
+      }),
+    });
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("90");
+    expect(acquireLease).not.toHaveBeenCalled();
+    expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
+    expect(test.reservations).toHaveLength(0);
+  });
+
+  it("releases a half-open probe when a pre-dispatch budget gate rejects", async () => {
+    const probe = { stateVersion: "1800000000000", token: "probe-token" };
+    const releaseProviderCircuitProbe = vi.fn(async () => undefined);
+    const test = await harness({
+      checkProviderCircuit: async () => ({
+        allowed: true,
+        probe,
+        retryAfterSeconds: 0,
+      }),
+      releaseProviderCircuitProbe,
+      reserveBudget: async () => ({
+        outcome: "budget_exhausted",
+        requestId: null,
+        requestStatus: null,
+      }),
+    });
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(503);
+    expect(releaseProviderCircuitProbe).toHaveBeenCalledWith(
+      expect.anything(),
+      "google",
+      "gemini-3.1-flash-image",
+      probe,
+    );
+    expect(test.releaseDailyQuota).toHaveBeenCalledOnce();
+    expect(test.provider.requests).toHaveLength(0);
+  });
+
+  it("reopens a half-open probe after a qualifying dispatch failure", async () => {
+    const probe = { stateVersion: "1800000000000", token: "probe-token" };
+    const recordProviderCircuitFailure = vi.fn(async () => 300);
+    const releaseProviderCircuitProbe = vi.fn(async () => undefined);
+    const provider = createFakeImageProvider({
+      onGenerate: async () => {
+        throw new DrapeProviderError("upstream_unavailable", 503);
+      },
+      output: { bytes: await jpeg(), mimeType: "image/jpeg" },
+    });
+    const test = await harness({
+      checkProviderCircuit: async () => ({
+        allowed: true,
+        probe,
+        retryAfterSeconds: 0,
+      }),
+      createProvider: async () => provider,
+      recordProviderCircuitFailure,
+      releaseProviderCircuitProbe,
+    });
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(504);
+    expect(recordProviderCircuitFailure).toHaveBeenCalledWith(
+      expect.anything(),
+      "google",
+      "gemini-3.1-flash-image",
+      "upstream_unavailable",
+      probe,
+    );
+    expect(releaseProviderCircuitProbe).not.toHaveBeenCalled();
   });
 
   it("settles ambiguous provider timeout conservatively and never retries", async () => {
@@ -786,7 +1027,9 @@ describe("Drape Room generation application service", () => {
     );
     const body = await errorBody(response);
     expect(body).toMatchObject({ code: "PROVIDER_TIMEOUT" });
-    expect(body.message).toContain("did not retry automatically");
+    expect(body.message).toContain("may have processed this request");
+    expect(body.message).toContain("have not retried automatically");
+    expect(body.message).toContain("conservatively counted");
     expect(provider.requests).toHaveLength(1);
     expect(test.commitDailyQuota).toHaveBeenCalledOnce();
     expect(test.releaseDailyQuota).not.toHaveBeenCalled();
@@ -956,7 +1199,8 @@ describe("Drape Room generation application service", () => {
     expect(test.provider.requests).toHaveLength(0);
     expect(test.finalizations).toHaveLength(0);
     expect(test.bindProduct).not.toHaveBeenCalled();
-    expect(test.claimProductDailyQuota).not.toHaveBeenCalled();
+    expect(test.claimProductDailyQuota).toHaveBeenCalledOnce();
+    expect(test.releaseDailyQuota).toHaveBeenCalledOnce();
     expect(test.release).toHaveBeenCalledOnce();
   });
 
@@ -1035,5 +1279,238 @@ describe("Drape Room generation application service", () => {
     expect(output).toContain('"stage":"configuration"');
     expect(output).toContain("DATABASE_URL=[redacted]");
     expect(output).not.toContain("DATABASE_URL=secret");
+  });
+});
+
+describe("Drape Room metadata ledger lifecycle", () => {
+  beforeEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("records the product, background, provider, model and version identifiers", async () => {
+    const test = await harness();
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ background: "festival", config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    expect(test.reservations).toHaveLength(1);
+    expect(test.reservations[0]).toMatchObject({
+      background: "festival",
+      engineVersion: "storefront-v1",
+      outputVersion: "jpeg-1k-v1",
+      period: expect.stringMatching(/^\d{4}-\d{2}$/),
+      provider: "google",
+      requestId: REQUEST_ID,
+      requestedModel: "gemini-3.1-flash-image",
+    });
+    // The product identity is attached by the separate bind step, never by the
+    // reservation, so a request that dies before binding cannot claim a product.
+    expect(test.reservations[0]).not.toHaveProperty("productId");
+    expect(test.bindProduct).toHaveBeenCalledExactlyOnceWith({
+      productId: PRODUCT_ID,
+      productReferenceVersion: REFERENCE_VERSION,
+      referenceContractVersion: "gallery-v2",
+      referenceCount: 3,
+      referenceMode: "dual",
+      requestId: REQUEST_ID,
+    });
+  });
+
+  it("finalizes a success with latency, output size, served model and no error code", async () => {
+    const provider = createFakeImageProvider({
+      latencyMs: 1_234,
+      output: { bytes: await jpeg(768, 1_024), mimeType: "image/jpeg" },
+      servedModel: "gemini-3.1-flash-image-002",
+    });
+    const test = await harness({ createProvider: async () => provider });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+    const body = new Uint8Array(await response.arrayBuffer());
+
+    expect(response.status).toBe(200);
+    expect(test.finalizations).toEqual([
+      {
+        actualMicroUsd: null,
+        errorCode: null,
+        latencyMs: 1_234,
+        outputByteSize: body.byteLength,
+        requestId: REQUEST_ID,
+        servedModel: "gemini-3.1-flash-image-002",
+        status: "succeeded",
+      },
+    ]);
+  });
+
+  it("settles the provider-reported cost when it is reliable", async () => {
+    const provider = createFakeImageProvider({
+      estimateMicroUsd: (referenceCount) => referenceCount * 100_000,
+      output: { bytes: await jpeg(768, 1_024), mimeType: "image/jpeg" },
+      usage: {
+        actualMicroUsd: 150_000,
+        inputUnits: 3,
+        outputUnits: 1,
+        providerReported: true,
+        usageVersion: "reported-v1",
+      },
+    });
+    const test = await harness({ createProvider: async () => provider });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    expect(test.reservations[0]?.forecastMicroUsd).toBe(300_000);
+    expect(test.finalizations[0]).toMatchObject({
+      actualMicroUsd: 150_000,
+      status: "succeeded",
+    });
+  });
+
+  it("falls back to the conservative forecast when the reported cost exceeds it", async () => {
+    const provider = createFakeImageProvider({
+      estimateMicroUsd: (referenceCount) => referenceCount * 100_000,
+      output: { bytes: await jpeg(768, 1_024), mimeType: "image/jpeg" },
+      usage: {
+        actualMicroUsd: 400_000,
+        inputUnits: 3,
+        outputUnits: 1,
+        providerReported: true,
+        usageVersion: "reported-v1",
+      },
+    });
+    const test = await harness({ createProvider: async () => provider });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    expect(test.reservations[0]?.forecastMicroUsd).toBe(300_000);
+    // A null actual makes ftt_ai_tryon_finalize settle the full reservation.
+    expect(test.finalizations[0]).toMatchObject({
+      actualMicroUsd: null,
+      status: "succeeded",
+    });
+  });
+
+  it("settles zero and never dispatches when product binding fails", async () => {
+    const bindProduct = vi.fn(async () => false);
+    const test = await harness({ bindProduct });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(503);
+    expect(test.provider.requests).toHaveLength(0);
+    expect(test.commitDailyQuota).not.toHaveBeenCalled();
+    expect(test.releaseDailyQuota).toHaveBeenCalledOnce();
+    expect(test.finalizations).toEqual([
+      expect.objectContaining({
+        actualMicroUsd: 0,
+        requestId: REQUEST_ID,
+        status: "failed_pre_provider",
+      }),
+    ]);
+  });
+
+  it("charges nothing to the provider when the circuit is open", async () => {
+    const test = await harness({
+      checkProviderCircuit: async () => ({
+        allowed: false,
+        retryAfterSeconds: 120,
+      }),
+    });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(503);
+    expect(test.provider.requests).toHaveLength(0);
+    expect(test.reservations).toHaveLength(0);
+    expect(test.finalizations).toHaveLength(0);
+    expect(test.commitDailyQuota).not.toHaveBeenCalled();
+  });
+
+  it("charges nothing a second time for a duplicate idempotency key", async () => {
+    const test = await harness({
+      reserveBudget: async (): Promise<BudgetReservation> => ({
+        outcome: "duplicate",
+        requestId: REQUEST_ID,
+        requestStatus: "reserved",
+      }),
+    });
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+
+    expect(response.status).toBe(409);
+    expect(await errorBody(response)).toMatchObject({
+      code: "TRYON_ALREADY_PROCESSING",
+    });
+    expect(test.provider.requests).toHaveLength(0);
+    expect(test.bindProduct).not.toHaveBeenCalled();
+    expect(test.finalizations).toHaveLength(0);
+    expect(test.commitDailyQuota).not.toHaveBeenCalled();
+    expect(test.releaseDailyQuota).toHaveBeenCalledOnce();
+  });
+
+  it("keeps image bytes, the raw IP and provider payloads out of every ledger value", async () => {
+    const test = await harness();
+
+    const response = await handleTryonGenerateRequest(
+      await requestFor({ config: enabledConfig() }),
+      test.dependencies,
+    );
+    expect(response.status).toBe(200);
+
+    const ledgerPayload = [
+      ...test.reservations,
+      ...test.finalizations,
+      ...test.bindProduct.mock.calls.flat(),
+    ];
+    const binaryValues: unknown[] = [];
+    const walk = (value: unknown) => {
+      if (value instanceof Uint8Array || value instanceof ArrayBuffer) {
+        binaryValues.push(value);
+        return;
+      }
+      if (!value || typeof value !== "object") return;
+      for (const child of Object.values(value)) walk(child);
+    };
+    walk(ledgerPayload);
+
+    expect(binaryValues).toHaveLength(0);
+    const serialized = JSON.stringify(ledgerPayload);
+    expect(serialized).not.toContain("203.0.113.10");
+    expect(serialized).not.toContain("data:image");
+    expect(serialized).not.toContain("exactly two reference images");
+    // JSON.stringify emits U+00FF/U+00D8 literally, so search for the real
+    // characters: a latin-1 string of JPEG bytes would otherwise slip through.
+    expect(serialized).not.toContain(String.fromCharCode(0xff, 0xd8, 0xff));
+    // Every stored value is a bounded scalar: no object payload sneaks through.
+    for (const entry of ledgerPayload) {
+      for (const value of Object.values(entry as Record<string, unknown>)) {
+        expect(["string", "number", "boolean", "object"]).toContain(
+          typeof value,
+        );
+        if (value !== null && typeof value === "object") {
+          throw new Error("ledger payloads must not carry nested objects");
+        }
+      }
+    }
   });
 });

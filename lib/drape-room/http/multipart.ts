@@ -19,7 +19,6 @@ const MULTIPART_SCALAR_SCHEMA = z
     background: z.enum(TRYON_BACKGROUNDS),
     idempotencyKey: z.string().regex(PRODUCT_ID_PATTERN),
     productId: z.string().regex(PRODUCT_ID_PATTERN),
-    regeneration: z.literal("true").optional(),
   })
   .strict();
 const ALLOWED_FIELDS = new Set([
@@ -27,7 +26,6 @@ const ALLOWED_FIELDS = new Set([
   "productId",
   "background",
   "idempotencyKey",
-  "regeneration",
 ]);
 
 export type ParsedTryonMultipart = {
@@ -36,7 +34,6 @@ export type ParsedTryonMultipart = {
   productId: string;
   background: TryonBackground;
   idempotencyKey: string;
-  regeneration: boolean;
 };
 
 export type TryonMultipartErrorCode =
@@ -123,10 +120,6 @@ export async function parseTryonMultipart(
       background: stringField(values.get("background")),
       idempotencyKey: stringField(values.get("idempotencyKey")),
       productId: stringField(values.get("productId")),
-      regeneration:
-        values.get("regeneration") === undefined
-          ? undefined
-          : stringField(values.get("regeneration")),
     });
     if (!scalarResult.success) {
       const productId = stringField(values.get("productId"));
@@ -143,12 +136,7 @@ export async function parseTryonMultipart(
       }
       throw new TryonMultipartError("TRYON_INVALID_FIELDS", 400);
     }
-    const {
-      background,
-      idempotencyKey,
-      productId,
-      regeneration: regenerationValue,
-    } = scalarResult.data;
+    const { background, idempotencyKey, productId } = scalarResult.data;
     if (!isTryonIdempotencyKey(idempotencyKey)) {
       throw new TryonMultipartError("TRYON_INVALID_IDEMPOTENCY_KEY", 400);
     }
@@ -162,7 +150,6 @@ export async function parseTryonMultipart(
       photo: new Uint8Array(await photo.arrayBuffer()),
       photoMimeType: "image/jpeg",
       productId,
-      regeneration: regenerationValue === "true",
     };
   } finally {
     body.fill(0);

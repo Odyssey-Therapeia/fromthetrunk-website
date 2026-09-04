@@ -3,7 +3,7 @@ import {
   DrapeProviderError,
   IMAGE_PROVIDER_MODELS,
   PROVIDER_DISCLOSURES,
-  estimateProviderMaximumCost,
+  estimateProviderCostReservation,
   normalizedUnitCount,
   unknownToProviderError,
   type GoogleImageModelId,
@@ -13,6 +13,7 @@ import {
   type TryOnGenerationResult,
   type TryOnImageProvider,
   type TryOnProviderUsage,
+  type TryOnReferenceCount,
 } from "@/lib/drape-room/server/provider";
 import { z } from "zod";
 
@@ -93,6 +94,33 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function googleUsageCostMicroUsd(
+  promptTokens: number | null,
+  imageOutputTokens: number | null,
+  thoughtTokens: number | null,
+): number | null {
+  if (
+    promptTokens === null ||
+    imageOutputTokens === null ||
+    thoughtTokens === null
+  ) {
+    return null;
+  }
+  // Standard Gemini 3.1 Flash Image rates current for this pricing version:
+  // $0.50/M input, $60/M image output, and $3/M thinking output. Because this
+  // adapter requests IMAGE-only output, every candidate token uses the image
+  // output rate. Missing thought usage remains unknown rather than assumed 0.
+  const inputMicroUsd = Math.ceil(promptTokens / 2);
+  const imageOutputMicroUsd = imageOutputTokens * 60;
+  const thoughtMicroUsd = thoughtTokens * 3;
+  const total = inputMicroUsd + imageOutputMicroUsd + thoughtMicroUsd;
+  return Number.isSafeInteger(imageOutputMicroUsd) &&
+    Number.isSafeInteger(thoughtMicroUsd) &&
+    Number.isSafeInteger(total)
+    ? total
+    : null;
+}
+
 function normalizeUsage(value: unknown): TryOnProviderUsage {
   const usage = asRecord(value);
   if (!usage) {
@@ -101,15 +129,22 @@ function normalizeUsage(value: unknown): TryOnProviderUsage {
       inputUnits: null,
       outputUnits: null,
       providerReported: false,
-      usageVersion: "google-genai-v1",
+      usageVersion: "google-genai-standard-2026-09-v2",
     };
   }
+  const inputUnits = normalizedUnitCount(usage.promptTokenCount);
+  const outputUnits = normalizedUnitCount(usage.candidatesTokenCount);
+  const thoughtUnits = normalizedUnitCount(usage.thoughtsTokenCount);
   return {
-    actualMicroUsd: null,
-    inputUnits: normalizedUnitCount(usage.promptTokenCount),
-    outputUnits: normalizedUnitCount(usage.candidatesTokenCount),
+    actualMicroUsd: googleUsageCostMicroUsd(
+      inputUnits,
+      outputUnits,
+      thoughtUnits,
+    ),
+    inputUnits,
+    outputUnits,
     providerReported: true,
-    usageVersion: "google-genai-v1",
+    usageVersion: "google-genai-standard-2026-09-v2",
   };
 }
 
@@ -194,15 +229,22 @@ export class GoogleGenAiImageProvider implements TryOnImageProvider {
     return model === IMAGE_PROVIDER_MODELS.google.model;
   }
 
-  estimateMaximumCost(input: {
+  estimateCostReservation(input: {
     model: string;
-    referenceCount: 3;
+    referenceCount: TryOnReferenceCount;
     imageSize: "1K";
   }) {
-    if (input.referenceCount !== 3 || input.imageSize !== "1K") {
+    if (
+      (input.referenceCount !== 2 && input.referenceCount !== 3) ||
+      input.imageSize !== "1K"
+    ) {
       throw new DrapeProviderError("invalid_request", 500);
     }
-    return estimateProviderMaximumCost(this.id, input.model);
+    return estimateProviderCostReservation(
+      this.id,
+      input.model,
+      input.referenceCount,
+    );
   }
 
   async generate(input: TryOnGenerationInput): Promise<TryOnGenerationResult> {
@@ -234,18 +276,12 @@ export class GoogleGenAiImageProvider implements TryOnImageProvider {
               mimeType: input.person.mimeType,
             },
           },
-          {
+          ...input.garments.map((garment) => ({
             inlineData: {
-              data: toCanonicalBase64(input.garments[0].bytes),
-              mimeType: input.garments[0].mimeType,
+              data: toCanonicalBase64(garment.bytes),
+              mimeType: garment.mimeType,
             },
-          },
-          {
-            inlineData: {
-              data: toCanonicalBase64(input.garments[1].bytes),
-              mimeType: input.garments[1].mimeType,
-            },
-          },
+          })),
           { text: input.prompt },
         ],
         config: {
