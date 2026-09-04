@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface RestockNotifyButtonProps {
   productId: string;
@@ -33,6 +34,17 @@ interface RestockNotifyButtonProps {
 }
 
 const emailSchema = z.string().email("Please enter a valid email address");
+
+/**
+ * Explicit brand colours rather than the stock `outline` variant.
+ *
+ * That variant hovers to `bg-accent` / `text-accent-foreground`, and the active
+ * admin theme resolves those to two near-identical darks (#3E3314 on #3A320E),
+ * which made the label vanish on hover. Pinning burgundy-on-ivory keeps the
+ * control readable whatever the theme tokens happen to be.
+ */
+const notifyButtonClass =
+  "w-full rounded-full border border-[#601D1C]/30 bg-[#FDF7F1] text-[#601D1C] shadow-sm transition-colors hover:border-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1] focus-visible:ring-[#B39152] disabled:opacity-100";
 
 export function RestockNotifyButton({
   productId,
@@ -79,7 +91,15 @@ export function RestockNotifyButton({
 
   if (submitted) {
     return (
-      <Button variant="outline" className={className} disabled>
+      <Button
+        variant="outline"
+        className={cn(
+          notifyButtonClass,
+          "border-[#601D1C]/20 bg-[#601D1C]/8 text-[#601D1C]/70 hover:bg-[#601D1C]/8 hover:text-[#601D1C]/70",
+          className,
+        )}
+        disabled
+      >
         <Bell className="mr-2 h-4 w-4" />
         Notify registered
       </Button>
@@ -89,7 +109,7 @@ export function RestockNotifyButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className={className}>
+        <Button variant="outline" className={cn(notifyButtonClass, className)}>
           <Bell className="mr-2 h-4 w-4" />
           Notify me if it returns
         </Button>

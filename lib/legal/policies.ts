@@ -43,7 +43,7 @@ export const policies: LegalPolicy[] = [
       "How From the Trunk collects, uses, protects, and handles personal information.",
     metaDescription:
       "How From The Trunk collects, uses and protects your personal information.",
-    lastUpdated: "June 29, 2026",
+    lastUpdated: "September 4, 2026",
     sections: [
       {
         id: "information-we-collect",
@@ -99,6 +99,27 @@ export const policies: LegalPolicy[] = [
         ],
       },
       {
+        id: "ai-virtual-drape",
+        title: "AI Virtual Drape",
+        body: [
+          "Purpose: the optional AI Virtual Drape feature creates a styling preview of a selected saree on a photo that you choose. The first preview is generated only after a deliberate Create action. A background already saved in this browser opens locally for free and uses no AI generation. An uncached background is clearly marked as using 1 generation and is generated only after confirmation. Simply opening a product, the Drape Room, or the background picker does not send your photo for generation.",
+          "Browser-local storage: your processed working photo and generated previews are stored as local browser data on your device. They are not placed in From the Trunk's database, object storage, Redis, filesystem, server cache, CDN cache, logs, or analytics events. You can remove the working photo and locally stored previews using Clear my try-on data. Replacing your photo removes previews associated with the previous photo. Browser privacy settings, storage eviction, clearing site data, or using another browser or device may also remove or make those previews unavailable.",
+          "Transient processing: when you deliberately request a preview, the working photo and an approved image of the selected saree pass transiently through our hosting infrastructure in memory and are sent to the AI provider identified in the Drape Room disclosure. From the Trunk does not retain either image after the response is returned. The provider may process or retain inputs and outputs under its own API data policy, safety practices, and account configuration; we do not claim Zero Data Retention unless it has been verified for the configured provider, account, and endpoint.",
+          "Consent and control: before the first AI generation, and again after a material provider, disclosure, or privacy-policy change, you must confirm that you have the right to use the photo and agree to the disclosed provider processing. Do not upload another person's photo without their authority. Replacing your photo removes previews associated with the previous photo, starts no generation automatically, and does not reset the daily generation limit. Downloaded images and copies shared to other apps are controlled by your device and those apps, not by browser deletion controls.",
+          "Operational metadata: for abuse prevention, idempotency, service reliability, and cost control, we may retain a metadata-only record such as a pseudonymous session tag, request identifier, product identifier, background choice, configured provider/model, status, timing, byte count, and estimated or actual cost. This ledger does not contain customer or generated images, image URLs, filenames, raw photo digests, prompts, notes, raw IP addresses, full user agents, or provider request/response bodies.",
+          "Accuracy: an AI drape is an illustrative preview, not a product photograph or a guarantee of fit, colour, scale, texture, motif, border, pallu, fabric fall, body shape, or final appearance. Use the product page photographs and description as the authoritative product reference before purchasing.",
+        ],
+      },
+      {
+        id: "drape-room-operational-records",
+        title: "Drape Room operational records",
+        body: [
+          "When you request an AI Drape Room preview, From the Trunk may retain limited operational metadata about the request, such as the selected product, background setting, AI provider and model, reference mode, request status, timestamps, processing time, output size, sanitised error code, and estimated or accounted service cost. We use this information to operate the feature, prevent misuse, investigate failures, maintain service reliability, and control provider spending.",
+          "This operational record does not contain your uploaded photograph or generated preview. Those images are not persisted in From the Trunk's database or object storage.",
+          "The record is pseudonymous. It is keyed to a randomly generated try-on session identifier and a request identifier, not to your name, email address, or account, so we cannot ordinarily connect it to you without a request reference that you provide. We retain it only as long as necessary for service operation, fraud prevention, cost and accounting control, dispute resolution, and legal compliance.",
+        ],
+      },
+      {
         id: "data-retention",
         title: "Data retention",
         body: [
@@ -107,10 +128,40 @@ export const policies: LegalPolicy[] = [
       },
       {
         id: "your-rights",
-        title: "Your rights",
+        title: "Your data rights",
         body: [
-          "Subject to applicable law, you may request access to your personal data, correction or updating of inaccurate data, deletion of data where applicable, withdrawal of consent for optional processing, and grievance redressal.",
-          `To make a request, contact us at ${CONTACT_EMAIL}.`,
+          "Subject to applicable law, you may request information about the personal data we process and the purposes for which it is processed. You may also request correction, completion, or updating of inaccurate or incomplete personal data, and erasure of personal data where applicable.",
+          "You may withdraw consent for optional processing and raise a grievance about the handling of your personal data. You may also nominate another individual to exercise your applicable rights in the event of your death or incapacity, in accordance with applicable law.",
+        ],
+      },
+      {
+        id: "how-to-submit-a-request",
+        title: "How to submit a request",
+        body: [
+          `To submit a privacy request, please email ${CONTACT_EMAIL} from your registered email address, where available, with the subject line “Privacy Request”. Please describe whether you are requesting access, correction, erasure, withdrawal of consent, or grievance redressal.`,
+          "To protect your information, we may ask for reasonable details to verify your identity and authority before disclosing, changing, or deleting personal data. We will respond within the period required by applicable law and our published grievance process.",
+        ],
+      },
+      {
+        id: "urgent-privacy-concern",
+        title: "Urgent privacy or account-security concern",
+        body: [
+          `For an urgent privacy or account-security concern, email ${CONTACT_EMAIL} with the subject line “Urgent Privacy Concern”. We will prioritise the review, but we may still need to verify your identity before taking action or disclosing information.`,
+        ],
+      },
+      {
+        id: "erasure-limitations",
+        title: "Limits on erasure",
+        body: [
+          "A request for erasure does not necessarily require the deletion of every record. We may retain limited information where it is necessary or required for order fulfilment, tax or accounting obligations, payment and fraud prevention, dispute resolution, enforcement of legal rights, regulatory compliance, or other lawful purposes.",
+          "Where complete erasure is not permitted or appropriate, we will restrict, minimise, or anonymise information where reasonably possible and explain the applicable limitation.",
+        ],
+      },
+      {
+        id: "browser-local-drape-room",
+        title: "Browser-local Drape Room information",
+        body: [
+          "Your Drape Room working photo and generated previews are stored locally in your browser. From the Trunk cannot retrieve these browser-local images. You can remove them using “Clear my try-on data” in the Drape Room or by clearing the website's data through your browser settings.",
         ],
       },
       {
@@ -349,7 +400,7 @@ export const policies: LegalPolicy[] = [
     seoTitle: "Terms & Conditions",
     metaDescription:
       "The terms that apply when you shop with or consign to From The Trunk.",
-    lastUpdated: "June 29, 2026",
+    lastUpdated: "September 4, 2026",
     sections: [
       {
         id: "about",
@@ -410,6 +461,23 @@ export const policies: LegalPolicy[] = [
         title: "Limitation of liability",
         body: [
           "To the fullest extent permitted by law, FTT is not liable for indirect, incidental, special, consequential, or punitive damages arising from use of the website or purchase of products.",
+        ],
+      },
+      {
+        id: "privacy-and-data-requests",
+        title: "Privacy and data requests",
+        body: [
+          `Our collection and handling of personal data is described in the Privacy Policy. Subject to applicable law, you may request access information, correction or updating, erasure where applicable, withdrawal of optional consent, or grievance redressal by emailing ${CONTACT_EMAIL}.`,
+          "We may take reasonable steps to verify your identity or authority before responding. Some records may need to be retained for transactions, tax, accounting, fraud prevention, disputes, legal claims, or regulatory obligations. Please review the Privacy Policy for further information.",
+        ],
+      },
+      {
+        id: "ai-drape-room",
+        title: "AI Drape Room previews and records",
+        body: [
+          "An AI Drape Room preview is an illustrative styling visualisation. It is not a product photograph and not a guarantee of fit, colour, scale, texture, drape, or final appearance. Use the product page photographs and description as the authoritative product reference before purchasing.",
+          "You may use only a photograph you are entitled to use. Do not upload another person's photograph without their authority. Generating a preview requires your confirmation of the disclosed AI provider processing.",
+          "From the Trunk may retain limited metadata about an AI Drape Room request, including the selected product, request outcome, provider and model, timing, technical status, and accounted cost. From the Trunk does not persist the customer photograph or generated preview in its own database or object storage.",
         ],
       },
       {

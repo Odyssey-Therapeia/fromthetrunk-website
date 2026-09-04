@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   AnyPgColumn,
+  bigint,
   boolean,
   check,
   index,
@@ -51,6 +52,14 @@ export const mediaDerivativeStatusEnum = pgEnum("media_derivative_status", [
   "processing",
   "ready",
   "failed",
+]);
+export const aiTryonRequestStatusEnum = pgEnum("ai_tryon_request_status", [
+  "reserved",
+  "in_progress",
+  "succeeded",
+  "failed_pre_provider",
+  "ambiguous_provider",
+  "failed_post_provider",
 ]);
 
 export const users = pgTable(
@@ -1230,4 +1239,123 @@ export const discounts = pgTable(
     minSubtotalPositive: check("discounts_min_subtotal_paise_positive", sql`${table.minSubtotalPaise} >= 0`),
     usageCountPositive: check("discounts_usage_count_positive", sql`${table.usageCount} >= 0`),
   })
+);
+
+// ── AI Drape Room: metadata-only budget and request ledger ──────────────────
+
+/**
+ * One row per UTC calendar month. All currency values are integer micro-USD.
+ * Image bytes, prompts, filenames, raw photo digests, IP addresses and provider
+ * payloads are deliberately absent from this schema.
+ */
+export const aiTryonBudgetBuckets = pgTable(
+  "ai_tryon_budget_buckets",
+  {
+    period: text("period").primaryKey(),
+    limitMicroUsd: bigint("limit_micro_usd", { mode: "number" }).notNull(),
+    reservedMicroUsd: bigint("reserved_micro_usd", { mode: "number" })
+      .notNull()
+      .default(0),
+    settledMicroUsd: bigint("settled_micro_usd", { mode: "number" })
+      .notNull()
+      .default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    periodFormat: check(
+      "ai_tryon_budget_buckets_period_format",
+      sql`${table.period} ~ '^[0-9]{4}-[0-9]{2}$'`,
+    ),
+    amountsNonNegative: check(
+      "ai_tryon_budget_buckets_amounts_non_negative",
+      sql`${table.limitMicroUsd} >= 0 AND ${table.reservedMicroUsd} >= 0 AND ${table.settledMicroUsd} >= 0`,
+    ),
+    withinLimit: check(
+      "ai_tryon_budget_buckets_within_limit",
+      sql`${table.reservedMicroUsd} + ${table.settledMicroUsd} <= ${table.limitMicroUsd}`,
+    ),
+  }),
+);
+
+/**
+ * Security and accounting metadata for one deliberate generation action.
+ * A successful row is an audit record only; generated output is never replayed
+ * from the server and remains solely in the customer's browser.
+ */
+export const aiTryonRequests = pgTable(
+  "ai_tryon_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id").notNull(),
+    idempotencyHash: text("idempotency_hash").notNull(),
+    sessionTag: text("session_tag").notNull(),
+    budgetPeriod: text("budget_period").notNull(),
+    productId: uuid("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    referenceContractVersion: text("reference_contract_version"),
+    productReferenceVersion: text("product_reference_version"),
+    referenceMode: text("reference_mode"),
+    referenceCount: integer("reference_count"),
+    background: text("background").notNull(),
+    provider: text("provider").notNull(),
+    requestedModel: text("requested_model").notNull(),
+    servedModel: text("served_model"),
+    promptVersion: text("prompt_version").notNull(),
+    engineVersion: text("engine_version").notNull(),
+    outputVersion: text("output_version").notNull(),
+    regeneration: boolean("regeneration").notNull().default(false),
+    status: aiTryonRequestStatusEnum("status").notNull().default("reserved"),
+    reservedMicroUsd: bigint("reserved_micro_usd", { mode: "number" }).notNull(),
+    actualMicroUsd: bigint("actual_micro_usd", { mode: "number" }),
+    latencyMs: integer("latency_ms"),
+    outputByteSize: integer("output_byte_size"),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    requestIdUnique: uniqueIndex("ai_tryon_requests_request_id_unique").on(
+      table.requestId,
+    ),
+    idempotencyUnique: uniqueIndex(
+      "ai_tryon_requests_idempotency_hash_unique",
+    ).on(table.idempotencyHash),
+    budgetPeriodFormat: check(
+      "ai_tryon_requests_budget_period_format",
+      sql`${table.budgetPeriod} ~ '^[0-9]{4}-[0-9]{2}$'`,
+    ),
+    sessionCreatedIdx: index("ai_tryon_requests_session_created_idx").on(
+      table.sessionTag,
+      table.createdAt,
+    ),
+    productCreatedIdx: index("ai_tryon_requests_product_created_idx").on(
+      table.productId,
+      table.createdAt,
+    ),
+    budgetStatusCreatedIdx: index(
+      "ai_tryon_requests_budget_status_created_idx",
+    ).on(table.budgetPeriod, table.status, table.createdAt),
+    costsNonNegative: check(
+      "ai_tryon_requests_costs_non_negative",
+      sql`${table.reservedMicroUsd} >= 0 AND (${table.actualMicroUsd} IS NULL OR ${table.actualMicroUsd} >= 0)`,
+    ),
+    metricsPositive: check(
+      "ai_tryon_requests_metrics_positive",
+      sql`(${table.latencyMs} IS NULL OR ${table.latencyMs} >= 0) AND (${table.outputByteSize} IS NULL OR ${table.outputByteSize} > 0)`,
+    ),
+    knownBackground: check(
+      "ai_tryon_requests_known_background",
+      sql`${table.background} IN ('studio', 'festival', 'wedding', 'party', 'birthday')`,
+    ),
+    referenceMetadataConsistent: check(
+      "ai_tryon_requests_reference_metadata_consistent",
+      sql`(
+        (${table.referenceContractVersion} IS NULL AND ${table.productReferenceVersion} IS NULL AND ${table.referenceMode} IS NULL AND ${table.referenceCount} IS NULL)
+        OR
+        (${table.referenceContractVersion} IS NOT NULL AND ${table.productReferenceVersion} IS NOT NULL AND ${table.referenceMode} IS NOT NULL AND ${table.referenceCount} IS NOT NULL AND ${table.referenceContractVersion} = 'gallery-v2' AND length(${table.productReferenceVersion}) BETWEEN 1 AND 256 AND ((${table.referenceMode} = 'single' AND ${table.referenceCount} = 2) OR (${table.referenceMode} = 'dual' AND ${table.referenceCount} = 3)))
+      )`,
+    ),
+  }),
 );

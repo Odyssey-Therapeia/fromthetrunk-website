@@ -16,6 +16,9 @@ import { useCartStore } from "@/lib/store/cart-store";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { ProductCardCommerceRow } from "@/components/product/product-card-commerce-row";
+import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
+import { getDisplayOriginalPricePaise } from "@/lib/cart/cart-totals";
+import { projectDrapeRoomEntry } from "@/lib/drape-room/product";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import type { Product, StockStatus } from "@/types/domain";
 
@@ -49,6 +52,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const isSold = stockStatus === "sold";
   const isReserved = stockStatus === "reserved";
   const isBlouse = isBlouseProduct(product);
+  const drapeSaree = projectDrapeRoomEntry(product);
+  // Only advertise a markdown the cart will actually credit.
+  const displayOriginalPricePaise = getDisplayOriginalPricePaise(
+    product.pricePaise,
+    product.originalPricePaise,
+  );
   const trackProductCardClick = () => {
     trackWebsiteMetric(
       "product_card_click",
@@ -132,7 +141,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               </Badge>
             )}
 
-            {!isSold && !isReserved && !isBlouse && product.originalPricePaise && (
+            {!isSold && !isReserved && !isBlouse && displayOriginalPricePaise !== null && (
               <Badge className="absolute left-2 top-2 @sm:left-4 @sm:top-4 text-[10px] @sm:text-xs bg-white/85 text-trunk-brown shadow-soft">
                 Pre-loved
               </Badge>
@@ -148,6 +157,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
             />
           </div>
         )}
+        {drapeSaree.eligible ? (
+          <div className="absolute bottom-2 right-2 z-10 @sm:bottom-3 @sm:right-3">
+            <DrapeRoomTrigger product={drapeSaree.saree} />
+          </div>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-1 flex-col p-2 @sm:p-4">
         <Link
@@ -179,9 +193,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
             >
               {formatCurrency(product.pricePaise / 100)}
             </span>
-            {product.originalPricePaise && !isSold && (
+            {displayOriginalPricePaise !== null && !isSold && (
               <span className="text-[11px] text-[#601D1C]/45 line-through @sm:text-xs">
-                {formatCurrency(product.originalPricePaise / 100)}
+                {formatCurrency(displayOriginalPricePaise / 100)}
               </span>
             )}
           </div>

@@ -22,6 +22,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm run lint
+      # The job has always been named "Lint & Type Check" but ran only eslint,
+      # which is not type-aware. tsc needs no build first: tsconfig's
+      # .next/types globs are allowed to match nothing.
+      - name: Type check
+        run: pnpm run typecheck
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -36,6 +41,23 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run tests
         run: pnpm run test
+  # NO Playwright job here, deliberately.
+  #
+  # The Drape Room specs themselves are fully mocked — the harness page serves a
+  # hard-coded product and the network harness intercepts config, generate,
+  # reserve and stock, so no provider is called and no row is written. But the
+  # SERVER cannot boot without a database: proxy.ts consults the redirects table
+  # for every non-asset path (proxy.ts, resolveRedirect), so with a placeholder
+  # DATABASE_URL the dev server never becomes ready and the whole job times out.
+  # Verified locally: `DATABASE_URL=postgresql://ci:ci@127.0.0.1:1/x` fails at
+  # "Timed out waiting 180000ms from config.webServer".
+  #
+  # Adding the job before that is fixed would add a guaranteed-red step, which is
+  # worse than no coverage. Run it locally with:
+  #   FTT_DRAPE_ROOM_E2E=true pnpm exec playwright test tests/e2e/drape-room*.spec.ts
+  # To enable it in CI, give the job a seeded throwaway Postgres service (or make
+  # the redirect lookup degrade gracefully when the database is unreachable).
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -54,5 +76,10 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # Explicit gate as well as the automatic `prebuild` hook, so a missing or
+      # tampered MediaPipe asset is reported as its own failed step rather than
+      # buried in the build log. Reads local files only — no network, no Git.
+      - name: Verify Drape Room vision assets
+        run: pnpm run drape:vision:verify
       - name: Build
         run: pnpm run build

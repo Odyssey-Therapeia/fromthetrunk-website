@@ -1,6 +1,14 @@
 import type { Product } from "@/types/domain";
 import { resolveProductRowStockStatus } from "@/db/inventory";
 import { isGstInclusive } from "@/lib/config/flags";
+import {
+  merchantReturnPolicy,
+  offerShippingDetails,
+} from "@/lib/commerce/offer-policy";
+import {
+  productConditionDisplay,
+  resolveSchemaItemCondition,
+} from "@/lib/commerce/product-condition";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
 import { productSeoImageUrls } from "@/lib/seo/image-urls";
 import { absoluteUrl } from "@/lib/seo/site-url";
@@ -16,6 +24,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
     stockStatus: product.stockStatus,
   });
   const displayDetails = getProductDisplayDetails(product);
+  const conditionDisplay = productConditionDisplay(product);
   const category = product.collection?.name ?? "Pre-loved saree";
   const additionalProperty = [
     displayDetails.fabric
@@ -25,11 +34,20 @@ export function productJsonLd(product: Product): Record<string, unknown> {
           value: displayDetails.fabric,
         }
       : null,
-    displayDetails.condition
+    // Commerce condition — same resolver that drives itemCondition and the
+    // channel feeds, so this can never read "NEW" on a UsedCondition product.
+    {
+      "@type": "PropertyValue",
+      name: "Condition",
+      value: conditionDisplay.commerceLabel,
+    },
+    // Quality grade is INDEPENDENT of commerce condition and only emitted when
+    // the catalogue carries a real grade ("Excellent", "Superior", …).
+    conditionDisplay.qualityGrade
       ? {
           "@type": "PropertyValue",
-          name: "Condition",
-          value: displayDetails.condition,
+          name: "Quality grade",
+          value: conditionDisplay.qualityGrade,
         }
       : null,
     product.storyProvenance
@@ -74,8 +92,14 @@ export function productJsonLd(product: Product): Record<string, unknown> {
         "@type": "Organization",
         name: "From The Trunk",
       },
+      shippingDetails: offerShippingDetails(),
+      hasMerchantReturnPolicy: merchantReturnPolicy(
+        absoluteUrl("/policies/return-refund-policy"),
+      ),
     },
-    itemCondition: "https://schema.org/UsedCondition",
+    // Resolved from the product's structural type, never from the free-text
+    // `detailsCondition` display phrase. Exactly one value is ever emitted.
+    itemCondition: resolveSchemaItemCondition(product),
     material: displayDetails.fabric,
   };
 }

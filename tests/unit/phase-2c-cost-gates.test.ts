@@ -43,7 +43,7 @@ describe("Phase 2C cost and media regression gates", () => {
     }
   });
 
-  it("does not automatically rotate or mount inactive media carousels", () => {
+  it("keeps secondary carousels manual and constrains hero autoplay", () => {
     for (const file of [
       "components/sections/campaign-banner-section.tsx",
       "components/sections/collection-hero-carousel.tsx",
@@ -57,8 +57,11 @@ describe("Phase 2C cost and media regression gates", () => {
     );
     expect(collectionHero).toContain("mountedIndices.has(index)");
     expect(collectionHero).not.toContain("CAROUSEL_START_DELAY_MS");
-    expect(source("components/sections/hero-section.tsx")).toContain(
-      "autoplayArmed",
+    const hero = source("components/sections/hero-section.tsx");
+    expect(hero).toContain("const SLIDE_DURATION_MS = 5000;");
+    expect(hero).not.toContain("autoplayArmed");
+    expect(hero).toContain(
+      "prefersReducedMotion || !isIntroReady || !initialHeroImageReady",
     );
   });
 

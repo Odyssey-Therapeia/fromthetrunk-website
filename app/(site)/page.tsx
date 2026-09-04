@@ -24,6 +24,7 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { getProductDisplayDetails } from "@/lib/products/display-details";
+import { resolveQualityGrade } from "@/lib/commerce/product-condition";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import { selectStoryNarrativeImages } from "@/lib/story-narrative-images";
 import type { Product } from "@/types/domain";
@@ -112,9 +113,12 @@ export default async function Home() {
         href: `/collection/${product.slug}`,
         image,
         detail: [product.storyEra, details.fabric].filter(Boolean).join(" • "),
+        // Blurb only — but the last-resort fallback must not leak a raw
+        // commerce-condition claim (one live saree carries detailsCondition
+        // "NEW"), so it goes through the quality-grade resolver first.
         condition:
           product.storyProvenance?.trim() ||
-          details.condition ||
+          resolveQualityGrade(product) ||
           "Authenticated, restored, and ready for its next chapter",
         price: formatCurrency(product.pricePaise / 100),
       };

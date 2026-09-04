@@ -16,11 +16,14 @@ import {
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { getDisplayOriginalPricePaise } from "@/lib/cart/cart-totals";
 import { BlousePurchaseControls } from "@/components/product/blouse-purchase-controls";
 import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
-import { RestockNotifyButton } from "@/components/product/restock-notify-button";
+import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
+// Parked alongside the commented-out usage below.
+// import { RestockNotifyButton } from "@/components/product/restock-notify-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,7 +60,9 @@ import {
 } from "@/lib/seo/metadata";
 import { getFabricLandingForLabel } from "@/lib/seo/keyword-landing-pages";
 import { resolveProductRowStockStatus } from "@/db/inventory";
+import { projectDrapeRoomEntry } from "@/lib/drape-room/product";
 import { isBlouseProduct } from "@/lib/products/product-type";
+import { productConditionDisplay } from "@/lib/commerce/product-condition";
 import type { Product } from "@/types/domain";
 
 interface ProductPageProps {
@@ -153,11 +158,21 @@ export default async function SareePage({ params }: ProductPageProps) {
 
   const product = rawProduct as Product;
   const isBlouse = isBlouseProduct(product);
+  // Commerce condition + quality grade come from the one resolver that also
+  // drives Product JSON-LD and the channel feeds, so nothing visible on this
+  // page can contradict `itemCondition`.
+  const conditionDisplay = productConditionDisplay(product);
   const includeProductSeo = shouldEmitProductJsonLd(product);
   const effectiveStockStatus: EffectiveStockStatus = resolveProductRowStockStatus({
     reservedUntil: product.reservedUntil,
     stockStatus: product.stockStatus,
   });
+  const drapeSaree = projectDrapeRoomEntry(product);
+  // Only advertise a markdown the cart will actually credit.
+  const displayOriginalPricePaise = getDisplayOriginalPricePaise(
+    product.pricePaise,
+    product.originalPricePaise,
+  );
 
   const displayDetails = getProductDisplayDetails(product);
   const fabricLanding = getFabricLandingForLabel(displayDetails.fabric);
@@ -238,6 +253,7 @@ export default async function SareePage({ params }: ProductPageProps) {
             thumbnailImages={thumbnailImages}
             alt={imageAlts[0] ?? product.name}
             imageAlts={imageAlts}
+            productName={product.name}
           />
 
           <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-(--pdp-panel-height) lg:p-5">
@@ -283,9 +299,11 @@ export default async function SareePage({ params }: ProductPageProps) {
                 <span className="text-2xl font-semibold text-[#141D46]">
                   {formatCurrency(product.pricePaise / 100)}
                 </span>
-                {product.originalPricePaise ? (
+                {/* Only show a struck-through price when it is a real markdown —
+                    the same rule the cart savings banner applies. */}
+                {displayOriginalPricePaise !== null ? (
                   <span className="pb-0.5 text-sm text-[#601D1C]/45 line-through">
-                    {formatCurrency(product.originalPricePaise / 100)}
+                    {formatCurrency(displayOriginalPricePaise / 100)}
                   </span>
                 ) : null}
                 {product.storyEra ? (
@@ -297,7 +315,12 @@ export default async function SareePage({ params }: ProductPageProps) {
 
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <DossierFact label="Fabric" value={displayDetails.fabric} />
-                <DossierFact label="Grade" value={displayDetails.condition} />
+                <DossierFact
+                  label="Grade"
+                  value={
+                    conditionDisplay.qualityGrade ?? conditionDisplay.commerceLabel
+                  }
+                />
                 {!isBlouse ? (
                   <>
                     <DossierFact label="Length" value={displayDetails.length} />
@@ -344,6 +367,11 @@ export default async function SareePage({ params }: ProductPageProps) {
                       productName={product.name}
                       className="h-11 w-11 shrink-0 border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1]"
                     />
+                    {drapeSaree.eligible ? (
+                      <span className="hidden shrink-0 md:block">
+                        <DrapeRoomTrigger product={drapeSaree.saree} />
+                      </span>
+                    ) : null}
                   </div>
                 )}
 
@@ -359,10 +387,17 @@ export default async function SareePage({ params }: ProductPageProps) {
                         ? "This piece has found its next wardrobe."
                         : "This piece is currently reserved by another buyer."}
                     </p>
+                    {/* Restock notify is parked. The button captured an email
+                        into restock_notify_requests, but nothing ever reads that
+                        table — no cron, no sender — so it promised "we'll let
+                        you know" and then told nobody. Left commented rather
+                        than deleted: the endpoint, table and component all still
+                        exist, so re-enabling is just uncommenting this once a
+                        sender is built.
                     <RestockNotifyButton
                       productId={product.id}
                       productName={product.name}
-                    />
+                    /> */}
                   </div>
                 )}
               </div>
@@ -371,6 +406,14 @@ export default async function SareePage({ params }: ProductPageProps) {
                 <TrustLine icon={<ShieldCheck />} text="Authenticated by hand" />
                 <TrustLine icon={<PackageCheck />} text="Packed with muslin care" />
                 <TrustLine icon={<Truck />} text="Shipping at checkout" />
+                <Link
+                  href="/authentication"
+                  className="mt-1 inline-flex w-fit items-center gap-1 rounded-full text-[11px] font-medium text-[#E9D8AE] underline decoration-[#B39152]/50 underline-offset-4 transition hover:text-[#FDF7F1] hover:decoration-[#FDF7F1]"
+                >
+                  {isBlouse
+                    ? "How FTT authenticates every piece"
+                    : "How FTT authenticates every saree"}
+                </Link>
               </div>
 
               <nav
@@ -435,7 +478,11 @@ export default async function SareePage({ params }: ProductPageProps) {
                       <>
                         Length: {displayDetails.length}. Width:{" "}
                         {displayDetails.width}. Condition:{" "}
-                        {displayDetails.condition}.
+                        {conditionDisplay.commerceLabel}
+                        {conditionDisplay.qualityGrade
+                          ? ` (grade: ${conditionDisplay.qualityGrade})`
+                          : ""}
+                        .
                       </>
                     )}
                   </AccordionContent>
@@ -455,7 +502,10 @@ export default async function SareePage({ params }: ProductPageProps) {
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:mt-0">
               <PromiseStat label="Authenticated" value="By hand" />
-              <PromiseStat label="Condition" value={displayDetails.condition} />
+              <PromiseStat
+                label="Condition"
+                value={conditionDisplay.commerceLabel}
+              />
               <PromiseStat label="Ownership" value="Unique" />
             </div>
         </section>
@@ -472,7 +522,11 @@ export default async function SareePage({ params }: ProductPageProps) {
           <InfoCard
             icon={<ShieldCheck />}
             title="Condition"
-            body={displayDetails.condition}
+            body={
+              conditionDisplay.qualityGrade
+                ? `${conditionDisplay.commerceLabel} — ${conditionDisplay.qualityGrade}`
+                : conditionDisplay.commerceLabel
+            }
           />
           <InfoCard
             icon={<Sparkles />}
@@ -562,6 +616,9 @@ export default async function SareePage({ params }: ProductPageProps) {
               />
             )}
           </div>
+          {!isBlouse && drapeSaree.eligible ? (
+            <DrapeRoomTrigger product={drapeSaree.saree} />
+          ) : null}
         </div>
       </div>
     </main>

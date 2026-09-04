@@ -15,6 +15,7 @@ type ReorderPreviewItem = {
   slug: string | null;
   name: string;
   pricePaise: number;
+  originalPricePaise?: number | null;
   image: string | null;
   selectedOptions?: Record<string, boolean | null | number | string>;
   available: boolean;
@@ -118,6 +119,7 @@ export function OrderPaymentActions({
             id: item.productId,
             name: item.name,
             price: item.pricePaise / 100,
+            originalPricePaise: item.originalPricePaise ?? null,
             image: item.image ?? "",
             slug: item.slug,
             reservationToken: payload.reservationToken ?? null,

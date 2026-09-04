@@ -13,7 +13,17 @@ import { absoluteUrl } from "@/lib/seo/site-url";
 
 export const revalidate = 300;
 
-const STATIC_PAGE_LAST_MODIFIED = new Date("2026-04-27T00:00:00.000Z");
+/**
+ * Static marketing routes have no per-page modification timestamp anywhere in
+ * the codebase or the database. Rather than stamping them all with a build date
+ * or a frozen constant — both of which tell crawlers something untrue —
+ * `lastModified` is omitted for those URLs. Products use their real
+ * `updatedAt`; policies use the `lastUpdated` printed on the page itself.
+ */
+const parsePolicyLastUpdated = (value: string): Date | undefined => {
+  const parsed = new Date(`${value} UTC`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
 
 const getKeywordProductCount = (
   filters: NonNullable<(typeof keywordLandingPages)[number]["searchFilters"]>,
@@ -34,90 +44,82 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: absoluteUrl("/"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "daily",
       priority: 1,
     },
     {
       url: absoluteUrl("/collection"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: absoluteUrl("/top-viewed"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "daily",
       priority: 0.8,
     },
     {
       url: absoluteUrl("/our-story"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.75,
     },
     {
       url: absoluteUrl("/our-team"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
       url: absoluteUrl("/faqs"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
       url: absoluteUrl("/contact"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
       url: absoluteUrl("/how-it-works"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
       url: absoluteUrl("/authentication"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
       url: absoluteUrl("/policies"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
     {
       url: absoluteUrl("/why"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
       url: absoluteUrl("/sell-your-saree"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.65,
     },
     {
       url: absoluteUrl("/packing"),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.3,
     },
   ];
 
-  const policyPages: MetadataRoute.Sitemap = policies.map((policy) => ({
-    url: absoluteUrl(`/policies/${policy.slug}`),
-    lastModified: STATIC_PAGE_LAST_MODIFIED,
-    changeFrequency: "yearly" as const,
-    priority: 0.35,
-  }));
+  const policyPages: MetadataRoute.Sitemap = policies.map((policy) => {
+    const lastModified = parsePolicyLastUpdated(policy.lastUpdated);
+
+    return {
+      url: absoluteUrl(`/policies/${policy.slug}`),
+      // Truthful: the same date rendered as "Last updated" on the page.
+      ...(lastModified ? { lastModified } : {}),
+      changeFrequency: "yearly" as const,
+      priority: 0.35,
+    };
+  });
 
   const productPages: MetadataRoute.Sitemap = products
     .filter(shouldIncludeProductInSeo)
@@ -165,7 +167,7 @@ async function getKeywordSitemapPages(): Promise<MetadataRoute.Sitemap> {
     if (!isKeywordLandingIndexable(page, counts[index] ?? 0)) return [];
     return [{
       url: absoluteUrl(page.canonicalPath),
-      lastModified: STATIC_PAGE_LAST_MODIFIED,
+      // No trustworthy per-page timestamp exists for keyword landing pages.
       changeFrequency: page.type === "guide" ? "monthly" : "weekly",
       priority:
         page.type === "supply" ? 0.75 : page.type === "guide" ? 0.65 : 0.7,
