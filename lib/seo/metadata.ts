@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { absoluteUrl } from "@/lib/seo/site-url";
+import { absoluteCanonicalUrl, absoluteUrl } from "@/lib/seo/site-url";
 import { toSeoImageUrl } from "@/lib/seo/image-urls";
 
 export const SITE_NAME = "From The Trunk";
@@ -33,6 +33,13 @@ type PublicPageMetadataInput = {
   description: string;
   path: string;
   image?: SeoImageInput;
+  /**
+   * Opt-in: keep an allowlisted canonical query string on `path` instead of
+   * stripping it. Only for routes that have already canonicalised their own
+   * query state (currently just paginated /collection). Defaults to false so
+   * every existing caller keeps the safe query-stripping behaviour.
+   */
+  preserveCanonicalQuery?: boolean;
 };
 
 const positiveInteger = (value: null | number | undefined): number | undefined =>
@@ -62,8 +69,11 @@ export function publicPageMetadata({
   description,
   path,
   image,
+  preserveCanonicalQuery = false,
 }: PublicPageMetadataInput): Metadata {
-  const canonical = absoluteUrl(path);
+  const canonical = preserveCanonicalQuery
+    ? absoluteCanonicalUrl(path)
+    : absoluteUrl(path);
   const socialImage = seoImageMetadata(image);
   const metadataTitle = title.includes(SITE_NAME)
     ? { absolute: title }

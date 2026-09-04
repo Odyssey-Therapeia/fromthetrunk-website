@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { getCartTotalsPaise } from "@/lib/cart/cart-totals";
+
 export interface CartItem {
   id: string;
   name: string;
@@ -8,6 +10,12 @@ export interface CartItem {
   image: string;
   quantity: number;
   slug?: string;
+  /**
+   * Catalogue listing price before markdown, in paise (products.original_price_paise).
+   * Optional on purpose: carts persisted before this field existed keep working
+   * and simply contribute zero to the savings banner. Never synthesise a value.
+   */
+  originalPricePaise?: null | number;
   detailsFabric?: string | null;
   selectedOptions?: {
     size?: string;
@@ -174,11 +182,19 @@ export const useCartStore = create<CartState>()(
   )
 );
 
+/**
+ * Rupee-facing totals for existing callers, derived from the shared integer-paise
+ * helper so the cart, drawer, and savings banner can never disagree.
+ */
 export const getCartTotals = (items: CartItem[]) => {
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.quantity * item.price,
-    0
-  );
-  return { totalItems, subtotal };
+  const { originalSubtotalPaise, savingsPaise, subtotalPaise, totalItems } =
+    getCartTotalsPaise(items);
+
+  return {
+    totalItems,
+    subtotal: subtotalPaise / 100,
+    subtotalPaise,
+    originalSubtotalPaise,
+    savingsPaise,
+  };
 };

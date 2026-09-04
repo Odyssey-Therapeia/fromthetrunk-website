@@ -8,8 +8,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUiHaptics } from "@/lib/haptics/use-ui-haptics";
 import { useHomeIntroReady } from "@/components/sections/home-intro-gate";
 
-// Slower cadence: each slide holds longer and the crossfade is gentler.
-const SLIDE_DURATION_MS = 6000;
+// Give each slide five seconds before advancing to the next one.
+const SLIDE_DURATION_MS = 5000;
 const SLIDE_TRANSITION_MS = 1400;
 const HERO_GOLD = "#B39152";
 
@@ -33,6 +33,7 @@ type Slide = {
   headlineClassName?: string;
   mobileCopyClassName?: string;
   mobileHeadlineClassName?: string;
+  compactMobileSpacing?: boolean;
 };
 
 const slides: Slide[] = [
@@ -77,7 +78,8 @@ const slides: Slide[] = [
     description:
       "Created to be cherished today, tomorrow, and for generations.",
     mobileCopyClassName:
-      "justify-end pb-[clamp(3rem,8vh,5rem)] md:justify-start md:pb-0 md:pt-16",
+      "justify-end pb-0 md:justify-start md:pb-0 md:pt-16",
+    compactMobileSpacing: true,
   },
   {
     image: "/hero/5-lcp.webp",
@@ -160,8 +162,15 @@ function HeroSlideImage({
   onFirstImageReady: () => void;
 }) {
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const isFirstSlide = index === 0;
   const imageSrc = slide.image;
+
+  useEffect(() => {
+    if (isFirstSlide && imageRef.current?.complete) {
+      onFirstImageReady();
+    }
+  }, [isFirstSlide, onFirstImageReady]);
 
   if (failedImageSrc === imageSrc) return null;
 
@@ -169,6 +178,7 @@ function HeroSlideImage({
     <picture>
       <source media="(max-width: 767px)" srcSet={slide.mobileImage} />
       <img
+        ref={imageRef}
         src={imageSrc}
         alt=""
         fetchPriority={isFirstSlide ? "high" : "auto"}
@@ -210,7 +220,7 @@ function renderHeadline(parts: HeadlinePart[]) {
         part.accent ? (
           <span
             key={`${part.text}-${index}`}
-            className="inline-block text-[1.18em] font-semibold md:font-bold"
+            className="text-[1.18em] font-semibold md:font-bold"
             style={{ color: HERO_GOLD }}
           >
             {part.text}
@@ -269,12 +279,20 @@ function HeroCopy({ slide }: { slide: Slide }) {
         </p>
       ) : (
         <p
-          className="mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88 md:mt-6 md:w-auto md:max-w-[clamp(18rem,34vw,32rem)] md:text-[clamp(1.15rem,1.35vw,1.6rem)] md:leading-[1.6] md:text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]"
+          className={[
+            "mt-5 w-full max-w-[min(86vw,26rem)] font-sans text-[clamp(1.08rem,4.2vw,1.4rem)] leading-[1.5] text-white/88 md:mt-6 md:w-auto md:max-w-[clamp(18rem,34vw,32rem)] md:text-[clamp(1.15rem,1.35vw,1.6rem)] md:leading-[1.6] md:text-white/85 lg:max-w-[clamp(24rem,38vw,40rem)]",
+            slide.compactMobileSpacing ? "!mt-3 md:!mt-6" : "",
+          ].join(" ")}
         >
           {slide.description}
         </p>
       )}
-      <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-8 md:gap-4">
+      <div
+        className={[
+          "mt-6 flex flex-wrap items-center gap-3 md:mt-8 md:gap-4",
+          slide.compactMobileSpacing ? "!mt-4 md:!mt-8" : "",
+        ].join(" ")}
+      >
         <Link
           href="/collection"
           className="inline-flex items-center justify-center rounded-full border border-[#B39152] bg-linear-to-r from-[#601D1C] to-[#141D46] px-6 py-3 text-[clamp(0.72rem,0.9vw,0.9rem)] font-semibold uppercase tracking-[0.16em] text-[#FDF7F1] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:brightness-110"
@@ -297,13 +315,16 @@ export function HeroSection(props: HeroSectionProps) {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [initialHeroImageReady, setInitialHeroImageReady] = useState(false);
-  const [autoplayArmed, setAutoplayArmed] = useState(false);
   const lockedRef = useRef(false);
   const unlockTimeoutRef = useRef<number | null>(null);
   const { nudge } = useUiHaptics();
   const isIntroReady = useHomeIntroReady();
   const prefersReducedMotion = usePrefersReducedMotion();
   const activeSlide = slides[activeImageIndex] ?? slides[0]!;
+  const markInitialHeroImageReady = useCallback(
+    () => setInitialHeroImageReady(true),
+    [],
+  );
 
   const changeSlide = useCallback(
     (nextIndex: number) => {
@@ -332,12 +353,7 @@ export function HeroSection(props: HeroSectionProps) {
   }, [activeImageIndex, changeSlide]);
 
   useEffect(() => {
-    if (
-      prefersReducedMotion ||
-      !autoplayArmed ||
-      !isIntroReady ||
-      !initialHeroImageReady
-    ) {
+    if (prefersReducedMotion || !isIntroReady || !initialHeroImageReady) {
       return;
     }
 
@@ -348,7 +364,6 @@ export function HeroSection(props: HeroSectionProps) {
     return () => window.clearTimeout(timer);
   }, [
     activeImageIndex,
-    autoplayArmed,
     initialHeroImageReady,
     isIntroReady,
     nextSlide,
@@ -404,7 +419,7 @@ export function HeroSection(props: HeroSectionProps) {
               <HeroSlideImage
                 index={index}
                 slide={slide}
-                onFirstImageReady={() => setInitialHeroImageReady(true)}
+                onFirstImageReady={markInitialHeroImageReady}
               />
             ) : null}
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,6,20,0.72),rgba(3,6,20,0.24)_48%,rgba(3,6,20,0.46))] md:bg-[linear-gradient(90deg,rgba(3,6,20,0.64),rgba(3,6,20,0.18)_48%,rgba(3,6,20,0.36))]" />
@@ -416,7 +431,6 @@ export function HeroSection(props: HeroSectionProps) {
         type="button"
         onClick={() => {
           nudge();
-          setAutoplayArmed(true);
           previousSlide();
         }}
         aria-label="Previous slide"
@@ -432,7 +446,6 @@ export function HeroSection(props: HeroSectionProps) {
         type="button"
         onClick={() => {
           nudge();
-          setAutoplayArmed(true);
           nextSlide();
         }}
         aria-label="Next slide"
@@ -470,7 +483,6 @@ export function HeroSection(props: HeroSectionProps) {
             type="button"
             onClick={() => {
               nudge();
-              setAutoplayArmed(true);
               changeSlide(index);
             }}
             aria-label={`Go to slide ${index + 1}`}

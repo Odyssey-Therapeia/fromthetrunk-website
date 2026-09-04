@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { getSelectedSizeLabel } from "@/lib/catalog/blouse-size-chart";
+import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate";
 import type { OneOfOneConflictCopy } from "@/lib/checkout/one-of-one-conflict-copy";
 import { formatCurrency } from "@/lib/formatters";
 import type { ShippingMethod } from "@/lib/config/order-pricing";
@@ -152,14 +153,14 @@ export function OrderSummary({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        aria-label="Estimated delivery time"
+                        aria-label={CART_DELIVERY_ESTIMATE.title}
                         className="grid size-4 shrink-0 place-items-center rounded-full text-ftt-burgundy/45 transition hover:text-ftt-burgundy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftt-gold/40"
                       >
                         <Info className="size-3.5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[13rem] border-none bg-ftt-burgundy text-center font-medium leading-5 text-ftt-ivory">
-                      Your order will be delivered in 7 to 10 days.
+                      {CART_DELIVERY_ESTIMATE.description}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

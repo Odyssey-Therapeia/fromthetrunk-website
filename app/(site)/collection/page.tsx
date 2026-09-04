@@ -39,6 +39,7 @@ import {
   normalizeColorSlug,
   normalizeFacetSlug,
 } from "@/lib/catalog/filter-taxonomy";
+import { resolveCollectionVisibleLimit } from "@/lib/collection/visible-limit";
 import {
   canonicalizeCollectionSearchParams,
   getCanonicalCollectionLocation,
@@ -157,6 +158,16 @@ export async function generateMetadata({
       description:
         "Browse our full collection of authenticated pre-loved sarees — silk, chiffon, Banarasi and designer drapes. One-of-a-kind pieces, new arrivals weekly.",
       path: paginationOnly ? canonicalLocation.href : "/collection",
+      // `canonicalLocation.href` has already been through
+      // canonicalizeCollectionSearchParams, so its query is safe to keep, and
+      // absoluteUrl() would otherwise strip `?page=N`.
+      //
+      // Page-only URLs now 308 to /collection before this metadata is used, so
+      // this branch is a safety net rather than the live path: if the redirect
+      // is ever lifted (say the catalogue outgrows MAX_VISIBLE_PRODUCTS and real
+      // pagination returns), paginated pages stay self-canonical instead of
+      // silently collapsing onto /collection again.
+      preserveCanonicalQuery: paginationOnly,
     }),
     robots: hasFilters
       ? {
@@ -307,6 +318,23 @@ export default async function CollectionPage({
     resolvedSearchParams,
   );
   if (!canonicalLocation.isValid) notFound();
+
+  // Unfiltered pagination is redundant: /collection server-renders every public
+  // non-blouse product, so /collection?page=N is a strict subset of the page it
+  // would canonicalise to. Send those URLs to /collection permanently.
+  //
+  // This MUST stay above every catalogue, CMS and product query and above the
+  // first await that begins streaming — once the response has flushed with 200,
+  // Next can only degrade a redirect to a client-side hint and a crawler gets a
+  // 200 shell. `isCollectionPaginationOnly` is pure (it only parses the query),
+  // so no totalDocs lookup is required to make this decision.
+  //
+  // Only page-ONLY states qualify: anything carrying a filter, sort or perPage
+  // is left to the existing canonical/noindex policy below.
+  if (isCollectionPaginationOnly(resolvedSearchParams)) {
+    permanentRedirect("/collection");
+  }
+
   if (!canonicalLocation.isCanonical) redirect(canonicalLocation.href);
   if (canonicalLocation.href === "/collection?tags=top-viewed") {
     permanentRedirect("/top-viewed");
@@ -323,10 +351,15 @@ export default async function CollectionPage({
   const activeSort = parseProductSort(resolvedSearchParams?.sort);
   const currentPage = safePage(resolvedSearchParams?.page);
   const activeItemsPerPage = parseItemsPerPage(resolvedSearchParams?.perPage);
-  const visibleLimit = Math.min(
-    currentPage * activeItemsPerPage,
-    MAX_VISIBLE_PRODUCTS,
-  );
+  // A canonical href of exactly "/collection" means no filters, no sort, no
+  // explicit perPage and no page — the crawlable entry point for the catalogue.
+  const isUnfilteredCanonicalView = canonicalLocation.href === "/collection";
+  const visibleLimit = resolveCollectionVisibleLimit({
+    isUnfilteredCanonicalView,
+    currentPage,
+    itemsPerPage: activeItemsPerPage,
+    maxVisibleProducts: MAX_VISIBLE_PRODUCTS,
+  });
 
   const activeTypes = toSlugArray(resolvedSearchParams?.type);
   const activeFabrics = toSlugArray(resolvedSearchParams?.fabric);
@@ -468,6 +501,20 @@ export default async function CollectionPage({
     totalDocs = result.totalDocs;
     facets = cachedFacets;
   }
+
+  // NOTE (SEO pass 1, finding A.13): a runtime permanent redirect to the bare
+  // collection URL for pagination-only requests was implemented here and then
+  // removed after production-like verification. This page
+  // streams, so by the time `totalDocs` is known the response headers have
+  // already been flushed with 200 — Next then degrades the redirect to a
+  // client-side instruction and a crawler receives a 200 shell with no product
+  // grid, which is worse than either intended outcome.
+  //
+  // Pagination-only URLs therefore REMAIN self-canonical pages (A.13 option 1,
+  // matching A.5): /collection?page=2 canonicalises to /collection?page=2 via
+  // `preserveCanonicalQuery` in generateMetadata above. Product discovery does
+  // not depend on them any more — the unfiltered /collection view renders the
+  // entire catalogue up to UNFILTERED_COLLECTION_LIMIT.
 
   const maximumAvailablePage = Math.max(
     1,
@@ -1210,8 +1257,8 @@ export default async function CollectionPage({
                     cms.title
                   ) : (
                     <>
-                      <span className="whitespace-nowrap">Pre-Loved</span> &amp;
-                      Vintage Luxury Sarees
+                      <span className="whitespace-nowrap">Pre-Loved</span>{" "}
+                      &amp; Vintage Luxury Sarees
                     </>
                   )}
                 </h1>

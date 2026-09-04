@@ -16,7 +16,10 @@ describe("app/api route surface", () => {
   it("keeps app/api limited to framework-required route handlers", () => {
     expect(listRouteFiles(APP_API_DIR).sort()).toEqual([
       "app/api/auth/[...nextauth]/route.ts",
+      "app/api/cron/tryon-reconcile/route.ts",
       "app/api/preview/route.ts",
+      "app/api/tryon/config/route.ts",
+      "app/api/tryon/generate/route.ts",
       "app/api/v2/[...route]/route.ts",
     ]);
   });

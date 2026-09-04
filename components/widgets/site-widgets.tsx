@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 
+import { useDrapeRoomOperationalStore } from "@/lib/drape-room/client/store";
 import type { LatestReel } from "@/lib/social/latest-reel";
 
 const OPTIONAL_WIDGET_DELAY_MS = 6500;
@@ -28,10 +29,14 @@ const WelcomePopup = dynamic(
  * The reel + WhatsApp are gated to the landing hero: on the homepage they stay
  * hidden while the hero (`#home-hero`) is on screen and only appear once it has
  * scrolled out of view. On every other route there is no `#home-hero`, so they
- * show normally. The welcome popup is independent and not gated.
+ * show normally. The welcome popup coordinates with Drape Room internally so
+ * two modal layers cannot compete for focus or pointer input.
  */
 export function SiteWidgets() {
   const pathname = usePathname();
+  const drapeRoomPresentationOpen = useDrapeRoomOperationalStore(
+    (state) => state.isOpen,
+  );
   const [heroPassed, setHeroPassed] = useState(false);
   const [latestReel, setLatestReel] = useState<LatestReel | null>(null);
   const [widgetsReady, setWidgetsReady] = useState(false);
@@ -90,7 +95,7 @@ export function SiteWidgets() {
 
   return (
     <>
-      {widgetsReady ? <WelcomePopup /> : null}
+      {widgetsReady && !drapeRoomPresentationOpen ? <WelcomePopup /> : null}
       {widgetsReady && heroPassed ? (
         <>
           <FloatingWhatsApp />

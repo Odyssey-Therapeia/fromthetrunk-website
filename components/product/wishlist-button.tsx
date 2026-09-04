@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { OtpAuthPanel } from "@/components/account/otp-auth-panel";
 import { Button } from "@/components/ui/button";
+import { DrapeRoomActionTile } from "@/components/drape-room/drape-room-action-tile";
 import {
   Dialog,
   DialogContent,
@@ -16,11 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { dispatchWishlistUpdated } from "@/lib/wishlist/wishlist-events";
 
 interface WishlistButtonProps {
   productId: string;
   productName: string;
   className?: string;
+  presentation?: "icon" | "drape-room";
 }
 
 const fetchWishlist = async (): Promise<string[]> => {
@@ -33,6 +36,7 @@ export function WishlistButton({
   productId,
   productName,
   className,
+  presentation = "icon",
 }: WishlistButtonProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -72,8 +76,11 @@ export function WishlistButton({
       return res.json();
     },
     onMutate: () => setOptimisticWished(true),
-    onSuccess: () => {
+    onSuccess: (_data, targetProductId) => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      // The header island runs its own QueryClient, so the invalidation above
+      // never reaches it. The shared event does.
+      dispatchWishlistUpdated({ reason: "add", productId: targetProductId });
       toast.success("Saved to your trunk");
     },
     onError: () => {
@@ -96,6 +103,7 @@ export function WishlistButton({
     onMutate: () => setOptimisticWished(false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+      dispatchWishlistUpdated({ reason: "remove", productId });
       toast(`${productName} removed from wishlist`);
     },
     onError: () => {
@@ -147,22 +155,47 @@ export function WishlistButton({
 
   return (
     <>
+      {presentation === "drape-room" ? (
+        <DrapeRoomActionTile
+          active={isInWishlist}
+          icon={
+            <Heart
+              className={cn("transition", isInWishlist && "fill-current")}
+              aria-hidden="true"
+            />
+          }
+          label="Wishlist"
+          status={isInWishlist ? "Saved" : undefined}
+          className={className}
+          disabled={isPending}
+          onClick={handleClick}
+          aria-pressed={isInWishlist}
+          aria-haspopup={!session?.user?.id ? "dialog" : undefined}
+          aria-expanded={!session?.user?.id ? authOpen : undefined}
+          aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
+        />
+      ) : (
       <Button
         variant="ghost"
         size="icon"
         className={cn(
           "rounded-full transition",
-          isInWishlist ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-red-400",
-          className
+          isInWishlist
+            ? "text-red-500 hover:text-red-600"
+            : "text-muted-foreground hover:text-red-400",
+          className,
         )}
         disabled={isPending}
         onClick={handleClick}
+        aria-pressed={isInWishlist}
         aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
       >
         <Heart
           className={cn("h-5 w-5 transition", isInWishlist && "fill-current")}
+          aria-hidden="true"
         />
       </Button>
+      )}
 
       <Dialog open={authOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-h-[92vh] w-[calc(100%-2rem)] overflow-y-auto rounded-[1.75rem] border-ftt-border bg-ftt-ivory p-5 shadow-[0_24px_80px_rgba(20,29,70,0.18)] sm:max-w-xl sm:p-6">

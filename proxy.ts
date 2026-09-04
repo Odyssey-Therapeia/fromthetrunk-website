@@ -5,6 +5,10 @@ import { getToken } from "next-auth/jwt";
 import { resolveRedirect } from "@/lib/content/redirect-resolver";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
 import {
+  isKnownVisionAssetPath,
+  isReservedVisionPath,
+} from "@/lib/drape-room/vision-asset-paths";
+import {
   canonicalizeCollectionSearchParams,
   collectionRoutingSearchParams,
   hasCollectionTrackingParams,
@@ -42,6 +46,7 @@ const PUBLIC_FILE =
 
 const publicAssetPrefixes = [
   "/dev-uploads/",
+  "/drape-room/",
   "/media/",
   "/banner/",
   "/category/",
@@ -188,6 +193,19 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
   const isDraftModeRequest = request.cookies.has(DRAFT_MODE_COOKIE);
 
+  // ─── Reserved Drape Room vision namespace ──────────────────────
+  // Must precede the public-asset pass-through: `/drape-room/` is a public
+  // asset prefix, so a MISSING file under it would otherwise fall into the CMS
+  // catch-all and stream a 200 HTML page instead of 404ing. The namespace is
+  // fully enumerated by the pinned manifest, so an unknown path is always a
+  // hard 404 and a known one continues to Next's static handler untouched.
+  if (isReservedVisionPath(pathname)) {
+    if (!isKnownVisionAssetPath(pathname)) {
+      return rewriteNotFound(request, startedAt);
+    }
+    return withProxyTiming(response, request, startedAt);
+  }
+
   if (isPublicAssetPath(pathname)) {
     return withProxyTiming(response, request, startedAt);
   }
@@ -209,12 +227,25 @@ export async function proxy(request: NextRequest) {
       canonicalQuery ? `?${canonicalQuery}` : ""
     }`;
 
+    // Unfiltered pagination is redundant: /collection server-renders every
+    // public non-blouse product, so /collection?page=N is a strict subset of
+    // the URL it would canonicalise to. Promote page-ONLY states to the bare
+    // collection. Anything carrying a filter, sort or perPage is left alone and
+    // keeps the existing canonical/noindex policy.
+    //
+    // This has to live here rather than in the page: by the time the route
+    // handler can decide, the 200 response has already begun streaming and Next
+    // can only degrade a redirect to a client-side hint.
+    const isPaginationOnly = canonical.size === 1 && canonical.has("page");
+
     const promotedHref =
       canonicalHref === "/collection?tags=top-viewed"
         ? "/top-viewed"
         : canonicalHref === "/collection?type=blouse"
           ? "/blouses"
-          : canonicalHref;
+          : isPaginationOnly
+            ? "/collection"
+            : canonicalHref;
 
     if (
       promotedHref !== canonicalHref ||

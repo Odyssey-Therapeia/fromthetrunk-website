@@ -27,6 +27,7 @@ import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useGuestWishlistStore } from "@/lib/store/wishlist-store";
+import { dispatchWishlistUpdated } from "@/lib/wishlist/wishlist-events";
 
 export function WishlistMergeOnLogin() {
   const { data: session } = useSession();
@@ -61,6 +62,8 @@ export function WishlistMergeOnLogin() {
           // Invalidate with prefix ["wishlist"] — refreshes both
           // ["wishlist","ids"] (button) and ["wishlist","products"] (page).
           void queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+          // Reaches the header island's separate QueryClient too.
+          dispatchWishlistUpdated({ reason: "merge" });
         }
         // If the request fails, leave the guest store intact so items survive
         // until the next successful session (the ref lets us retry on reload).

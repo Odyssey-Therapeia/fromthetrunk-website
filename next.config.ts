@@ -42,7 +42,7 @@ const cspReportOnly = [
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self'",
-  `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
   `script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
   "style-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://tagmanager.google.com https://fonts.googleapis.com",
   `img-src 'self' data: blob: ${MEDIA_CSP_SRC} https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC}`,
@@ -98,6 +98,15 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/drape-room/vision/mediapipe-1.0.1/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
       {
         source: "/banner/from-the-trunk-social-v1.jpg",
         headers: [

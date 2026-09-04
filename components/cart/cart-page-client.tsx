@@ -11,7 +11,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { CartDeliveryEstimateCard } from "@/components/cart/cart-delivery-estimate-card";
 import { CartItem } from "@/components/cart/cart-item";
+import { CartSavingsBanner } from "@/components/cart/cart-savings-banner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,7 +38,8 @@ export function CartPageClient({
 }: CartPageClientProps) {
   const items = useCartStore((state) => state.items);
   const hasHydrated = useCartStore((state) => state.hasHydrated);
-  const { subtotal, totalItems } = getCartTotals(items);
+  const { originalSubtotalPaise, savingsPaise, subtotal, totalItems } =
+    getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
   const cartViewedTrackedRef = useRef(false);
   const getCartAnalyticsPayload = useCallback(
@@ -143,6 +146,10 @@ export function CartPageClient({
           </section>
         ) : null}
 
+        {hasHydrated && items.length > 0 ? (
+          <CartSavingsBanner savingsPaise={savingsPaise} variant="page" />
+        ) : null}
+
         <section className="grid max-w-full gap-6 md:grid-cols-[minmax(0,1fr)_19rem] md:items-start lg:grid-cols-[minmax(0,1fr)_390px] [&>*]:min-w-0">
           <div className="min-w-0 space-y-5">
             <div className="flex flex-col gap-3 rounded-[1.5rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 sm:flex-row sm:items-end sm:justify-between">
@@ -227,6 +234,9 @@ export function CartPageClient({
             hasHydrated={hasHydrated}
             canCheckout={canCheckout}
             subtotal={subtotal}
+            originalSubtotalPaise={originalSubtotalPaise}
+            savingsPaise={savingsPaise}
+            hasItems={items.length > 0}
             totalItems={totalItems}
             onCheckoutClick={handleCheckoutClick}
           />
@@ -251,15 +261,22 @@ function OrderSummaryPanel({
   hasHydrated,
   canCheckout,
   subtotal,
+  originalSubtotalPaise,
+  savingsPaise,
+  hasItems,
   totalItems,
   onCheckoutClick,
 }: {
   hasHydrated: boolean;
   canCheckout: boolean;
   subtotal: number;
+  originalSubtotalPaise: number;
+  savingsPaise: number;
+  hasItems: boolean;
   totalItems: number;
   onCheckoutClick: () => void;
 }) {
+  const showSavings = hasHydrated && savingsPaise > 0;
   return (
     <aside className="min-w-0 rounded-[1.75rem] border border-[#E7DDD4] bg-[#FFFCF8] p-5 shadow-[0_18px_50px_rgba(20,29,70,0.10)] md:sticky md:top-24">
       <div className="flex items-start justify-between gap-4">
@@ -287,6 +304,24 @@ function OrderSummaryPanel({
           </span>
         </div>
 
+        {showSavings ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[#6B625B]">Original product total</span>
+            <span className="font-medium text-[#6B625B] line-through">
+              {formatCurrency(originalSubtotalPaise / 100)}
+            </span>
+          </div>
+        ) : null}
+
+        {showSavings ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[#0F5132]">Savings</span>
+            <span className="font-semibold text-[#0F5132]">
+              -{formatCurrency(savingsPaise / 100)}
+            </span>
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between">
           <span className="text-[#6B625B]">Subtotal</span>
           <span className="font-semibold text-[#141D46]">
@@ -294,6 +329,12 @@ function OrderSummaryPanel({
           </span>
         </div>
       </div>
+
+      {/* Delivery promise sits with the summary, kept separate from the
+          shipping price and the reservation hold. */}
+      {hasHydrated && hasItems ? (
+        <CartDeliveryEstimateCard variant="page" className="mt-5" />
+      ) : null}
 
       <div className="mt-5 rounded-2xl border border-[#B39152]/25 bg-[#B39152]/10 p-4">
         <p className="text-sm font-medium text-[#141D46]">

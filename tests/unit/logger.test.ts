@@ -293,6 +293,36 @@ describe("createLogger", () => {
 	      expect(JSON.stringify(parsed)).not.toContain("buyer@example.com");
 	      expect(JSON.stringify(parsed)).not.toContain("secret-token");
 	    });
+
+	    it("redacts database credentials and API keys from diagnostic errors", () => {
+	      vi.stubEnv("NODE_ENV", "production");
+	      const log = createLogger("test:redaction");
+
+	      log.error("try-on failed", {
+	        databaseUrl: "postgresql://db-user:db-pass@example.com/store",
+	        err: new Error(
+	          "DATABASE_URL=postgresql://db-user:db-pass@example.com/store FTT_TRYON_GOOGLE_API_KEY=provider-secret",
+	        ),
+	      });
+
+	      const written = stdoutSpy.mock.calls[0][0] as string;
+	      const serialized = JSON.stringify(JSON.parse(written.trim()));
+	      expect(serialized).toContain("[redacted]");
+	      expect(serialized).not.toContain("db-pass");
+	      expect(serialized).not.toContain("provider-secret");
+	    });
+
+	    it("does not mistake correlation UUIDs for phone numbers", () => {
+	      vi.stubEnv("NODE_ENV", "production");
+	      const log = createLogger("test:redaction");
+	      const traceId = "11111111-1111-4111-8111-111111111111";
+
+	      log.info("trace", { traceId });
+
+	      const written = stdoutSpy.mock.calls[0][0] as string;
+	      const parsed = JSON.parse(written.trim()) as { traceId: string };
+	      expect(parsed.traceId).toBe(traceId);
+	    });
 	  });
 	});
 });
