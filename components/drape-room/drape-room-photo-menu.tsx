@@ -28,6 +28,7 @@ import {
   DrapeRoomCachedGallery,
   type DrapeRoomCachedPreview,
 } from "./drape-room-cached-gallery";
+import { DRAPE_ROOM_PHOTO_TIP } from "./drape-room-copy";
 
 export interface DrapeRoomPhotoMenuProps {
   className?: string;
@@ -286,7 +287,7 @@ export function DrapeRoomPhotoMenu({ className }: DrapeRoomPhotoMenuProps) {
       <ConfirmMenuAction
         open={replaceOpen}
         title="Replace your photo?"
-        description="Changing your photo will remove the AI previews saved in this browser for the current photo. Nothing will be generated automatically, and your daily generation limit will not reset. After the new photo passes the local check, choose Create preview with new photo to use 1 generation."
+        description={`Changing your photo will remove the AI previews saved in this browser for the current photo. Nothing will be generated automatically, and your daily generation limit will not reset. After the new photo passes the local check, choose Create preview with new photo to use 1 generation. ${DRAPE_ROOM_PHOTO_TIP}`}
         confirmLabel="Choose new photo"
         onClose={() => setReplaceOpen(false)}
         onConfirm={() => { setReplaceOpen(false); inputRef.current?.click(); }}

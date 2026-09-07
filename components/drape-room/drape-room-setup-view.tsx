@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { ImagePlus, LoaderCircle, Upload, WandSparkles } from "lucide-react";
+import { ImagePlus, Info, Upload, WandSparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import type { DrapeRoomStorageMode } from "@/lib/drape-room/client/storage";
 import type {
   DrapeRoomConfigStatus,
@@ -12,7 +13,12 @@ import type {
   PublicTryOnConfig,
 } from "@/lib/drape-room/client/types";
 import type { DrapeSaree } from "@/lib/drape-room/product";
-import { DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE } from "./drape-room-copy";
+import {
+  DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE,
+  DRAPE_ROOM_PATTERN_NOTE,
+  DRAPE_ROOM_PHOTO_TIP,
+} from "./drape-room-copy";
+import { DrapeRoomProgressButton } from "./drape-room-progress-button";
 import { DrapeRoomPrivacyDisclosure } from "./drape-room-disclosure";
 import { formatDrapeRoomPrice } from "./types";
 
@@ -26,6 +32,8 @@ export interface DrapeRoomSetupViewProps {
   subjectPhoto: DrapeRoomPhotoView | null;
   consentAccepted: boolean;
   isGenerating: boolean;
+  /** True for the beat between a finished request and the preview appearing. */
+  isCompleting?: boolean;
   isPhotoBusy: boolean;
   isCacheChecking: boolean;
   storageMode: DrapeRoomStorageMode;
@@ -49,6 +57,7 @@ export function DrapeRoomSetupView({
   subjectPhoto,
   consentAccepted,
   isGenerating,
+  isCompleting = false,
   isPhotoBusy,
   isCacheChecking,
   storageMode,
@@ -146,6 +155,14 @@ export function DrapeRoomSetupView({
             One person · face or full body · any pose · max 15 MB
           </p>
         </div>
+
+        <p className="mt-3 flex items-start gap-2 rounded-xl border border-ftt-gold/35 bg-ftt-gold/10 px-3 py-2 text-[11px] leading-4 text-ftt-burgundy">
+          <Info aria-hidden="true" className="mt-px size-3.5 shrink-0 text-ftt-gold" />
+          <span>{DRAPE_ROOM_PHOTO_TIP}</span>
+        </p>
+        <p className="mt-2 text-[11px] leading-4 text-ftt-burgundy/70">
+          {DRAPE_ROOM_PATTERN_NOTE}
+        </p>
       </div>
 
       <div className="min-w-0 space-y-3">
@@ -227,38 +244,37 @@ export function DrapeRoomSetupView({
               : DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE}
           </p>
         ) : null}
-        <Button
-          type="button"
-          size="lg"
+        <DrapeRoomProgressButton
+          state={
+            isGenerating
+              ? "generating"
+              : isCompleting
+                ? "complete"
+                : isCacheChecking
+                  ? "checking"
+                  : "idle"
+          }
           disabled={
             !subjectPhoto ||
             !paidActionReady ||
             !consentAccepted ||
-            isGenerating ||
-            isCacheChecking ||
             isPhotoBusy
           }
           onClick={onCreate}
-          className="min-h-12 w-full rounded-full bg-ftt-burgundy text-ftt-ivory hover:bg-ftt-navy @3xl:mx-auto @3xl:max-w-sm"
-        >
-          {isGenerating || isCacheChecking ? (
-            <LoaderCircle
-              className="animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-          ) : (
-            <WandSparkles aria-hidden="true" />
-          )}
-          {isGenerating
-            ? "Creating your drape…"
-            : isCacheChecking
-              ? "Checking saved previews…"
-              : photoSelectedThisVisit
-                ? "Create preview with new photo"
+          idleIcon={<WandSparkles aria-hidden="true" />}
+          idleLabel={
+            photoSelectedThisVisit
+              ? "Create preview with new photo"
               : remainingGenerations === 0
                 ? "Daily limit reached"
-                : "Create my drape"}
-        </Button>
+                : "Create my drape"
+          }
+          checkingLabel="Checking saved previews…"
+          className={cn(
+            buttonVariants({ size: "lg" }),
+            "min-h-12 w-full rounded-full bg-ftt-burgundy text-ftt-ivory hover:bg-ftt-navy @3xl:mx-auto @3xl:max-w-sm",
+          )}
+        />
         <p className="mt-1.5 text-center text-[10px] leading-4 text-ftt-burgundy/55">
           Only this button can start generation.{" "}
           {storageMode === "memory"

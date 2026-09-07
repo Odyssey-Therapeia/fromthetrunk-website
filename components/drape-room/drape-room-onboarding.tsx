@@ -21,6 +21,7 @@ import {
 import type { DrapeRoomPhotoView } from "@/lib/drape-room/client/types";
 import type { DrapeSaree } from "@/lib/drape-room/product";
 import { cn } from "@/lib/utils";
+import { DRAPE_ROOM_PHOTO_TIP } from "./drape-room-copy";
 import { DrapeRoomOnboardingStepLayout } from "./drape-room-onboarding-step-layout";
 import { formatDrapeRoomPrice } from "./types";
 
@@ -221,9 +222,11 @@ export function DrapeRoomOnboarding({
                 }
               >
                 <p>
-                  Use a well-lit portrait photo of one person with the complete
-                  head, shoulders, hips, knees, ankles, and feet visible. Keep
-                  the torso clear and avoid crossed arms.
+                  Use a well-lit photo of one person. A full-length pose, an
+                  upper-body crop, or just your face all work.
+                </p>
+                <p className="mt-2 font-medium text-ftt-burgundy">
+                  {DRAPE_ROOM_PHOTO_TIP}
                 </p>
                 <p className="mt-2">
                   Your browser resizes the image and removes EXIF/GPS data.

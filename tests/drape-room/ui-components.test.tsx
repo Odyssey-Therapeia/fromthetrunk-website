@@ -324,7 +324,12 @@ describe("Drape Room UI contracts", () => {
     expect(setupSource).toContain("data-[state=checked]:text-ftt-ivory");
     expect(setupSource).toContain("[&_svg]:text-ftt-ivory");
     expect(html).not.toContain("Google Gemini");
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Create my drape<\/button>/);
+    // The label sits in its own span now that the button doubles as the
+    // progress fill; the contract is still "disabled, and reads Create my
+    // drape".
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*>[\s\S]*?Create my drape[\s\S]*?<\/button>/,
+    );
   });
 
   it("keeps cached result actions and backgrounds usable while paid actions are disabled", () => {

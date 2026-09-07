@@ -15,8 +15,12 @@ import { FilterLink } from "@/components/collection/filter-link";
 
 import { CollectionPageSizeSelect } from "@/components/product/collection-page-size-select";
 import { ProductCard } from "@/components/product/product-card";
-import { CollectionHeroCarousel } from "@/components/sections/collection-hero-carousel";
+import {
+  HomeHeroCarousel,
+  type HomeHeroSlide,
+} from "@/components/sections/home-hero-carousel";
 import { CollectionPromoCarousel } from "@/components/sections/collection-promo-carousel";
+import { DrapeLaunchCollectionEntry } from "@/components/drape-room/launch/drape-launch-collection-entry";
 import {
   getCachedCatalogFacets,
   getCachedCollectionPage,
@@ -55,28 +59,43 @@ import { cn } from "@/lib/utils";
 
 export const revalidate = 60;
 
-const COLLECTION_BANNER_IMAGES = [
-  {
-    src: "/banner/collection_banner-mobile.webp",
-    alt: "From the Trunk collection banner",
-  },
-  {
-    src: "/banner/collection-banner2-mobile.webp",
-    alt: "From the Trunk collection banner alternate edit",
-  },
-] as const;
+const COLLECTION_HERO_VISUAL = {
+  desktopSrc: "/banner/collection_banner-mobile.webp",
+  alt: "From the Trunk collection banner",
+} as const;
 
-// Blouse-only hero banners — shown when the Blouses category is selected.
-const BLOUSE_BANNER_IMAGES = [
-  {
-    src: "/banner/blouse_banner_1.avif",
-    alt: "From the Trunk blouse collection banner",
+// Blouse-only hero visual — shown when the Blouses category is selected.
+const BLOUSE_HERO_VISUAL = {
+  desktopSrc: "/banner/blouse_banner_1.avif",
+  alt: "From the Trunk blouse collection banner",
+} as const;
+
+// The Drape Room banner is the second slide on every collection view. Its
+// artwork is transparent, so it sits on the hero's own navy rather than
+// carrying a background of its own.
+const DRAPE_ROOM_HERO_SLIDE = {
+  id: "drape-room",
+  type: "drape-room",
+  navigationLabel: "The Drape Room",
+  eyebrow: "New Feature",
+  titlePrefix: "Meet The",
+  titleAccent: "Drape Room",
+  description: "Preview yourself in our sarees before you buy.",
+  steps: [
+    { label: "Upload photo", icon: "upload" },
+    { label: "Consent", icon: "consent" },
+    { label: "Create preview", icon: "preview" },
+    { label: "Delete anytime", icon: "delete" },
+  ],
+  // The Drape Room opens from a saree's own page, so the call to action leads
+  // to the grid rather than to a standalone route.
+  primaryAction: { label: "Try the Drape Room", href: "#collection-grid" },
+  secondaryAction: { label: "How it works", href: "/how-it-works" },
+  visual: {
+    desktopSrc: "/banner/drapeLaunchBanner.avif",
+    alt: "A woman previewing a saree using The Drape Room",
   },
-  {
-    src: "/banner/blouse_banner_2.avif",
-    alt: "From the Trunk blouse collection banner alternate edit",
-  },
-] as const;
+} satisfies HomeHeroSlide;
 const DEFAULT_ITEMS_PER_PAGE = 10;
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50] as const;
 const MAX_COLLECTION_PAGE = 10;
@@ -87,7 +106,7 @@ const preloadCollectionHero = (src: string) => {
     alt: "",
     fill: true,
     priority: true,
-    sizes: "(max-width: 1024px) 100vw, 52vw",
+    sizes: "(max-width: 1023px) 100vw, 44vw",
     src,
   });
   preload(props.src, {
@@ -384,9 +403,8 @@ export default async function CollectionPage({
   const realTags = activeTags.filter((tag) => tag !== TOP_VIEWED_TAG);
   const activeSleeves = toSlugArray(resolvedSearchParams?.sleeve);
   const isBlouseMode = activeTypes.includes("blouse");
-  preloadCollectionHero(
-    (isBlouseMode ? BLOUSE_BANNER_IMAGES : COLLECTION_BANNER_IMAGES)[0].src,
-  );
+  const heroVisual = isBlouseMode ? BLOUSE_HERO_VISUAL : COLLECTION_HERO_VISUAL;
+  preloadCollectionHero(heroVisual.desktopSrc);
   // Blouses only appear via the Blouses menu (type=blouse); exclude them from
   // the general catalog otherwise.
   const excludeBlouseTypes = isBlouseMode ? undefined : ["blouse"];
@@ -524,6 +542,32 @@ export default async function CollectionPage({
 
   const hasMoreProducts =
     items.length < totalDocs && visibleLimit < MAX_VISIBLE_PRODUCTS;
+  // The hero rotates the live collection banner and the Drape Room launch
+  // banner. Blouse mode swaps the copy and artwork of the first slide only.
+  const heroSlides = [
+    {
+      id: "collection",
+      type: "collection",
+      navigationLabel: isBlouseMode
+        ? "Blouse collection"
+        : "Pre-loved saree collection",
+      eyebrow: cms?.eyebrow ?? "The Collection",
+      title: isBlouseMode
+        ? ["Blouses with a story", "of their own"]
+        : cms?.title
+          ? [cms.title]
+          : ["Pre-Loved", "& Vintage", "Luxury Sarees"],
+      description: isBlouseMode
+        ? "Blouses that once completed a drape, kept and cared for. Ready to begin again with yours."
+        : cms?.description ??
+          "Discover heirlooms from private wardrobes and collector trunks. Each piece is authenticated and accompanied by its story.",
+      livePieces: totalDocs,
+      promise: "Authenticated, graded, re-stored",
+      visual: heroVisual,
+    },
+    DRAPE_ROOM_HERO_SLIDE,
+  ] satisfies readonly HomeHeroSlide[];
+
   let suggestedItems: Product[] = [];
   let suggestionLabel = "Try one of these pieces instead.";
 
@@ -1236,62 +1280,8 @@ export default async function CollectionPage({
         />
       ) : null}
       <div className="mx-auto w-full max-w-[1720px] space-y-4 px-3 py-3 sm:px-5 md:px-6 lg:px-8 lg:py-6">
-        <section className="flex flex-col overflow-hidden rounded-[1.5rem] border border-[#E7DDD4] bg-[#141D46] shadow-[0_18px_50px_rgba(20,29,70,0.13)] md:grid md:min-h-[340px] md:grid-cols-[0.48fr_0.52fr] lg:min-h-[460px] lg:grid-cols-[0.46fr_0.54fr] lg:rounded-[1.75rem] xl:min-h-[500px]">
-          <div
-            className="relative isolate order-2 min-h-[320px] overflow-hidden bg-[#141D46] p-5 text-[#FDF7F1] sm:min-h-[340px] sm:p-6 md:order-1 md:min-h-[340px] md:p-7 lg:min-h-[460px] lg:p-10 xl:min-h-[500px]"
-            // style={{
-            //   background:
-            //     "linear-gradient(135deg, #141D46 0%, #10183B 58%, #601D1C 145%)",
-            // }}
-          >
-            <div className="relative flex min-h-[278px] flex-col justify-between gap-5 sm:min-h-[292px] md:min-h-[286px] lg:min-h-[380px] lg:gap-8 xl:min-h-[420px]">
-              <div className="max-w-xl space-y-4 lg:space-y-5">
-                <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-[var(--ftt-gold)]">
-                  {cms?.eyebrow ?? "The Collection"}
-                </p>
-
-                <h1 className="max-w-[12ch] text-balance font-serif text-3xl font-medium leading-[0.98] text-[#FDF7F1] sm:text-5xl lg:text-6xl lg:leading-[0.96]">
-                  {isBlouseMode ? (
-                    "Blouses with a story of their own"
-                  ) : cms?.title ? (
-                    cms.title
-                  ) : (
-                    <>
-                      <span className="whitespace-nowrap">Pre-Loved</span>{" "}
-                      &amp; Vintage Luxury Sarees
-                    </>
-                  )}
-                </h1>
-
-                <p className="max-w-md text-pretty text-sm leading-6 text-[#FDF7F1]/78 sm:text-base lg:leading-7">
-                  {isBlouseMode
-                    ? "Blouses that once completed a drape, kept and cared for. Ready to begin again with yours."
-                    : cms?.description ??
-                      "Discover heirlooms from private wardrobes and collector trunks. Each piece is authenticated and accompanied by its story."}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <HeroStat label="Live pieces" value={String(totalDocs)} />
-                <div className="rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
-                  <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
-                    Promise
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-[var(--ftt-ivory)]">
-                    Authenticated, graded, re-stored
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative order-1 min-h-[220px] overflow-hidden bg-[#141D46] sm:min-h-[300px] md:order-2 md:min-h-[340px] lg:min-h-[460px] xl:min-h-[500px]">
-            <CollectionHeroCarousel
-              images={isBlouseMode ? BLOUSE_BANNER_IMAGES : COLLECTION_BANNER_IMAGES}
-              prioritizeFirst
-            />
-          </div>
-        </section>
+        <HomeHeroCarousel slides={heroSlides} prioritizeFirst />
+        <DrapeLaunchCollectionEntry />
 
         {/* <section aria-label="Collection edits">
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
@@ -1514,22 +1504,6 @@ export default async function CollectionPage({
           </div>
         </section>
       </div>
-    </div>
-  );
-}
-
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-      <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--ftt-ivory)]/60">
-        {label}
-      </p>
-      <p
-        className="mt-2 text-4xl text-[var(--ftt-ivory)]"
-        style={{ fontFamily: '"Times New Roman", Times, serif' }}
-      >
-        {value}
-      </p>
     </div>
   );
 }

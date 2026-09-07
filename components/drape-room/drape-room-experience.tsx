@@ -566,6 +566,7 @@ export function DrapeRoomExperience({
         operationalStorageMode === "memory" ? "memory" : "indexeddb"
       }
       isGenerating={phase === "generating"}
+      isCompleting={phase === "complete"}
       isPhotoBusy={isPhotoBusy}
       isCacheChecking={Boolean(currentPhoto) && !cacheLookupReady}
       statusMessage={statusMessage}
