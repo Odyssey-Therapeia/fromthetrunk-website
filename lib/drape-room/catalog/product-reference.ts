@@ -7,6 +7,11 @@ import {
 } from "@/lib/drape-room/product";
 import { MAX_PRODUCT_SOURCE_BYTES } from "@/lib/drape-room/server/image-limits";
 import {
+  cacheWorkingImage,
+  getCachedWorkingImage,
+  toReferenceWorkingImage,
+} from "@/lib/drape-room/catalog/reference-working-image";
+import {
   observeTryonFailure,
   observeTryonRejection,
   observeTryonStage,
@@ -163,6 +168,21 @@ async function fetchAuthoritativeReference(
   fetchImpl: typeof fetch,
   invocationSignal?: AbortSignal,
 ): Promise<LoadedAuthoritativeReference> {
+  if (reference.needsDownscale) {
+    const cached = getCachedWorkingImage(reference.version);
+    if (cached) {
+      observeTryonStage("catalogue_reference_working_image_reused", {
+        referencePosition,
+        workingBytes: cached.byteLength,
+      });
+      return {
+        bytes: cached,
+        mimeType: "image/jpeg",
+        version: reference.version,
+      };
+    }
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   const cancelForInvocation = () => controller.abort(invocationSignal?.reason);
@@ -218,7 +238,31 @@ async function fetchAuthoritativeReference(
       "catalogue_reference_body_verified",
       { actualBytes: bytes.byteLength, referencePosition },
     );
-    return { bytes, mimeType, version: reference.version };
+
+    if (!reference.needsDownscale) {
+      return { bytes, mimeType, version: reference.version };
+    }
+
+    /*
+     * The bytes are verified against the catalogue row first, so the integrity
+     * contract still covers the original. Only then is it downscaled — the
+     * provider never sees a 70 MP frame, and neither does the validator.
+     */
+    const working = await toReferenceWorkingImage(bytes);
+    bytes.fill(0);
+    cacheWorkingImage(reference.version, working.bytes);
+    observeTryonStage("catalogue_reference_downscaled", {
+      referencePosition,
+      sourceBytes: reference.byteSize,
+      sourceHeight: reference.height,
+      sourceWidth: reference.width,
+      workingBytes: working.bytes.byteLength,
+    });
+    return {
+      bytes: working.bytes,
+      mimeType: working.mimeType,
+      version: reference.version,
+    };
   } finally {
     clearTimeout(timeout);
     invocationSignal?.removeEventListener("abort", cancelForInvocation);
