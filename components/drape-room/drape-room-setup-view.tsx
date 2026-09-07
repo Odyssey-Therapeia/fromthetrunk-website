@@ -143,7 +143,7 @@ export function DrapeRoomSetupView({
             </label>
           )}
           <p className="text-[11px] leading-4 text-ftt-burgundy/60">
-            One person · full body and face visible · max 15 MB
+            One person · face or full body · any pose · max 15 MB
           </p>
         </div>
       </div>
@@ -182,24 +182,28 @@ export function DrapeRoomSetupView({
           clearDisabled={isGenerating}
         />
 
-        {paidActionReady && config ? (
-          <div className="flex items-start gap-3 rounded-2xl border border-ftt-border bg-ftt-card p-3">
-            <Checkbox
-              id={consentId}
-              checked={consentAccepted}
-              disabled={!subjectPhoto || !photoReady || isPhotoBusy || isGenerating}
-              onCheckedChange={(checked) => onConsentChange(checked === true)}
-              className="mt-0.5 data-[state=checked]:border-ftt-burgundy data-[state=checked]:bg-ftt-burgundy data-[state=checked]:text-ftt-ivory [&_svg]:text-ftt-ivory"
-            />
-            <label
-              htmlFor={consentId}
-              className="cursor-pointer text-xs leading-5 text-ftt-navy/75"
-            >
-              I have the right to use this photo and agree to send it to{" "}
-              {config.providerDisplayName} for this AI preview.
-            </label>
-          </div>
-        ) : null}
+        {/*
+          Always rendered. The consent choice must never disappear because of
+          photo, quota, or provider state — only the Create button below is
+          gated on it.
+        */}
+        <div className="flex items-start gap-3 rounded-2xl border border-ftt-border bg-ftt-card p-3">
+          <Checkbox
+            id={consentId}
+            checked={consentAccepted}
+            disabled={!config || !subjectPhoto || isPhotoBusy || isGenerating}
+            onCheckedChange={(checked) => onConsentChange(checked === true)}
+            className="mt-0.5 data-[state=checked]:border-ftt-burgundy data-[state=checked]:bg-ftt-burgundy data-[state=checked]:text-ftt-ivory [&_svg]:text-ftt-ivory"
+          />
+          <label
+            htmlFor={consentId}
+            className="cursor-pointer text-xs leading-5 text-ftt-navy/75"
+          >
+            I have the right to use this photo and agree to send it to{" "}
+            {config ? config.providerDisplayName : "the configured AI provider"}{" "}
+            for this AI preview.
+          </label>
+        </div>
       </div>
 
       <div className="sticky bottom-0 z-20 col-span-full -mx-4 border-t border-ftt-border bg-ftt-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur @sm:-mx-5 @sm:px-5">
@@ -216,8 +220,8 @@ export function DrapeRoomSetupView({
               ? "You have used today’s three previews for this saree. Your saved images remain available, and you can create more after midnight."
               : subjectPhoto && !photoReady
               ? isPhotoBusy
-                ? "Checking your full-body framing locally. Your photo has not been sent."
-                : "Choose a clear photo containing one visible face. Your body and pose are optional."
+                ? "Checking your photo locally. Your photo has not been sent."
+                : "Choose a clear photo of one person. A face, an upper body, or a full-length pose all work."
               : configStatus === "ready" && config
               ? "New AI generation is temporarily unavailable while this saree’s secure reference is completed. Your photo has not been sent."
               : DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE}

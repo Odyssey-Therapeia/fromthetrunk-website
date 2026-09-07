@@ -114,7 +114,7 @@ export function useDrapeRoomGeneration({
       photo.readiness.policyVersion !== PHOTO_READINESS_POLICY_VERSION
     ) {
       setErrorMessage(
-        "Choose a clear, full-body photo of one person before generating.",
+        "Choose a clear photo of one person before generating.",
       );
       return;
     }

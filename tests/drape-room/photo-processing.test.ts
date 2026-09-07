@@ -178,7 +178,7 @@ describe("Drape Room photo processing", () => {
     const blocked = vi.fn().mockResolvedValue({
       ready: false as const,
       policyVersion: "full-body-pose-v1" as const,
-      reason: "feet-not-visible" as const,
+      reason: "person-too-small" as const,
       message: "Keep both ankles or feet visible inside the frame.",
     });
 
