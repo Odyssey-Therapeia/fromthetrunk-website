@@ -217,7 +217,7 @@ export async function processUserPhoto(
     if (options.signal?.aborted) throw error;
     throw new PhotoProcessingError(
       "readiness-unavailable",
-      "This browser could not check your full-body photo. Try again or use a current Chrome or Safari browser.",
+      "This browser could not check your photo. Try again or use a current Chrome or Safari browser.",
     );
   }
   if (!readiness.ready) {

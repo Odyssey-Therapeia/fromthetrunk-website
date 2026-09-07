@@ -193,7 +193,7 @@ export function DrapeRoomOnboarding({
                             aria-hidden="true"
                           />
                           <p className="mt-3 text-sm font-semibold">
-                            Add one clear full-body photo
+                            Add one clear photo of yourself
                           </p>
                         </div>
                       </div>

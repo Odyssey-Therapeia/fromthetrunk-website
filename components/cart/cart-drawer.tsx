@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   AnimatePresence,
@@ -11,16 +12,14 @@ import {
 import {
   ArrowRight,
   LockKeyhole,
-  PackageCheck,
-  ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Tag,
+  Trash2,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { CartDeliveryEstimateCard } from "@/components/cart/cart-delivery-estimate-card";
-import { CartItem } from "@/components/cart/cart-item";
-import { CartSavingsBanner } from "@/components/cart/cart-savings-banner";
 import { CommerceCountBadge } from "@/components/layout/commerce-count-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +41,82 @@ import { formatCurrency } from "@/lib/formatters";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
 
+// ---------------------------------------------------------------------------
+// Tokens and mappings — the two things you may need to edit.
+// ---------------------------------------------------------------------------
+
+// Point this at whatever CartDeliveryEstimateCard derives its range from, so
+// the drawer and the full bag page never disagree.
+const DELIVERY_ESTIMATE_LABEL = "7 to 10 days";
+
+// One token for every savings figure in the drawer. Deep forest green: reads
+// clearly as green without looking like a discount sticker on the ivory.
+const SAVINGS_ACCENT = "#2E5A43";
+
+// The strip panel. A pale sage tint of the accent, kept light so the green
+// reads on the ivory without the numbers losing contrast.
+const STRIP_BG = "#EDF2EC";
+
+/**
+ * The drawer renders each line itself now, so it needs the display fields the
+ * old CartItem component was reading. `price` and `name` are confirmed working;
+ * fabric and original price are resolved by the helpers below because the real
+ * key names are not known yet. Replace both helpers with a direct field read
+ * once you confirm them.
+ */
+type CartLineFields = {
+  id: string;
+  image?: null | string;
+  name?: null | string;
+  price?: null | number;
+  reservedUntil?: null | string;
+  slug?: null | string;
+  [key: string]: unknown;
+};
+
+// Whichever of these exists on the item wins. Add the real key to the front of
+// the list, or delete the helper entirely and read the field directly.
+const FABRIC_KEYS = [
+  "fabric",
+  "fabricType",
+  "fabricName",
+  "material",
+  "category",
+  "productType",
+] as const;
+
+const ORIGINAL_PRICE_KEYS = [
+  "originalPrice",
+  "compareAtPrice",
+  "listPrice",
+  "mrp",
+  "originalPricePaise",
+  "compareAtPricePaise",
+  "listPricePaise",
+  "mrpPaise",
+] as const;
+
+function readFabric(item: CartLineFields) {
+  for (const key of FABRIC_KEYS) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+
+  return null;
+}
+
+/** Returns rupees. Keys ending in Paise are converted, everything else is not. */
+function readOriginalPrice(item: CartLineFields) {
+  for (const key of ORIGINAL_PRICE_KEYS) {
+    const value = item[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) continue;
+
+    return key.endsWith("Paise") ? value / 100 : value;
+  }
+
+  return 0;
+}
+
 export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -53,6 +128,12 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
   const removeItem = useCartStore((state) => state.removeItem);
   const { savingsPaise, subtotal, totalItems } = getCartTotals(items);
   const canCheckout = hasHydrated && items.length > 0;
+
+  // savingsPaise is in paise; subtotal is already in rupees.
+  const savings = savingsPaise / 100;
+  const originalTotal = subtotal + savings;
+  const hasSavings = hasHydrated && savingsPaise > 0;
+
   const lastAvailabilityCheckRef = useRef(0);
   const hasReservedCartItem = items.some((item) => Boolean(item.reservedUntil));
   const earliestReservationExpiresAt = items.reduce<null | number>(
@@ -72,6 +153,7 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
     earliestReservationExpiresAt != null && reservationRemainingMs > 0
       ? formatCartHoldTime(reservationRemainingMs)
       : null;
+
   const softEnterMotion: MotionProps = shouldReduceMotion
     ? {}
     : {
@@ -199,7 +281,7 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
   const itemLabel =
     !hasHydrated || totalItems === 0
       ? "Your bag is empty"
-      : `${totalItems} ${totalItems === 1 ? "piece" : "pieces"} in your bag`;
+      : `${totalItems} ${totalItems === 1 ? "piece" : "pieces"}`;
   const cartTriggerLabel =
     hasHydrated && totalItems > 0
       ? `Open bag, ${totalItems} ${totalItems === 1 ? "item" : "items"}`
@@ -218,7 +300,7 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
       {/* Live region for screen readers */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {hasHydrated && totalItems > 0
-          ? `${totalItems} item${totalItems !== 1 ? "s" : ""} in your bag, subtotal ${formatCurrency(subtotal)}`
+          ? `${totalItems} item${totalItems !== 1 ? "s" : ""} in your bag, total ${formatCurrency(subtotal)}`
           : "Your bag is empty"}
       </div>
       <SheetTrigger asChild>
@@ -242,79 +324,65 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
         </button>
       </SheetTrigger>
 
-      <SheetContent className="flex w-full flex-col gap-0 border-l border-[#E7DDD4] bg-[#FDF7F1] p-0 text-[#0E0D0E] shadow-[0_24px_80px_rgba(20,29,70,0.22)] sm:max-w-[480px]">
-        <div className="border-b border-[#E7DDD4] bg-[#FFFCF8] px-5 pb-5 pt-6">
-          <SheetHeader className="text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#B39152]">
+      <SheetContent className="flex w-full flex-col gap-0 border-l border-[#E7DDD4] bg-[#FDF7F1] p-0 text-[#0E0D0E] shadow-[0_24px_80px_rgba(20,29,70,0.22)] sm:max-w-[440px]">
+        {/* HEADER */}
+        <div className="border-b border-[#E7DDD4] px-6 pb-4 pt-6">
+          <SheetHeader className="space-y-0 text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#B39152]">
               From the trunk
             </p>
-            <div className="flex items-end justify-between gap-4 pr-8">
-              <SheetTitle className="shrink-0 font-serif text-3xl font-medium leading-none text-[#141D46]">
-                Shopping Bag
-              </SheetTitle>
-              <SheetDescription className="sr-only">
-                Review the pieces in your bag, then continue to checkout or open
-                the full bag page.
-              </SheetDescription>
-              <div className="flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
-                <span className="rounded-full border border-[#B39152]/45 bg-[#B39152]/10 px-3 py-1 text-xs font-medium text-[#141D46]">
-                  {hasHydrated ? itemLabel : "Loading"}
-                </span>
-                {hasHydrated && cartHoldLabel ? (
-                  <CartHoldTimerBadge label={cartHoldLabel} />
-                ) : null}
-              </div>
-            </div>
+            <SheetTitle className="mt-1.5 pr-8 font-serif text-[27px] font-medium leading-none text-[#141D46]">
+              Shopping bag
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Review the pieces in your bag, then continue to checkout or open
+              the full bag page.
+            </SheetDescription>
           </SheetHeader>
 
-          <motion.div
-            {...softEnterMotion}
-            className="mt-5 rounded-2xl border border-[#B39152]/25 bg-[#141D46] p-4 text-[#FDF7F1]"
-          >
-            <div className="flex items-start gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#B39152]/18 text-[#B39152]">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Your trunk is protected.</p>
-                <p className="mt-1 text-xs leading-5 text-[#FDF7F1]/70">
-                  Authenticated pieces, secure packing, and shipping confirmed
-                  at checkout.
-                </p>
-              </div>
-            </div>
-          </motion.div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-[#6B625B]">
+            <span>{hasHydrated ? itemLabel : "Loading"}</span>
+            {hasHydrated && cartHoldLabel ? (
+              <>
+                <span aria-hidden="true" className="text-[#D9CEC3]">
+                  |
+                </span>
+                <CartHoldTimer label={cartHoldLabel} />
+              </>
+            ) : null}
+          </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        {/* BODY — rows separated by hairlines, no card around each piece. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6">
           {!hasHydrated ? (
-            <CartDrawerState
-              title="Opening your trunk..."
-              body="We are loading your saved selection."
-            />
+            <div className="py-5">
+              <CartDrawerState
+                title="Opening your trunk..."
+                body="We are loading your saved selection."
+              />
+            </div>
           ) : items.length === 0 ? (
-            <CartDrawerState
-              title="Your bag is empty."
-              body="Explore the collection and add a unique piece to begin."
-              action={
-                <Button
-                  asChild
-                  className="mt-5 rounded-full bg-[#141D46] px-6 text-[#FDF7F1] hover:bg-[#0E0D0E]"
-                  onClick={() => setOpen(false)}
-                >
-                  <Link href="/collection">Explore collection</Link>
-                </Button>
-              }
-            />
+            <div className="py-5">
+              <CartDrawerState
+                title="Your bag is empty."
+                body="Explore the collection and add a unique piece to begin."
+                action={
+                  <Button
+                    asChild
+                    className="mt-5 rounded-full bg-[#141D46] px-6 text-[#FDF7F1] hover:bg-[#0E0D0E]"
+                    onClick={() => setOpen(false)}
+                  >
+                    <Link href="/collection">Explore collection</Link>
+                  </Button>
+                }
+              />
+            </div>
           ) : (
-            <div className="space-y-3">
-              {/* Savings sits above the pieces so the markdown is the first
-                  thing read in the bag, never buried under the list. */}
-              <CartSavingsBanner savingsPaise={savingsPaise} variant="drawer" />
-
+            <ul className="divide-y divide-[#E7DDD4]">
               <AnimatePresence initial={false}>
                 {items.map((item, index) => (
-                  <motion.div
+                  <motion.li
                     key={item.id}
                     layout
                     {...(shouldReduceMotion
@@ -330,97 +398,221 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
                           },
                         })}
                   >
-                    <CartItem item={item} />
-                  </motion.div>
+                    <CartLine
+                      item={item as unknown as CartLineFields}
+                      onRemove={removeItem}
+                    />
+                  </motion.li>
                 ))}
               </AnimatePresence>
-
-              <CartDeliveryEstimateCard variant="drawer" />
-            </div>
+            </ul>
           )}
         </div>
 
+        {/* FOOTER */}
         <motion.div
           {...softEnterMotion}
-          className="border-t border-[#E7DDD4] bg-[#FFFCF8]/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_50px_rgba(20,29,70,0.08)] backdrop-blur"
+          className="border-t border-[#E7DDD4] bg-[#FFFCF8]/95 px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_50px_rgba(20,29,70,0.08)] backdrop-blur"
         >
-          <div className="mb-4 grid grid-cols-3 gap-2">
-            <CartPromise icon={<ShieldCheck className="h-3.5 w-3.5" />}>
-              Verified
-            </CartPromise>
-            <CartPromise icon={<PackageCheck className="h-3.5 w-3.5" />}>
-              Packed
-            </CartPromise>
-            <CartPromise icon={<LockKeyhole className="h-3.5 w-3.5" />}>
-              Secure
-            </CartPromise>
+          {/* Savings and delivery share one strip. Two cells, both centred. */}
+          <div
+            className={cn(
+              "grid divide-x divide-[#E7DDD4] rounded-2xl py-3",
+              hasSavings ? "grid-cols-2" : "grid-cols-1",
+            )}
+            style={{ backgroundColor: STRIP_BG }}
+          >
+            {hasSavings ? (
+              <StripCell
+                icon={
+                  <Tag
+                    className="h-4 w-4"
+                    style={{ color: SAVINGS_ACCENT }}
+                    aria-hidden="true"
+                  />
+                }
+              >
+                <span style={{ color: SAVINGS_ACCENT }}>You save</span>
+                <span
+                  className="block font-medium"
+                  style={{ color: SAVINGS_ACCENT }}
+                >
+                  {formatCurrency(savings)}
+                </span>
+              </StripCell>
+            ) : null}
+
+            <StripCell
+              icon={<Truck className="h-4 w-4 text-[#9A8C82]" aria-hidden="true" />}
+            >
+              <span className="text-[#6B625B]">Estimated delivery</span>
+              <span className="block text-[#141D46]">{DELIVERY_ESTIMATE_LABEL}</span>
+            </StripCell>
           </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-[#6B625B]">Subtotal</span>
-            <span className="font-semibold text-[#141D46]">
-              {hasHydrated ? formatCurrency(subtotal) : "—"}
-            </span>
-          </div>
-          {hasHydrated && savingsPaise > 0 ? (
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-[#0F5132]">Savings</span>
-              <span className="font-semibold text-[#0F5132]">
-                -{formatCurrency(savingsPaise / 100)}
-              </span>
+          {/* Ledger. Subtotal is the sum before the markdown, so subtotal minus
+              savings genuinely equals the total. */}
+          <dl className="mt-4 space-y-2">
+            {hasSavings ? (
+              <>
+                <div className="flex items-baseline justify-between text-sm">
+                  <dt className="text-[#6B625B]">Subtotal</dt>
+                  <dd className="text-[#141D46]">{formatCurrency(originalTotal)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between text-sm">
+                  <dt style={{ color: SAVINGS_ACCENT }}>Savings</dt>
+                  <dd style={{ color: SAVINGS_ACCENT }}>
+                    &minus;{formatCurrency(savings)}
+                  </dd>
+                </div>
+              </>
+            ) : null}
+
+            <div className="flex items-baseline justify-between border-t border-[#B39152]/40 pt-3">
+              <dt className="text-[15px] text-[#141D46]">Total</dt>
+              <dd className="font-serif text-[26px] leading-none text-[#141D46]">
+                {hasHydrated ? formatCurrency(subtotal) : "—"}
+              </dd>
             </div>
-          ) : null}
+          </dl>
+
           <p className="mt-2 text-xs leading-5 text-[#6B625B]">
-            Shipping, taxes, and final availability are confirmed at checkout.
+            Shipping and taxes confirmed at checkout.
           </p>
 
           {canCheckout ? (
             <Button
               asChild
-              className="mt-5 h-12 w-full rounded-full bg-[#141D46] text-[#FDF7F1] shadow-[0_14px_34px_rgba(20,29,70,0.18)] hover:bg-[#0E0D0E]"
+              className="mt-4 h-12 w-full rounded-full bg-[#141D46] text-[#FDF7F1] shadow-[0_14px_34px_rgba(20,29,70,0.18)] hover:bg-[#0E0D0E]"
             >
               <Link href="/checkout" onClick={() => setOpen(false)}>
-                Proceed to Checkout
+                Proceed to checkout
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           ) : (
             <Button
-              className="mt-5 h-12 w-full rounded-full bg-[#141D46] text-[#FDF7F1]"
+              className="mt-4 h-12 w-full rounded-full bg-[#141D46] text-[#FDF7F1]"
               disabled
             >
-              Proceed to Checkout
+              Proceed to checkout
             </Button>
           )}
 
           {/* The drawer is the quick view; the full bag page stays reachable on
-              purpose, just never as the header icon's default action. Both
-              secondary actions share one row so Checkout stays above the fold
-              on a short mobile viewport. */}
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button
-              asChild
-              variant="outline"
-              className="h-11 w-full rounded-full border-[#B39152]/45 bg-transparent px-2 text-[13px] text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#601D1C]"
+              purpose, just never as the header icon's default action. */}
+          <div className="mt-3 flex items-center justify-center gap-6 text-[13px]">
+            <Link
+              href="/cart"
+              onClick={() => setOpen(false)}
+              className="rounded-sm text-[#601D1C] underline underline-offset-4 transition hover:text-[#141D46] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]"
             >
-              <Link href="/cart" onClick={() => setOpen(false)}>
-                View full bag
-              </Link>
-            </Button>
-
-            <Button
-              asChild
-              variant="ghost"
-              className="h-11 w-full rounded-full px-2 text-[13px] text-[#601D1C] hover:bg-[#B39152]/10 hover:text-[#601D1C]"
+              View full bag
+            </Link>
+            <Link
+              href="/collection"
+              onClick={() => setOpen(false)}
+              className="rounded-sm text-[#601D1C] underline underline-offset-4 transition hover:text-[#141D46] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]"
             >
-              <Link href="/collection" onClick={() => setOpen(false)}>
-                Continue shopping
-              </Link>
-            </Button>
+              Continue shopping
+            </Link>
           </div>
         </motion.div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** One piece in the bag. No border: the hairline above it does that job. */
+function CartLine({
+  item,
+  onRemove,
+}: {
+  item: CartLineFields;
+  onRemove: (id: string) => void;
+}) {
+  const name = item.name ?? "Untitled piece";
+  const price = item.price ?? 0;
+  const fabric = readFabric(item);
+  const originalPrice = readOriginalPrice(item);
+  const showOriginal = originalPrice > price;
+  const heldUntil = item.reservedUntil ? formatHoldUntil(item.reservedUntil) : null;
+
+  return (
+    <div className="flex gap-3.5 py-3.5">
+      <div className="relative h-[84px] w-[72px] shrink-0 overflow-hidden rounded-xl bg-[#EFE6DC]">
+        {item.image ? (
+          <Image
+            src={item.image}
+            alt={name}
+            fill
+            sizes="72px"
+            className="object-cover"
+          />
+        ) : null}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-serif text-[16px] leading-[1.3] text-[#141D46]">
+            {item.slug ? (
+              <Link href={`/collection/${item.slug}`} className="hover:underline">
+                {name}
+              </Link>
+            ) : (
+              name
+            )}
+          </h3>
+          <button
+            type="button"
+            onClick={() => onRemove(item.id)}
+            aria-label={`Remove ${name} from your bag`}
+            className="-mr-1 -mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[#9A8C82] transition hover:bg-[#601D1C]/8 hover:text-[#601D1C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        {fabric ? (
+          <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#9A8C82]">
+            {fabric}
+          </p>
+        ) : null}
+
+        <div className="mt-1.5 flex items-baseline gap-2">
+          <span className="text-[16px] font-medium text-[#141D46]">
+            {formatCurrency(price)}
+          </span>
+          {showOriginal ? (
+            <span className="text-[12px] text-[#9A8C82] line-through decoration-[#C5B8AC]">
+              {formatCurrency(originalPrice)}
+            </span>
+          ) : null}
+        </div>
+
+        {heldUntil ? (
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#B39152]/12 px-2 py-0.5 text-[10px] text-[#6B625B]">
+            <LockKeyhole className="h-3 w-3 text-[#B39152]" aria-hidden="true" />
+            Held for you until {heldUntil}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function StripCell({
+  children,
+  icon,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-2 px-3 text-center text-[11px] leading-4">
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0">{children}</span>
+    </div>
   );
 }
 
@@ -432,7 +624,21 @@ function formatCartHoldTime(remainingMs: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function CartHoldTimerBadge({ label }: { label: string }) {
+function formatHoldUntil(iso: string) {
+  const expiresAt = new Date(iso);
+  if (!Number.isFinite(expiresAt.getTime())) return null;
+  if (expiresAt.getTime() <= Date.now()) return null;
+
+  return expiresAt
+    .toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      hour12: true,
+      minute: "2-digit",
+    })
+    .toLowerCase();
+}
+
+function CartHoldTimer({ label }: { label: string }) {
   return (
     <TooltipProvider delayDuration={120}>
       <Tooltip>
@@ -440,15 +646,15 @@ function CartHoldTimerBadge({ label }: { label: string }) {
           <span
             tabIndex={0}
             aria-label={`Reservation hold ends in ${label}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#141D46]/20 bg-[#141D46] px-3 py-1 text-xs font-semibold text-[#FDF7F1] shadow-[0_10px_24px_rgba(20,29,70,0.14)] outline-none transition hover:bg-[#1D285C] focus-visible:ring-2 focus-visible:ring-[#B39152]/70"
+            className="inline-flex items-center gap-1.5 rounded-sm text-[#141D46] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]"
           >
-            <LockKeyhole className="h-3.5 w-3.5 text-[#B39152]" />
-            <span className="tabular-nums">Hold {label}</span>
+            <LockKeyhole className="h-3.5 w-3.5 text-[#B39152]" aria-hidden="true" />
+            <span className="tabular-nums">Reserved for the next {label}</span>
           </span>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
-          align="end"
+          align="start"
           className="max-w-[15rem] rounded-xl border border-[#B39152]/30 bg-[#FFFCF8] px-3 py-2 text-xs leading-5 text-[#601D1C] shadow-[0_14px_34px_rgba(20,29,70,0.16)]"
         >
           Your reserved piece will be released after one hour. Complete checkout
@@ -471,28 +677,13 @@ function CartDrawerState({
   return (
     <div className="rounded-[1.5rem] border border-dashed border-[#B39152]/45 bg-[#FFFCF8] p-8 text-center">
       <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#B39152]/12 text-[#B39152]">
-        <Sparkles className="h-5 w-5" />
+        <Sparkles className="h-5 w-5" aria-hidden="true" />
       </div>
       <p className="mt-4 font-serif text-2xl text-[#141D46]">{title}</p>
       <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[#6B625B]">
         {body}
       </p>
       {action}
-    </div>
-  );
-}
-
-function CartPromise({
-  icon,
-  children,
-}: {
-  icon: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-center gap-1.5 rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-2 py-2 text-[11px] font-medium text-[#141D46]">
-      <span className="text-[#B39152]">{icon}</span>
-      {children}
     </div>
   );
 }

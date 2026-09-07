@@ -254,7 +254,7 @@ export function DrapeRoomStage({
                       dailyQuota?.remaining === 0
                         ? "You have used today’s three previews for this saree. Your saved images remain available, and you can create more after midnight."
                         : !photoReady
-                          ? "Choose a clear, full-body photo of one person before creating another preview."
+                          ? "Choose a clear photo of one person before creating another preview."
                           : !generationAvailable
                             ? undefined
                             : null

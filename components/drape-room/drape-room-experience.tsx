@@ -265,7 +265,7 @@ export function DrapeRoomExperience({
         if (!active) throw new Error("photo_readiness_cancelled");
         setIsPhotoBusy(true);
         setErrorMessage(null);
-        setDrapeRoomProgressMessage("Checking your full-body framing locally…");
+        setDrapeRoomProgressMessage("Checking your photo locally…");
         return import("@/lib/drape-room/client/photo-readiness-mediapipe");
       })
       .then(({ analyzePhotoReadiness }) => analyzePhotoReadiness(currentPhoto.blob))
@@ -299,7 +299,7 @@ export function DrapeRoomExperience({
       .catch(() => {
         if (!active) return;
         setErrorMessage(
-          "This browser could not check your full-body photo. Choose a new photo or try a current Chrome or Safari browser.",
+          "This browser could not check your photo. Choose a new photo or try a current Chrome or Safari browser.",
         );
       })
       .finally(() => {
@@ -464,7 +464,7 @@ export function DrapeRoomExperience({
             photoPreparation.current === controller
           ) {
             setDrapeRoomProgressMessage(
-              "Checking your full-body framing locally…",
+              "Checking your photo locally…",
             );
           }
         },
