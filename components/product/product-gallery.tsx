@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { ResilientProductImage } from "@/components/media/resilient-product-image";
@@ -17,6 +17,11 @@ interface ProductGalleryProps {
    * main image alt when absent.
    */
   productName?: string;
+  /**
+   * Fires whenever the active image changes. A proper integration point so
+   * features that care about gallery engagement never scrape the DOM.
+   */
+  onActiveIndexChange?: (index: number) => void;
 }
 
 export function ProductGallery({
@@ -25,9 +30,11 @@ export function ProductGallery({
   imageAlts,
   thumbnailImages,
   productName,
+  onActiveIndexChange,
 }: ProductGalleryProps) {
   const galleryImages = useMemo(() => images.filter(Boolean), [images]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
   const activeIndex =
     selectedIndex >= 0 && selectedIndex < galleryImages.length
       ? selectedIndex
@@ -35,6 +42,10 @@ export function ProductGallery({
   const activeImage = galleryImages[activeIndex] ?? "";
   const activeAlt = imageAlts?.[activeIndex] ?? alt;
   const hasMultipleImages = galleryImages.length > 1;
+
+  useEffect(() => {
+    onActiveIndexChange?.(activeIndex);
+  }, [activeIndex, onActiveIndexChange]);
   const subject = productName?.trim() || alt;
 
   /**

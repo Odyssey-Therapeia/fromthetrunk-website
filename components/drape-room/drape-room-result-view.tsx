@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   DRAPE_ROOM_AI_DISCLAIMER,
   DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE,
+  DRAPE_ROOM_PATTERN_NOTE,
 } from "./drape-room-copy";
 import { DrapeRoomResultActions } from "./drape-room-result-actions";
 import { DRAPE_ROOM_BACKGROUNDS, type DrapeRoomResult } from "./types";
@@ -145,6 +146,13 @@ export function DrapeRoomResultView({
             {generationBlockedReason ?? DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE}
           </p>
         ) : null}
+
+        {/* Always visible: the pattern caveat must not sit behind a disclosure
+            the customer has to open. */}
+        <p className="flex items-start gap-2 rounded-2xl border border-ftt-gold/35 bg-ftt-gold/10 p-3 text-[11px] leading-5 text-ftt-burgundy">
+          <Info className="mt-0.5 size-4 shrink-0 text-ftt-gold" aria-hidden="true" />
+          <span>{DRAPE_ROOM_PATTERN_NOTE}</span>
+        </p>
 
         <details className="group rounded-2xl border border-ftt-gold/25 bg-ftt-gold/8 p-3 text-ftt-burgundy/80">
           <summary className="flex cursor-pointer list-none items-start gap-2 text-[11px] leading-5 marker:content-none">

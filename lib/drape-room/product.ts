@@ -16,6 +16,8 @@ import {
 } from "@/lib/media/product-image-resolver";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import {
+  MAX_PRODUCT_REFERENCE_EDGE,
+  MAX_PRODUCT_REFERENCE_PIXELS,
   MAX_PRODUCT_SOURCE_BYTES,
   MAX_TRYON_IMAGE_EDGE,
   MAX_TRYON_IMAGE_PIXELS,
@@ -60,6 +62,12 @@ export type DrapeProductReferenceSource = {
   height: number;
   kind: "derivative" | "source";
   mediaId: string;
+  /**
+   * True when the catalogue original is larger than a browser-supplied image
+   * may be, so the server downscales it to a bounded working image before
+   * validating and normalizing it. Derivatives are already bounded.
+   */
+  needsDownscale?: boolean;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
   /** SHA-256 identity of the authoritative source bytes, when available. */
   sourceHash: string | null;
@@ -295,9 +303,9 @@ function resolveDrapeImageReference(
     !positiveInteger(current.width) ||
     !positiveInteger(current.height) ||
     Math.min(current.width, current.height) < 600 ||
-    current.width > MAX_TRYON_IMAGE_EDGE ||
-    current.height > MAX_TRYON_IMAGE_EDGE ||
-    current.width * current.height > MAX_TRYON_IMAGE_PIXELS ||
+    current.width > MAX_PRODUCT_REFERENCE_EDGE ||
+    current.height > MAX_PRODUCT_REFERENCE_EDGE ||
+    current.width * current.height > MAX_PRODUCT_REFERENCE_PIXELS ||
     !isApprovedMediaUrl(current.url)
   ) {
     return null;
@@ -308,6 +316,10 @@ function resolveDrapeImageReference(
     height: current.height,
     kind: "source",
     mediaId: imageRelation.media.id,
+    needsDownscale:
+      current.width > MAX_TRYON_IMAGE_EDGE ||
+      current.height > MAX_TRYON_IMAGE_EDGE ||
+      current.width * current.height > MAX_TRYON_IMAGE_PIXELS,
     mimeType: current.mimeType as DrapeProductReferenceSource["mimeType"],
     sourceHash:
       typeof imageRelation.media.metadata?.sourceSha256 === "string" &&

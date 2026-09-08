@@ -46,17 +46,26 @@ describe("Phase 2C cost and media regression gates", () => {
   it("keeps secondary carousels manual and constrains hero autoplay", () => {
     for (const file of [
       "components/sections/campaign-banner-section.tsx",
-      "components/sections/collection-hero-carousel.tsx",
       "components/sections/fabric-category-motion-grid.tsx",
       "components/sections/social-reel-carousel.tsx",
     ]) {
       expect(source(file)).not.toContain("setInterval(");
     }
+    // The collection hero autoplays by product decision. It stays gated: no
+    // free-running interval, lazy slide mounting preserved, a bounded cadence,
+    // and it must stop for reduced motion and while the viewer interacts.
     const collectionHero = source(
-      "components/sections/collection-hero-carousel.tsx",
+      "components/sections/home-hero-carousel.tsx",
     );
+    expect(collectionHero).not.toContain("setInterval(");
     expect(collectionHero).toContain("mountedIndices.has(index)");
     expect(collectionHero).not.toContain("CAROUSEL_START_DELAY_MS");
+    expect(collectionHero).toContain("const SLIDE_DURATION_MS = 6000;");
+    expect(collectionHero).toContain(
+      "if (slideCount <= 1 || prefersReducedMotion || isPaused) return;",
+    );
+    expect(collectionHero).toContain("onMouseEnter={pause}");
+    expect(collectionHero).toContain("onFocusCapture={pause}");
     const hero = source("components/sections/hero-section.tsx");
     expect(hero).toContain("const SLIDE_DURATION_MS = 5000;");
     expect(hero).not.toContain("autoplayArmed");

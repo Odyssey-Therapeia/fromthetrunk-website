@@ -22,6 +22,7 @@ import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
+import { DrapeLaunchGallerySlot } from "@/components/drape-room/launch/drape-launch-gallery-slot";
 // Parked alongside the commented-out usage below.
 // import { RestockNotifyButton } from "@/components/product/restock-notify-button";
 import { Badge } from "@/components/ui/badge";
@@ -248,12 +249,15 @@ export default async function SareePage({ params }: ProductPageProps) {
         </nav>
 
         <section className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.58fr)] md:items-stretch md:[--pdp-panel-height:min(72vh,760px)] lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.58fr)] lg:gap-7 lg:[--pdp-panel-height:min(74vh,800px)]">
-          <ProductGallery
+          <DrapeLaunchGallerySlot
             images={images}
             thumbnailImages={thumbnailImages}
             alt={imageAlts[0] ?? product.name}
             imageAlts={imageAlts}
             productName={product.name}
+            drapeProduct={
+              !isBlouse && drapeSaree.eligible ? drapeSaree.saree : null
+            }
           />
 
           <aside className="h-full rounded-[1.15rem] border border-[#E7DDD4] bg-[#FFFCF8]/88 p-4 shadow-[0_14px_38px_rgba(20,29,70,0.06)] backdrop-blur md:min-h-(--pdp-panel-height) lg:p-5">
