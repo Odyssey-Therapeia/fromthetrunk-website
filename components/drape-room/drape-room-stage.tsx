@@ -49,6 +49,7 @@ export interface DrapeRoomStageProps {
   consentAccepted: boolean;
   storageMode: DrapeRoomStorageMode;
   isGenerating: boolean;
+  isCompleting: boolean;
   isPhotoBusy: boolean;
   isCacheChecking: boolean;
   statusMessage?: string | null;
@@ -82,6 +83,7 @@ export function DrapeRoomStage({
   consentAccepted,
   storageMode,
   isGenerating,
+  isCompleting,
   isPhotoBusy,
   isCacheChecking,
   statusMessage,
@@ -278,6 +280,7 @@ export function DrapeRoomStage({
                     subjectPhoto={subjectPhoto}
                     consentAccepted={consentAccepted}
                     isGenerating={isGenerating}
+                    isCompleting={isCompleting}
                     isPhotoBusy={isPhotoBusy}
                     isCacheChecking={isCacheChecking}
                     storageMode={storageMode}

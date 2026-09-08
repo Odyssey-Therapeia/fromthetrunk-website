@@ -34,6 +34,13 @@ import {
 import { DRAPE_ROOM_GENERATION_UNAVAILABLE_MESSAGE } from "./drape-room-copy";
 import type { DrapeRoomResult } from "./types";
 
+/**
+ * How long the finished create button holds at a full fill before the preview
+ * replaces the setup view. Long enough to read as landing, short enough that
+ * nobody waits on an animation for a result that is already in hand.
+ */
+const COMPLETION_BEAT_MS = 420;
+
 type ResultsByBackground = Partial<
   Record<DrapeRoomBackground, DrapeRoomResult>
 >;
@@ -225,6 +232,22 @@ export function useDrapeRoomGeneration({
         return;
       }
 
+      /*
+       * The request has landed and the render is stored. Marking the phase
+       * complete here — one beat before the result is committed — lets the
+       * create button finish its fill instead of vanishing at 92% when the
+       * preview replaces the setup view.
+       */
+      setPhase("complete");
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, COMPLETION_BEAT_MS);
+      });
+      if (!requestIsCurrent()) {
+        await drapeRoomStorage.deleteRender(stored.cacheKey);
+        markStaleRequestSettled();
+        return;
+      }
+
       const previous = results[background];
       if (previous) {
         URL.revokeObjectURL(previous.previewUrl);
@@ -238,7 +261,6 @@ export function useDrapeRoomGeneration({
       }));
       setProductReferenceVersion(generated.identity.productReferenceVersion);
       setBackground(background);
-      setPhase("complete");
       setStorageMode(nextStorageMode);
       setStatusMessage(
         "Your Drape Room preview is ready and saved in this browser.",

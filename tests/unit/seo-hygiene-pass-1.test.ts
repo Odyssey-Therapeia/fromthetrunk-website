@@ -35,13 +35,16 @@ describe("collection H1 ampersand spacing", () => {
   });
 
   it("forces the separating space with an explicit JSX expression", () => {
-    expect(source).toContain(
-      '<span className="whitespace-nowrap">Pre-Loved</span>{" "}',
+    // The H1 is now built from the hero carousel's title lines. Each line is
+    // its own block, so the join has to put the space back explicitly or the
+    // accessible name collapses to "Pre-Loved& VintageLuxury Sarees".
+    expect(read("components/sections/home-hero-carousel.tsx")).toContain(
+      '{index > 0 ? " " : null}',
     );
   });
 
   it("keeps the heading copy intact", () => {
-    expect(source).toContain("&amp; Vintage Luxury Sarees");
+    expect(source).toContain('["Pre-Loved", "& Vintage", "Luxury Sarees"]');
   });
 });
 

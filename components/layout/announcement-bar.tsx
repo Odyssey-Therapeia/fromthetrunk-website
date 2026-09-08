@@ -1,7 +1,17 @@
+import Link from "next/link";
+
+import {
+  drapeAnnouncementMessage,
+  drapeLaunchConfig,
+} from "@/lib/drape-room/launch/config";
+
 // Promo messages for the scrolling announcement marquee. The FIRST25 offer leads
-// so reduced-motion viewers (animation disabled) still see it first.
+// so reduced-motion viewers (animation disabled) still see it first. The Drape
+// Room line is campaign copy owned by lib/drape-room/launch/config.ts — switch
+// the launch/evergreen variant there, never here.
 const MESSAGES = [
   "First 25 customers get ₹100 off — use code FIRST25 at checkout. Grab yours now",
+  drapeAnnouncementMessage(),
   "Free shipping on all orders",
   "Occasional sarees coming soon",
 ] as const;
@@ -31,7 +41,12 @@ function renderMessage(message: string) {
 /** Slim promo bar: a continuous right-to-left marquee of launch offers. */
 export function AnnouncementBar() {
   return (
-    <div className="overflow-hidden border-b border-[#B39152]/25 bg-linear-to-r from-[#601D1C] to-[#141D46] py-2 text-xs">
+    <Link
+      href={drapeLaunchConfig.ctaHref}
+      prefetch={false}
+      aria-label={drapeAnnouncementMessage()}
+      className="block overflow-hidden border-b border-[#B39152]/25 bg-linear-to-r from-[#601D1C] to-[#141D46] py-2 text-xs focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#B39152]"
+    >
       {/* Screen readers get the promos once, cleanly; the animated marquee below
           is decorative and repeated, so it is hidden from assistive tech. */}
       <p className="sr-only">{MESSAGES.join(". ")}.</p>
@@ -54,6 +69,6 @@ export function AnnouncementBar() {
           </div>
         ))}
       </div>
-    </div>
+    </Link>
   );
 }

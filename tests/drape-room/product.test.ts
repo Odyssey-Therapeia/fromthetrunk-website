@@ -553,7 +553,10 @@ describe("Drape Room product projection", () => {
     expect(references?.primary.version).toContain("derivative:card:");
   });
 
-  it("keeps an oversized legacy original discoverable but not generation-ready", () => {
+  it("drapes an oversized legacy original by marking it for downscaling", () => {
+    // Camera-native catalogue originals are the norm for this shop. They are
+    // FTT-owned and downscaled server-side before anything reads them, so the
+    // pixel count is a decode budget rather than a reason to refuse.
     const product = makeProduct();
     const media = product.images[0]!.media;
     media.derivatives = [];
@@ -563,19 +566,50 @@ describe("Drape Room product projection", () => {
     media.height = 10_368;
 
     expect(projectDrapeSaree(product)).toEqual({
-      eligible: false,
-      reason: "missing_reference",
-    });
-    expect(projectDrapeRoomEntry(product)).toEqual({
       eligible: true,
       saree: expect.objectContaining({
-        generationReady: false,
+        generationReady: true,
         productId: product.id,
       }),
     });
+    expect(resolveDrapeProductReferences(product)?.primary).toMatchObject({
+      kind: "source",
+      needsDownscale: true,
+    });
   });
 
-  it("keeps the trigger visible when a later gallery image is displayable", () => {
+  it("still refuses an original beyond the catalogue decode ceiling", () => {
+    const product = makeProduct();
+    const media = product.images[0]!.media;
+    media.derivatives = [];
+    media.mimeType = "image/jpeg";
+    media.filesize = 10_560_458;
+    media.width = 12_001;
+    media.height = 9_000;
+
+    expect(resolveDrapeProductReferences(product)).toBeNull();
+    expect(projectDrapeSaree(product)).toEqual({
+      eligible: false,
+      reason: "missing_reference",
+    });
+  });
+
+  it("leaves a normally sized original untouched by the downscale path", () => {
+    const product = makeProduct();
+    const media = product.images[0]!.media;
+    media.derivatives = [];
+    media.mimeType = "image/jpeg";
+    media.filesize = 2_400_000;
+    media.width = 2_000;
+    media.height = 3_000;
+
+    expect(resolveDrapeProductReferences(product)?.primary).toMatchObject({
+      kind: "source",
+      needsDownscale: false,
+    });
+  });
+
+  it("skips an original over the byte ceiling for the next usable image", () => {
     const product = makeProduct();
     const leading = product.images[0]!;
     leading.media.derivatives = [];
@@ -601,19 +635,23 @@ describe("Drape Room product projection", () => {
       },
     });
 
-    expect(resolveDrapeProductReferences(product)).toBeNull();
+    // The leading original is over the byte ceiling, so selection moves on to
+    // the next gallery image, which is oversized but decodable.
+    expect(resolveDrapeProductReferences(product)?.primary).toMatchObject({
+      mediaId: laterMediaId,
+      needsDownscale: true,
+    });
     expect(projectDrapeSaree(product)).toEqual({
-      eligible: false,
-      reason: "missing_reference",
+      eligible: true,
+      saree: expect.objectContaining({ generationReady: true }),
     });
     expect(projectDrapeRoomEntry(product)).toEqual({
       eligible: true,
       saree: expect.objectContaining({
         displayImageUrl: laterUrl,
-        generationReady: false,
+        generationReady: true,
         productId: product.id,
         productImageId: laterMediaId,
-        productReferenceVersion: `display-only:${laterMediaId}`,
       }),
     });
   });

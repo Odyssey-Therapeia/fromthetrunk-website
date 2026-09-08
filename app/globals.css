@@ -1071,3 +1071,42 @@ html[data-ftt-analytics-consent="granted"] [data-ftt-consent-banner],
 html[data-ftt-analytics-consent="denied"] [data-ftt-consent-banner] {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------
+ * Drape Room — create button progress
+ *
+ * The button is the progress indicator: a burgundy fill crosses the pill with
+ * a silk sheen travelling through the draped portion. The fill width is set
+ * inline; only the sheen lives here.
+ * ------------------------------------------------------------------------- */
+
+@keyframes ftt-drape-fill-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-130%) skewX(-18deg);
+  }
+
+  22% {
+    opacity: 0.55;
+  }
+
+  72% {
+    opacity: 0.34;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(520%) skewX(-18deg);
+  }
+}
+
+.ftt-drape-fill-sheen {
+  animation: ftt-drape-fill-sheen 1.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftt-drape-fill-sheen {
+    animation: none;
+    opacity: 0.18;
+  }
+}

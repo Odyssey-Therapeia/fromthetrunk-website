@@ -10,10 +10,13 @@ vi.mock("@/db/queries/products", () => ({
   getProduct: getProductMock,
 }));
 
+import sharp from "sharp";
+
 import {
   loadAuthoritativeTryonProduct,
   TryonProductError,
 } from "@/lib/drape-room/catalog/product-reference";
+import { clearWorkingImageCache } from "@/lib/drape-room/catalog/reference-working-image";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 const MEDIA_ID = "22222222-2222-4222-8222-222222222222";
@@ -190,10 +193,79 @@ describe("Drape Room authoritative product reference", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("never fetches a legacy original above the live raster safety ceiling", async () => {
-    const product = makeProduct(10_560_458);
+  it("downscales a camera-native original instead of refusing it", async () => {
+    clearWorkingImageCache();
+    const original = await sharp({
+      create: {
+        background: { b: 90, g: 120, r: 180 },
+        channels: 3,
+        height: 10_368,
+        width: 6_912,
+      },
+    })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const product = makeProduct(original.byteLength);
     product.images[0]!.media.width = 6_912;
     product.images[0]!.media.height = 10_368;
+    getProductMock.mockResolvedValue(product);
+    const fetchImpl = vi.fn().mockResolvedValue(responseFor(original));
+
+    const loaded = await loadAuthoritativeTryonProduct(
+      PRODUCT_ID,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [reference] = loaded.references;
+    expect(reference!.mimeType).toBe("image/jpeg");
+    // The provider path must never see the camera-native frame.
+    expect(reference!.bytes.byteLength).toBeLessThan(original.byteLength);
+    const working = await sharp(Buffer.from(reference!.bytes)).metadata();
+    expect(working.width).toBeLessThanOrEqual(2_400);
+    expect(working.height).toBeLessThanOrEqual(3_600);
+  }, 60_000);
+
+  it("reuses the downscaled working image instead of refetching", async () => {
+    clearWorkingImageCache();
+    const original = await sharp({
+      create: {
+        background: { b: 90, g: 120, r: 180 },
+        channels: 3,
+        height: 9_000,
+        width: 6_000,
+      },
+    })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const product = makeProduct(original.byteLength);
+    product.images[0]!.media.width = 6_000;
+    product.images[0]!.media.height = 9_000;
+    getProductMock.mockResolvedValue(product);
+    const fetchImpl = vi.fn().mockResolvedValue(responseFor(original));
+
+    const first = await loadAuthoritativeTryonProduct(
+      PRODUCT_ID,
+      fetchImpl as unknown as typeof fetch,
+    );
+    const second = await loadAuthoritativeTryonProduct(
+      PRODUCT_ID,
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    // One download for two drapes of the same saree.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(second.references[0]!.bytes.byteLength).toBe(
+      first.references[0]!.bytes.byteLength,
+    );
+  }, 60_000);
+
+  it("still never fetches an original beyond the catalogue decode ceiling", async () => {
+    const product = makeProduct(10_560_458);
+    product.images[0]!.media.width = 12_001;
+    product.images[0]!.media.height = 9_000;
     getProductMock.mockResolvedValue(product);
     const fetchImpl = vi.fn();
 
