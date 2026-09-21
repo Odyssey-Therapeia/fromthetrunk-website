@@ -282,6 +282,30 @@ describe("the banner", () => {
     expect(bannerProse).toContain("never have to email us");
   });
 
+  it("is 80% of the screen, and wider on a phone", () => {
+    expect(banner).toContain("w-[94vw]");
+    expect(banner).toContain("sm:w-[80vw]");
+  });
+
+  it("opens at a fixed short height and can never exceed the viewport", () => {
+    // Three lines collapsed, so the banner is a bar rather than a wall.
+    expect(banner).toContain('expanded ? "max-h-none" : "max-h-[3.75rem] sm:max-h-[4.5rem]"');
+    // Read more must reveal the notice, not hand it to a scrollbar.
+    expect(banner).not.toContain("overflow-y-auto text-xs");
+    expect(banner).toContain("max-h-[85vh]");
+  });
+
+  it("reveals the rest through Read more rather than dropping it", () => {
+    expect(banner).toContain('{expanded ? "Show less" : "Read more"}');
+    expect(banner).toContain("aria-expanded={expanded}");
+    expect(banner).toContain("aria-controls={textId}");
+    // The notice is clamped by height, never by deleting paragraphs: every
+    // disclosure the law needs is still in the markup when collapsed.
+    expect(bannerProse).toContain("process it in the United States");
+    expect(bannerProse).toContain("stored for 180 days");
+    expect(bannerProse).toContain("Privacy policy");
+  });
+
   it("preselects no optional category", () => {
     // Both switches are initialised to false, whatever was stored before.
     expect(banner).toContain("const [analytics, setAnalytics] = useState(false);");

@@ -171,6 +171,41 @@ export function initMetaPixel(
 }
 
 /**
+ * Replay anything still parked on the stub, now that fbevents.js is live.
+ *
+ * Our bootstrap queues calls made before the library arrives, exactly as Meta's
+ * own snippet does. Meta's library is supposed to drain that queue when it
+ * loads — but observed in production it set `callMethod` and left nine entries
+ * (init, the consent grants and every PageView) sitting untouched, so not one
+ * event was ever sent.
+ *
+ * Rather than depend on that hand-off, we flush it ourselves the moment the
+ * script reports loaded. Entries are removed from the queue before being
+ * replayed, so a later drain by the library cannot send them a second time,
+ * and calling this more than once is harmless.
+ */
+export function flushMetaPixelQueue(win: MetaPixelWindow): number {
+  const fbq = win.fbq;
+  const callMethod = fbq?.callMethod;
+  if (typeof fbq !== "function" || typeof callMethod !== "function") return 0;
+
+  const queue = fbq.queue;
+  if (!Array.isArray(queue) || queue.length === 0) return 0;
+
+  // splice, not read-then-clear: the queue is emptied atomically so nothing
+  // added while we replay is dropped.
+  const pending = queue.splice(0, queue.length);
+  for (const args of pending) {
+    try {
+      callMethod.apply(fbq, args as unknown[]);
+    } catch {
+      // One malformed entry must not strand the rest of the queue.
+    }
+  }
+  return pending.length;
+}
+
+/**
  * Fire one PageView, but only into a pixel this module initialised.
  *
  * Returns false when there is nothing to track — no pixel yet, or a foreign

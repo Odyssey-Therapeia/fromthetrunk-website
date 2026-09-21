@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import {
   detectExistingPixel,
+  flushMetaPixelQueue,
   getMetaPixelId,
   initMetaPixel,
   META_PIXEL_SRC,
@@ -83,6 +84,20 @@ export function MetaPixelLoader() {
   if (!pixelId || !shouldLoadLibrary) return null;
 
   return (
-    <Script id="meta-pixel" src={META_PIXEL_SRC} strategy="afterInteractive" />
+    <Script
+      id="meta-pixel"
+      src={META_PIXEL_SRC}
+      strategy="afterInteractive"
+      onLoad={() => {
+        /*
+         * fbevents.js is meant to replay whatever the stub queued before it
+         * arrived. In production it did not: it set `callMethod` and left the
+         * init, the consent grant and every PageView sitting in the queue, so
+         * nothing was ever sent. Flushing here makes the hand-off ours rather
+         * than something we hope the vendor does.
+         */
+        flushMetaPixelQueue(window as unknown as MetaPixelWindow);
+      }}
+    />
   );
 }
