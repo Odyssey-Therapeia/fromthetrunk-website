@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -967,7 +967,11 @@ function BookSpread({
             : "min-h-[min(31rem,calc(100svh-20rem))] lg:min-h-[min(33rem,calc(100svh-19rem))]",
         )}
       >
-        <StoryLeftPage chapter={chapter} framed={framed} />
+        <StoryLeftPage
+          chapter={chapter}
+          framed={framed}
+          reduceMotion={reduceMotion}
+        />
         <StoryRightPage
           chapter={chapter}
           framed={framed}
@@ -1024,14 +1028,49 @@ function BookSpread({
 function StoryLeftPage({
   chapter,
   framed = false,
+  reduceMotion,
 }: {
   chapter: StoryChapter;
   framed?: boolean;
+  reduceMotion: boolean;
 }) {
   const isPromise = "promise" in chapter && chapter.promise;
+  const scrollRef = useRef<HTMLElement | null>(null);
+
+  /*
+   * The card is a fixed height, so a long chapter overflows. The paragraphs
+   * fade in one after another, and without this the newest one appears below
+   * the fold — the effect plays where nobody can see it. Following the reveal
+   * keeps the latest line in view, so the text reads as if it is being written
+   * into the page.
+   *
+   * Only ever scrolls the chapter's own container, and only downwards toward
+   * the newest paragraph, so it cannot fight a reader who has scrolled back up
+   * to re-read something: once they move away from the bottom, it stops.
+   */
+  const followReveal = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node || !framed) return;
+
+    const distanceFromBottom =
+      node.scrollHeight - node.scrollTop - node.clientHeight;
+    // 96px of slack: still "at the bottom" while a paragraph animates in.
+    if (distanceFromBottom > 96) return;
+
+    node.scrollTo({
+      top: node.scrollHeight,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [framed, reduceMotion]);
+
+  // A new chapter always starts at its beginning.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [chapter.number]);
 
   return (
     <section
+      ref={scrollRef}
       className={cn(
         "ftt-story-page relative min-w-0 max-w-full overflow-x-hidden border-b border-[#E7DDD4] p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-7",
         framed && "min-h-0 overflow-y-auto lg:p-6 xl:p-7",
@@ -1079,6 +1118,7 @@ function StoryLeftPage({
                   duration: 0.52,
                   ease: [0.2, 0.76, 0.18, 1],
                 }}
+                onAnimationComplete={followReveal}
                 className={cn(
                   "max-w-xl text-sm leading-6 text-[#601D1C]/72",
                   isPromise && "font-serif text-2xl leading-tight text-[#601D1C]",

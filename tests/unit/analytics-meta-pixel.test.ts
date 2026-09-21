@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   bootstrapFbq,
+  flushMetaPixelQueue,
   detectExistingPixel,
   getMetaPixelId,
   initMetaPixel,
@@ -211,6 +212,81 @@ describe("initialisation and consent", () => {
     ]);
     // Exactly one init, however many times consent is toggled.
     expect(calls(win).filter(([verb]) => verb === "init")).toHaveLength(1);
+  });
+});
+
+describe("handing the queue over to fbevents.js", () => {
+  /** Simulate the library arriving: it defines callMethod. */
+  const goLive = (win: MetaPixelWindow) => {
+    const sent: unknown[][] = [];
+    win.fbq!.callMethod = (...args: unknown[]) => {
+      sent.push(args);
+    };
+    return sent;
+  };
+
+  it("replays everything parked before the library loaded", () => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+    trackMetaPageView(win);
+    expect(win.fbq?.queue).toHaveLength(4);
+
+    const sent = goLive(win);
+    expect(flushMetaPixelQueue(win)).toBe(4);
+
+    // Observed in production: fbevents.js set callMethod but left the queue
+    // untouched, so not one event was ever sent. The flush is what makes the
+    // init, the consent grant and the PageView actually reach Meta.
+    expect(sent).toEqual([
+      ["consent", "revoke"],
+      ["init", PIXEL_ID],
+      ["consent", "grant"],
+      ["track", "PageView"],
+    ]);
+    expect(win.fbq?.queue).toHaveLength(0);
+  });
+
+  it("cannot send the same event twice", () => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+    const sent = goLive(win);
+
+    expect(flushMetaPixelQueue(win)).toBe(3);
+    // A second flush, or a late drain by the library itself, finds nothing.
+    expect(flushMetaPixelQueue(win)).toBe(0);
+    expect(sent).toHaveLength(3);
+  });
+
+  it("is a no-op before the library is live", () => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+    expect(flushMetaPixelQueue(win)).toBe(0);
+    // Nothing is discarded while waiting.
+    expect(win.fbq?.queue).toHaveLength(3);
+  });
+
+  it("one bad entry does not strand the rest", () => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+    const sent: unknown[][] = [];
+    let call = 0;
+    win.fbq!.callMethod = (...args: unknown[]) => {
+      call += 1;
+      if (call === 2) throw new Error("bad entry");
+      sent.push(args);
+    };
+
+    expect(flushMetaPixelQueue(win)).toBe(3);
+    expect(sent).toEqual([
+      ["consent", "revoke"],
+      ["consent", "grant"],
+    ]);
+  });
+
+  it("the loader flushes as soon as the script reports loaded", () => {
+    const loader = read("components/analytics/meta-pixel-loader.tsx");
+    expect(loader).toContain("onLoad={");
+    expect(loader).toContain("flushMetaPixelQueue(window as unknown as MetaPixelWindow)");
   });
 });
 

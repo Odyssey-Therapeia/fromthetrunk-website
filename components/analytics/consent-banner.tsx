@@ -42,6 +42,7 @@ const VARIANT_STYLES: Record<
     primary: string;
     panel: string;
     tertiary: string;
+    fade: string;
   }
 > = {
   hero: {
@@ -53,6 +54,7 @@ const VARIANT_STYLES: Record<
     primary: "border-transparent bg-[#601D1C] text-[#FDF7F1] hover:bg-[#4A1614]",
     panel: "border-[#601D1C]/15 bg-[#FDF7F1]/70",
     tertiary: "text-[#601D1C] hover:text-[#B39152]",
+    fade: "from-[#FFFCF8]",
   },
   default: {
     card: "border-[#B39152]/45 bg-[#601D1C]",
@@ -63,6 +65,7 @@ const VARIANT_STYLES: Record<
     primary: "border-transparent bg-[#B39152] text-[#0E0D0E] hover:bg-[#C8A45F]",
     panel: "border-[#FDF7F1]/20 bg-[#4A1614]/40",
     tertiary: "text-[#E5C983] hover:text-[#FDF7F1]",
+    fade: "from-[#601D1C]",
   },
 };
 
@@ -85,6 +88,13 @@ export function ConsentBanner({
   const styles = VARIANT_STYLES[variant];
   const panelId = useId();
   const [showPreferences, setShowPreferences] = useState(false);
+  /*
+   * Collapsed by default so the banner stays a short bar rather than a wall
+   * covering the hero. The full notice is never removed — "Read more" reveals
+   * it in place, which is what keeps the disclosure complete.
+   */
+  const [expanded, setExpanded] = useState(false);
+  const textId = useId();
 
   // Never preselected: both start off regardless of any earlier decision, so a
   // visitor cannot grant a category simply by pressing Save.
@@ -100,14 +110,22 @@ export function ConsentBanner({
         role="region"
         aria-label="Cookie and tracking preferences"
         className={cn(
-          "pointer-events-auto flex w-full max-w-4xl flex-col gap-3 rounded-2xl border p-3 [font-family:system-ui,sans-serif] shadow-[var(--ftt-soft-shadow)] sm:p-5",
+          // 80% of the viewport on tablet and up; wider on a phone, where 80%
+          // would leave the text in a narrow column. max-h keeps the card
+          // inside the viewport however far it is expanded.
+          "pointer-events-auto flex max-h-[85vh] w-[94vw] flex-col gap-2.5 overflow-y-auto rounded-2xl border p-3 [font-family:system-ui,sans-serif] shadow-[var(--ftt-soft-shadow)] sm:w-[80vw] sm:gap-3 sm:p-5",
           styles.card,
         )}
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="relative">
           <div
+            id={textId}
             className={cn(
-              "space-y-1 text-xs leading-5 sm:text-sm sm:leading-6",
+              "space-y-1 overflow-hidden text-xs leading-5 sm:text-sm sm:leading-6",
+              // Collapsed shows three lines. Expanded shows the whole notice
+              // with NO inner scrollbar — "Read more" is the only way through
+              // it, so nothing is hidden behind a scroll gesture.
+              expanded ? "max-h-none" : "max-h-[3.75rem] sm:max-h-[4.5rem]",
               styles.text,
             )}
           >
@@ -149,6 +167,44 @@ export function ConsentBanner({
               .
             </p>
           </div>
+          {expanded ? null : (
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t to-transparent",
+                styles.fade,
+              )}
+            />
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={textId}
+              onClick={() => setExpanded((open) => !open)}
+              className={cn(
+                "rounded-full text-[11px] font-medium underline underline-offset-2 transition-colors sm:text-xs",
+                styles.tertiary,
+              )}
+            >
+              {expanded ? "Show less" : "Read more"}
+            </button>
+            <button
+              type="button"
+              aria-expanded={showPreferences}
+              aria-controls={panelId}
+              onClick={() => setShowPreferences((open) => !open)}
+              className={cn(
+                "rounded-full text-[11px] font-medium underline underline-offset-2 transition-colors sm:text-xs",
+                styles.tertiary,
+              )}
+            >
+              Manage preferences
+            </button>
+          </div>
 
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:items-center">
             <Button
@@ -176,25 +232,13 @@ export function ConsentBanner({
           </div>
         </div>
 
-        <div className="flex justify-start">
-          <button
-            type="button"
-            aria-expanded={showPreferences}
-            aria-controls={panelId}
-            onClick={() => setShowPreferences((open) => !open)}
-            className={cn(
-              "rounded-full text-[11px] font-medium underline underline-offset-2 transition-colors sm:text-xs",
-              styles.tertiary,
-            )}
-          >
-            Manage preferences
-          </button>
-        </div>
-
         {showPreferences ? (
           <div
             id={panelId}
-            className={cn("space-y-3 rounded-xl border p-3", styles.panel)}
+            className={cn(
+              "max-h-[40vh] space-y-3 overflow-y-auto rounded-xl border p-3",
+              styles.panel,
+            )}
           >
             <ConsentToggle
               checked={analytics}
