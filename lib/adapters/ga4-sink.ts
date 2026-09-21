@@ -49,6 +49,9 @@ export function buildGa4Sink(): AnalyticsSink | null {
   }
 
   return {
+    name: "ga4",
+    // Google is a third party and an analytics purpose.
+    requiresConsent: "analytics",
     async emit(event: AnalyticsEvent): Promise<void> {
       // Skip GTM-owned browser UX events — they reach GA4 client-side via GTM.
       if (GTM_OWNED_BROWSER_EVENTS.has(event.type)) return;

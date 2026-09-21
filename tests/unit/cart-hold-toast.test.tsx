@@ -59,21 +59,32 @@ describe("add-to-cart hold toast", () => {
   });
 });
 
-describe("restock notify is parked", () => {
-  it("no longer renders on the PDP", () => {
-    expect(pdpPage).toContain("Restock notify is parked");
-    // The import is commented out, so nothing can render it.
-    expect(pdpPage).toContain(
-      '// import { RestockNotifyButton } from "@/components/product/restock-notify-button"',
+describe("restock notify is live", () => {
+  it("renders one live action on the PDP", () => {
+    // AddToCartButton follows the live viewer verdict. Keeping a second,
+    // server-rendered RestockNotifyButton here would show two Notify controls
+    // for an initially reserved product.
+    expect(pdpPage).not.toContain("RestockNotifyButton");
+    expect(pdpButton).toContain('viewerState === "reserved_by_other"');
+    expect(pdpButton).toContain('type: "notify-me"');
+  });
+
+  it("offers the wait only for a piece that can come back", () => {
+    // A sold saree is gone for good; a held one is not. Both branches read the
+    // server verdict, and Sold is decided before Notify me can be offered.
+    const soldBranch = pdpButton.indexOf('if (viewerState === "sold") {');
+    const notifyBranch = pdpButton.indexOf(
+      'if (viewerState === "reserved_by_other") {',
     );
-    expect(pdpPage).not.toMatch(
-      /^import \{ RestockNotifyButton \}/m,
-    );
+    expect(soldBranch).toBeGreaterThan(-1);
+    expect(notifyBranch).toBeGreaterThan(soldBranch);
   });
 
   it("leaves the sold and reserved notices in place", () => {
     expect(pdpPage).toContain("This piece has found its next wardrobe.");
     expect(pdpPage).toContain("This piece is currently reserved by another buyer.");
+    // Rendered from the live verdict, so the holder never reads the second.
+    expect(pdpPage).toContain("<PdpAvailabilityNotice");
   });
 
   it("keeps the component and endpoint intact for a later re-enable", () => {

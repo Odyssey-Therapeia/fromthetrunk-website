@@ -601,6 +601,8 @@ describe("GET /orders/{id} — guest order access by shippingEmail (mutation-pro
     giftMessage: null,
     trackingNumber: null,
     trackingCarrier: null,
+    analyticsConsent: null,
+    advertisingConsent: null,
     internalNote: null,
     placedAt: new Date("2026-01-01T00:00:00Z"),
     createdAt: new Date("2026-01-01T00:00:00Z"),

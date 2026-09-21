@@ -3,7 +3,7 @@ import { and, eq, isNotNull, lt } from "drizzle-orm";
 
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
-import { expireReservations } from "@/db/queries/reservations";
+import { expireCommerceHoldsForProducts } from "@/db/queries/user-cart";
 import { sendReservationExpiryReminders } from "@/db/queries/reservation-reminders";
 import { upsertChannelMetric } from "@/db/queries/channel-metrics";
 import { getChannelMetrics, getEventCounts } from "@/db/queries/control-centre";
@@ -17,10 +17,80 @@ import { sendEmail } from "@/lib/email/send";
 import { getOrderNotificationRecipients } from "@/lib/email/recipients";
 import { weeklyOpsDigestEmail } from "@/lib/email/templates";
 import { createLogger } from "@/lib/log";
+import {
+  reconcileExpiredPaymentHolds,
+  type ExpiredPaymentHoldReconciliation,
+} from "@/lib/payments/reconcile-expired-holds";
+
+import {
+  runRestockNotifications,
+  type RestockRunSummary,
+} from "@/lib/wishlist/restock-worker";
 
 const log = createLogger("cron:channel-metrics");
+const releaseLog = createLogger("cron:release-reservations");
+
+/* Mail shares the release invocation with Razorpay calls, so each run is bounded. */
+const RESTOCK_NOTIFICATIONS_PER_RUN = 20;
+
+const emptyPaymentReconciliation = (): ExpiredPaymentHoldReconciliation => ({
+  checked: 0,
+  completedOrderIds: [],
+  conflictOrderIds: [],
+  deferredOrderIds: [],
+  protectedProductIds: [],
+  releasedOrderIds: [],
+  releasedProductIds: [],
+  releasedSlugs: [],
+  restoredProductIds: [],
+  restoredSlugs: [],
+});
 
 export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
+  /*
+   * Tells shoppers a piece they asked about is available again.
+   *
+   * Deliberately not fired from the release route: releasing a saree must stay
+   * fast and must not depend on an email provider. This run picks the work up
+   * afterwards, once the piece has proved it is genuinely free.
+   */
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/send-restock-notifications",
+      responses: {
+        200: { description: "Restock notifications processed" },
+        401: {
+          description: "Unauthorized — invalid or missing cron secret",
+        },
+      },
+      tags: ["Cron"],
+    }),
+    async (c) => {
+      const cronSecret = process.env.CRON_SECRET;
+      if (!cronSecret) {
+        return c.json(
+          {
+            code: "CRON_SECRET_MISSING",
+            message: "CRON_SECRET is not configured.",
+          },
+          500,
+        );
+      }
+
+      const authHeader = c.req.header("authorization") ?? null;
+      if (!verifyBearerSecret(authHeader, cronSecret)) {
+        return c.json(
+          { code: "UNAUTHORIZED", message: "Invalid cron secret." },
+          401,
+        );
+      }
+
+      const summary = await runRestockNotifications();
+      return c.json(summary, 200);
+    },
+  );
+
   app.openapi(
     createRoute({
       method: "get",
@@ -55,6 +125,7 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
+      const now = new Date();
       const expiredRows = await db
         .select({ id: products.id, slug: products.slug })
         .from(products)
@@ -62,52 +133,96 @@ export const registerCronRoutes = (app: OpenAPIHono<HonoBindings>) => {
           and(
             eq(products.stockStatus, "reserved"),
             isNotNull(products.reservedUntil),
-            lt(products.reservedUntil, new Date())
+            lt(products.reservedUntil, now)
           )
         );
 
-      if (expiredRows.length > 0) {
-        await db
-          .update(products)
-          .set({
-            reservedUntil: null,
-            stockStatus: "available",
-            // Dual-write: restore quantity_available to 1 when reservation expires
-            quantityAvailable: 1,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(products.stockStatus, "reserved"),
-              isNotNull(products.reservedUntil),
-              lt(products.reservedUntil, new Date())
-            )
-          );
-        revalidateProductsCache(expiredRows.map((row) => row.slug));
+      const expiredIds = expiredRows.map((row) => row.id);
+      /*
+       * Payment holds are never released by the local clock alone. This job
+       * and terminal Payment Link webhooks consult Razorpay, and both delegate
+       * any verified completion/release to the exact atomic commerce commands.
+       * A failure here leaves those holds protected (ordinary expiry below
+       * skips them), so expiry and restock mail still run.
+       */
+      let paymentReconciliation: ExpiredPaymentHoldReconciliation =
+        emptyPaymentReconciliation();
+      let paymentReconciliationFailed = false;
+      try {
+        paymentReconciliation = await reconcileExpiredPaymentHolds({
+          now,
+          productIds: expiredIds,
+        });
+      } catch (error) {
+        paymentReconciliationFailed = true;
+        releaseLog.error("Payment hold reconciliation failed", { err: error });
+      }
+      const expiry = await expireCommerceHoldsForProducts(expiredIds, now);
+      const releasedIds = [
+        ...new Set([
+          ...paymentReconciliation.releasedProductIds,
+          ...expiry.releasedProductIds,
+        ]),
+      ];
+      const ordinaryReleasedSet = new Set(expiry.ordinaryReleasedProductIds);
+      const ordinaryReleasedRows = expiredRows.filter((row) =>
+        ordinaryReleasedSet.has(row.id),
+      );
+      // A hold restored to its cart deadline changes the storefront as much
+      // as a release does.
+      const changedSlugs = [
+        ...new Set([
+          ...paymentReconciliation.releasedSlugs,
+          ...paymentReconciliation.restoredSlugs,
+          ...ordinaryReleasedRows.map((row) => row.slug),
+        ]),
+      ];
+      if (changedSlugs.length > 0) {
+        revalidateProductsCache(changedSlugs);
       }
 
       // Fire-and-forget: reservation_expired event per expired product.
       // emitAnalyticsEvent() never throws; errors are caught + logged inside.
-      const expiredAt = new Date();
-      for (const row of expiredRows) {
+      for (const productId of releasedIds) {
         void emitAnalyticsEvent({
           event_id: crypto.randomUUID(),
           type: "reservation_expired",
-          payload: { productId: row.id },
-          occurredAt: expiredAt,
+          payload: { productId },
+          occurredAt: now,
         });
       }
 
-      // Dual-write: also expire reservation table rows (always runs, flag-agnostic)
-      const now = new Date();
-      const { deleted: reservationsDeleted } = await expireReservations(now);
+      /* Reuse this scheduled invocation for mail work. Fresh releases are
+       * intentionally skipped by the worker's stability window and become
+       * eligible on the next run; no second production cron is necessary.
+       * A mail failure must not hide the inventory work already committed. */
+      let restockNotifications: RestockRunSummary | { error: string };
+      try {
+        restockNotifications = await runRestockNotifications(
+          RESTOCK_NOTIFICATIONS_PER_RUN,
+        );
+      } catch (error) {
+        releaseLog.error("Restock notification run failed", { err: error });
+        restockNotifications = { error: "RESTOCK_WORKER_FAILED" };
+      }
 
       return c.json(
         {
           checked: expiredRows.length,
           ok: true,
-          released: expiredRows.length,
-          reservationsExpired: reservationsDeleted,
+          released: releasedIds.length,
+          paymentHoldsRestored:
+            paymentReconciliation.restoredProductIds.length,
+          paymentReconciliationFailed,
+          paymentReleaseConflicts:
+            paymentReconciliation.conflictOrderIds.length,
+          paymentReleasesDeferred:
+            paymentReconciliation.deferredOrderIds.length,
+          paymentsCompleted:
+            paymentReconciliation.completedOrderIds.length,
+          reservationsExpired:
+            paymentReconciliation.releasedProductIds.length,
+          restockNotifications,
           timestamp: new Date().toISOString(),
         },
         200

@@ -26,6 +26,34 @@ export async function generateMetadata({
   });
 }
 
+/**
+ * Render an email address inside policy prose as a mailto: link.
+ *
+ * Policy bodies are plain strings, so the address would otherwise be text a
+ * visitor has to copy by hand. Only email addresses are linked; everything
+ * else is emitted verbatim as a text node, so no policy copy can inject markup.
+ */
+const EMAIL_PATTERN = /([\w.+-]+@[\w-]+\.[\w.-]+[\w])/g;
+
+function linkifyEmails(paragraph: string) {
+  const parts = paragraph.split(EMAIL_PATTERN);
+  if (parts.length === 1) return paragraph;
+
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <a
+        key={index}
+        href={`mailto:${part}`}
+        className="font-medium text-ftt-navy underline underline-offset-2 transition hover:text-ftt-gold"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 export default async function PolicyPage({ params }: PolicyPageProps) {
   const { slug } = await params;
   const policy = getPolicyBySlug(slug);
@@ -103,7 +131,7 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
                           key={index}
                           className="text-sm leading-7 text-ftt-burgundy/75 sm:text-base sm:leading-8"
                         >
-                          {paragraph}
+                          {linkifyEmails(paragraph)}
                         </p>
                       ))}
                     </div>

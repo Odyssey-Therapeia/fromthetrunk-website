@@ -15,6 +15,7 @@ const layout = read("app/(site)/layout.tsx");
 const serverHeader = read("components/layout/site-header-server.tsx");
 const island = read("components/layout/site-header-commerce-controls.tsx");
 const drawer = read("components/cart/cart-drawer.tsx");
+const providers = read("components/providers.tsx");
 
 describe("active header wiring", () => {
   it("renders SiteHeaderServer from the site layout", () => {
@@ -55,15 +56,17 @@ describe("active header wiring", () => {
     expect(island).not.toContain("/api/v2/cart");
   });
 
-  it("wraps only the island in the extracted commerce providers", () => {
-    expect(island).toContain(
-      'import { CommerceProviders } from "@/components/providers"',
+  it("mounts one commerce provider for every storefront surface", () => {
+    expect(layout).toContain(
+      'import { Providers } from "@/components/providers"',
     );
-    expect(island).toContain("<CommerceProviders>");
-    // The guest-merge worker belongs to route-level Providers; mounting it here
-    // would run the merge twice.
+    expect(layout).toContain("<Providers>");
+    expect(providers.match(/<QueryClientProvider/g)).toHaveLength(1);
+    expect(island).not.toContain('from "@/components/providers"');
+    expect(island).not.toContain("<CommerceProviders>");
+    // Authenticated-first commerce has no guest merge worker.
     expect(island).not.toContain("WishlistMergeOnLogin");
-    expect(layout).not.toContain("CommerceProviders");
+    expect(providers).not.toContain("WishlistMergeOnLogin");
     expect(layout).not.toContain("QueryClientProvider");
     expect(layout).not.toContain("SessionProvider");
   });
@@ -88,7 +91,12 @@ describe("header cart control", () => {
 
   it("offers View full bag as the explicit route to /cart", () => {
     expect(drawer).toContain("View full bag");
-    expect(drawer).toContain('<Link href="/cart" onClick={() => setOpen(false)}>');
+    const fullBagLink = drawer.slice(
+      drawer.lastIndexOf("<Link", drawer.indexOf("View full bag")),
+      drawer.indexOf("View full bag"),
+    );
+    expect(fullBagLink).toContain('href="/cart"');
+    expect(fullBagLink).toContain("onClick={() => setOpen(false)}");
   });
 
   it("preserves the add-to-cart animation hooks", () => {
@@ -122,9 +130,16 @@ describe("cart auto-open", () => {
   });
 
   it("records a baseline before opening so a persisted cart stays closed", () => {
-    expect(drawer).toContain("if (previousTotalItems.current === null)");
-    expect(drawer).toContain("if (totalItems > previousTotalItems.current)");
+    expect(drawer).toContain("if (previousAddSerial.current === null)");
+    expect(drawer).toContain("if (addSerial > previousAddSerial.current)");
     expect(drawer).toContain("if (!hasHydrated) return;");
+  });
+
+  it("opens for a deliberate add, never for the account's bag arriving", () => {
+    // The count also rises when the server's bag is mirrored down — on load,
+    // on sign-in, on any refetch. Reading that as an add popped the drawer at
+    // moments the shopper had asked for nothing.
+    expect(drawer).not.toContain("totalItems > previousTotalItems.current");
   });
 });
 
@@ -177,11 +192,16 @@ describe("product card border lifecycle", () => {
   it("clears the imperative border attribute when the piece leaves the bag", () => {
     // Removal can happen from the drawer, the cart page, an expired reservation
     // or another tab — none of which run this component's own click handler.
-    expect(commerceRow).toContain("if (inCart || state !== \"idle\") return;");
+    expect(commerceRow).toContain(
+      'state === "added" && !canonicalIsInBag ? "idle" : state',
+    );
+    expect(commerceRow).toContain(
+      'if (isInBag || effectiveState !== "idle") return;',
+    );
     expect(commerceRow).toContain(
       'rowRef.current?.closest<HTMLElement>("[data-ftt-product-card]")',
     );
-    expect(commerceRow).toContain('card?.removeAttribute("data-ftt-cart-border")');
+    expect(commerceRow).toContain("clearCartBorder(card ?? null)");
   });
 
   it("hands the glow back to data-ftt-in-bag once the added flash ends", () => {
@@ -189,8 +209,6 @@ describe("product card border lifecycle", () => {
       commerceRow.indexOf("}, ADDED_HOLD_MS);") - 320,
       commerceRow.indexOf("}, ADDED_HOLD_MS);"),
     );
-    expect(addedTimer).toContain(
-      'sourceCard?.removeAttribute("data-ftt-cart-border")',
-    );
+    expect(addedTimer).toContain("clearCartBorder(sourceCard, initiatingUserId)");
   });
 });

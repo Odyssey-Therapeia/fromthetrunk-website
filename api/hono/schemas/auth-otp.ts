@@ -12,6 +12,14 @@ export const startOtpSchema = z
 export const verifyOtpSchema = z
   .object({
     challengeToken: z.string().trim().min(32).max(256),
+    /*
+     * Supplied only by the commerce sign-in popup, which collects a name
+     * alongside the email so a first-time shopper gets a usable account
+     * without the full registration wizard's phone and address. Account
+     * sign-in omits it, so the schema stays optional — and the schema is
+     * .strict(), so an unexpected key would 400 rather than be ignored.
+     */
+    fullName: z.string().trim().min(1).max(120).optional(),
     otp: z.string().trim().regex(/^\d{6}$/),
   })
   .strict();

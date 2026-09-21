@@ -356,6 +356,49 @@ describe("POST /addresses — insert auth-scoped to session userId (mutation-pro
     // No update should have been called (isDefault is false, no clearing needed)
     expect(capturedUpdateWhereArgs.length).toBe(0);
   });
+
+  it("does not infer account-owner profile fields from an ambiguous saved recipient", async () => {
+    resetDb({
+      insertRow: makeMockAddressRow({
+        isDefault: true,
+        name: "Gift Recipient",
+        phone: "+919999999999",
+        userId: USER_DEFAULT,
+      }),
+      updateRows: [null, null],
+    });
+
+    const { createRouteHarness } = await import("../helpers/route-harness");
+    const { registerAddressRoutes } = await import("@/api/hono/routes/addresses");
+    const { request } = createRouteHarness({
+      register: registerAddressRoutes,
+      authUser: {
+        id: USER_DEFAULT,
+        email: "verified-buyer@example.com",
+        role: "customer",
+      },
+    });
+
+    const response = await request("/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...addressBody,
+        isDefault: true,
+        name: "Gift Recipient",
+        phone: "+919999999999",
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    // The payload has no owner-vs-gift signal. The only safe user update is the
+    // address relation; copying these recipient fields could corrupt the buyer.
+    const userUpdate = capturedUpdateSetArgs[1] as Record<string, unknown>;
+    expect(userUpdate.defaultAddressId).toBe(ADDR_NEW);
+    expect(userUpdate).not.toHaveProperty("name");
+    expect(userUpdate).not.toHaveProperty("phone");
+    expect(userUpdate).not.toHaveProperty("email");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -646,5 +689,109 @@ describe("Address CRUD — exactly-one-default invariant (behavioral proof)", ()
     // Third update call (index 2) = set users.defaultAddressId
     const setUserDefault = capturedUpdateSetArgs[2] as Record<string, unknown>;
     expect(setUserDefault.defaultAddressId).toBe(ADDR_PATCH_DEFAULT);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Checkout client: a saved checkout address may become the default only when
+// the customer's address book genuinely loaded and holds no default. The
+// address book is loaded through the real fetcher into a real QueryClient, so
+// "loaded" means exactly what the checkout's useQuery would report.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("checkout address default — only for a loaded book with no default", () => {
+  const addressesKey = ["addresses", USER_DEFAULT] as const;
+
+  const loadAddressBook = async (
+    responses: Array<{ ok: boolean; status: number; body?: unknown }>,
+  ) => {
+    const { QueryClient, QueryObserver } = await import("@tanstack/react-query");
+    const { fetchAddresses, shouldDefaultCheckoutAddress } = await import(
+      "@/components/checkout/checkout-page-client"
+    );
+    const fetchMock = vi.fn();
+    for (const response of responses) {
+      fetchMock.mockResolvedValueOnce({
+        json: async () => response.body,
+        ok: response.ok,
+        status: response.status,
+      });
+    }
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    for (let index = 0; index < responses.length; index += 1) {
+      // refetchQueries mirrors a later background refetch of the same book.
+      if (index === 0) {
+        await client.prefetchQuery({ queryFn: fetchAddresses, queryKey: addressesKey });
+      } else {
+        await client.refetchQueries({ queryKey: addressesKey });
+      }
+    }
+    const result = new QueryObserver(client, {
+      enabled: false,
+      queryFn: fetchAddresses,
+      queryKey: addressesKey,
+    }).getCurrentResult();
+    client.clear();
+    vi.unstubAllGlobals();
+
+    return shouldDefaultCheckoutAddress(result);
+  };
+
+  it("is true when the book loaded and has no default", async () => {
+    await expect(
+      loadAddressBook([{ body: [], ok: true, status: 200 }]),
+    ).resolves.toBe(true);
+    await expect(
+      loadAddressBook([
+        {
+          body: [makeMockAddressRow({ id: ADDR_EXISTING, isDefault: false })],
+          ok: true,
+          status: 200,
+        },
+      ]),
+    ).resolves.toBe(true);
+  });
+
+  it("is false when the customer already has a default", async () => {
+    await expect(
+      loadAddressBook([
+        {
+          body: [
+            makeMockAddressRow({ id: ADDR_NEW, isDefault: false }),
+            makeMockAddressRow({ id: ADDR_EXISTING, isDefault: true }),
+          ],
+          ok: true,
+          status: 200,
+        },
+      ]),
+    ).resolves.toBe(false);
+  });
+
+  it("is false after a failed load, never reading it as an empty book", async () => {
+    await expect(
+      loadAddressBook([{ body: { code: "INTERNAL" }, ok: false, status: 500 }]),
+    ).resolves.toBe(false);
+  });
+
+  it("is false when a later reload fails, even though an empty book loaded once", async () => {
+    await expect(
+      loadAddressBook([
+        { body: [], ok: true, status: 200 },
+        { body: null, ok: false, status: 503 },
+      ]),
+    ).resolves.toBe(false);
+  });
+
+  it("is false while the book has not loaded yet", async () => {
+    const { shouldDefaultCheckoutAddress } = await import(
+      "@/components/checkout/checkout-page-client"
+    );
+    expect(shouldDefaultCheckoutAddress({ data: undefined, isSuccess: false })).toBe(
+      false,
+    );
   });
 });

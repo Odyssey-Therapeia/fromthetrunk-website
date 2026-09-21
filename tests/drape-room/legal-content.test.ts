@@ -38,7 +38,7 @@ describe("Drape Room legal and FAQ content", () => {
     );
     const copy = section?.body.join(" ") ?? "";
 
-    expect(privacy?.lastUpdated).toBe("September 4, 2026");
+    expect(privacy?.lastUpdated).toBe("September 17, 2026");
     expect(copy).toContain("stored as local browser data");
     expect(copy).toContain("transiently through our hosting infrastructure");
     expect(copy).toContain("metadata-only record");
@@ -196,12 +196,9 @@ describe("Legal placeholder blockers", () => {
     // These are manual public-production blockers, tracked in the final report.
     expect(new Set(placeholders)).toEqual(
       new Set([
-        "[NAME]",
-        "[DESIGNATION]",
         "[PHONE NUMBER]",
         "[REGISTERED ADDRESS]",
         "[REGISTERED BUSINESS ADDRESS]",
-        "[GRIEVANCE EMAIL]",
         "[DAYS + HOURS]",
       ]),
     );

@@ -12,6 +12,7 @@ import {
 import {
   ArrowRight,
   LockKeyhole,
+  LoaderCircle,
   ShoppingBag,
   Sparkles,
   Tag,
@@ -20,6 +21,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  CART_LINE_STATUS_LABEL,
+  type CartLineVerdictReporter,
+  useCartLineVerdicts,
+} from "@/components/cart/cart-item";
 import { CommerceCountBadge } from "@/components/layout/commerce-count-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,18 +42,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getAvailabilityErrorMessage } from "@/lib/cart/availability-errors";
 import { formatCurrency } from "@/lib/formatters";
+import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate";
 import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { useServerCart } from "@/lib/commerce/use-server-cart";
+import type { ViewerProductState } from "@/lib/commerce/viewer-state";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Tokens and mappings — the two things you may need to edit.
 // ---------------------------------------------------------------------------
-
-// Point this at whatever CartDeliveryEstimateCard derives its range from, so
-// the drawer and the full bag page never disagree.
-const DELIVERY_ESTIMATE_LABEL = "7 to 10 days";
 
 // One token for every savings figure in the drawer. Deep forest green: reads
 // clearly as green without looking like a discount sticker on the ivory.
@@ -71,6 +76,8 @@ type CartLineFields = {
   price?: null | number;
   reservedUntil?: null | string;
   slug?: null | string;
+  status?: null | string;
+  viewerState?: null | ViewerProductState;
   [key: string]: unknown;
 };
 
@@ -120,22 +127,69 @@ function readOriginalPrice(item: CartLineFields) {
 export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const previousTotalItems = useRef<number | null>(null);
+  const previousAddSerial = useRef<number | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
-  const items = useCartStore((state) => state.items);
-  const hasHydrated = useCartStore((state) => state.hasHydrated);
-  const removeItem = useCartStore((state) => state.removeItem);
+  const addSerial = useCartStore((state) => state.addSerial);
+  const {
+    isError,
+    isReleasing,
+    presentedItems: items,
+    presentationHasHydrated: hasHydrated,
+    refresh,
+    removeFromBag,
+  } = useServerCart();
+  const { reportVerdict, verdictFor } = useCartLineVerdicts();
   const { savingsPaise, subtotal, totalItems } = getCartTotals(items);
-  const canCheckout = hasHydrated && items.length > 0;
+  // Checkout waits for a trusted verdict on every line and refuses a sold one.
+  const hasSoldItem = items.some((item) => verdictFor(item) === "sold");
+  const hasUncheckedItem = items.some(
+    (item) => verdictFor(item) === "checking",
+  );
+  const canCheckout =
+    hasHydrated && items.length > 0 && !hasSoldItem && !hasUncheckedItem;
 
   // savingsPaise is in paise; subtotal is already in rupees.
   const savings = savingsPaise / 100;
   const originalTotal = subtotal + savings;
   const hasSavings = hasHydrated && savingsPaise > 0;
 
-  const lastAvailabilityCheckRef = useRef(0);
+  const lastRefreshRef = useRef(0);
   const hasReservedCartItem = items.some((item) => Boolean(item.reservedUntil));
+
+  /*
+   * Removed on the server, which owns the bag.
+   *
+   * This drawer renders its own row rather than the CartItem component, and it
+   * was handing that row the store's removeItem. That path needs a signed
+   * token; rows synced down from the account carry none, so it returned early
+   * without ever sending a request — the line vanished locally, the server row
+   * survived, and the next refresh brought the saree straight back.
+   */
+  const handleRemoveFromBag = useCallback(
+    async (productId: string) => {
+      const line = items.find((item) => item.id === productId);
+      const result = await removeFromBag(productId);
+      if (result.ok) {
+        toast(`${line?.name ?? "This saree"} removed from your bag`);
+        return;
+      }
+      // The answer belongs to an account that has since signed out.
+      if (result.code === "VIEWER_CHANGED") return;
+      toast.error(
+        result.viewerState === "payment_pending"
+          ? "This saree has a payment in progress"
+          : "Could not release this saree",
+        {
+          description:
+            result.viewerState === "payment_pending"
+              ? "Finish or cancel that payment before removing it."
+              : "It is still in your bag. Check your connection and try again.",
+        },
+      );
+    },
+    [items, removeFromBag],
+  );
   const earliestReservationExpiresAt = items.reduce<null | number>(
     (earliest, item) => {
       if (!item.reservedUntil) return earliest;
@@ -169,55 +223,16 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
   // duplicate the open and miss the PDP, blouse, and Drape Room flows. Reading
   // the store instead covers every add path with no per-caller wiring.
 
-  const recheckCartAvailability = useCallback(async () => {
+  const refreshCart = useCallback(async () => {
     if (!hasHydrated || items.length === 0) return;
-    lastAvailabilityCheckRef.current = Date.now();
-
-    for (const item of items) {
-      if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
-        toast.error(getAvailabilityErrorMessage("RESERVATION_EXPIRED"));
-        removeItem(item.id);
-        continue;
-      }
-
-      if (!item.slug) continue;
-
-      const response = await fetch(`/api/v2/products/${encodeURIComponent(item.slug)}/stock`, {
-        headers: { Accept: "application/json" },
-      }).catch(() => null);
-      if (!response?.ok) continue;
-
-      const stock = (await response.json().catch(() => null)) as {
-        reservedUntil?: null | string;
-        stockStatus?: "available" | "reserved" | "sold";
-      } | null;
-      if (!stock) continue;
-
-      if (stock.stockStatus === "sold") {
-        toast.error(getAvailabilityErrorMessage("PRODUCT_SOLD"));
-        removeItem(item.id);
-        continue;
-      }
-
-      const heldByAnotherBuyer =
-        stock.stockStatus === "reserved" &&
-        (!item.reservedUntil ||
-          !stock.reservedUntil ||
-          Math.abs(
-            new Date(stock.reservedUntil).getTime() -
-              new Date(item.reservedUntil).getTime(),
-          ) > 1000);
-      if (heldByAnotherBuyer) {
-        toast.error(getAvailabilityErrorMessage("PRODUCT_RESERVED"));
-        removeItem(item.id);
-      }
-    }
-  }, [hasHydrated, items, removeItem]);
+    lastRefreshRef.current = Date.now();
+    await refresh();
+  }, [hasHydrated, items.length, refresh]);
 
   useEffect(() => {
     if (!open) return;
-    void recheckCartAvailability();
-  }, [open, recheckCartAvailability]);
+    void refreshCart();
+  }, [open, refreshCart]);
 
   useEffect(() => {
     if (!open || !hasHydrated || !hasReservedCartItem) return;
@@ -239,44 +254,52 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
       return;
     }
 
-    void recheckCartAvailability();
+    void refreshCart();
   }, [
     earliestReservationExpiresAt,
     hasHydrated,
     open,
-    recheckCartAvailability,
+    refreshCart,
     reservationRemainingMs,
   ]);
 
   useEffect(() => {
     const handleFocus = () => {
       if (!open) return;
-      if (Date.now() - lastAvailabilityCheckRef.current < 60_000) return;
-      void recheckCartAvailability();
+      if (Date.now() - lastRefreshRef.current < 60_000) return;
+      void refreshCart();
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [open, recheckCartAvailability]);
+  }, [open, refreshCart]);
 
   useEffect(() => {
     if (!hasHydrated) return;
 
     // First post-hydration pass only records the baseline, so a persisted cart
     // restored on page load never pops the drawer open.
-    if (previousTotalItems.current === null) {
-      previousTotalItems.current = totalItems;
+    if (previousAddSerial.current === null) {
+      previousAddSerial.current = addSerial;
       return;
     }
 
-    // Opens on an increase only — removals and re-renders leave it closed.
-    if (totalItems > previousTotalItems.current) {
+    /*
+     * Opens on a deliberate add, not on the count.
+     *
+     * The count also rises when the account's bag is mirrored down — on load,
+     * on sign-in, on any refetch — and reading that as an add popped the
+     * drawer open at moments the shopper had not asked for anything. The
+     * serial is bumped only by addItem and by the OTP replay, so both real add
+     * paths open the bag exactly as they always did, and nothing else does.
+     */
+    if (addSerial > previousAddSerial.current) {
       setNowMs(Date.now());
       setOpen(true);
     }
 
-    previousTotalItems.current = totalItems;
-  }, [hasHydrated, totalItems]);
+    previousAddSerial.current = addSerial;
+  }, [addSerial, hasHydrated]);
 
   const itemLabel =
     !hasHydrated || totalItems === 0
@@ -358,8 +381,22 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
           {!hasHydrated ? (
             <div className="py-5">
               <CartDrawerState
-                title="Opening your trunk..."
-                body="We are loading your saved selection."
+                title={isError ? "We couldn't open your bag." : "Opening your trunk..."}
+                body={
+                  isError
+                    ? "Check your connection and try again."
+                    : "We are loading your saved selection."
+                }
+                action={
+                  isError ? (
+                    <Button
+                      className="mt-5 rounded-full bg-[#141D46] px-6 text-[#FDF7F1] hover:bg-[#0E0D0E]"
+                      onClick={() => void refresh()}
+                    >
+                      Try again
+                    </Button>
+                  ) : undefined
+                }
               />
             </div>
           ) : items.length === 0 ? (
@@ -400,7 +437,9 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
                   >
                     <CartLine
                       item={item as unknown as CartLineFields}
-                      onRemove={removeItem}
+                      isReleasing={isReleasing(item.id)}
+                      onRemove={handleRemoveFromBag}
+                      onViewerState={reportVerdict}
                     />
                   </motion.li>
                 ))}
@@ -424,6 +463,7 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
           >
             {hasSavings ? (
               <StripCell
+                kind="savings"
                 icon={
                   <Tag
                     className="h-4 w-4"
@@ -443,10 +483,13 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
             ) : null}
 
             <StripCell
+              kind="delivery"
               icon={<Truck className="h-4 w-4 text-[#9A8C82]" aria-hidden="true" />}
             >
-              <span className="text-[#6B625B]">Estimated delivery</span>
-              <span className="block text-[#141D46]">{DELIVERY_ESTIMATE_LABEL}</span>
+              <span className="text-[#6B625B]">{CART_DELIVERY_ESTIMATE.title}</span>
+              <span className="block text-[#141D46]">
+                {CART_DELIVERY_ESTIMATE.drawerLabel}
+              </span>
             </StripCell>
           </div>
 
@@ -480,6 +523,7 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
             Shipping and taxes confirmed at checkout.
           </p>
 
+          {/* A sold or unverified line disables the control; it never vanishes. */}
           {canCheckout ? (
             <Button
               asChild
@@ -526,17 +570,43 @@ export function CartDrawer({ triggerClassName }: { triggerClassName?: string }) 
 /** One piece in the bag. No border: the hairline above it does that job. */
 function CartLine({
   item,
+  isReleasing,
   onRemove,
+  onViewerState,
 }: {
   item: CartLineFields;
-  onRemove: (id: string) => void;
+  isReleasing: boolean;
+  onRemove: (id: string) => Promise<void>;
+  onViewerState: CartLineVerdictReporter;
 }) {
   const name = item.name ?? "Untitled piece";
   const price = item.price ?? 0;
   const fabric = readFabric(item);
   const originalPrice = readOriginalPrice(item);
   const showOriginal = originalPrice > price;
-  const heldUntil = item.reservedUntil ? formatHoldUntil(item.reservedUntil) : null;
+  // The same server verdict the product card reads, never the row's status.
+  const viewer = useCollectionStock(item.id, {
+    reservedUntil: item.reservedUntil ?? null,
+    state: item.viewerState ?? "checking",
+  });
+  const viewerState = viewer.state;
+  useEffect(() => {
+    onViewerState(item.id, viewerState);
+    return () => onViewerState(item.id, null);
+  }, [item.id, onViewerState, viewerState]);
+  const isHeldForMe = viewerState === "in_my_cart";
+  const isPaymentPending = viewerState === "payment_pending";
+  const isSold = viewerState === "sold";
+  const isReservedByOther = viewerState === "reserved_by_other";
+  // Only the exact current hold is the shopper's to release. A row that has
+  // already moved into payment keeps its line even when the last poll, sent
+  // before another tab started paying, still says in_my_cart.
+  const canRemove = isHeldForMe && item.status !== "payment_pending";
+  // "Held for you" is a promise only the shopper's own hold can make.
+  const heldUntil =
+    isHeldForMe && item.reservedUntil
+      ? formatHoldUntil(item.reservedUntil)
+      : null;
 
   return (
     <div className="flex gap-3.5 py-3.5">
@@ -563,14 +633,28 @@ function CartLine({
               name
             )}
           </h3>
-          <button
-            type="button"
-            onClick={() => onRemove(item.id)}
-            aria-label={`Remove ${name} from your bag`}
-            className="-mr-1 -mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[#9A8C82] transition hover:bg-[#601D1C]/8 hover:text-[#601D1C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152]"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {canRemove ? (
+            <button
+              type="button"
+              disabled={isReleasing}
+              onClick={() => void onRemove(item.id)}
+              aria-label={
+                isReleasing
+                  ? `Releasing ${name}`
+                  : `Remove ${name} from your bag`
+              }
+              className="-mr-1 -mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[#9A8C82] transition hover:bg-[#601D1C]/8 hover:text-[#601D1C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B39152] disabled:cursor-wait disabled:opacity-60"
+            >
+              {isReleasing ? (
+                <LoaderCircle
+                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
         </div>
 
         {fabric ? (
@@ -590,10 +674,18 @@ function CartLine({
           ) : null}
         </div>
 
-        {heldUntil ? (
+        {isReleasing ||
+        heldUntil ||
+        isPaymentPending ||
+        isSold ||
+        isReservedByOther ? (
           <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#B39152]/12 px-2 py-0.5 text-[10px] text-[#6B625B]">
             <LockKeyhole className="h-3 w-3 text-[#B39152]" aria-hidden="true" />
-            Held for you until {heldUntil}
+            {isReleasing
+              ? "Releasing…"
+              : heldUntil
+                ? `Held for you until ${heldUntil}`
+                : CART_LINE_STATUS_LABEL[viewerState]}
           </span>
         ) : null}
       </div>
@@ -604,12 +696,18 @@ function CartLine({
 function StripCell({
   children,
   icon,
+  kind,
 }: {
   children: ReactNode;
   icon: ReactNode;
+  kind: "delivery" | "savings";
 }) {
   return (
-    <div className="flex items-center justify-center gap-2 px-3 text-center text-[11px] leading-4">
+    <div
+      data-ftt-cart-delivery={kind === "delivery" ? "" : undefined}
+      data-ftt-cart-savings={kind === "savings" ? "" : undefined}
+      className="flex items-center justify-center gap-2 px-3 text-center text-[11px] leading-4"
+    >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0">{children}</span>
     </div>

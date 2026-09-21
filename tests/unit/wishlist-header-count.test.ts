@@ -15,7 +15,8 @@ const read = (relativePath: string) =>
 const island = read("components/layout/site-header-commerce-controls.tsx");
 const serverHeader = read("components/layout/site-header-server.tsx");
 const wishlistButton = read("components/product/wishlist-button.tsx");
-const mergeWorker = read("components/wishlist/wishlist-merge-on-login.tsx");
+const wishlistHook = read("lib/wishlist/use-wishlist.ts");
+const providers = read("components/providers.tsx");
 
 describe("wishlist cross-provider event", () => {
   it("delivers add, remove, and merge notifications to subscribers", () => {
@@ -40,13 +41,14 @@ describe("wishlist cross-provider event", () => {
   });
 
   it("is dispatched after every wishlist mutation", () => {
-    expect(wishlistButton).toContain('dispatchWishlistUpdated({ reason: "add"');
-    expect(wishlistButton).toContain('dispatchWishlistUpdated({ reason: "remove"');
-    expect(mergeWorker).toContain('dispatchWishlistUpdated({ reason: "merge" })');
+    // Mutations moved into the shared account hook.
+    expect(wishlistHook).toContain("dispatchWishlistUpdated");
+    expect(wishlistHook).toContain('reason: isSaved ? "remove" : "add"');
   });
 
-  it("is the only cross-provider channel — no polling in the header", () => {
-    expect(island).toContain("subscribeToWishlistUpdated");
+  it("needs no header bridge because every surface shares one QueryClient", () => {
+    expect(island).not.toContain("subscribeToWishlistUpdated");
+    expect(island).toContain("useWishlistIds");
     expect(island).not.toContain("refetchInterval");
     expect(island).not.toContain("setInterval");
   });
@@ -54,38 +56,41 @@ describe("wishlist cross-provider event", () => {
 
 describe("header wishlist count", () => {
   it("reads the shared account endpoint, not a duplicated implementation", () => {
-    expect(island).toContain('fetch("/api/v2/wishlist"');
-    // One fetch definition only; mutations stay in the product button.
-    // \b excludes refetch(); exactly one real network call lives here.
-    expect(island.match(/\bfetch\(/g)).toHaveLength(1);
+    expect(island).toContain("useWishlistIds");
+    expect(island).not.toContain('fetch("/api/v2/wishlist"');
+    expect(wishlistHook).toContain('fetch("/api/v2/wishlist"');
     expect(island).not.toContain("method: \"POST\"");
     expect(island).not.toContain("method: \"DELETE\"");
   });
 
   it("deduplicates product ids before counting", () => {
-    expect(island).toContain("new Set(wishlistIds ?? []).size");
+    expect(island).toContain("new Set(wishlistIds).size");
 
     const ids = ["a", "a", "b"];
     expect(new Set(ids).size).toBe(2);
   });
 
-  it("matches the account-only wishlist policy of the product button", () => {
-    // The button sends guests to an auth dialog and never writes a guest list,
-    // so the header must not read the guest store either.
-    expect(wishlistButton).toContain("setAuthOpen(true)");
+  it("counts only the authenticated account's trunk", () => {
+    expect(wishlistButton).not.toContain("setAuthOpen");
     expect(island).not.toContain("useGuestWishlistStore");
-    expect(island).not.toContain("wishlist-store");
+    expect(providers).not.toContain("WishlistMergeOnLogin");
   });
 
   it("skips the request entirely for signed-out visitors", () => {
-    expect(island).toContain("enabled: isAuthenticated");
-    // A 401 still degrades to an empty list rather than throwing.
-    expect(island).toContain("if (!response.ok) return [];");
+    expect(wishlistHook).toContain("enabled: isAuthenticated");
   });
 
-  it("clears the cached count on sign-out", () => {
-    expect(island).toContain('if (status !== "unauthenticated") return;');
-    expect(island).toContain('queryClient.setQueryData(["wishlist", "ids"], [])');
+  it("keys by account and removes the previous account cache", () => {
+    expect(wishlistHook).toContain(
+      '["wishlist", "ids", userId ?? "anonymous"]',
+    );
+    expect(wishlistHook).toContain("queryClient.cancelQueries");
+    expect(wishlistHook).toContain("queryClient.removeQueries");
+  });
+
+  it("keeps cached ids visible on a transient server failure", () => {
+    expect(wishlistHook).toContain("throw new Error");
+    expect(wishlistHook).not.toContain("if (!response.ok) return []");
   });
 
   it("hides the badge at zero and labels the control either way", () => {

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { CartDeliveryEstimateCard } from "@/components/cart/cart-delivery-estimate-card";
-import { CartItem } from "@/components/cart/cart-item";
+import { CartItem, useCartLineVerdicts } from "@/components/cart/cart-item";
 import { CartSavingsBanner } from "@/components/cart/cart-savings-banner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,9 +20,10 @@ import {
   trackOncePerSession,
   trackWebsiteMetric,
 } from "@/lib/analytics/client";
+import { useServerCart } from "@/lib/commerce/use-server-cart";
 import { formatCurrency } from "@/lib/formatters";
 import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
-import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { getCartTotals } from "@/lib/store/cart-store";
 import type { Product } from "@/types/domain";
 
 interface CartPageClientProps {
@@ -36,11 +37,21 @@ export function CartPageClient({
   featuredPicks,
   showHero = true,
 }: CartPageClientProps) {
-  const items = useCartStore((state) => state.items);
-  const hasHydrated = useCartStore((state) => state.hasHydrated);
+  const {
+    presentedItems: items,
+    presentationHasHydrated: hasHydrated,
+  } = useServerCart();
   const { originalSubtotalPaise, savingsPaise, subtotal, totalItems } =
     getCartTotals(items);
-  const canCheckout = hasHydrated && items.length > 0;
+  const { reportVerdict, verdictFor } = useCartLineVerdicts();
+  // Checkout waits for a trusted verdict on every line and refuses a sold one.
+  const canCheckout =
+    hasHydrated &&
+    items.length > 0 &&
+    !items.some((item) => {
+      const verdict = verdictFor(item);
+      return verdict === "sold" || verdict === "checking";
+    });
   const cartViewedTrackedRef = useRef(false);
   const getCartAnalyticsPayload = useCallback(
     (source: string) => {
@@ -223,7 +234,7 @@ export function CartPageClient({
               <div className="space-y-3">
                   {items.map((item) => (
                     <div key={item.id}>
-                      <CartItem item={item} />
+                      <CartItem item={item} onViewerState={reportVerdict} />
                     </div>
                   ))}
               </div>

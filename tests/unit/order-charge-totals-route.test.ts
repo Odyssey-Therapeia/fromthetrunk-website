@@ -26,9 +26,16 @@ const listOrdersMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
 
 const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
+const fillMissingCheckoutProfileMock = vi.hoisted(() => vi.fn());
 
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
 const emitAnalyticsEventMock = vi.hoisted(() => vi.fn());
+const getLivePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
+const listUserCartItemsMock = vi.hoisted(() => vi.fn());
+const startPaymentForOwnedCartItemsMock = vi.hoisted(() => vi.fn());
+const releasePaymentCartItemsMock = vi.hoisted(() => vi.fn());
+const listLapsedOwnPaymentOrderIdsMock = vi.hoisted(() => vi.fn());
+const reconcilePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
 
 // ── module mocks ─────────────────────────────────────────────────────────────
 vi.mock("@/db", () => ({
@@ -44,7 +51,20 @@ vi.mock("@/db/queries/orders", () => ({
 }));
 
 vi.mock("@/db/queries/users", () => ({
+  fillMissingCheckoutProfile: fillMissingCheckoutProfileMock,
   getOrCreateCheckoutCustomer: getOrCreateCheckoutCustomerMock,
+}));
+
+vi.mock("@/db/queries/user-cart", () => ({
+  getLivePaymentHoldForOrder: getLivePaymentHoldForOrderMock,
+  listLapsedOwnPaymentOrderIds: listLapsedOwnPaymentOrderIdsMock,
+  listUserCartItems: listUserCartItemsMock,
+  releasePaymentCartItems: releasePaymentCartItemsMock,
+  startPaymentForOwnedCartItems: startPaymentForOwnedCartItemsMock,
+}));
+
+vi.mock("@/lib/payments/reconcile-expired-holds", () => ({
+  reconcilePaymentHoldForOrder: reconcilePaymentHoldForOrderMock,
 }));
 
 // Only the network/SDK boundary is mocked — calculateOrderTotals stays REAL so
@@ -68,24 +88,33 @@ vi.mock("@/lib/analytics/emit", () => ({
 // ── imports (after mocks) ──────────────────────────────────────────────────
 import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import { registerOrderRoutes } from "@/api/hono/routes/orders";
+import { CART_RESERVATION_MINUTES } from "@/lib/cart/reservation-policy";
+import { createReservationToken } from "@/lib/cart/reservation-token";
 import { GST_RATE } from "@/lib/config/order-pricing";
 import { createRouteHarness } from "../helpers/route-harness";
 
 // ── fixtures ─────────────────────────────────────────────────────────────────
 const PRODUCT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SUBTOTAL_PAISE = 1_500_000; // 15000 INR, qty 1
+const CART_RESERVED_UNTIL = new Date(Date.now() + 60 * 60 * 1000);
+// The route requires an active hold to equal addedAt + 60 minutes exactly.
+const CART_ADDED_AT = new Date(
+  CART_RESERVED_UNTIL.getTime() - CART_RESERVATION_MINUTES * 60 * 1000,
+);
 
 const makeProduct = () => ({
   id: PRODUCT_ID,
   name: "Silk Saree",
   pricePaise: SUBTOTAL_PAISE,
-  stockStatus: "available",
-  reservedUntil: null,
+  stockStatus: "reserved",
+  reservedUntil: CART_RESERVED_UNTIL,
   status: "published",
 });
 
 const makeOrder = () => ({
+  createdAt: new Date(),
   id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  placedAt: new Date(),
   razorpayOrderId: null,
   status: "pending",
   userId: null,
@@ -145,7 +174,14 @@ describe("create-order route — charged + persisted totals", () => {
     createOrderMock.mockReset();
     addOrderEventMock.mockReset();
     getOrCreateCheckoutCustomerMock.mockReset();
+    fillMissingCheckoutProfileMock.mockReset();
     createRazorpayPaymentLinkMock.mockReset();
+    getLivePaymentHoldForOrderMock.mockReset();
+    listUserCartItemsMock.mockReset();
+    startPaymentForOwnedCartItemsMock.mockReset();
+    releasePaymentCartItemsMock.mockReset();
+    listLapsedOwnPaymentOrderIdsMock.mockReset();
+    reconcilePaymentHoldForOrderMock.mockReset();
 
     vi.stubEnv("NEXTAUTH_SECRET", "test-secret-key-at-least-32-chars!");
     vi.stubEnv("RAZORPAY_KEY_ID", "rzp_test_key_id");
@@ -156,9 +192,39 @@ describe("create-order route — charged + persisted totals", () => {
     createOrderMock.mockResolvedValue(makeOrder());
     addOrderEventMock.mockResolvedValue(undefined);
     getOrCreateCheckoutCustomerMock.mockResolvedValue({ id: "customer-1" });
+    fillMissingCheckoutProfileMock.mockResolvedValue({
+      nameFilled: false,
+      phoneFilled: false,
+    });
+    getLivePaymentHoldForOrderMock.mockResolvedValue(null);
+    listLapsedOwnPaymentOrderIdsMock.mockResolvedValue([]);
+    reconcilePaymentHoldForOrderMock.mockResolvedValue({ kind: "none" });
     createRazorpayPaymentLinkMock.mockResolvedValue({
       id: "plink_test123",
       short_url: "https://rzp.io/l/test123",
+    });
+    listUserCartItemsMock.mockResolvedValue([
+      {
+        addedAt: CART_ADDED_AT,
+        productId: PRODUCT_ID,
+        reservationToken: createReservationToken({
+          productId: PRODUCT_ID,
+          reservedUntil: CART_RESERVED_UNTIL,
+        }),
+        reservedUntil: CART_RESERVED_UNTIL,
+        selectedOptions: null,
+        status: "active",
+      },
+    ]);
+    startPaymentForOwnedCartItemsMock.mockResolvedValue([
+      { productId: PRODUCT_ID, slug: "silk-saree" },
+    ]);
+    releasePaymentCartItemsMock.mockResolvedValue({
+      kind: "released",
+      releasedProductIds: [PRODUCT_ID],
+      releasedSlugs: ["silk-saree"],
+      restoredProductIds: [],
+      restoredSlugs: [],
     });
   });
 

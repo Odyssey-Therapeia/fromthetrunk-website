@@ -64,9 +64,15 @@ export function WishlistMergeOnLogin() {
           void queryClient.invalidateQueries({ queryKey: ["wishlist"] });
           // Reaches the header island's separate QueryClient too.
           dispatchWishlistUpdated({ reason: "merge" });
+          return;
         }
-        // If the request fails, leave the guest store intact so items survive
-        // until the next successful session (the ref lets us retry on reload).
+
+        /*
+         * A rejected merge is as retryable as a dropped one. Leaving the guard
+         * set here stranded the guest's saves until a full reload, so a 500 or
+         * a rate limit quietly cost them their trunk for the session.
+         */
+        mergedRef.current = false;
       })
       .catch(() => {
         // Non-critical — guest store is still intact for retry.

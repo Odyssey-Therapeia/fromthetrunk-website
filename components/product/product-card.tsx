@@ -1,6 +1,5 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
@@ -11,8 +10,7 @@ import { ResilientProductImage } from "@/components/media/resilient-product-imag
 import { resolvePrimaryCurrentProductImage } from "@/lib/media/product-image-resolver";
 import { buildProductCardAlt } from "@/lib/seo/image-alt";
 import { cn } from "@/lib/utils";
-import { useLiveProductStock } from "@/lib/realtime/use-live-product-stock";
-import { useCartStore } from "@/lib/store/cart-store";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { ProductCardCommerceRow } from "@/components/product/product-card-commerce-row";
@@ -26,31 +24,58 @@ import type { Product, StockStatus } from "@/types/domain";
 interface ProductCardProps {
   product: Product;
   className?: string;
+  /** Wishlist page exception: an existing sold save can still be removed. */
+  allowSoldWishlistRemoval?: boolean;
 }
 
-const subscribeToMountedState = () => () => {};
-const getMountedSnapshot = () => true;
-const getServerMountedSnapshot = () => false;
-
-export function ProductCard({ product, className }: ProductCardProps) {
-  const hasMounted = useSyncExternalStore(
-    subscribeToMountedState,
-    getMountedSnapshot,
-    getServerMountedSnapshot,
-  );
+export function ProductCard({
+  product,
+  className,
+  allowSoldWishlistRemoval = false,
+}: ProductCardProps) {
   const primaryImage = resolvePrimaryCurrentProductImage(product, "card").image?.url;
   const productImageAlt = buildProductCardAlt(product);
-  const { stockStatus } = useLiveProductStock({
-    enabled: false,
-    initialStatus: product.stockStatus as StockStatus,
-    productId: product.id,
-    productSlug: product.slug,
+  /*
+   * The badges read the same verdict as the button row beneath them.
+   *
+   * Two ways this went wrong before. Reading useLiveProductStock with
+   * enabled:false returned before any fetch, freezing the badge at the
+   * server-rendered status while the button updated — so the corner could
+   * read "Reserved" over "Add to bag". Reading raw live stock instead is no
+   * better in the other direction: the moment this shopper adds the saree the
+   * row is genuinely "reserved", and their own card would stamp "Reserved"
+   * over their own "In bag" button.
+   *
+   * "Reserved" is the copy for someone else's claim, so it has to come from
+   * the server's viewer-aware verdict, which already knows whose hold it is.
+   * A bag row is never consulted: it proves a row exists, not the hold.
+   */
+  const viewer = useCollectionStock(String(product.id), {
+    reservedUntil: null,
+    // Seeded from the server render, replaced by the viewer-state verdict.
+    state:
+      product.stockStatus === "sold"
+        ? "sold"
+        : product.stockStatus === "reserved"
+          ? "reserved_by_other"
+          : "available",
   });
-  const hasHydrated = useCartStore((store) => store.hasHydrated);
-  const hasCartItem = useCartStore((store) => store.hasItem(product.id));
-  const inCart = hasMounted && hasHydrated && hasCartItem;
-  const isSold = stockStatus === "sold";
-  const isReserved = stockStatus === "reserved";
+  const viewerState = viewer.state;
+  const inCart =
+    viewerState === "in_my_cart" || viewerState === "payment_pending";
+
+  /*
+   * Badge and button read the same verdict. Inferring ownership separately is
+   * what let the corner say "Reserved" over an "In your bag" button.
+   */
+  const stockStatus: StockStatus =
+    viewerState === "sold"
+      ? "sold"
+      : viewerState === "available"
+        ? "available"
+        : "reserved";
+  const isSold = viewerState === "sold";
+  const isReserved = viewerState === "reserved_by_other";
   const isBlouse = isBlouseProduct(product);
   const drapeSaree = projectDrapeRoomEntry(product);
   // Only advertise a markdown the cart will actually credit.
@@ -129,10 +154,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
                 <Badge className="bg-foreground/90 text-background shadow-soft">
                   Sold out
                 </Badge>
-                <p className="max-w-60 text-[10px] font-medium leading-snug text-white/90 @sm:text-[11px]">
-                  We&apos;ll notify you if something like this comes back. Till
-                  then, shop with us.
-                </p>
               </div>
             )}
             {isReserved && (
@@ -148,16 +169,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
             )}
           </div>
         </Link>
-        {!isSold && (
+        {(!isSold || allowSoldWishlistRemoval) && (
           <div className="absolute right-2 top-2 @sm:right-3 @sm:top-3 z-10">
             <WishlistButton
               productId={product.id}
               productName={product.name}
+              initialViewerState={viewerState}
+              allowSoldRemoval={allowSoldWishlistRemoval}
               className="h-7 w-7 @sm:h-8 @sm:w-8 bg-white/80 shadow-sm backdrop-blur hover:bg-white"
             />
           </div>
         )}
-        {drapeSaree.eligible ? (
+        {drapeSaree.eligible && !isSold ? (
           <div className="absolute bottom-2 right-2 z-10 @sm:bottom-3 @sm:right-3">
             <DrapeRoomTrigger product={drapeSaree.saree} />
           </div>

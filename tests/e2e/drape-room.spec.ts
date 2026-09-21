@@ -501,26 +501,63 @@ test.describe("Drape Room guarded browser flow", () => {
     await expect(reservedCart).toBeDisabled();
     expect(network.generateRecords).toHaveLength(stockGenerationCount);
 
-    network.setStockStatus("sold");
+    /*
+     * Sold arrives as the batched viewer-state verdict, not the per-product
+     * /stock read. The room opens while the verdict still says available,
+     * because a sold verdict removes the entry trigger itself. When the next
+     * poll reads sold, every commerce action leaves the room: no add tile, no
+     * wishlist tile, not even a disabled placeholder, and no new generation.
+     */
+    const viewerStateRoute = "**/api/v2/products/viewer-state";
+    let viewerStateVerdict: "available" | "sold" = "available";
+    let viewerStateRequests = 0;
+    await page.route(viewerStateRoute, async (route) => {
+      viewerStateRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          products: {
+            [PRODUCT_ID]: { reservedUntil: null, state: viewerStateVerdict },
+          },
+        }),
+      });
+    });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
       page.getByRole("heading", { name: "Drape Room E2E harness" }),
     ).toBeVisible({ timeout: 20_000 });
+    await expect(entryTrigger(page, "PDP desktop entry")).toBeEnabled({
+      timeout: 20_000,
+    });
     await entryTrigger(page, "PDP desktop entry").click();
     await expect(resultImage).toBeVisible({ timeout: 20_000 });
-    const soldStockRequests = network.stockRequests;
+    await expect(
+      actions.getByRole("button", { name: "Add to cart", exact: true }),
+    ).toBeEnabled();
+
+    viewerStateVerdict = "sold";
+    const soldViewerStateRequests = viewerStateRequests;
     await page.evaluate(() =>
       document.dispatchEvent(new Event("visibilitychange")),
     );
-    await expect.poll(() => network.stockRequests).toBeGreaterThan(
-      soldStockRequests,
+    await expect.poll(() => viewerStateRequests).toBeGreaterThan(
+      soldViewerStateRequests,
     );
-    const soldCart = actions.getByRole("button", {
-      name: "Add to cart. This one-of-one saree has sold.",
-      exact: true,
-    });
-    await expect(soldCart).toBeDisabled();
+    await expect(
+      actions.locator(
+        '[data-drape-primary-action="add-to-cart"] [data-drape-action-tile]',
+      ),
+    ).toHaveCount(0);
+    await expect(
+      actions.locator(
+        '[data-drape-primary-action="wishlist"] [data-drape-action-tile]',
+      ),
+    ).toHaveCount(0);
+    // Save image and Visit product stay: neither buys anything.
+    await expect(actions.locator("[data-drape-action-tile]")).toHaveCount(2);
     expect(network.generateRecords).toHaveLength(stockGenerationCount);
+    await page.unroute(viewerStateRoute);
 
     network.setStockStatus("available");
     await page.reload({ waitUntil: "domcontentloaded" });

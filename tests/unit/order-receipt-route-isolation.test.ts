@@ -22,6 +22,8 @@ const paidOrder = {
   giftMessage: null,
   id: ORDER_ID,
   idempotencyKey: null,
+  analyticsConsent: null,
+  advertisingConsent: null,
   internalNote: null,
   isGift: false,
   items: [

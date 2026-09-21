@@ -6,6 +6,8 @@ const rateLimitResponseMock = vi.hoisted(() => vi.fn());
 const getBlouseProductIdSetMock = vi.hoisted(() =>
   vi.fn(async () => new Set<string>()),
 );
+const expireCommerceHoldsForProductsMock = vi.hoisted(() => vi.fn());
+const releaseCartHoldByTokenMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db", () => ({
   db: {
@@ -18,6 +20,11 @@ vi.mock("@/db", () => ({
 // every product flows through the normal one-of-one reservation path.
 vi.mock("@/db/queries/products", () => ({
   getBlouseProductIdSet: getBlouseProductIdSetMock,
+}));
+
+vi.mock("@/db/queries/user-cart", () => ({
+  expireCommerceHoldsForProducts: expireCommerceHoldsForProductsMock,
+  releaseCartHoldByToken: releaseCartHoldByTokenMock,
 }));
 
 vi.mock("@/db/schema", () => ({
@@ -49,11 +56,7 @@ vi.mock("@/lib/http/rate-limit", () => ({
 }));
 
 import { registerCartRoutes } from "@/api/hono/routes/cart";
-import { CART_RESERVATION_MINUTES } from "@/lib/cart/reservation-policy";
-import {
-  createReservationToken,
-  verifyReservationToken,
-} from "@/lib/cart/reservation-token";
+import { createReservationToken } from "@/lib/cart/reservation-token";
 import { createRouteHarness } from "../helpers/route-harness";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
@@ -63,13 +66,6 @@ const jsonBody = (body: unknown) => ({
   body: JSON.stringify(body),
   headers: { "content-type": "application/json" },
 });
-
-const makeUpdateChain = (returningRows: unknown[] = []) => {
-  const returning = vi.fn().mockResolvedValue(returningRows);
-  const where = vi.fn(() => ({ returning }));
-  const set = vi.fn(() => ({ where }));
-  return { returning, root: { set }, set, where };
-};
 
 const makeSelectLimitChain = (rows: unknown[]) => {
   const limit = vi.fn().mockResolvedValue(rows);
@@ -97,78 +93,29 @@ describe("cart reservation routes", () => {
     vi.stubEnv("NEXTAUTH_SECRET", "test-reservation-secret");
     rateLimitResponseMock.mockResolvedValue(null);
     getBlouseProductIdSetMock.mockResolvedValue(new Set<string>());
+    expireCommerceHoldsForProductsMock.mockResolvedValue({
+      blockedProductIds: [],
+      conflictOrderIds: [],
+      ordinaryReleasedProductIds: [],
+      paymentReleasedOrderIds: [],
+      paymentReleasedProductIds: [],
+      paymentReleasedSlugs: [],
+      protectedProductIds: [],
+      releasedProductIds: [],
+    });
+    releaseCartHoldByTokenMock.mockResolvedValue(null);
   });
 
-  it("atomically reserves an available product and returns a signed token", async () => {
-    const updateChain = makeUpdateChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
-
-    const response = await route()(
-      "/reserve",
-      {
-        method: "POST",
-        ...jsonBody({ productId: PRODUCT_ID }),
-      },
-    );
+  it("retires legacy unauthenticated reservations without touching inventory", async () => {
+    const response = await route()("/reserve", {
+      method: "POST",
+      ...jsonBody({ productId: PRODUCT_ID, quantity: 1 }),
+    });
     const payload = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(payload.reserved).toBe(true);
-    expect(payload.reservationToken).toEqual(expect.any(String));
-    expect(
-      new Date(payload.reservedUntil).getTime() - Date.now(),
-    ).toBeGreaterThan((CART_RESERVATION_MINUTES - 1) * 60 * 1000);
-    expect(
-      new Date(payload.reservedUntil).getTime() - Date.now(),
-    ).toBeLessThanOrEqual((CART_RESERVATION_MINUTES + 1) * 60 * 1000);
-    expect(verifyReservationToken(payload.reservationToken)).toEqual(
-      expect.objectContaining({
-        productId: PRODUCT_ID,
-        quantity: 1,
-      }),
-    );
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ stockStatus: "reserved" }),
-    );
-  });
-
-  it("accepts existing clients that send quantity 1 with reserve requests", async () => {
-    const updateChain = makeUpdateChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
-
-    const response = await route()(
-      "/reserve",
-      {
-        method: "POST",
-        ...jsonBody({ productId: PRODUCT_ID, quantity: 1 }),
-      },
-    );
-    const payload = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(payload.reserved).toBe(true);
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ stockStatus: "reserved" }),
-    );
-  });
-
-  it("skips the hold for blouses and reports success without reserving", async () => {
-    getBlouseProductIdSetMock.mockResolvedValueOnce(new Set([PRODUCT_ID]));
-
-    const response = await route()(
-      "/reserve",
-      {
-        method: "POST",
-        ...jsonBody({ productId: PRODUCT_ID }),
-      },
-    );
-    const payload = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(payload.reserved).toBe(false);
-    expect(payload.reservationToken).toBeNull();
-    expect(payload.reservedUntil).toBeNull();
-    // Made-to-order blouses are never written to a reserved state.
+    expect(response.status).toBe(410);
+    expect(payload).toMatchObject({ code: "LEGACY_CART_DISABLED" });
+    expect(dbSelectMock).not.toHaveBeenCalled();
     expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
@@ -185,65 +132,6 @@ describe("cart reservation routes", () => {
     expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
-  it("returns 409 for a sold product", async () => {
-    const updateChain = makeUpdateChain([]);
-    const selectChain = makeSelectLimitChain([
-      {
-        id: PRODUCT_ID,
-        reservedUntil: null,
-        stockStatus: "sold",
-      },
-    ]);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
-    dbSelectMock.mockReturnValueOnce(selectChain.root);
-
-    const response = await route()(
-      "/reserve",
-      {
-        method: "POST",
-        ...jsonBody({ productId: PRODUCT_ID }),
-      },
-    );
-    const payload = await response.json();
-
-    expect(response.status).toBe(409);
-    expect(payload.code).toBe("PRODUCT_SOLD");
-  });
-
-  it("allows exactly one winner across concurrent reserve attempts", async () => {
-    let callCount = 0;
-    dbUpdateMock.mockImplementation(() => {
-      callCount += 1;
-      return makeUpdateChain(
-        callCount === 1 ? [{ id: PRODUCT_ID, slug: PRODUCT_SLUG }] : [],
-      ).root;
-    });
-    dbSelectMock.mockImplementation(() =>
-      makeSelectLimitChain([
-        {
-          id: PRODUCT_ID,
-          reservedUntil: new Date("2999-01-01T00:00:00.000Z"),
-          stockStatus: "reserved",
-        },
-      ]).root,
-    );
-
-    const request = route();
-    const responses = await Promise.all(
-      Array.from({ length: 20 }, () =>
-        request("/reserve", {
-          method: "POST",
-          ...jsonBody({ productId: PRODUCT_ID }),
-        }),
-      ),
-    );
-
-    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
-    expect(responses.filter((response) => response.status === 409)).toHaveLength(19);
-    const conflictPayload = await responses.find((response) => response.status === 409)!.json();
-    expect(conflictPayload.code).toBe("PRODUCT_RESERVED");
-  });
-
   it("releases an active reservation only with the matching token", async () => {
     const reservedUntil = new Date("2999-01-01T00:00:00.000Z");
     const token = createReservationToken({ productId: PRODUCT_ID, reservedUntil });
@@ -255,9 +143,11 @@ describe("cart reservation routes", () => {
         stockStatus: "reserved",
       },
     ]);
-    const updateChain = makeUpdateChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
     dbSelectMock.mockReturnValueOnce(selectChain.root);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
+    releaseCartHoldByTokenMock.mockResolvedValueOnce({
+      productId: PRODUCT_ID,
+      slug: PRODUCT_SLUG,
+    });
 
     const response = await route()(
       "/release",
@@ -268,11 +158,11 @@ describe("cart reservation routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(updateChain.set).toHaveBeenCalledWith(
+    expect(releaseCartHoldByTokenMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        quantityAvailable: 1,
-        reservedUntil: null,
-        stockStatus: "available",
+        productId: PRODUCT_ID,
+        reservationToken: token,
+        reservedUntil,
       }),
     );
   });
@@ -302,6 +192,69 @@ describe("cart reservation routes", () => {
     expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
+  it("refuses to release a hold whose timestamp is merely near the token's", async () => {
+    /*
+     * The ±1000ms guard above is a proximity test, not an identity test, so
+     * this exact match is the only thing binding a token to the reservation
+     * actually on the row. It costs a legitimate holder nothing: /reserve
+     * writes one Date into both the row and the token.
+     *
+     * The case that matters is checkout. It re-stamps reserved_until for the
+     * payment-link hold without issuing a new token, and with a 60-minute cart
+     * hold against a 30-minute link hold those two values land within
+     * milliseconds of each other exactly 30 minutes in. Releasing on proximity
+     * would free a saree that has a live payment link against it.
+     */
+    const linkHoldUntil = new Date(Date.now() + 30 * 60 * 1000);
+    const cartToken = createReservationToken({
+      productId: PRODUCT_ID,
+      reservedUntil: new Date(linkHoldUntil.getTime() - 400),
+    });
+    const selectChain = makeSelectLimitChain([
+      { id: PRODUCT_ID, reservedUntil: linkHoldUntil, stockStatus: "reserved" },
+    ]);
+    dbSelectMock.mockReturnValueOnce(selectChain.root);
+
+    const response = await route()(
+      "/release",
+      {
+        method: "POST",
+        ...jsonBody({ productId: PRODUCT_ID, reservationToken: cartToken }),
+      },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.code).toBe("RESERVATION_OWNER_REQUIRED");
+    expect(releaseCartHoldByTokenMock).not.toHaveBeenCalled();
+  });
+
+  it("re-checks expiry when sweeping, so a fresh hold survives", async () => {
+    /*
+     * A shopper may claim one of these sarees between the SELECT and the
+     * UPDATE — the reserve route accepts a hold whose window has passed.
+     * Releasing by id alone handed their live reservation to the next buyer.
+     */
+    const selectChain = makeSelectWhereChain([
+      { id: PRODUCT_ID, slug: PRODUCT_SLUG },
+    ]);
+    dbSelectMock.mockReturnValueOnce(selectChain.root);
+    vi.stubEnv("CRON_SECRET", "test-cron-secret");
+
+    await route()(
+      "/release-expired",
+      {
+        headers: { authorization: "Bearer test-cron-secret" },
+        method: "POST",
+      },
+    );
+
+    expect(expireCommerceHoldsForProductsMock).toHaveBeenCalledWith(
+      [PRODUCT_ID],
+      expect.any(Date),
+    );
+  });
+
   it("releases expired reservations without requiring a token", async () => {
     const selectChain = makeSelectLimitChain([
       {
@@ -311,9 +264,17 @@ describe("cart reservation routes", () => {
         stockStatus: "reserved",
       },
     ]);
-    const updateChain = makeUpdateChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
     dbSelectMock.mockReturnValueOnce(selectChain.root);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
+    expireCommerceHoldsForProductsMock.mockResolvedValueOnce({
+      blockedProductIds: [],
+      conflictOrderIds: [],
+      ordinaryReleasedProductIds: [PRODUCT_ID],
+      paymentReleasedOrderIds: [],
+      paymentReleasedProductIds: [],
+      paymentReleasedSlugs: [],
+      protectedProductIds: [],
+      releasedProductIds: [PRODUCT_ID],
+    });
 
     const response = await route()(
       "/release",
@@ -322,15 +283,10 @@ describe("cart reservation routes", () => {
         ...jsonBody({ productId: PRODUCT_ID }),
       },
     );
+    const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quantityAvailable: 1,
-        reservedUntil: null,
-        stockStatus: "available",
-      }),
-    );
+    expect(payload.released).toBe(true);
   });
 
   it("treats a no-longer-active reservation release as an idempotent no-op", async () => {
@@ -379,9 +335,17 @@ describe("cart reservation routes", () => {
   it("releases expired reservations with a valid cron secret", async () => {
     vi.stubEnv("CRON_SECRET", "secret-value");
     const selectChain = makeSelectWhereChain([{ id: PRODUCT_ID, slug: PRODUCT_SLUG }]);
-    const updateChain = makeUpdateChain([]);
     dbSelectMock.mockReturnValueOnce(selectChain.root);
-    dbUpdateMock.mockReturnValueOnce(updateChain.root);
+    expireCommerceHoldsForProductsMock.mockResolvedValueOnce({
+      blockedProductIds: [],
+      conflictOrderIds: [],
+      ordinaryReleasedProductIds: [PRODUCT_ID],
+      paymentReleasedOrderIds: [],
+      paymentReleasedProductIds: [],
+      paymentReleasedSlugs: [],
+      protectedProductIds: [],
+      releasedProductIds: [PRODUCT_ID],
+    });
 
     const response = await route()("/release-expired", {
       headers: { authorization: "Bearer secret-value" },
@@ -390,14 +354,7 @@ describe("cart reservation routes", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ released: 1 });
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quantityAvailable: 1,
-        reservedUntil: null,
-        stockStatus: "available",
-      }),
-    );
+    expect(payload).toEqual({ paymentReleaseConflicts: 0, released: 1 });
   });
 
   it("returns released 0 without updating when no expired reservations exist", async () => {
@@ -412,7 +369,7 @@ describe("cart reservation routes", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ released: 0 });
+    expect(payload).toEqual({ paymentReleaseConflicts: 0, released: 0 });
     expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 });

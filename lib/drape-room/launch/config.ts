@@ -55,6 +55,18 @@ export const drapeLaunchConfig = {
     dwellMs: 7_000,
     /** The catalogue has no selected saree, so it opens sooner. */
     collectionDwellMs: 5_000,
+    /**
+     * The coach mark is not an interruption the way the teaser is — it points
+     * at a control already on screen and covers almost nothing — so it arrives
+     * first and quickly. The teaser's own dwell waits until it is done.
+     */
+    coachmarkDwellMs: 2_000,
+    /**
+     * How far a button must sit inside the viewport, top and bottom, to count
+     * as "on screen" for the coach mark. Keeps it off a card half-hidden
+     * behind the sticky header or clipped by the fold.
+     */
+    coachmarkViewportInset: 0.12,
     scrollProgress: 0.35,
     distinctGalleryImages: 2,
     /** Short settle delay so the sheet never lands mid-interaction. */
@@ -63,6 +75,35 @@ export const drapeLaunchConfig = {
 
   /** Versioned so a future campaign can legitimately show the teaser again. */
   sessionKey: "ftt:drape-room:teaser-shown:v1",
+
+  /*
+   * The coach mark keeps its own memory on purpose.
+   *
+   * The teaser explains what the Drape Room is; the coach mark shows where to
+   * tap. Sharing one key would let whichever appeared first suppress the
+   * other, so a shopper who dismissed the teaser would never learn the
+   * control exists.
+   *
+   * A cookie rather than localStorage: it is readable by the server if a
+   * future variant ever needs to render around it, and its three states —
+   * absent, "true", "false" — are inspectable and resettable by hand.
+   */
+  coachmarkCookie: "ftt_drape_guide_v1",
+
+  /**
+   * The coach mark only teaches on the catalogue. It points at a product
+   * card's button, and the catalogue is the one route that shows a grid of
+   * them the moment the page settles.
+   */
+  coachmarkRoute: CTA_HREF,
+
+  coachmarkCopy: {
+    eyebrow: "THE DRAPE ROOM",
+    heading: "See this saree on you",
+    body: "Tap the ✨ button on any saree. Add a clear photo and we create your personal drape preview.",
+    primaryCta: "Try this saree",
+    secondaryCta: "Got it",
+  },
 
   /**
    * Animated AVIF image sequences (ftyp brand `avis`). Next/Image would flatten

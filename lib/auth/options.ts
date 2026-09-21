@@ -234,8 +234,20 @@ providers.push(
 
 export const authOptions: NextAuthOptions = {
   adapter: DrizzleAdapter(),
+  /*
+   * Thirty days, declared rather than inherited from the framework default.
+   *
+   * Commerce is authenticated-first: a shopper signs in with a one-time code
+   * on their first bag or wishlist action, so being asked again a week later
+   * would read as the popup being broken. They stay signed in until they sign
+   * out, clear cookies, change browser, or the session genuinely expires.
+   */
   session: {
+    maxAge: 30 * 24 * 60 * 60,
     strategy: "jwt",
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers,
   callbacks: {

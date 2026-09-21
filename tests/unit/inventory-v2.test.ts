@@ -242,9 +242,9 @@ describe("one-of-one reserve->sold flow — regression lock (flag OFF vs ON)", (
 //    the INSERT and there is no unique constraint on product_id, so two
 //    concurrent callers can both succeed if both find quantity_available >= qty.
 //    The AUTHORITATIVE oversell guard is the atomic stock_status UPDATE in
-//    api/hono/routes/payments.ts (WHERE stock_status='available'), which runs
-//    in both flag states. These tests verify the pre-check's single-round-trip
-//    behavior and that the WHERE quantity_available guard is present in the SQL.
+//    db/queries/user-cart.ts (WHERE stock_status='available'), used by the
+//    authenticated add-to-bag command. These tests verify the pre-check's
+//    single-round-trip behavior and the SQL quantity guard.
 // ---------------------------------------------------------------------------
 
 describe("insertReservation() — atomic claim (P4-05)", () => {
@@ -377,13 +377,13 @@ describe("insertReservation() — atomic claim (P4-05)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4d. MUTATION PROOF — authoritative oversell guard in payments.ts.
+// 4d. MUTATION PROOF — authoritative oversell guard in the server-cart claim.
 //
 //     The real serialization point is the atomic UPDATE products
 //     SET stock_status='reserved' WHERE stock_status='available' (or expired-
-//     reserved) RETURNING id in api/hono/routes/payments.ts. This test asserts
-//     that the source of that file contains the stock_status='available'
-//     predicate so the test fails if that predicate is removed.
+//     reserved) RETURNING id in db/queries/user-cart.ts. This test asserts that
+//     claimProductIntoCart contains the stock_status='available' predicate so
+//     the test fails if that predicate is removed.
 //
 //     NOTE: This is a source-level assertion because the full route harness for
 //     this update path is covered by tests/unit/payments-route.test.ts and
@@ -391,33 +391,37 @@ describe("insertReservation() — atomic claim (P4-05)", () => {
 //     immune to mock-decision theater.
 // ---------------------------------------------------------------------------
 
-describe("AUTHORITATIVE OVERSELL GUARD — stock_status='available' predicate in payments.ts create-order UPDATE", () => {
-  it("MUTATION PROOF — payments.ts claim UPDATE gates on stock_status='available' (removing it fails this test)", async () => {
-    // Read the source of api/hono/routes/payments.ts at test time.
-    // If the WHERE predicate eq(products.stockStatus, "available") is removed,
-    // the string "available" will no longer appear adjacent to the stockStatus
-    // reference inside the .where() call, and this test will fail.
+describe("AUTHORITATIVE OVERSELL GUARD — stock_status='available' in the atomic server-cart claim", () => {
+  it("MUTATION PROOF — claimProductIntoCart gates on stock_status='available'", async () => {
+    // Read only the authoritative claim function. Looking for this predicate in
+    // payments.ts became stale when checkout stopped performing an independent
+    // inventory mutation and delegated to the authenticated server-cart layer.
     const fs = await import("fs");
     const path = await import("path");
 
     // Resolve from the repo root (process.cwd() at test time is the repo root).
-    const paymentsPath = path.resolve(process.cwd(), "api/hono/routes/payments.ts");
-    const source = fs.readFileSync(paymentsPath, "utf-8");
+    const cartQueriesPath = path.resolve(process.cwd(), "db/queries/user-cart.ts");
+    const source = fs.readFileSync(cartQueriesPath, "utf-8");
+    const claimSource = source.slice(
+      source.indexOf("export async function claimProductIntoCart"),
+      source.indexOf("export type PaymentCartClaim"),
+    );
 
-    // The authoritative guard: the UPDATE's WHERE must contain both the
-    // stock_status field reference and the string value 'available'.
-    // This pattern matches: eq(products.stockStatus, "available")
-    expect(source).toMatch(/eq\s*\(\s*products\.stockStatus\s*,\s*["']available["']\s*\)/);
+    expect(claimSource).toContain("UPDATE products");
+    expect(claimSource).toMatch(/stock_status\s*=\s*'available'/);
 
-    // The UPDATE must use .returning() to check how many rows were claimed.
-    // Removing .returning() would break the rowcount check that drives the 409.
-    expect(source).toMatch(/\.returning\s*\(\s*\{/);
+    // The UPDATE must return the claimed row; an empty result drives the 409.
+    expect(claimSource).toMatch(/RETURNING\s+id,\s+slug,\s+reserved_until/i);
 
     // The rowcount check must compare against the reservable (one-of-one) ids
     // (if removed, all items appear claimed even when none are). Blouses are
     // made-to-order and excluded from the claim, so the guard compares against
     // reservableProductIds.length.
-    expect(source).toMatch(/reservedRows\.length\s*!==\s*reservableProductIds\.length/);
+    const paymentsPath = path.resolve(process.cwd(), "api/hono/routes/payments.ts");
+    const paymentsSource = fs.readFileSync(paymentsPath, "utf-8");
+    expect(paymentsSource).toMatch(
+      /reservedRows\.length\s*!==\s*reservableProductIds\.length/,
+    );
   });
 });
 

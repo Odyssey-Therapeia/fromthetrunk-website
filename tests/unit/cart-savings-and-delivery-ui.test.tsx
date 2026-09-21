@@ -13,6 +13,7 @@ const read = (relativePath: string) =>
 const drawer = read("components/cart/cart-drawer.tsx");
 const cartPage = read("components/cart/cart-page-client.tsx");
 const checkoutSummary = read("components/checkout/order-summary.tsx");
+const deliveryCard = read("components/cart/cart-delivery-estimate-card.tsx");
 
 describe("savings banner", () => {
   it("is hidden at zero, negative, and unknown savings", () => {
@@ -61,33 +62,35 @@ describe("savings banner", () => {
     expect(drawerHtml).toContain("p-3");
   });
 
-  it("sits above the items in both surfaces and never in the empty state", () => {
-    expect(drawer.indexOf("CartSavingsBanner")).toBeLessThan(
-      drawer.indexOf("<CartItem item={item} />"),
-    );
+  it("renders only when the current bag has genuine product savings", () => {
+    expect(drawer).toContain("{hasSavings ? (");
+    expect(drawer).toContain('kind="savings"');
     expect(cartPage.indexOf("<CartSavingsBanner")).toBeLessThan(
       cartPage.indexOf("<OrderSummaryPanel"),
     );
 
-    // Both guard on a non-empty, hydrated cart.
+    // The full page keeps its prominent banner above the order summary. The
+    // existing drawer UI keeps the same amount in its compact footer strip.
     expect(cartPage).toContain(
       "{hasHydrated && items.length > 0 ? (\n          <CartSavingsBanner",
     );
-    expect(drawer).toContain("savingsPaise={savingsPaise} variant=\"drawer\"");
+    expect(drawer).toContain("hasHydrated && savingsPaise > 0");
   });
 
-  it("is one component shared by the drawer and the cart page", () => {
+  it("derives both surfaces from the same integer-paise totals", () => {
     for (const source of [drawer, cartPage]) {
-      expect(source).toContain(
-        'from "@/components/cart/cart-savings-banner"',
-      );
+      expect(source).toContain('from "@/lib/store/cart-store"');
+      expect(source).toContain("getCartTotals(items)");
+      expect(source).toContain("savingsPaise");
     }
   });
 
   it("keeps coupon savings out of the product markdown line", () => {
     // Coupons live only in the checkout summary's discount row.
-    expect(drawer).not.toContain("discount");
-    expect(cartPage).not.toContain("discount");
+    expect(drawer).not.toContain("discount.applied");
+    expect(cartPage).not.toContain("discount.applied");
+    expect(drawer).not.toContain("<DiscountField");
+    expect(cartPage).not.toContain("<DiscountField");
     expect(checkoutSummary).toContain("Discount (");
   });
 });
@@ -115,22 +118,26 @@ describe("delivery estimate", () => {
     ).not.toBe(renderToStaticMarkup(<CartDeliveryEstimateCard variant="page" />));
   });
 
-  it("appears for a non-empty cart only, in drawer and cart page", () => {
-    expect(drawer).toContain('<CartDeliveryEstimateCard variant="drawer" />');
-    // Inside the non-empty branch, after the item list — never in the empty state.
-    expect(drawer.indexOf("<CartDeliveryEstimateCard")).toBeGreaterThan(
-      drawer.indexOf("Your bag is empty."),
-    );
+  it("appears in the drawer and in the non-empty full cart", () => {
+    // The drawer keeps its existing compact footer strip, including for an
+    // empty bag; the full-page card is intentionally guarded by real items.
+    expect(drawer).toContain('kind="delivery"');
     expect(cartPage).toContain("hasHydrated && hasItems ? (");
     expect(cartPage).toContain("<CartDeliveryEstimateCard variant=\"page\"");
   });
 
   it("has a single source of truth used by checkout too", () => {
-    for (const source of [drawer, cartPage]) {
-      expect(source).toContain(
-        'from "@/components/cart/cart-delivery-estimate-card"',
-      );
-    }
+    expect(drawer).toContain(
+      'import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate"',
+    );
+    expect(drawer).toContain("CART_DELIVERY_ESTIMATE.title");
+    expect(drawer).toContain("CART_DELIVERY_ESTIMATE.drawerLabel");
+    expect(deliveryCard).toContain(
+      'import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate"',
+    );
+    expect(cartPage).toContain(
+      'from "@/components/cart/cart-delivery-estimate-card"',
+    );
     expect(checkoutSummary).toContain(
       'import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate"',
     );
@@ -138,12 +145,11 @@ describe("delivery estimate", () => {
   });
 
   it("has no contradictory duplicated delivery strings left in the tree", () => {
-    const card = read("components/cart/cart-delivery-estimate-card.tsx");
     const constants = read("lib/cart/delivery-estimate.ts");
 
     // The literal promise appears only in the shared constant.
     expect(constants).toContain("Your order will be delivered in 7 to 10 days.");
-    for (const source of [drawer, cartPage, checkoutSummary, card]) {
+    for (const source of [drawer, cartPage, checkoutSummary, deliveryCard]) {
       expect(source).not.toContain(
         "Your order will be delivered in 7 to 10 days.",
       );
@@ -174,7 +180,9 @@ describe("restock notify button", () => {
 
   it("applies the same treatment to the registered state", () => {
     expect(notify).toContain("notifyButtonClass");
-    expect(notify.match(/notifyButtonClass/g)!.length).toBeGreaterThanOrEqual(3);
+    expect(notify.match(/notifyButtonClass/g)!.length).toBeGreaterThanOrEqual(2);
+    expect(notify).toContain("submitted &&");
+    expect(notify).toContain("hover:bg-[#601D1C]/8");
   });
 
   it("still posts the restock intent to the shared endpoint", () => {

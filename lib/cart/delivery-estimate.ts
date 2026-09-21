@@ -8,6 +8,8 @@
  */
 export const CART_DELIVERY_ESTIMATE = {
   title: "Estimated delivery",
+  /** Compact drawer wording; kept distinct so the existing UI copy does not move. */
+  drawerLabel: "7 to 10 days",
   shortLabel: "7–10 days",
   description: "Your order will be delivered in 7 to 10 days.",
 } as const;

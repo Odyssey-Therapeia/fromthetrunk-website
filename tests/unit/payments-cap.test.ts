@@ -21,11 +21,18 @@ const dbUpdateSetMock = vi.hoisted(() => vi.fn());
 const dbUpdateMock = vi.hoisted(() => vi.fn());
 
 const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
+const fillMissingCheckoutProfileMock = vi.hoisted(() => vi.fn());
 const createOrderMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
 const getOrderByIdempotencyKeyMock = vi.hoisted(() => vi.fn());
 const createRazorpayPaymentLinkMock = vi.hoisted(() => vi.fn());
 const rateLimitResponseMock = vi.hoisted(() => vi.fn());
+const getLivePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
+const listUserCartItemsMock = vi.hoisted(() => vi.fn());
+const startPaymentForOwnedCartItemsMock = vi.hoisted(() => vi.fn());
+const releasePaymentCartItemsMock = vi.hoisted(() => vi.fn());
+const listLapsedOwnPaymentOrderIdsMock = vi.hoisted(() => vi.fn());
+const reconcilePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db", () => ({
   db: {
@@ -35,7 +42,20 @@ vi.mock("@/db", () => ({
 }));
 
 vi.mock("@/db/queries/users", () => ({
+  fillMissingCheckoutProfile: fillMissingCheckoutProfileMock,
   getOrCreateCheckoutCustomer: getOrCreateCheckoutCustomerMock,
+}));
+
+vi.mock("@/db/queries/user-cart", () => ({
+  getLivePaymentHoldForOrder: getLivePaymentHoldForOrderMock,
+  listLapsedOwnPaymentOrderIds: listLapsedOwnPaymentOrderIdsMock,
+  listUserCartItems: listUserCartItemsMock,
+  releasePaymentCartItems: releasePaymentCartItemsMock,
+  startPaymentForOwnedCartItems: startPaymentForOwnedCartItemsMock,
+}));
+
+vi.mock("@/lib/payments/reconcile-expired-holds", () => ({
+  reconcilePaymentHoldForOrder: reconcilePaymentHoldForOrderMock,
 }));
 
 vi.mock("@/db/queries/orders", () => ({
@@ -61,6 +81,11 @@ vi.mock("@/lib/http/rate-limit", () => ({
 // Must import AFTER mocks are declared
 import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import type { HonoBindings } from "@/api/hono/types";
+import {
+  CART_RESERVATION_MINUTES,
+  PAYMENT_LINK_HOLD_MINUTES,
+} from "@/lib/cart/reservation-policy";
+import { createReservationToken } from "@/lib/cart/reservation-token";
 import { RAZORPAY_PAYMENT_LINK_HOLD_MINUTES } from "@/lib/payments/razorpay";
 
 // ---------------------------------------------------------------------------
@@ -110,6 +135,7 @@ function createTestApp() {
 }
 
 const PRODUCT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const MINUTE_MS = 60 * 1000;
 const AUTH_USER = {
   email: "customer@example.com",
   id: "11111111-1111-4111-8111-111111111111",
@@ -140,24 +166,24 @@ const mixedCaseBody = {
   },
 };
 
-// Stub product row returned by the first db.select().from(products).where()
-const productRow = {
-  id: PRODUCT_ID,
-  name: "Silk Saree",
-  pricePaise: 50000,
-  status: "published",
-  stockStatus: "available",
-  reservedUntil: null,
-};
+/*
+ * One instant feeds the cart row, its token and the product, and the row's
+ * added time is derived from it. The route requires an active hold to equal
+ * addedAt + 60 minutes exactly, so separate Date.now() reads would drift.
+ */
+let cartReservedUntil = new Date();
+let productRow: Record<string, unknown> = {};
 
 // Stub order returned by createOrder
-const createdOrder = {
+const createdOrder = () => ({
+  createdAt: new Date(),
   id: "order-uuid-1",
   status: "pending",
   paymentStatus: "pending",
+  placedAt: new Date(),
   items: [],
   events: [],
-};
+});
 
 /**
  * Configure the db.select chain to return two successive results:
@@ -199,18 +225,68 @@ describe("payments create-order — pending-order cap", () => {
     dbReturningMock.mockReset();
     getOrderByIdempotencyKeyMock.mockReset();
     getOrCreateCheckoutCustomerMock.mockReset();
+    fillMissingCheckoutProfileMock.mockReset();
     createOrderMock.mockReset();
     addOrderEventMock.mockReset();
     createRazorpayPaymentLinkMock.mockReset();
     rateLimitResponseMock.mockReset();
+    getLivePaymentHoldForOrderMock.mockReset();
+    listUserCartItemsMock.mockReset();
+    startPaymentForOwnedCartItemsMock.mockReset();
+    releasePaymentCartItemsMock.mockReset();
+    listLapsedOwnPaymentOrderIdsMock.mockReset();
+    reconcilePaymentHoldForOrderMock.mockReset();
 
     // Rate limiter passes by default
     rateLimitResponseMock.mockReturnValue(null);
+    // No lapsed payment of the shopper's own is waiting to be reconciled.
+    listLapsedOwnPaymentOrderIdsMock.mockResolvedValue([]);
+    reconcilePaymentHoldForOrderMock.mockResolvedValue({ kind: "none" });
+
+    cartReservedUntil = new Date(Date.now() + CART_RESERVATION_MINUTES * MINUTE_MS);
+    productRow = {
+      id: PRODUCT_ID,
+      name: "Silk Saree",
+      pricePaise: 50000,
+      status: "published",
+      stockStatus: "reserved",
+      reservedUntil: cartReservedUntil,
+    };
 
     // Default stubs for successful path
     getOrCreateCheckoutCustomerMock.mockResolvedValue({ id: "user-1" });
-    createOrderMock.mockResolvedValue(createdOrder);
+    fillMissingCheckoutProfileMock.mockResolvedValue({
+      nameFilled: false,
+      phoneFilled: false,
+    });
+    createOrderMock.mockResolvedValue(createdOrder());
     addOrderEventMock.mockResolvedValue(undefined);
+    getLivePaymentHoldForOrderMock.mockResolvedValue(null);
+    listUserCartItemsMock.mockResolvedValue([
+      {
+        addedAt: new Date(
+          cartReservedUntil.getTime() - CART_RESERVATION_MINUTES * MINUTE_MS,
+        ),
+        productId: PRODUCT_ID,
+        reservationToken: createReservationToken({
+          productId: PRODUCT_ID,
+          reservedUntil: cartReservedUntil,
+        }),
+        reservedUntil: cartReservedUntil,
+        selectedOptions: null,
+        status: "active",
+      },
+    ]);
+    startPaymentForOwnedCartItemsMock.mockResolvedValue([
+      { productId: PRODUCT_ID, slug: "silk-saree" },
+    ]);
+    releasePaymentCartItemsMock.mockResolvedValue({
+      kind: "released",
+      releasedProductIds: [],
+      releasedSlugs: [],
+      restoredProductIds: [],
+      restoredSlugs: [],
+    });
 
     // db.update chain for product reservation
     dbReturningMock.mockResolvedValue([{ id: "prod-1" }]);
@@ -289,6 +365,7 @@ describe("payments create-order — pending-order cap", () => {
     setupDbSelectChain(0);
 
     const app = createTestApp();
+    const requestedAt = Date.now();
     const response = await app.request("/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -308,11 +385,16 @@ describe("payments create-order — pending-order cap", () => {
     const capQueryArg = dbWhereMock.mock.calls[1][0];
     const primitives = collectPrimitives(capQueryArg);
     const dates = primitives.filter((p): p is Date => p instanceof Date);
-    expect(dates.length).toBeGreaterThan(0);
+    expect(dates).toHaveLength(1);
+    // The cutoff is exactly one live link window (ten minutes) back, so only
+    // orders whose link could still be payable count against the cap.
+    const expectedCutoff = requestedAt - PAYMENT_LINK_HOLD_MINUTES * MINUTE_MS;
+    expect(Math.abs(dates[0]!.getTime() - expectedCutoff)).toBeLessThan(1_000);
   });
 
   it("RAZORPAY_PAYMENT_LINK_HOLD_MINUTES is the correct expiry constant used for time window", () => {
-    // Verify the constant is 30 minutes as expected
-    expect(RAZORPAY_PAYMENT_LINK_HOLD_MINUTES).toBe(30);
+    // The live payment window is ten minutes, shared with the data layer.
+    expect(RAZORPAY_PAYMENT_LINK_HOLD_MINUTES).toBe(15);
+    expect(RAZORPAY_PAYMENT_LINK_HOLD_MINUTES).toBe(PAYMENT_LINK_HOLD_MINUTES);
   });
 });

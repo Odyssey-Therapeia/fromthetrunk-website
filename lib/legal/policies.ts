@@ -4,7 +4,7 @@
  *
  * Placeholders intentionally left for the legal/business team to confirm:
  *   [DATE], registered legal entity name, GSTIN, [REGISTERED ADDRESS],
- *   grievance officer [NAME]/[DESIGNATION], [PHONE NUMBER], shipping partners,
+ *   [REGISTERED BUSINESS ADDRESS], [PHONE NUMBER], shipping partners,
  *   international shipping locations, refund timelines, jurisdiction.
  */
 
@@ -43,7 +43,7 @@ export const policies: LegalPolicy[] = [
       "How From the Trunk collects, uses, protects, and handles personal information.",
     metaDescription:
       "How From The Trunk collects, uses and protects your personal information.",
-    lastUpdated: "September 4, 2026",
+    lastUpdated: "September 17, 2026",
     sections: [
       {
         id: "information-we-collect",
@@ -69,6 +69,7 @@ export const policies: LegalPolicy[] = [
         title: "Consent and withdrawal",
         body: [
           "Where required, we ask for your consent before processing your personal information. You may withdraw consent for optional uses such as marketing communications.",
+          "Optional analytics and advertising cookies are handled separately, and each is off until you switch it on. You can change or withdraw either at any time yourself using “Cookie settings” in the website footer — see “Cookies and similar technologies” below. Contacting us is not required to stop optional tracking.",
           "Withdrawal of consent may affect services that depend on that information, such as account access, order fulfilment, delivery updates, or saved-address features.",
         ],
       },
@@ -77,6 +78,8 @@ export const policies: LegalPolicy[] = [
         title: "Sharing of information",
         body: [
           "We may share limited information with payment gateway partners; shipping and logistics partners; authentication, restoration, and packaging partners; technology, hosting, analytics, email, SMS, WhatsApp, and customer-support providers; professional advisers such as accountants, auditors, lawyers, and compliance consultants; and government, regulatory, law-enforcement, or dispute-resolution authorities where required.",
+          "Analytics and advertising providers: if you accept the matching optional cookies, we share information about your visit with Google (Google Analytics, loaded through Google Tag Manager) and with Meta Platforms (the Meta Pixel). This can include your IP address, device and browser information, and the pages you view on our website. Google and Meta act for their own purposes as well as ours, may combine this with information they already hold about you, and may use it across their own services and other websites. Their handling of that information is governed by their own privacy policies.",
+          "Transaction records sent to Meta: if, and only if, you have accepted advertising cookies, our server also tells Meta's Conversions API that a conversion happened — for example that an order was placed — so we can measure whether our advertising is working. We send the type of event, the time it happened, and a random one-time reference used to avoid counting the same event twice. We do not send your name, email address, phone number, postal address, payment credentials, order or payment references, the amount you paid, which items you bought, your account identifier, or the page you came from. If you refuse advertising cookies, we send Meta nothing at all about your order.",
           "We do not sell your personal information.",
         ],
       },
@@ -93,9 +96,15 @@ export const policies: LegalPolicy[] = [
         body: [
           "What cookies are: cookies are small text files that a website stores in your web browser. They let the site remember simple things between page visits. They are not programs, they cannot run on your device, and they cannot read files on your device.",
           "Essential cookies: some cookies are necessary for the website to work — for example, to keep you signed in, remember your cart and wishlist, secure the website, and remember your cookie choice. These are always used because the site cannot function properly without them.",
-          "Optional analytics cookies: with your consent, we use analytics cookies (including Google Analytics, loaded through Google Tag Manager) to measure website traffic and understand how the site is browsed — for example, how many people visit, which pages are viewed, and which links or buttons are used. This is aggregate usage information used only to see how much traffic the website receives and to improve it. Nothing else.",
-          "What we do NOT do: we do not use analytics to steal, sell, or trade your personal data. Analytics runs only inside your web browser and only reads or writes the small cookies for this website. It does not access your phone's or device's memory, files, photos, contacts, messages, or other apps, and it does not track your activity on other websites.",
-          "Your choice: when you first visit, a banner lets you “Allow cookies” or “Continue without cookies.” If you continue without cookies, no analytics cookies are set and no analytics data is collected. You can change your choice at any time using “Cookie settings” in the website footer, or through your browser settings. Some features may not work properly if essential cookies are disabled in your browser.",
+          "Optional analytics cookies: with your consent, we use analytics cookies — Google Analytics, loaded through Google Tag Manager — to measure website traffic and understand how the site is browsed, for example how many people visit, which pages are viewed, and which links or buttons are used. Information about your visit, including your IP address and the pages you view, is shared with Google, which may use it for its own purposes as described in its privacy policy.",
+          "Optional advertising cookies: with your consent, we use the Meta Pixel to measure and improve our advertising. When it is switched on, it records that you visited a page on our website and shares that visit — including your IP address, browser information, and the page address — with Meta Platforms. Meta may link this to a Meta account and may combine it with your activity on other websites and apps that also use its tools, in order to measure and target advertising. On this website the Pixel records page views only; it does not record your purchases in your browser.",
+          "What we do NOT do: we do not sell or trade your personal information, and we do not use these tools to read your device. They cannot access your phone’s memory, files, photos, contacts, messages, or other apps. They do, however, send information about your visit to Google and to Meta, and those companies may use it beyond this website — which is exactly why both categories are optional and stay off until you turn them on.",
+          "Your choice: when you first visit, a banner lets you “Accept optional cookies”, “Reject optional cookies”, or “Manage preferences” to choose analytics and advertising separately. Nothing optional is switched on in advance, and if you reject, no analytics or advertising cookies are set. Accepting analytics does not switch on advertising: if you agreed to analytics under our earlier notice that choice still stands, the Meta Pixel stays off, and we ask you again under this notice before any advertising cookie is used.",
+          "Why we ask at all: analytics tells us which pages and sarees people actually open, so we can fix what confuses shoppers and stock better. Advertising tells us whether the ads we run on Instagram and Facebook bring anyone to the site, and lets us show those ads to people more likely to be interested. Neither is needed to browse, buy, or get your order — that is why both are optional and why refusing them changes nothing about your shopping.",
+          "How long these cookies last: your consent choice is stored by us for 180 days, after which we ask again. The optional cookies themselves are set and controlled by the providers, not by us: Google Analytics cookies last up to two years and the Meta Pixel’s browser cookie about 90 days, under those companies’ own current defaults. In practice your browser often shortens this — Chrome caps such cookies at around 400 days, and Safari can expire them within a week if you do not return. Because Google and Meta set these, the exact names and durations can change without notice from us; clearing your browser cookies removes them immediately.",
+          "Legal basis: we rely on your consent for all optional analytics and advertising cookies. Essential cookies are used on the basis of our legitimate interest in providing a working, secure website you asked to use, and cannot be switched off while you use the site.",
+          "Where this information goes: Google and Meta are based outside India and process this information on servers in the United States and other countries. When you turn on either category you are agreeing to that transfer. We do not control what those companies do with the information once it reaches them, and their own privacy policies govern it.",
+          "Changing your mind: you can change or withdraw your choice at any time using “Cookie settings” in the website footer, which clears your stored choices and lets you decide again — you never have to email us to stop optional tracking. You can also clear or block cookies through your browser settings. Some features may not work properly if essential cookies are disabled in your browser. Withdrawing consent stops further collection; it does not by itself undo what Google or Meta already received, and requests about information those companies already hold must be made to them.",
         ],
       },
       {
@@ -132,6 +141,7 @@ export const policies: LegalPolicy[] = [
         body: [
           "Subject to applicable law, you may request information about the personal data we process and the purposes for which it is processed. You may also request correction, completion, or updating of inaccurate or incomplete personal data, and erasure of personal data where applicable.",
           "You may withdraw consent for optional processing and raise a grievance about the handling of your personal data. You may also nominate another individual to exercise your applicable rights in the event of your death or incapacity, in accordance with applicable law.",
+          "Complaints: if you are not satisfied with how we have handled your request or grievance, you may complain to the data-protection authority that applies to you — in India, the Data Protection Board of India, and in the United Kingdom or European Economic Area, your national supervisory authority. Complaining to us first is not a precondition, but it usually resolves matters faster.",
         ],
       },
       {
@@ -197,7 +207,8 @@ export const policies: LegalPolicy[] = [
         title: "Contact and grievance",
         body: [
           `For privacy questions, data requests, or grievances, contact From the Trunk at ${CONTACT_EMAIL}.`,
-          "Grievance Officer: [NAME], [DESIGNATION]. Registered address: [REGISTERED BUSINESS ADDRESS]. Phone: [PHONE NUMBER].",
+          "Grievance Officer: Dr. Meena, Founder. Email: privacy@fromthetrunk.shop.",
+          "Registered address: [REGISTERED BUSINESS ADDRESS].",
         ],
       },
     ],
@@ -730,7 +741,8 @@ export const policies: LegalPolicy[] = [
         id: "grievance-officer",
         title: "Grievance Officer",
         body: [
-          "Name: [NAME]. Designation: Grievance Officer. Email: [GRIEVANCE EMAIL]. Address: [REGISTERED ADDRESS].",
+          "Name: Dr. Meena. Designation: Founder and Grievance Officer. Email: privacy@fromthetrunk.shop.",
+          "Address: [REGISTERED ADDRESS].",
         ],
       },
       {

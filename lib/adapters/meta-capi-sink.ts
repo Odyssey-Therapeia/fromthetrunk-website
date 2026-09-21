@@ -20,6 +20,34 @@ const META_EVENT_NAME: Record<string, string> = {
 };
 
 /**
+ * What Meta is allowed to receive beyond the bare fact that a conversion
+ * happened. Currently: NOTHING.
+ *
+ * This used to spread the whole internal payload into `custom_data`, which
+ * sent Meta our internal user id, the referrer, discount codes, and order and
+ * payment references. None of that is needed to count a conversion, and the
+ * user id in particular is a stable per-person identifier that has no business
+ * leaving our systems. The allowlist is empty by deliberate default: a field
+ * reaches Meta only if it is named here, so adding one to an internal payload
+ * can never quietly widen what a third party sees.
+ *
+ * Meta still receives event_name (which conversion), event_time, event_id
+ * (deduplication against the browser Pixel) and action_source.
+ *
+ * TO REPORT REVENUE in Meta Ads, return
+ *   { currency: "INR", value: (event.payload.totalPaise as number) / 100 }
+ * for "payment_completed". TO RUN CATALOGUE/DYNAMIC ADS, add
+ *   { content_ids: event.payload.productIds, content_type: "product" }.
+ * Either one widens what Meta receives, so update the "Transaction records
+ * sent to Meta" paragraph in lib/legal/policies.ts in the same change.
+ */
+function buildMetaCustomData(
+  _event: AnalyticsEvent,
+): Record<string, unknown> | undefined {
+  return undefined;
+}
+
+/**
  * Returns the Meta CAPI sink when env vars are present,
  * or null if the adapter is not configured.
  */
@@ -32,8 +60,14 @@ export function buildMetaCapiSink(): AnalyticsSink | null {
   }
 
   return {
+    name: "meta-capi",
+    // Meta is a third party and an advertising purpose. emitAnalyticsEvent()
+    // will not hand this sink an event without the visitor's advertising
+    // consent, so an order placed by someone who refused never reaches Meta.
+    requiresConsent: "advertising",
     async emit(event: AnalyticsEvent): Promise<void> {
       const url = `${META_CAPI_ENDPOINT}/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(accessToken)}`;
+      const customData = buildMetaCustomData(event);
 
       const body = JSON.stringify({
         data: [
@@ -43,10 +77,7 @@ export function buildMetaCapiSink(): AnalyticsSink | null {
             // event_id is shared with the client pixel for CAPI dedup
             event_id: event.event_id,
             action_source: "website",
-            custom_data: {
-              event_type: event.type,
-              ...event.payload,
-            },
+            ...(customData ? { custom_data: customData } : {}),
           },
         ],
       });

@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
 import type { HonoBindings } from "@/api/hono/types";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { consentFromRequest } from "@/lib/analytics/server-consent";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import type { AnalyticsEventType } from "@/lib/ports/analytics-sink";
 
@@ -93,6 +94,13 @@ export const registerEventsRoutes = (app: OpenAPIHono<HonoBindings>) => {
       const body = c.req.valid("json");
 
       await emitAnalyticsEvent({
+        /*
+         * The browser already refuses to call this without consent
+         * (lib/analytics/client.ts), but that gate lives in code a visitor
+         * controls. Re-reading the cookie here means a hand-made POST cannot
+         * push an event on to Google or Meta either.
+         */
+        consent: consentFromRequest(c.req.raw),
         event_id: body.eventId ?? crypto.randomUUID(),
         occurredAt: new Date(),
         payload: {

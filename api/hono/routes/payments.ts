@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { createHash, randomUUID } from "crypto";
-import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { createLogger } from "@/lib/log";
 
 import { requireAuth } from "@/api/hono/middleware/auth";
@@ -15,25 +15,44 @@ import {
   getOrderByIdempotencyKey,
   type OrderWithRelations,
 } from "@/db/queries/orders";
-import { insertReservation, releaseReservationsByProducts } from "@/db/queries/reservations";
+import {
+  getLivePaymentHoldForOrder,
+  listLapsedOwnPaymentOrderIds,
+  listUserCartItems,
+  releasePaymentCartItems,
+  startPaymentForOwnedCartItems,
+  type UserCartItemRow,
+} from "@/db/queries/user-cart";
+import { fillMissingCheckoutProfile } from "@/db/queries/users";
 import { findDiscountByCode, toValidatedDiscount } from "@/db/queries/discounts";
 import { getCollectionProductIds } from "@/db/queries/collections";
-import { collections, orders, products, productTypes } from "@/db/schema";
+import {
+  collections,
+  orders,
+  products,
+  productTypes,
+  reservations,
+} from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
-import { verifyReservationToken } from "@/lib/cart/reservation-token";
+import {
+  createReservationToken,
+  verifyReservationToken,
+} from "@/lib/cart/reservation-token";
+import {
+  getCartReservationExpiresAt,
+  getPaymentLinkDeadline,
+  isPaymentLinkDeadlineUsable,
+} from "@/lib/cart/reservation-policy";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
 import { GST_RATE } from "@/lib/config/order-pricing";
-import { isInventoryV2 } from "@/lib/config/flags";
 import { createOrderAccessToken, verifyOrderAccessToken } from "@/lib/orders/order-access-token";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 import { validateOrderItemSelectedOptions } from "@/lib/orders/selected-options";
 import { isBlouseProduct } from "@/lib/products/product-type";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { consentFromRequest } from "@/lib/analytics/server-consent";
 import { validateDiscountCode } from "@/lib/discounts/validate";
-import {
-  findReusablePaymentOrder,
-  recordPaymentAttempt,
-} from "@/lib/payments/checkout-idempotency";
+import { recordPaymentAttempt } from "@/lib/payments/checkout-idempotency";
 import { evaluatePaymentHost } from "@/lib/payments/payment-host-guard";
 import {
   calculateOrderTotals,
@@ -43,20 +62,27 @@ import {
   fetchRazorpayPaymentLink,
   getRazorpayPaymentLinkReferenceId,
   isRazorpayAuthError,
+  isRazorpayBadRequest,
+  lookupRazorpayPaymentLinkByReferenceId,
   RAZORPAY_PAYMENT_LINK_HOLD_MINUTES,
   RAZORPAY_MIN_AMOUNT_PAISE,
   type RazorpayPaymentLinkResponse,
   verifyPaymentLinkSignature,
   verifyPaymentSignature,
 } from "@/lib/payments/razorpay";
+import { reconcilePaymentHoldForOrder } from "@/lib/payments/reconcile-expired-holds";
 import { timed, timedRows } from "@/lib/perf/timed";
 
 const logCreateOrder = createLogger("payments:create-order");
 const logPaymentLinkCallback = createLogger("payments:payment-link-callback");
 const CHECKOUT_IN_PROGRESS_RETRY_SECONDS = 2;
+// Each inline reconciliation may call Razorpay, so one request settles at most
+// this many of the shopper's own lapsed payment orders.
+const INLINE_PAYMENT_RECONCILE_LIMIT = 3;
 const ORDERS_IDEMPOTENCY_UNIQUE_INDEX = "orders_idempotency_key_unique";
 
 const availabilityErrorMessages = {
+  PAYMENT_IN_PROGRESS: "A payment for this piece is already in progress.",
   PRODUCT_RESERVED: "This piece has just been reserved.",
   PRODUCT_SOLD: "This saree has found its next home.",
   RESERVATION_CONFLICT: "This piece has just been reserved.",
@@ -91,6 +117,11 @@ const checkoutAttemptNotReusableBody = {
 const checkoutCartChangedBody = {
   code: "CHECKOUT_CART_CHANGED",
   message: "Checkout details changed. Please try again.",
+};
+
+const paymentWindowExpiredBody = {
+  code: "PAYMENT_WINDOW_EXPIRED",
+  message: "This order's payment window has expired. Please reorder the pieces.",
 };
 
 const asErrorRecord = (error: unknown): Record<string, unknown> | null =>
@@ -212,8 +243,18 @@ const paymentLinkUrlFromOrderEvents = (order: OrderWithRelations) => {
   return null;
 };
 
-const orderHoldStillValid = (order: OrderWithRelations, nowMs = Date.now()) =>
-  order.createdAt.getTime() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000 > nowMs;
+const orderHoldStillValid = (
+  order: OrderWithRelations,
+  cartDeadlines: Date[],
+  now = new Date(),
+) =>
+  isPaymentLinkDeadlineUsable(
+    getPaymentLinkDeadline({
+      cartDeadlines,
+      paymentStartedAt: order.placedAt,
+    }),
+    now,
+  );
 
 const reusableOrderResponse = (
   order: OrderWithRelations,
@@ -232,18 +273,104 @@ const reusableOrderResponse = (
   reused: true,
 });
 
+const isOpenPaymentLinkForOrder = (
+  order: Pick<OrderWithRelations, "id" | "totalPaise">,
+  paymentLink: RazorpayPaymentLinkResponse | null | undefined,
+): paymentLink is RazorpayPaymentLinkResponse =>
+  Boolean(
+    paymentLink &&
+      paymentLink.reference_id === getRazorpayPaymentLinkReferenceId(order.id) &&
+      paymentLink.currency === "INR" &&
+      paymentLink.amount === order.totalPaise &&
+      paymentLink.short_url &&
+      (paymentLink.status == null || paymentLink.status === "created"),
+  );
+
+/**
+ * Ask Razorpay for this order's link by its unique reference.
+ *
+ * Only "absent" proves no link exists. A link that exists but is not this
+ * order's open link, or a malformed listing, stays "unresolved": nothing may be
+ * released or created again against it until reconciliation decides.
+ */
+const recoverPaymentLinkByReference = async (
+  order: Pick<OrderWithRelations, "id" | "totalPaise">,
+): Promise<
+  | { kind: "absent" }
+  | { kind: "open"; paymentLink: RazorpayPaymentLinkResponse }
+  | { kind: "unresolved" }
+> => {
+  const lookup = await lookupRazorpayPaymentLinkByReferenceId(
+    getRazorpayPaymentLinkReferenceId(order.id),
+  );
+  if (lookup.kind === "absent") return { kind: "absent" };
+  if (
+    lookup.kind === "found" &&
+    isOpenPaymentLinkForOrder(order, lookup.paymentLink)
+  ) {
+    return { kind: "open", paymentLink: lookup.paymentLink };
+  }
+  return { kind: "unresolved" };
+};
+
+const persistRecoveredPaymentLink = async (
+  order: OrderWithRelations,
+  paymentLink: RazorpayPaymentLinkResponse,
+) => {
+  const attached = await db
+    .update(orders)
+    .set({
+      razorpayOrderId: paymentLink.id,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(orders.id, order.id),
+        eq(orders.paymentStatus, "pending"),
+        or(
+          isNull(orders.razorpayOrderId),
+          eq(orders.razorpayOrderId, paymentLink.id),
+        ),
+      ),
+    )
+    .returning({ id: orders.id });
+
+  if (attached.length === 0) {
+    const current = await getOrder(order.id);
+    if (
+      current?.paymentStatus !== "pending" ||
+      current.razorpayOrderId !== paymentLink.id
+    ) {
+      throw new Error("RECOVERED_PAYMENT_LINK_CONFLICT");
+    }
+    return;
+  }
+
+  await addOrderEvent(order.id, "Razorpay payment link recovered", "pending", {
+    paymentLinkId: paymentLink.id,
+    paymentLinkUrl: paymentLink.short_url,
+  });
+};
+
 const resolveClaimedCheckoutAttempt = async ({
   attemptId,
+  cartDeadlines,
   cartFingerprint,
+  existingOrder,
   userId,
 }: {
   attemptId: string;
+  cartDeadlines: Date[];
   cartFingerprint: string;
+  existingOrder?: OrderWithRelations | null;
   userId: string;
 }) => {
-  const existing = await getOrderByIdempotencyKey(attemptId);
+  const existing =
+    existingOrder === undefined
+      ? await getOrderByIdempotencyKey(attemptId)
+      : existingOrder;
   if (!existing) {
-    return { kind: "progress" as const };
+    return { kind: "missing" as const };
   }
   if (existing.userId !== userId) {
     return { kind: "progress" as const };
@@ -254,20 +381,122 @@ const resolveClaimedCheckoutAttempt = async ({
   if (existing.paymentStatus !== "pending") {
     return { kind: "notReusable" as const };
   }
-  if (!orderHoldStillValid(existing)) {
+  if (!orderHoldStillValid(existing, cartDeadlines)) {
     return { kind: "notReusable" as const };
   }
   if (!existing.razorpayOrderId) {
-    return { kind: "progress" as const };
+    try {
+      const recovery = await recoverPaymentLinkByReference(existing);
+      // Only a confirmed empty lookup makes creating the link again safe.
+      if (recovery.kind === "absent") {
+        return { kind: "resume" as const, order: existing };
+      }
+      if (recovery.kind === "unresolved") return { kind: "progress" as const };
+      await persistRecoveredPaymentLink(existing, recovery.paymentLink);
+      return {
+        kind: "reusable" as const,
+        response: reusableOrderResponse(
+          { ...existing, razorpayOrderId: recovery.paymentLink.id },
+          recovery.paymentLink.short_url,
+        ),
+      };
+    } catch {
+      // An unreadable provider answer is not proof that no link exists, and
+      // resuming would ask Razorpay to create the same reference again.
+      return { kind: "progress" as const };
+    }
   }
   const paymentLinkUrl = paymentLinkUrlFromOrderEvents(existing);
   if (!paymentLinkUrl) {
-    return { kind: "progress" as const };
+    try {
+      const recovered = await fetchRazorpayPaymentLink(
+        existing.razorpayOrderId,
+      );
+      if (!isOpenPaymentLinkForOrder(existing, recovered)) {
+        return { kind: "progress" as const };
+      }
+      return {
+        kind: "reusable" as const,
+        response: reusableOrderResponse(existing, recovered.short_url),
+      };
+    } catch {
+      return { kind: "progress" as const };
+    }
   }
   return {
     kind: "reusable" as const,
     response: reusableOrderResponse(existing, paymentLinkUrl),
   };
+};
+
+/**
+ * Settle the shopper's own lapsed payment holds before checkout decides.
+ *
+ * Only a payment_pending line on this checkout can carry the exact current
+ * payment hold, so an ordinary checkout reads nothing extra. Each lapsed order
+ * goes through the same provider-aware command the cron and webhook use: an
+ * unpaid link hands back only the remaining cart time, a captured one
+ * completes, and anything unproven stays protected. A failure is logged and
+ * leaves the hold as it was. Returns true when any order was attempted, so
+ * the caller re-reads the bag before trusting it.
+ */
+const reconcileLapsedOwnPaymentHolds = async ({
+  cartItems,
+  productIds,
+  userId,
+}: {
+  cartItems: UserCartItemRow[];
+  productIds: string[];
+  userId: string;
+}) => {
+  const requestedProductIds = new Set(productIds);
+  const paymentPendingProductIds = cartItems
+    .filter(
+      (item) =>
+        item.status === "payment_pending" &&
+        requestedProductIds.has(item.productId),
+    )
+    .map((item) => item.productId);
+  if (paymentPendingProductIds.length === 0) return false;
+
+  let lapsedOrderIds: string[];
+  try {
+    lapsedOrderIds = await listLapsedOwnPaymentOrderIds({
+      now: new Date(),
+      productIds: paymentPendingProductIds,
+      userId,
+    });
+  } catch (error) {
+    logCreateOrder.warn("Lapsed payment hold lookup failed; holds stay protected", {
+      err: error as Record<string, unknown>,
+    });
+    return false;
+  }
+
+  const orderIds = lapsedOrderIds.slice(0, INLINE_PAYMENT_RECONCILE_LIMIT);
+  for (const orderId of orderIds) {
+    try {
+      const reconciliation = await reconcilePaymentHoldForOrder({
+        now: new Date(),
+        orderId,
+      });
+      if (reconciliation.kind === "released") {
+        const changedSlugs = [
+          ...new Set([
+            ...reconciliation.releasedSlugs,
+            ...reconciliation.restoredSlugs,
+          ]),
+        ];
+        if (changedSlugs.length > 0) revalidateProductsCache(changedSlugs);
+      }
+    } catch (error) {
+      logCreateOrder.warn("Inline payment hold reconciliation failed; the hold stays protected", {
+        err: error as Record<string, unknown>,
+        orderId,
+      });
+    }
+  }
+  return orderIds.length > 0;
 };
 
 const paymentLinkCallbackSchema = z.object({
@@ -510,6 +739,13 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       });
       if (rateLimited) return rateLimited;
 
+      /*
+       * Read once, here, while the shopper's cookies are on the request. It is
+       * stored on the order and reused when payment completes, which can
+       * happen in a webhook where no cookie exists.
+       */
+      const trackingConsent = consentFromRequest(c.req.raw);
+
       const body = c.req.valid("json");
 
       // Payment reliability: block live payments on unsafe hosts (vercel.app /
@@ -536,11 +772,28 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         null;
 
       const productIds = Array.from(new Set(body.items.map((item) => item.productId)));
-      const reservationTokenByProductId = new Map(
-        body.items.map((item) => [
-          item.productId,
-          verifyReservationToken(item.reservationToken),
-        ]),
+      /*
+       * Reservation ownership comes from the authenticated account's bag, not
+       * from a token supplied by the browser. The request still accepts the old
+       * optional field during the compatibility window, but it has no authority
+       * here and is never read.
+       */
+      let serverCartItems = await listUserCartItems(authUserOrResponse.id);
+      // Settle the shopper's own lapsed payment before anything below is read.
+      // A restored line then checks out as active under its original cart
+      // deadline, a released line is gone, a completed one answers sold, and a
+      // deferred one still answers PAYMENT_IN_PROGRESS with no new link.
+      if (
+        await reconcileLapsedOwnPaymentHolds({
+          cartItems: serverCartItems,
+          productIds,
+          userId: authUserOrResponse.id,
+        })
+      ) {
+        serverCartItems = await listUserCartItems(authUserOrResponse.id);
+      }
+      const serverCartItemByProductId = new Map(
+        serverCartItems.map((item) => [item.productId, item]),
       );
       const productRows = await timedRows("payments.createOrder.products", () =>
         db
@@ -571,13 +824,29 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         const product = productById.get(productId);
         return product?.typeId ? typeById.get(product.typeId)?.slug ?? null : null;
       };
-      // Blouses are made-to-order, not one-of-one: they are never reserved or
-      // marked sold. Only these product ids participate in the inventory claim.
+      // Payment ownership is persisted on the account-bag row. Catalogue type
+      // is mutable, so it cannot decide whether a line already carrying a hold
+      // participates in the one-of-one payment claim.
       const reservableProductIds = productIds.filter(
-        (productId) => !isBlouseProduct({ typeSlug: typeSlugForProductId(productId) }),
+        (productId) => {
+          const cartItem = serverCartItemByProductId.get(productId);
+          return Boolean(cartItem?.reservationToken || cartItem?.reservedUntil);
+        },
       );
+      const reservableProductIdSet = new Set(reservableProductIds);
+      const cartDeadlineByProductId = new Map(
+        reservableProductIds.flatMap((productId) => {
+          const item = serverCartItemByProductId.get(productId);
+          return item
+            ? [[productId, getCartReservationExpiresAt(item.addedAt)] as const]
+            : [];
+        }),
+      );
+      const reservableCartDeadlines = [
+        ...cartDeadlineByProductId.values(),
+      ];
       const now = new Date();
-      const validReservationTokens = new Map<string, Date>();
+      const ownedReservationTokens = new Map<string, string>();
       let claimedCheckoutAttemptOrderPromise: Promise<OrderWithRelations | null> | null = null;
       const getClaimedCheckoutAttemptOrder = () => {
         if (!checkoutAttemptId) return Promise.resolve(null);
@@ -590,7 +859,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           claimedOrder &&
             claimedOrder.userId === authUserOrResponse.id &&
             claimedOrder.paymentStatus === "pending" &&
-            orderHoldStillValid(claimedOrder) &&
+            orderHoldStillValid(claimedOrder, reservableCartDeadlines) &&
             claimedOrder.items.some((item) => item.productId === productId),
         );
       };
@@ -607,24 +876,83 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           );
         }
 
-        // Blouses are always available — skip the one-of-one availability checks.
-        if (isBlouseProduct({ typeSlug: typeSlugForProductId(productId) })) {
-          continue;
-        }
+        const cartItem = serverCartItemByProductId.get(productId);
 
+        // Sold is final. Product type is mutable, so the blouse exception may
+        // never run before this guard or a sold one-of-one product could be
+        // reclassified, treated as unreserved, and purchased again.
         if (product.stockStatus === "sold") {
-          return c.json(availabilityError("PRODUCT_SOLD", productId, product.name), 409);
-        }
-
-        const reservationToken = reservationTokenByProductId.get(productId);
-        if (reservationToken && reservationToken.reservedUntil <= now) {
           return c.json(
-            availabilityError("RESERVATION_EXPIRED", productId, product.name),
-            409
+            availabilityError("PRODUCT_SOLD", productId, product.name),
+            409,
           );
         }
 
+        // Blouses carry no stock hold, but they must still belong to this
+        // authenticated bag. Product ids posted directly by a browser are not
+        // checkout authority.
+        if (
+          !reservableProductIdSet.has(productId) &&
+          isBlouseProduct({ typeSlug: typeSlugForProductId(productId) })
+        ) {
+          if (!cartItem || cartItem.status !== "active") {
+            return c.json(
+              availabilityError("RESERVATION_CONFLICT", productId, product.name),
+              409,
+            );
+          }
+          continue;
+        }
+
         const isReserved = product.stockStatus === "reserved";
+        const isActiveReserved =
+          isReserved && product.reservedUntil != null && product.reservedUntil > now;
+        const reservationToken = verifyReservationToken(
+          cartItem?.reservationToken,
+        );
+        const originalCartDeadline = cartDeadlineByProductId.get(productId);
+        const reservationWithinOriginalCartWindow =
+          cartItem?.reservedUntil != null &&
+          originalCartDeadline != null &&
+          (cartItem.status === "payment_pending"
+            ? cartItem.reservedUntil <= originalCartDeadline
+            : cartItem.reservedUntil.getTime() ===
+              originalCartDeadline.getTime());
+        const hasExactReservationIdentity =
+          cartItem != null &&
+          cartItem.reservedUntil != null &&
+          reservationWithinOriginalCartWindow &&
+          reservationToken != null &&
+          reservationToken.productId === productId &&
+          reservationToken.reservedUntil > now &&
+          reservationToken.reservedUntil.getTime() ===
+            cartItem.reservedUntil.getTime() &&
+          product.reservedUntil != null &&
+          product.reservedUntil.getTime() === cartItem.reservedUntil.getTime();
+        /*
+         * The shopper's own open payment is answered before any expiry or
+         * ownership verdict. Only the exact hold of the attempt being resumed
+         * may continue. Any other payment_pending line stays protected until
+         * provider-aware reconciliation, even after its link deadline, so it
+         * must never read as expired or as another shopper's claim, and the
+         * client must never remove it.
+         */
+        if (cartItem?.status === "payment_pending") {
+          const hasMatchingPaymentReservation =
+            isActiveReserved &&
+            hasExactReservationIdentity &&
+            checkoutAttemptId != null &&
+            (await isClaimedCheckoutAttemptProduct(productId));
+          if (!hasMatchingPaymentReservation || !cartItem.reservationToken) {
+            return c.json(
+              availabilityError("PAYMENT_IN_PROGRESS", productId, product.name),
+              409,
+            );
+          }
+          ownedReservationTokens.set(productId, cartItem.reservationToken);
+          continue;
+        }
+
         const reservationExpired =
           isReserved &&
           (!product.reservedUntil || product.reservedUntil <= now);
@@ -635,36 +963,32 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           );
         }
 
-        const isActiveReserved =
-          isReserved && product.reservedUntil != null && product.reservedUntil > now;
-        const hasMatchingReservationToken =
-          reservationToken != null &&
-          reservationToken.productId === productId &&
-          reservationToken.reservedUntil > now &&
-          product.reservedUntil != null &&
-          Math.abs(product.reservedUntil.getTime() - reservationToken.reservedUntil.getTime()) <
-            1000;
-        const activeReservationBelongsToAttempt =
-          isActiveReserved && checkoutAttemptId
-            ? await isClaimedCheckoutAttemptProduct(productId)
-            : false;
-
-        if (isActiveReserved && !reservationToken && !activeReservationBelongsToAttempt) {
+        // No bag row is left for this line. Only a live hold on the piece is
+        // another shopper's claim. A piece that is free again means this
+        // shopper's own hold ended, for example released by the inline
+        // reconciliation above once its cart deadline had passed.
+        if (!cartItem) {
           return c.json(
-            availabilityError("PRODUCT_RESERVED", productId, product.name),
+            availabilityError(
+              isActiveReserved ? "PRODUCT_RESERVED" : "RESERVATION_EXPIRED",
+              productId,
+              product.name,
+            ),
             409
           );
         }
 
-        if (isActiveReserved && !hasMatchingReservationToken && !activeReservationBelongsToAttempt) {
+        const hasMatchingReservationToken =
+          cartItem.status === "active" && hasExactReservationIdentity;
+        if (!isActiveReserved || !hasMatchingReservationToken) {
           return c.json(
             availabilityError("RESERVATION_CONFLICT", productId, product.name),
             409
           );
         }
 
-        if (isActiveReserved && reservationToken) {
-          validReservationTokens.set(productId, reservationToken.reservedUntil);
+        if (cartItem.reservationToken) {
+          ownedReservationTokens.set(productId, cartItem.reservationToken);
         }
       }
 
@@ -813,84 +1137,16 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         totalPaise,
       });
 
+      let resumableOrder: OrderWithRelations | null = null;
       if (checkoutAttemptId) {
-        const reusable = await findReusablePaymentOrder({
-          attemptId: checkoutAttemptId,
-          cartFingerprint: serverCartFingerprint,
-          userId: authUserOrResponse.id,
-        });
-        if (reusable) {
-          return c.json(reusable, 200);
-        }
-      }
-
-	      // Cap check: max 3 live pending payment links per authenticated customer.
-	      // Race window exists; durable limiting is P2-06.
-	      const linkExpiryMs = RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000;
-	      const pendingCount = await timedRows("payments.createOrder.pendingCount", () =>
-	        db
-          .select({ c: count() })
-          .from(orders)
-	          .where(
-	            and(
-	              eq(orders.userId, authUserOrResponse.id),
-	              eq(orders.paymentStatus, "pending"),
-	              gt(orders.createdAt, new Date(Date.now() - linkExpiryMs))
-	            )
-          ),
-	      );
-      if ((pendingCount[0]?.c ?? 0) >= 3) {
-        return c.json(
-          {
-            code: "TOO_MANY_PENDING_ORDERS",
-            message: "Too many pending orders for this email.",
-          },
-          429
-        );
-      }
-
-      let order: OrderWithRelations;
-      try {
-        order = await timed("payments.createOrder.createOrder", () => createOrder({
-          cartFingerprint: checkoutAttemptId ? serverCartFingerprint : null,
-          idempotencyKey: checkoutAttemptId,
-          items: normalizedItems,
-          paymentGateway: "razorpay",
-          paymentStatus: "pending",
-          razorpayOrderId: null,
-          shippingCity: body.shippingAddress.city,
-          shippingCostPaise,
-          shippingCountry: body.shippingAddress.country,
-          shippingEmail: emailLower,
-          shippingLine1: body.shippingAddress.line1,
-          shippingLine2: body.shippingAddress.line2 ?? null,
-          shippingMethod: body.shippingMethod,
-          shippingName,
-          shippingPhone: body.shippingAddress.phone ?? null,
-          shippingPostalCode: body.shippingAddress.postalCode,
-          shippingState: body.shippingAddress.state ?? null,
-          status: "pending",
-          subtotalPaise,
-          taxAmountPaise,
-          taxRate: String(GST_RATE),
-          totalPaise,
-          userId: authUserOrResponse.id,
-          // P6-02: Persist discount association so completePaidOrder can
-          // increment usageCount atomically on payment confirmation.
-          discountId: validatedDiscount?.id ?? null,
-          discountCode: validatedDiscount?.code ?? null,
-          isGift: isGiftOrder,
-          giftFrom,
-          giftMessage,
-        }));
-      } catch (error) {
-        if (!checkoutAttemptId || !isOrderIdempotencyConflict(error)) {
-          throw error;
-        }
-
+        const claimedOrder = claimedCheckoutAttemptOrderPromise
+          ? await claimedCheckoutAttemptOrderPromise
+          : undefined;
         const resolution = await resolveClaimedCheckoutAttempt({
           attemptId: checkoutAttemptId,
+          cartDeadlines: reservableCartDeadlines,
           cartFingerprint: serverCartFingerprint,
+          existingOrder: claimedOrder,
           userId: authUserOrResponse.id,
         });
         if (resolution.kind === "reusable") {
@@ -902,137 +1158,276 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         if (resolution.kind === "notReusable") {
           return c.json(checkoutAttemptNotReusableBody, 409);
         }
-        c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
-        return c.json(checkoutInProgressBody, 409);
+        if (resolution.kind === "progress") {
+          c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+          return c.json(checkoutInProgressBody, 409);
+        }
+        if (resolution.kind === "resume") {
+          resumableOrder = resolution.order;
+        }
       }
 
-      // Fire-and-forget: order_created event — emitted immediately after order is persisted.
-      // emitAnalyticsEvent() never throws; errors are caught + logged inside.
-      void emitAnalyticsEvent({
-          event_id: randomUUID(),
-        type: "order_created",
-        payload: {
-          orderId: order.id,
-          totalPaise,
-          subtotalPaise,
-          discountAmountPaise,
-          discountCode: body.discountCode ?? null,
-          shippingCostPaise,
-          taxAmountPaise,
-          shippingMethod: body.shippingMethod,
-          productIds,
-        },
-        occurredAt: new Date(),
+      // Cap check: max 3 live pending payment links per authenticated customer.
+      // A resumed idempotent attempt is already in that count and must not be
+      // rejected as if it were a fourth new checkout.
+      if (!resumableOrder) {
+        const linkExpiryMs = RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000;
+        const pendingCount = await timedRows("payments.createOrder.pendingCount", () =>
+          db
+            .select({ c: count() })
+            .from(orders)
+            .where(
+              and(
+                eq(orders.userId, authUserOrResponse.id),
+                eq(orders.paymentStatus, "pending"),
+                gt(orders.createdAt, new Date(Date.now() - linkExpiryMs)),
+              ),
+            ),
+        );
+        if ((pendingCount[0]?.c ?? 0) >= 3) {
+          return c.json(
+            {
+              code: "TOO_MANY_PENDING_ORDERS",
+              message: "Too many pending orders for this email.",
+            },
+            429,
+          );
+        }
+      }
+
+      const requestedPaymentStartedAt = resumableOrder?.placedAt ?? new Date();
+      const requestedPaymentDeadline = getPaymentLinkDeadline({
+        cartDeadlines: reservableCartDeadlines,
+        paymentStartedAt: requestedPaymentStartedAt,
       });
+      if (!isPaymentLinkDeadlineUsable(requestedPaymentDeadline)) {
+        return c.json(
+          availabilityError(
+            "RESERVATION_EXPIRED",
+            reservableProductIds[0] ?? productIds[0] ?? "unknown",
+          ),
+          409,
+        );
+      }
 
-      const reservedUntil = new Date(
-        Date.now() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000
-      );
+      let order: OrderWithRelations;
+      let createdOrderNow = false;
+      if (resumableOrder) {
+        order = resumableOrder;
+      } else {
+        try {
+          order = await timed("payments.createOrder.createOrder", () =>
+            createOrder({
+              /*
+               * Captured here, while the shopper's browser is present. Payment
+               * may complete later through a webhook with no cookies to read,
+               * and completePaidOrder reads these back rather than guessing.
+               */
+              advertisingConsent: trackingConsent.advertising,
+              analyticsConsent: trackingConsent.analytics,
+              cartFingerprint: checkoutAttemptId
+                ? serverCartFingerprint
+                : null,
+              idempotencyKey: checkoutAttemptId,
+              items: normalizedItems,
+              paymentGateway: "razorpay",
+              paymentStatus: "pending",
+              placedAt: requestedPaymentStartedAt,
+              razorpayOrderId: null,
+              shippingCity: body.shippingAddress.city,
+              shippingCostPaise,
+              shippingCountry: body.shippingAddress.country,
+              shippingEmail: emailLower,
+              shippingLine1: body.shippingAddress.line1,
+              shippingLine2: body.shippingAddress.line2 ?? null,
+              shippingMethod: body.shippingMethod,
+              shippingName,
+              shippingPhone: body.shippingAddress.phone ?? null,
+              shippingPostalCode: body.shippingAddress.postalCode,
+              shippingState: body.shippingAddress.state ?? null,
+              status: "pending",
+              subtotalPaise,
+              taxAmountPaise,
+              taxRate: String(GST_RATE),
+              totalPaise,
+              userId: authUserOrResponse.id,
+              // P6-02: Persist discount association so completePaidOrder can
+              // increment usageCount atomically on payment confirmation.
+              discountId: validatedDiscount?.id ?? null,
+              discountCode: validatedDiscount?.code ?? null,
+              isGift: isGiftOrder,
+              giftFrom,
+              giftMessage,
+              initialEvent: {
+                note: "Order created",
+                payload: { reservableProductIds },
+                status: "pending",
+              },
+            }),
+          );
+          createdOrderNow = true;
+        } catch (error) {
+          if (!checkoutAttemptId || !isOrderIdempotencyConflict(error)) {
+            throw error;
+          }
 
-      // ── Inventory claim ──────────────────────────────────────────────────
-      // FLAG OFF (default): existing stock_status atomic claim — EXACTLY as before.
-      // FLAG ON: insertReservation is now the atomic single-statement quantity
-      //   pre-check (P4-05); it eliminates the read-then-insert window but is NOT
-      //   the authoritative concurrency guard. Both flag states fall through to the
-      //   stock_status UPDATE below, which is the authoritative concurrency guard
-      //   in both flag states (see comment above that UPDATE).
-      // Dual-write (quantity_available + reservations table) occurs in BOTH paths.
-
-      if (isInventoryV2()) {
-        // Pre-check: ensure quantity_available >= 1 for every one-of-one product.
-        // Throws "QUANTITY_INSUFFICIENT" if any product has qty=0.
-        for (const productId of reservableProductIds) {
-          try {
-            await insertReservation({
-              orderId: order.id,
-              productId,
-              qty: 1,
-              expiresAt: reservedUntil,
-            });
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (msg === "QUANTITY_INSUFFICIENT") {
-              // Clean up any reservations already inserted for earlier products
-              await releaseReservationsByProducts(reservableProductIds.slice(0, reservableProductIds.indexOf(productId)));
-              await db
-                .update(orders)
-                .set({ paymentStatus: "failed", updatedAt: new Date() })
-                .where(eq(orders.id, order.id));
-              return c.json(
-                availabilityError("PRODUCT_RESERVED", productId),
-                409
-              );
-            }
-            throw err;
+          const resolution = await resolveClaimedCheckoutAttempt({
+            attemptId: checkoutAttemptId,
+            cartDeadlines: reservableCartDeadlines,
+            cartFingerprint: serverCartFingerprint,
+            userId: authUserOrResponse.id,
+          });
+          if (resolution.kind === "reusable") {
+            return c.json(resolution.response, 200);
+          }
+          if (resolution.kind === "cartChanged") {
+            return c.json(checkoutCartChangedBody, 409);
+          }
+          if (resolution.kind === "notReusable") {
+            return c.json(checkoutAttemptNotReusableBody, 409);
+          }
+          if (resolution.kind === "resume") {
+            order = resolution.order;
+          } else {
+            c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+            return c.json(checkoutInProgressBody, 409);
           }
         }
       }
 
-      // Atomic stock_status claim (both flag OFF and flag ON use this as the
-      // primary concurrency guard; it is unchanged from the pre-P2-05 code).
-      const reservedRows = await db
-        .update(products)
-        .set({
-          reservedUntil,
-          stockStatus: "reserved",
-          // Dual-write: quantity_available stays at 1 during reserve phase
-          // (the reservation row tracks the hold; qty drops to 0 only on sold).
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            inArray(products.id, reservableProductIds),
-            or(
-              eq(products.stockStatus, "available"),
-              and(
-                eq(products.stockStatus, "reserved"),
-                isNotNull(products.reservedUntil),
-                lt(products.reservedUntil, now)
-              ),
-              ...Array.from(validReservationTokens.entries()).map(
-                ([productId, reservedUntil]) =>
-                  and(
-                    eq(products.id, productId),
-                    eq(products.stockStatus, "reserved"),
-                    eq(products.reservedUntil, reservedUntil),
-                  ),
-              )
-            )
-          )
-        )
-        .returning({ id: products.id, slug: products.slug });
+      // Fill only what the account is missing, from the owner's own details.
+      // A gift order's name and phone belong to the recipient, and the verified
+      // login email is never touched. Best effort: it may never block payment.
+      if (createdOrderNow && !isGiftOrder) {
+        try {
+          await fillMissingCheckoutProfile({
+            name: shippingName,
+            now: new Date(),
+            phone: body.shippingAddress.phone,
+            userId: authUserOrResponse.id,
+          });
+        } catch (profileError) {
+          logCreateOrder.warn("Failed to fill missing checkout profile (non-fatal)", {
+            err: profileError as Record<string, unknown>,
+          });
+        }
+      }
+
+      // Fire-and-forget: order_created event — emitted immediately after order is persisted.
+      // emitAnalyticsEvent() never throws; errors are caught + logged inside.
+      if (createdOrderNow)
+        void emitAnalyticsEvent({
+          consent: trackingConsent,
+          event_id: randomUUID(),
+          type: "order_created",
+          payload: {
+            orderId: order.id,
+            totalPaise,
+            subtotalPaise,
+            discountAmountPaise,
+            discountCode: body.discountCode ?? null,
+            shippingCostPaise,
+            taxAmountPaise,
+            shippingMethod: body.shippingMethod,
+            productIds,
+          },
+          occurredAt: new Date(),
+        });
+
+      const paymentLinkExpiresAt = getPaymentLinkDeadline({
+        cartDeadlines: reservableCartDeadlines,
+        paymentStartedAt: order.placedAt,
+      });
+      if (!isPaymentLinkDeadlineUsable(paymentLinkExpiresAt)) {
+        return c.json(
+          availabilityError(
+            "RESERVATION_EXPIRED",
+            reservableProductIds[0] ?? productIds[0] ?? "unknown",
+          ),
+          409,
+        );
+      }
+
+      // ── Inventory + account-bag payment claim ───────────────────────────
+      // The old path trusted browser-supplied tokens and updated only products.
+      // This command locks the authenticated account's exact bag rows, verifies
+      // that every product still carries those holds, re-signs the new payment
+      // expiry, writes the order reservation, and marks the rows payment_pending
+      // as one guarded SQL statement.
+      const paymentClaims = reservableProductIds.flatMap((productId) => {
+        const currentReservationToken = ownedReservationTokens.get(productId);
+        if (!currentReservationToken) return [];
+        return [
+          {
+            currentReservationToken,
+            paymentReservationToken: createReservationToken({
+              productId,
+              reservedUntil: paymentLinkExpiresAt,
+            }),
+            productId,
+          },
+        ];
+      });
+      const paymentRestorations = paymentClaims.flatMap((claim) => {
+        const cartDeadline = cartDeadlineByProductId.get(claim.productId);
+        if (!cartDeadline) return [];
+        return [
+          {
+            cartDeadline,
+            paymentReservationToken: claim.paymentReservationToken,
+            productId: claim.productId,
+            restorationReservationToken: createReservationToken({
+              productId: claim.productId,
+              reservedUntil: cartDeadline,
+            }),
+          },
+        ];
+      });
+      // The claim's liveness checks take a clock read right here. The order's
+      // placedAt was stamped after the handler's `now`, and its ten-minute cap
+      // must never be judged against that earlier instant.
+      const claimNow = new Date();
+      const reservedRows =
+        paymentClaims.length === reservableProductIds.length
+          ? await startPaymentForOwnedCartItems({
+              items: paymentClaims,
+              now: claimNow,
+              orderId: order.id,
+              reservedUntil: paymentLinkExpiresAt,
+              userId: authUserOrResponse.id,
+            })
+          : [];
 
       if (reservedRows.length !== reservableProductIds.length) {
-        const reservedProductIds = reservedRows.map((row) => row.id);
-        if (reservedProductIds.length > 0) {
-          await db
-            .update(products)
-            .set({
-              reservedUntil: null,
-              stockStatus: "available",
-              updatedAt: new Date(),
-            })
-            .where(inArray(products.id, reservedProductIds));
-
-          revalidateProductsCache(reservedRows.map((row) => row.slug));
-        }
-
-        // Dual-write: release any reservations rows we inserted in the v2 path
-        if (isInventoryV2()) {
-          await releaseReservationsByProducts(reservableProductIds);
-        }
-
-        await db
-          .update(orders)
-          .set({
-            paymentStatus: "failed",
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, order.id));
-
+        // A retry can reach this point after the cart was already upgraded to
+        // payment_pending. Bare-marking that order failed would invalidate a
+        // possibly-live provider link while leaving its inventory hold alive.
+        // Keep ambiguous state pending for exact expiry reconciliation.
+        //
+        // An order created by this request that claimed nothing is different:
+        // it has no hold and no link, so leaving it pending only counted
+        // against the pending cap and offered Repay for pieces it never held.
+        // The guard refuses the write if anything was attached meanwhile.
+        const markedFailed =
+          createdOrderNow && reservedRows.length === 0
+            ? await db
+                .update(orders)
+                .set({ paymentStatus: "failed", updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(orders.id, order.id),
+                    eq(orders.userId, authUserOrResponse.id),
+                    eq(orders.paymentStatus, "pending"),
+                    isNull(orders.razorpayOrderId),
+                    sql`not exists (select 1 from ${reservations} where ${reservations.orderId} = ${orders.id})`,
+                  ),
+                )
+                .returning({ id: orders.id })
+            : [];
         await addOrderEvent(order.id, "Checkout reservation failed", "pending", {
+          markedFailed: markedFailed.length > 0,
           requestedProductIds: reservableProductIds,
-          reservedProductIds,
+          reservedProductIds: reservedRows.map((row) => row.productId),
         });
 
         return c.json(
@@ -1042,6 +1437,43 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       }
 
       revalidateProductsCache(reservedRows.map((row) => row.slug));
+
+      const resolveDefinitiveUnpaidAttempt = async (cleanupNow: Date) => {
+        const result = await releasePaymentCartItems({
+          items: paymentRestorations,
+          now: cleanupNow,
+          orderId: order.id,
+          reservedUntil: paymentLinkExpiresAt,
+          userId: authUserOrResponse.id,
+        });
+        const changedSlugs = [
+          ...new Set([...result.releasedSlugs, ...result.restoredSlugs]),
+        ];
+        if (changedSlugs.length > 0) revalidateProductsCache(changedSlugs);
+        return result;
+      };
+
+      // `expire_by` is a whole Unix second. If the exact capped deadline can no
+      // longer be represented as a future second, do not call Razorpay at all.
+      // The provider outcome is therefore definitive and the exact local claim
+      // can be restored/released atomically.
+      const providerCreateStartedAt = new Date();
+      if (!isPaymentLinkDeadlineUsable(paymentLinkExpiresAt, providerCreateStartedAt)) {
+        const cleanup = await resolveDefinitiveUnpaidAttempt(
+          providerCreateStartedAt,
+        );
+        if (cleanup.kind !== "released" && cleanup.kind !== "already_failed") {
+          c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+          return c.json(checkoutInProgressBody, 503);
+        }
+        return c.json(
+          availabilityError(
+            "RESERVATION_EXPIRED",
+            reservableProductIds[0] ?? productIds[0] ?? "unknown",
+          ),
+          409,
+        );
+      }
 
       let paymentLink: RazorpayPaymentLinkResponse;
       try {
@@ -1054,37 +1486,40 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             name: shippingName,
           },
           description: toPaymentDescription(order.id, normalizedItems),
-          expireBy: reservedUntil,
+          expireBy: paymentLinkExpiresAt,
           notes: {
             orderId: order.id,
             userId: authUserOrResponse.id,
-	            ...(checkoutAttemptId ? { checkoutAttemptId } : {}),
-	            ...(checkoutAttemptId ? { cartFingerprint: serverCartFingerprint } : {}),
-	          },
+            ...(checkoutAttemptId ? { checkoutAttemptId } : {}),
+            ...(checkoutAttemptId ? { cartFingerprint: serverCartFingerprint } : {}),
+          },
           referenceId: getRazorpayPaymentLinkReferenceId(order.id),
         });
       } catch (error) {
-        await db
-          .update(products)
-          .set({
-            reservedUntil: null,
-            stockStatus: "available",
-            updatedAt: new Date(),
-          })
-          .where(inArray(products.id, reservableProductIds));
-        revalidateProductsCache(productRows.map((product) => product.slug));
-
-        // Dual-write: release reservation rows on Razorpay failure
-        if (isInventoryV2()) {
-          await releaseReservationsByProducts(reservableProductIds);
-        }
-
-        await db
-          .update(orders)
-          .set({ paymentStatus: "failed", updatedAt: new Date() })
-          .where(eq(orders.id, order.id));
-
         if (isRazorpayAuthError(error)) {
+          // A 401 is a definitive rejection: Razorpay did not create a link,
+          // so the exact payment claim can be safely unwound now.
+          const releaseResult = await resolveDefinitiveUnpaidAttempt(new Date());
+          if (
+            releaseResult.kind !== "released" &&
+            releaseResult.kind !== "already_failed"
+          ) {
+            await addOrderEvent(
+              order.id,
+              "Razorpay authentication rejection cleanup deferred",
+              "pending",
+              { cleanupResult: releaseResult.kind },
+            );
+            c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+            return c.json(
+              {
+                code: "CHECKOUT_IN_PROGRESS",
+                message:
+                  "Payment was not started, but checkout cleanup is still being verified. Please try again shortly.",
+              },
+              503,
+            );
+          }
           return c.json(
             {
               code: "RAZORPAY_AUTH_FAILED",
@@ -1094,14 +1529,75 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           );
         }
 
-        logCreateOrder.error("Razorpay payment link creation failed", { err: error as Record<string, unknown> });
-        return c.json(
-          {
-            code: "RAZORPAY_PAYMENT_LINK_CREATE_FAILED",
-            message: "Unable to create Razorpay payment link.",
-          },
-          500
+        /*
+         * Anything else is ambiguous until the unique reference answers: a
+         * timeout may hide a link Razorpay created, and notified the customer
+         * about, that this server never saw. An open link for this order is
+         * reused. A validation rejection (400) is definitive only when the
+         * lookup confirms no link exists; then the exact claim is unwound to
+         * the original cart deadline. Every other outcome keeps the hold
+         * protected with no new link until reconciliation resolves it, since
+         * releasing could double-sell a link that is already payable.
+         */
+        const recovery = await recoverPaymentLinkByReference(order).catch(
+          () => ({ kind: "unresolved" as const }),
         );
+        if (recovery.kind !== "open") {
+          if (recovery.kind === "absent" && isRazorpayBadRequest(error)) {
+            logCreateOrder.error("Razorpay rejected the payment link request", {
+              err: error as Record<string, unknown>,
+            });
+            const releaseResult = await resolveDefinitiveUnpaidAttempt(new Date());
+            if (
+              releaseResult.kind !== "released" &&
+              releaseResult.kind !== "already_failed"
+            ) {
+              await addOrderEvent(
+                order.id,
+                "Razorpay payment link rejection cleanup deferred",
+                "pending",
+                { cleanupResult: releaseResult.kind },
+              );
+              c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+              return c.json(
+                {
+                  code: "CHECKOUT_IN_PROGRESS",
+                  message:
+                    "Payment was not started, but checkout cleanup is still being verified. Please try again shortly.",
+                },
+                503,
+              );
+            }
+            return c.json(
+              {
+                code: "RAZORPAY_PAYMENT_LINK_REJECTED",
+                message:
+                  "We could not start the payment. You have not been charged. Please try again.",
+              },
+              502,
+            );
+          }
+
+          logCreateOrder.error("Razorpay payment link creation outcome unknown", {
+            err: error as Record<string, unknown>,
+          });
+          await addOrderEvent(
+            order.id,
+            "Razorpay payment link creation outcome unknown",
+            "pending",
+            { releaseDeferred: true, retryable: true },
+          );
+          c.header("Retry-After", String(CHECKOUT_IN_PROGRESS_RETRY_SECONDS));
+          return c.json(
+            {
+              code: "RAZORPAY_PAYMENT_LINK_CREATE_UNKNOWN",
+              message:
+                "Your secure payment link is still being checked. Please try again shortly.",
+            },
+            503,
+          );
+        }
+        paymentLink = recovery.paymentLink;
       }
 
       await db
@@ -1132,7 +1628,7 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
             paymentLinkUrl: paymentLink.short_url,
             amountPaise: totalPaise,
             currency: "INR",
-            expiresAt: reservedUntil,
+            expiresAt: paymentLinkExpiresAt,
           });
         } catch (attemptErr) {
           logCreateOrder.warn("Failed to record checkout attempt (non-fatal)", {
@@ -1223,21 +1719,33 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (order.paymentStatus === "refunded") {
         return c.json({ code: "ORDER_REFUNDED", message: "This order has been refunded." }, 409);
       }
-      if (!order.razorpayOrderId) {
-        return c.json(
-          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
-          409
-        );
+      /*
+       * Repay only re-surfaces a link while the order still owns its exact
+       * live hold. A failed order's pieces were already restored or released,
+       * and a provider link can outlive the server deadline, so handing it out
+       * after that point would open a payment window the policy forbids.
+       */
+      if (
+        order.paymentStatus !== "pending" ||
+        !order.userId ||
+        !order.razorpayOrderId
+      ) {
+        return c.json(paymentWindowExpiredBody, 409);
+      }
+      const liveHold = await getLivePaymentHoldForOrder({
+        now: new Date(),
+        orderId: order.id,
+        userId: order.userId,
+      });
+      if (!liveHold) {
+        return c.json(paymentWindowExpiredBody, 409);
       }
 
       let link: RazorpayPaymentLinkResponse;
       try {
         link = await fetchRazorpayPaymentLink(order.razorpayOrderId);
       } catch {
-        return c.json(
-          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
-          409
-        );
+        return c.json(paymentWindowExpiredBody, 409);
       }
 
       if (link.status === "paid") {
@@ -1246,14 +1754,19 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
           409
         );
       }
-      if (link.status && link.status !== "created" && link.status !== "partially_paid") {
-        return c.json(
-          { code: "PAYMENT_WINDOW_EXPIRED", message: "This order's payment window has expired. Please reorder the pieces." },
-          409
-        );
+      // accept_partial is off, so only a still-created link is payable.
+      if (link.status != null && link.status !== "created") {
+        return c.json(paymentWindowExpiredBody, 409);
       }
 
-      return c.json({ orderId: order.id, paymentLinkUrl: link.short_url }, 200);
+      return c.json(
+        {
+          expiresAt: liveHold.expiresAt.toISOString(),
+          orderId: order.id,
+          paymentLinkUrl: link.short_url,
+        },
+        200,
+      );
     }
   );
 
@@ -1456,7 +1969,11 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
     }),
     async (c) => {
       const query = c.req.valid("query");
-      const failureUrl = getOrderConfirmationUrl(c.req.url, query.orderId, "review");
+      // Never put a caller-supplied order id or an access token into an error
+      // redirect. This endpoint is public because Razorpay calls it; an order
+      // key is minted only after the signed callback is bound to the exact
+      // provider link and deterministic order reference below.
+      const failureUrl = getOrderConfirmationUrl(c.req.url, undefined, "review");
 
       if (
         !query.razorpay_payment_id ||
@@ -1475,7 +1992,6 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.redirect(failureUrl.toString());
       }
 
-      const redirectUrl = getOrderConfirmationUrl(c.req.url, order.id);
       const signedByRazorpay = verifyPaymentLinkSignature({
         paymentId: query.razorpay_payment_id,
         paymentLinkId: query.razorpay_payment_link_id,
@@ -1483,15 +1999,20 @@ export const registerPaymentRoutes = (app: OpenAPIHono<HonoBindings>) => {
         paymentLinkStatus: query.razorpay_payment_link_status,
         signature: query.razorpay_signature,
       });
+      const callbackMatchesOrder =
+        order.razorpayOrderId === query.razorpay_payment_link_id &&
+        query.razorpay_payment_link_reference_id ===
+          getRazorpayPaymentLinkReferenceId(order.id);
 
-      if (!signedByRazorpay || order.razorpayOrderId !== query.razorpay_payment_link_id) {
+      if (!signedByRazorpay || !callbackMatchesOrder) {
         await addOrderEvent(order.id, "Razorpay payment link signature rejected", order.status, {
           paymentLinkId: query.razorpay_payment_link_id,
           paymentLinkStatus: query.razorpay_payment_link_status,
         });
-        redirectUrl.searchParams.set("payment", "review");
-        return c.redirect(redirectUrl.toString());
+        return c.redirect(failureUrl.toString());
       }
+
+      const redirectUrl = getOrderConfirmationUrl(c.req.url, order.id);
 
       if (query.razorpay_payment_link_status !== "paid") {
         await addOrderEvent(order.id, "Razorpay payment link not paid", order.status, {

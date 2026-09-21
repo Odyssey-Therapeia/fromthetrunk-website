@@ -4,7 +4,7 @@
  * GET  /           list product IDs for authed user
  * POST /           add to wishlist (idempotent)
  * DELETE /         remove from wishlist
- * POST /notify     capture restock intent for sold/reserved items
+ * POST /notify     register an availability email only while another shopper holds the piece
  *
  * All mutations emit fire-and-forget analytics events (P2-07).
  * A throwing sink MUST NOT fail the action (caught + logged per emitAnalyticsEvent contract).
@@ -20,6 +20,11 @@ import { db } from "@/db";
 import { products, wishlistItems } from "@/db/schema";
 import { rateLimitResponse } from "@/lib/http/rate-limit";
 import {
+  expireCommerceHoldsForProducts,
+  getViewerStateRows,
+} from "@/db/queries/user-cart";
+import { getUserById } from "@/db/queries/users";
+import {
   addToWishlist,
   listWishlistProductIds,
   mergeGuestWishlist,
@@ -27,16 +32,77 @@ import {
   upsertRestockNotifyRequest,
 } from "@/db/queries/wishlist";
 import { emitAnalyticsEvent } from "@/lib/analytics/emit";
+import { consentFromRequest } from "@/lib/analytics/server-consent";
+import {
+  resolveViewerState,
+  type ViewerProductState,
+} from "@/lib/commerce/viewer-state";
 
 const MAX_WISHLIST_MERGE_ITEMS = 100;
+
+const VIEWER_PRODUCT_STATES = [
+  "available",
+  "in_my_cart",
+  "payment_pending",
+  "reserved_by_other",
+  "sold",
+] as const satisfies readonly ViewerProductState[];
+
+/*
+ * A refused Notify Me answers with the shopper's current verdict, so the
+ * control they clicked can settle on the right state instead of a generic
+ * "try again". Only reserved_by_other offers Notify Me; if the verdict still
+ * says so, the hold changed between the atomic write and this read.
+ */
+const NOTIFY_REFUSALS: Record<
+  ViewerProductState,
+  {
+    code:
+      | "NOTIFY_NOT_ELIGIBLE"
+      | "NOTIFY_OWN_HOLD"
+      | "PRODUCT_AVAILABLE"
+      | "PRODUCT_SOLD";
+    message: string;
+  }
+> = {
+  available: {
+    code: "PRODUCT_AVAILABLE",
+    message: "This piece is available now.",
+  },
+  in_my_cart: {
+    code: "NOTIFY_OWN_HOLD",
+    message: "This piece is already in your bag.",
+  },
+  payment_pending: {
+    code: "NOTIFY_OWN_HOLD",
+    message: "This piece is already in your bag.",
+  },
+  reserved_by_other: {
+    code: "NOTIFY_NOT_ELIGIBLE",
+    message: "Notify Me is not available for this piece right now.",
+  },
+  sold: {
+    code: "PRODUCT_SOLD",
+    message: "This saree has found its next home.",
+  },
+};
+
+const notifyRefusalSchema = errorSchema.extend({
+  reservedUntil: z.string().nullable(),
+  viewerState: z.enum(VIEWER_PRODUCT_STATES),
+});
 
 const wishlistMutationSchema = z.object({
   productId: z.string().uuid(),
 });
 
+/*
+ * Product only. The address comes from the verified account, never the
+ * browser: a body-supplied email would let anyone subscribe a stranger to
+ * mail about a saree they never looked at.
+ */
 const wishlistNotifySchema = z.object({
   productId: z.string().uuid(),
-  email: z.string().trim().email().max(320),
 });
 
 const wishlistMergeSchema = z.object({
@@ -86,6 +152,12 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
           },
           description: "Product not found",
         },
+        409: {
+          content: {
+            "application/json": { schema: errorSchema },
+          },
+          description: "Sold products cannot be newly saved",
+        },
       },
       tags: ["Wishlist"],
     }),
@@ -107,7 +179,11 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
 	      const body = c.req.valid("json");
 
       const [existingProduct] = await db
-        .select({ id: products.id, name: products.name })
+        .select({
+          id: products.id,
+          name: products.name,
+          stockStatus: products.stockStatus,
+        })
         .from(products)
         .where(
           and(
@@ -126,10 +202,35 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      await addToWishlist(authUserOrResponse.id, body.productId);
+      if (existingProduct.stockStatus === "sold") {
+        return c.json(
+          {
+            code: "PRODUCT_SOLD",
+            message: "This saree has found its next home.",
+          },
+          409,
+        );
+      }
+
+      /*
+       * The query repeats the sold check while holding the product row. This
+       * closes the gap between the display lookup above and payment completion
+       * without changing idempotent repeat saves.
+       */
+      const saved = await addToWishlist(authUserOrResponse.id, body.productId);
+      if (!saved) {
+        return c.json(
+          {
+            code: "PRODUCT_SOLD",
+            message: "This saree has found its next home.",
+          },
+          409,
+        );
+      }
 
       // Fire-and-forget demand signal — MUST NOT block or fail the action.
       void emitAnalyticsEvent({
+        consent: consentFromRequest(c.req.raw),
         event_id: crypto.randomUUID(),
         type: "wishlist_added",
         payload: {
@@ -184,6 +285,7 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
 
       // Fire-and-forget demand signal — MUST NOT block or fail the action.
       void emitAnalyticsEvent({
+        consent: consentFromRequest(c.req.raw),
         event_id: crypto.randomUUID(),
         type: "wishlist_removed",
         payload: {
@@ -219,6 +321,13 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
           },
           description: "Product not found",
         },
+        409: {
+          content: {
+            "application/json": { schema: notifyRefusalSchema },
+          },
+          description:
+            "Notify Me refused; carries the viewer's current verdict",
+        },
         429: {
           content: {
             "application/json": { schema: errorSchema },
@@ -238,48 +347,123 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
       });
       if (rateLimited) return rateLimited;
 
-      // Auth is optional for notify — guests can register by email.
-      const authUser = c.get("authUser");
+      /*
+       * Authenticated only. Commerce is authenticated-first, so the shopper
+       * has already signed in through the commerce popup by the time this
+       * runs, and their verified address is the one we mail.
+       */
+      const authUserOrResponse = requireAuth(c);
+      if (authUserOrResponse instanceof Response) return authUserOrResponse;
       const body = c.req.valid("json");
 
-      const [existingProduct] = await db
-        .select({ id: products.id, stockStatus: products.stockStatus })
-        .from(products)
-        .where(
-          and(
-            eq(products.id, body.productId),
-            inArray(products.status, ["draft", "published"])
-          )
-        )
-        .limit(1);
-      if (!existingProduct) {
+      /*
+       * The address is the account's current one, read from the database. A
+       * verified email change does not refresh the session token, so the
+       * token's copy can name an address the account no longer has.
+       */
+      const account = await getUserById(authUserOrResponse.id);
+      if (!account?.email) {
         return c.json(
           {
-            code: "PRODUCT_NOT_FOUND",
-            message: "Product not found.",
+            code: "EMAIL_REQUIRED",
+            message: "Your account has no email address to notify.",
           },
-          404
+          400
         );
       }
 
-      // Persist the intent (durable, de-duped by composite PK).
-      await upsertRestockNotifyRequest(
+      /*
+       * The database both verifies that another shopper holds this published
+       * piece and persists the intent in one INSERT ... SELECT. A separate
+       * read followed by an UPSERT could register a notification after the
+       * product had already become available or sold.
+       */
+      const registered = await upsertRestockNotifyRequest(
         body.productId,
-        body.email,
-        authUser?.id ?? undefined
+        account.email,
+        authUserOrResponse.id
       );
+
+      if (!registered) {
+        const [existingProduct] = await db
+          .select({ id: products.id })
+          .from(products)
+          .where(
+            and(
+              eq(products.id, body.productId),
+              eq(products.status, "published"),
+            ),
+          )
+          .limit(1);
+
+        if (!existingProduct) {
+          return c.json(
+            {
+              code: "PRODUCT_NOT_FOUND",
+              message: "Product not found.",
+            },
+            404,
+          );
+        }
+
+        /*
+         * Classify the refusal with the verdict POST /products/viewer-state
+         * serves, so the answer cannot contradict the control the shopper
+         * clicked: sweep lapsed ordinary holds first, then decide from this
+         * account's rows. The sweep's payment protection is the only thing
+         * layered onto a row.
+         */
+        const now = new Date();
+        const expiry = await expireCommerceHoldsForProducts(
+          [body.productId],
+          now,
+        );
+        const [viewerRow] = await getViewerStateRows(
+          [body.productId],
+          authUserOrResponse.id,
+        );
+        if (!viewerRow) {
+          return c.json(
+            {
+              code: "PRODUCT_NOT_FOUND",
+              message: "Product not found.",
+            },
+            404,
+          );
+        }
+
+        const verdict = resolveViewerState(
+          {
+            ...viewerRow,
+            paymentProtected: expiry.blockedProductIds.includes(body.productId),
+          },
+          now,
+        );
+        const refusal = NOTIFY_REFUSALS[verdict.state];
+
+        return c.json(
+          {
+            code: refusal.code,
+            message: refusal.message,
+            reservedUntil: verdict.reservedUntil,
+            viewerState: verdict.state,
+          },
+          409,
+        );
+      }
 
       // Fire-and-forget demand signal.
       // NOTE: raw email is intentionally OMITTED from the payload.
       // It is captured durably in restock_notify_requests (the correct PII system of record).
       // Spreading email here would ship plaintext PII to GA4 and Meta CAPI via fan-out.
       void emitAnalyticsEvent({
+        consent: consentFromRequest(c.req.raw),
         event_id: crypto.randomUUID(),
         type: "restock_notify_requested",
         payload: {
           productId: body.productId,
-          userId: authUser?.id ?? null,
-          stockStatus: existingProduct.stockStatus,
+          userId: authUserOrResponse.id,
+          stockStatus: "reserved",
         },
         occurredAt: new Date(),
       });
@@ -326,27 +510,28 @@ export const registerWishlistRoutes = (app: OpenAPIHono<HonoBindings>) => {
 	      const productIds = Array.from(new Set(body.productIds));
 	      if (productIds.length === 0) return c.json({ success: true }, 200);
 
-	      const existingProducts = await db
-	        .select({ id: products.id })
-	        .from(products)
-	        .where(
-	          and(
-	            inArray(products.id, productIds),
-	            inArray(products.status, ["draft", "published"])
-	          )
-	        );
-	      if (existingProducts.length !== productIds.length) {
-	        return c.json(
-	          {
-	            code: "INVALID_PRODUCT_IDS",
-	            message: "One or more products are unavailable.",
-	          },
-	          400
-	        );
-	      }
+	      /*
+	       * Merge what survives; drop what does not.
+	       *
+	       * Rejecting the whole batch meant one hard-deleted saree cost a guest
+	       * their entire trunk: the client only clears the guest store on a 200,
+	       * so every later page load re-sent the same doomed array and their
+	       * saves never reached the account. A dead id is invisible anyway — the
+	       * wishlist page already drops ids that resolve to no product.
+	       */
+	      const mergedProductIds = await mergeGuestWishlist(
+	        authUserOrResponse.id,
+	        productIds,
+	      );
 
-	      await mergeGuestWishlist(authUserOrResponse.id, productIds);
-	      return c.json({ success: true }, 200);
+	      return c.json(
+	        {
+	          success: true,
+	          merged: mergedProductIds.length,
+	          dropped: productIds.length - mergedProductIds.length,
+	        },
+	        200
+	      );
 	    }
   );
 };
