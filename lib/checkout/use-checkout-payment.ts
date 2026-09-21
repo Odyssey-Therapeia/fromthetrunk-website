@@ -17,7 +17,10 @@ import {
   type OneOfOneConflictCode,
   type OneOfOneConflictCopy,
 } from "@/lib/checkout/one-of-one-conflict-copy";
-import { getCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
+import {
+  clearCheckoutAttempt,
+  getCheckoutAttempt,
+} from "@/lib/checkout/checkout-attempt";
 
 type CreatePaymentOrderResponse = {
   amount?: number;
@@ -69,7 +72,6 @@ export type CheckoutOrderPayload = {
   items: Array<{
     productId: string;
     quantity: number;
-    reservationToken?: string;
     selectedOptions?: { size?: string };
   }>;
   shippingAddress: {
@@ -94,19 +96,47 @@ type StartPaymentArgs = {
   payload: CheckoutOrderPayload;
   prefill: { name: string; email: string; contact: string };
   description: string;
-  onPaid: (confirmationPath: string) => void;
+  onPaid: (confirmationPath: string) => Promise<void> | void;
   onAvailabilityError?: (error: {
     code: OneOfOneConflictCode;
     copy: OneOfOneConflictCopy;
     productId?: string;
     message: string;
-  }) => void;
+  }) => Promise<void> | void;
 };
 
 const confirmationPath = (orderId: string, accessToken?: string) =>
   accessToken
     ? `/checkout/confirmation?orderId=${orderId}&key=${accessToken}`
     : `/checkout/confirmation?orderId=${orderId}`;
+
+type CreateOrderErrorBody = {
+  code?: string;
+  details?: { productId?: string };
+  message?: string;
+};
+
+const readCreateOrderError = async (response: Response) =>
+  (await response.json().catch(() => null)) as CreateOrderErrorBody | null;
+
+/** The server will never accept this idempotency key again. */
+const isSpentAttemptCode = (code: string | undefined) =>
+  code === "CHECKOUT_ATTEMPT_NOT_REUSABLE" || code === "CHECKOUT_CART_CHANGED";
+
+const requestCreateOrder = (payload: CheckoutOrderPayload) => {
+  // Stable idempotency key for this checkout attempt. Sent as both the
+  // Idempotency-Key header and body fields so a retry/abort of the SAME cart
+  // reuses the first order + payment link instead of creating a duplicate.
+  const { checkoutAttemptId, cartFingerprint } = getCheckoutAttempt(payload);
+  return fetch("/api/v2/payments/create-order", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": checkoutAttemptId,
+    },
+    body: JSON.stringify({ ...payload, checkoutAttemptId, cartFingerprint }),
+  });
+};
 
 const RAZORPAY_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 
@@ -156,30 +186,36 @@ export function useCheckoutPayment() {
     setIsSubmitting(true);
     setError(null);
 
-    // Stable idempotency key for this checkout attempt. Sent as both the
-    // Idempotency-Key header and body fields so a retry/abort of the SAME cart
-    // reuses the first order + payment link instead of creating a duplicate.
-    const { checkoutAttemptId, cartFingerprint } = getCheckoutAttempt(payload);
-
     try {
-      const createResponse = await fetch("/api/v2/payments/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": checkoutAttemptId,
-        },
-        body: JSON.stringify({ ...payload, checkoutAttemptId, cartFingerprint }),
-      });
+      let createResponse = await requestCreateOrder(payload);
+      let errorData = createResponse.ok
+        ? null
+        : await readCreateOrderError(createResponse);
+      if (isSpentAttemptCode(errorData?.code)) {
+        // A spent key is replaced once, automatically. Asking the shopper to
+        // click again only sent the same refusal back under a fresh id.
+        clearCheckoutAttempt();
+        createResponse = await requestCreateOrder(payload);
+        errorData = createResponse.ok
+          ? null
+          : await readCreateOrderError(createResponse);
+      }
 
       if (!createResponse.ok) {
-        const errorData = (await createResponse.json().catch(() => null)) as {
-          code?: string;
-          details?: { productId?: string };
-          message?: string;
-        } | null;
+        if (
+          isSpentAttemptCode(errorData?.code) ||
+          errorData?.code === "RAZORPAY_AUTH_FAILED" ||
+          errorData?.code === "RAZORPAY_PAYMENT_LINK_REJECTED"
+        ) {
+          // These outcomes are terminal for this idempotency key. Keeping it
+          // would make every unchanged retry hit the same dead order forever.
+          // PAYMENT_IN_PROGRESS deliberately keeps it: that key is the only
+          // one allowed to resume the shopper's open payment.
+          clearCheckoutAttempt();
+        }
         if (isOneOfOneConflictCode(errorData?.code)) {
           const copy = getOneOfOneConflictCopy(errorData?.code);
-          onAvailabilityError?.({
+          await onAvailabilityError?.({
             code: copy.code,
             copy,
             message: copy.message,
@@ -258,7 +294,9 @@ export function useCheckoutPayment() {
               throw new Error(errorData?.message || "Payment verification failed.");
             }
 
-            onPaid(confirmationPath(orderData.orderId, orderData.orderAccessToken));
+            await onPaid(
+              confirmationPath(orderData.orderId, orderData.orderAccessToken),
+            );
           } catch {
             setError(
               "Payment was received but verification failed. Please contact support.",

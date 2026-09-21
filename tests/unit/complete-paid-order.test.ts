@@ -7,19 +7,9 @@ const getOrderNotificationRecipientsMock = vi.hoisted(() => vi.fn());
 const orderConfirmationEmailMock = vi.hoisted(() => vi.fn());
 const orderPurchaseNotificationEmailMock = vi.hoisted(() => vi.fn());
 const sendEmailMock = vi.hoisted(() => vi.fn());
+const completePaidCommerceStateMock = vi.hoisted(() => vi.fn());
 // P6-02: incrementDiscountUsage mock — hoisted so it's available before imports.
-const incrementDiscountUsageMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-
-// db.update chain: .set().where().returning()
-const returningMock = vi.hoisted(() => vi.fn());
-const productReturningMock = vi.hoisted(() => vi.fn());
-const whereMock = vi.hoisted(() => vi.fn());
-const setMock = vi.hoisted(() => vi.fn());
-const updateMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@/db", () => ({
-  db: { update: updateMock },
-}));
+const incrementDiscountUsageMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 // P6-02: Mock @/db/queries/discounts at the module boundary (lowest real dependency).
 // Tests the REAL completePaidOrder with only the DB layer mocked.
@@ -27,17 +17,8 @@ vi.mock("@/db/queries/discounts", () => ({
   incrementDiscountUsage: incrementDiscountUsageMock,
 }));
 
-vi.mock("@/db/schema", () => ({
-  orders: { id: "id", paymentStatus: "paymentStatus" },
-  products: { id: "id", slug: "slug", stockStatus: "stockStatus" },
-  reservations: { id: "id", orderId: "orderId", productId: "productId" },
-}));
-
-vi.mock("@/db/queries/reservations", () => ({
-  releaseReservationsByOrder: vi.fn().mockResolvedValue(undefined),
-  releaseReservationsByProducts: vi.fn().mockResolvedValue(undefined),
-  insertReservation: vi.fn().mockResolvedValue({ id: "res-1" }),
-  expireReservations: vi.fn().mockResolvedValue({ deleted: 0 }),
+vi.mock("@/db/queries/user-cart", () => ({
+  completePaidCommerceState: completePaidCommerceStateMock,
 }));
 
 vi.mock("@/db/queries/orders", () => ({
@@ -68,15 +49,6 @@ vi.mock("@/lib/analytics/emit", () => ({
   emitAnalyticsEvent: vi.fn(),
 }));
 
-vi.mock("drizzle-orm", () => ({
-  and: (...args: unknown[]) => ({ _and: args }),
-  eq: (col: unknown, val: unknown) => ({ _eq: [col, val] }),
-  inArray: (col: unknown, vals: unknown) => ({ _inArray: [col, vals] }),
-  isNull: (col: unknown) => ({ _isNull: col }),
-  ne: (col: unknown, val: unknown) => ({ _ne: [col, val] }),
-  or: (...args: unknown[]) => ({ _or: args }),
-}));
-
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 
 // ---- helper data ----
@@ -84,6 +56,7 @@ const PENDING_ORDER = {
   id: "order-1",
   items: [{ productId: "prod-1", name: "Saree", pricePaise: 100000, quantity: 1 }],
   paymentStatus: "pending",
+  status: "pending",
   shippingCity: "Mumbai",
   shippingCountry: "India",
   shippingCostPaise: 0,
@@ -97,6 +70,7 @@ const PENDING_ORDER = {
   subtotalPaise: 100000,
   taxAmountPaise: 0,
   totalPaise: 100000,
+  userId: "11111111-1111-4111-8111-111111111111",
 };
 
 const CONFIRMED_ORDER = { ...PENDING_ORDER, paymentStatus: "paid", status: "confirmed" };
@@ -112,12 +86,7 @@ const INPUT = {
 
 describe("completePaidOrder", () => {
   beforeEach(() => {
-    // Reset all mocks
-    updateMock.mockReset();
-    setMock.mockReset();
-    whereMock.mockReset();
-    returningMock.mockReset();
-    productReturningMock.mockReset();
+    completePaidCommerceStateMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
@@ -125,20 +94,11 @@ describe("completePaidOrder", () => {
     orderConfirmationEmailMock.mockReset();
     orderPurchaseNotificationEmailMock.mockReset();
 
-    // Wire the db.update chain so order and product updates can return different rows.
-    updateMock.mockReturnValue({ set: setMock });
-    setMock.mockImplementation((values: Record<string, unknown>) => {
-      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
-      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
-
-      return {
-        where: (...args: unknown[]) => {
-          whereMock(...args);
-          return { returning: activeReturningMock };
-        },
-      };
+    completePaidCommerceStateMock.mockResolvedValue({
+      kind: "completed",
+      soldCount: 1,
+      soldSlugs: ["saree"],
     });
-    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
 
     // Set up email mocks
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
@@ -150,21 +110,9 @@ describe("completePaidOrder", () => {
 
   describe("Test 1: concurrent calls — exactly one email sent", () => {
     it("first call wins (rows returned), second call loses (no rows returned)", async () => {
-      // Simulate two concurrent calls, both reading a pending order.
-      // The atomic UPDATE (orders table) is called once per completePaidOrder invocation.
-      // First invocation: UPDATE returns [{ id }] → winner → sends emails
-      // Second invocation: UPDATE returns [] → loser → returns alreadyPaid: true
-
-      let ordersUpdateCallCount = 0;
-      returningMock.mockImplementation(() => {
-        ordersUpdateCallCount++;
-        if (ordersUpdateCallCount === 1) {
-          // First invocation orders UPDATE — winner
-          return Promise.resolve([{ id: "order-1" }]);
-        }
-        // Second invocation orders UPDATE — loser
-        return Promise.resolve([]);
-      });
+      completePaidCommerceStateMock
+        .mockResolvedValueOnce({ kind: "completed", soldCount: 1, soldSlugs: ["saree"] })
+        .mockResolvedValueOnce({ kind: "already_paid", soldCount: 0, soldSlugs: [] });
 
       // getOrder calls:
       // Call 1: existing check for first invocation (pending)
@@ -196,37 +144,14 @@ describe("completePaidOrder", () => {
       // sendEmail called exactly twice (customer + admin notification from winner only)
       expect(sendEmailMock).toHaveBeenCalledTimes(2);
 
-      // Assert the atomic payment claim marks paymentStatus: "paid".
-      expect(setMock).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentStatus: "paid" })
+      expect(completePaidCommerceStateMock).toHaveBeenCalledTimes(2);
+      expect(completePaidCommerceStateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: "order-1",
+          paymentId: "pay_abc123",
+          userId: PENDING_ORDER.userId,
+        }),
       );
-      // Fulfilment status is only confirmed after the reserved product is sold.
-      expect(setMock).toHaveBeenCalledWith(
-        expect.objectContaining({ status: "confirmed" })
-      );
-
-      // Assert the WHERE predicate contains the ne(orders.paymentStatus, "paid") guard.
-      // Each concurrent call issues one orders UPDATE; whereMock is called at least twice.
-      expect(whereMock.mock.calls.length).toBeGreaterThanOrEqual(2);
-      // Every orders-table WHERE call must include the ne(..., "paid") predicate in its _and clause.
-      const ordersWhereCalls = whereMock.mock.calls.filter(
-        (args) =>
-          args[0] &&
-          typeof args[0] === "object" &&
-          "_and" in args[0] &&
-          Array.isArray((args[0] as { _and: unknown[] })._and) &&
-          (args[0] as { _and: unknown[] })._and.some(
-            (pred) =>
-              pred !== null &&
-              typeof pred === "object" &&
-              "_ne" in (pred as object) &&
-              Array.isArray((pred as { _ne: unknown[] })._ne) &&
-              (pred as { _ne: unknown[] })._ne[0] === "paymentStatus" &&
-              (pred as { _ne: unknown[] })._ne[1] === "paid"
-          )
-      );
-      // Both concurrent calls must have used the atomic ne(...) guard
-      expect(ordersWhereCalls.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -240,8 +165,11 @@ describe("completePaidOrder", () => {
         .mockResolvedValueOnce(CONFIRMED_ORDER) // existing check — already-paid order (passes not-found guard)
         .mockResolvedValueOnce(CONFIRMED_ORDER); // current state read in loser path
 
-      // orders UPDATE returns [] (already paid — no rows matched the ne(...) predicate)
-      returningMock.mockResolvedValue([]);
+      completePaidCommerceStateMock.mockResolvedValue({
+        kind: "already_paid",
+        soldCount: 0,
+        soldSlugs: [],
+      });
 
       const result = await completePaidOrder(INPUT);
 
@@ -249,38 +177,18 @@ describe("completePaidOrder", () => {
       expect(result).toHaveProperty("alreadyPaid", true);
       expect(sendEmailMock).not.toHaveBeenCalled();
 
-      // Assert the atomic payment claim was attempted with paymentStatus: "paid"
-      expect(setMock).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentStatus: "paid" })
-      );
-
-      // Assert the WHERE included the ne(orders.paymentStatus, "paid") guard
-      const ordersWhereCalls = whereMock.mock.calls.filter(
-        (args) =>
-          args[0] &&
-          typeof args[0] === "object" &&
-          "_and" in args[0] &&
-          Array.isArray((args[0] as { _and: unknown[] })._and) &&
-          (args[0] as { _and: unknown[] })._and.some(
-            (pred) =>
-              pred !== null &&
-              typeof pred === "object" &&
-              "_ne" in (pred as object) &&
-              Array.isArray((pred as { _ne: unknown[] })._ne) &&
-              (pred as { _ne: unknown[] })._ne[0] === "paymentStatus" &&
-              (pred as { _ne: unknown[] })._ne[1] === "paid"
-          )
-      );
-      // The single call must have used the atomic ne(...) guard
-      expect(ordersWhereCalls.length).toBeGreaterThanOrEqual(1);
+      expect(completePaidCommerceStateMock).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("Test 3: inventory race during payment completion", () => {
     it("rejects with PRODUCT_SOLD and does not send emails when the product claim fails", async () => {
       getOrderMock.mockResolvedValueOnce(PENDING_ORDER);
-      returningMock.mockResolvedValueOnce([{ id: "order-1" }]);
-      productReturningMock.mockResolvedValueOnce([]);
+      completePaidCommerceStateMock.mockResolvedValueOnce({
+        kind: "inventory_conflict",
+        soldCount: 0,
+        soldSlugs: [],
+      });
 
       await expect(completePaidOrder(INPUT)).rejects.toThrow("PRODUCT_SOLD");
 
@@ -297,6 +205,47 @@ describe("completePaidOrder", () => {
       expect(sendEmailMock).not.toHaveBeenCalled();
     });
   });
+
+  describe("Test 4: a capture lands on an order that is no longer pending", () => {
+    it("records the captured payment for review before rejecting with PAYMENT_CLAIM_CONFLICT", async () => {
+      getOrderMock.mockResolvedValueOnce({ ...PENDING_ORDER, paymentStatus: "failed" });
+      completePaidCommerceStateMock.mockResolvedValueOnce({
+        kind: "order_state_conflict",
+        soldCount: 0,
+        soldSlugs: [],
+      });
+
+      await expect(completePaidOrder(INPUT)).rejects.toThrow("PAYMENT_CLAIM_CONFLICT");
+
+      expect(addOrderEventMock).toHaveBeenCalledOnce();
+      expect(addOrderEventMock).toHaveBeenCalledWith(
+        "order-1",
+        "Captured payment on non-pending order",
+        "pending",
+        {
+          code: "PAYMENT_ON_CLOSED_ORDER",
+          paymentId: "pay_abc123",
+          paymentReference: "ref_xyz",
+          previousPaymentStatus: "failed",
+          source: "razorpay-webhook",
+        },
+      );
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("does not report a different payment id as a closed-order capture", async () => {
+      getOrderMock.mockResolvedValueOnce(PENDING_ORDER);
+      completePaidCommerceStateMock.mockResolvedValueOnce({
+        kind: "payment_conflict",
+        soldCount: 0,
+        soldSlugs: [],
+      });
+
+      await expect(completePaidOrder(INPUT)).rejects.toThrow("PAYMENT_ID_MISMATCH");
+
+      expect(addOrderEventMock).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // ── P6-02: incrementDiscountUsage wiring — mutation-proof ────────────────────
@@ -310,6 +259,7 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
     id: "order-2",
     items: [{ productId: "prod-1", name: "Saree", pricePaise: 100000, quantity: 1 }],
     paymentStatus: "pending",
+    status: "pending",
     shippingCity: "Mumbai",
     shippingCountry: "India",
     shippingCostPaise: 0,
@@ -323,6 +273,7 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
     subtotalPaise: 100000,
     taxAmountPaise: 0,
     totalPaise: 100000,
+    userId: "11111111-1111-4111-8111-111111111111",
     // P6-02: order has a discount applied
     discountId: "disc-uuid-001",
     discountCode: "SAVE10",
@@ -344,32 +295,18 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
   };
 
   beforeEach(() => {
-    incrementDiscountUsageMock.mockReset().mockResolvedValue(undefined);
-    updateMock.mockReset();
-    setMock.mockReset();
-    whereMock.mockReset();
-    returningMock.mockReset();
-    productReturningMock.mockReset();
+    incrementDiscountUsageMock.mockReset().mockResolvedValue(true);
+    completePaidCommerceStateMock.mockReset().mockResolvedValue({
+      kind: "completed",
+      soldCount: 1,
+      soldSlugs: ["saree"],
+    });
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
     getOrderNotificationRecipientsMock.mockReset();
     orderConfirmationEmailMock.mockReset();
     orderPurchaseNotificationEmailMock.mockReset();
-
-    updateMock.mockReturnValue({ set: setMock });
-    setMock.mockImplementation((values: Record<string, unknown>) => {
-      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
-      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
-
-      return {
-        where: (...args: unknown[]) => {
-          whereMock(...args);
-          return { returning: activeReturningMock };
-        },
-      };
-    });
-    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
 
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
     orderConfirmationEmailMock.mockReturnValue({ subject: "Order confirmed", html: "<p>confirmed</p>" });
@@ -379,8 +316,6 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
   });
 
   it("mutation-proof: incrementDiscountUsage is called ONCE on the winner path when discountId is set", async () => {
-    // Winner path: orders UPDATE returns [{ id }] → discount usage incremented exactly once.
-    returningMock.mockResolvedValueOnce([{ id: "order-2" }]);
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER_WITH_DISCOUNT) // existing check
       .mockResolvedValueOnce(CONFIRMED_ORDER_WITH_DISCOUNT); // confirmed load
@@ -394,8 +329,11 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
   });
 
   it("mutation-proof: incrementDiscountUsage is NOT called on the loser path (already-paid order)", async () => {
-    // Loser path: orders UPDATE returns [] → no emails, no usage increment.
-    returningMock.mockResolvedValueOnce([]);
+    completePaidCommerceStateMock.mockResolvedValueOnce({
+      kind: "already_paid",
+      soldCount: 0,
+      soldSlugs: [],
+    });
     getOrderMock
       .mockResolvedValueOnce(CONFIRMED_ORDER_WITH_DISCOUNT) // existing check — already paid
       .mockResolvedValueOnce(CONFIRMED_ORDER_WITH_DISCOUNT); // current state in loser path
@@ -413,6 +351,7 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
       id: "order-3",
       items: [{ productId: "prod-1", name: "Saree", pricePaise: 100000, quantity: 1 }],
       paymentStatus: "pending",
+      status: "pending",
       shippingCity: "Mumbai",
       shippingCountry: "India",
       shippingCostPaise: 0,
@@ -426,11 +365,11 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
       subtotalPaise: 100000,
       taxAmountPaise: 0,
       totalPaise: 100000,
+      userId: "11111111-1111-4111-8111-111111111111",
       // No discountId
     };
     const confirmedOrderNoDiscount = { ...pendingOrderNoDiscount, paymentStatus: "paid", status: "confirmed" };
 
-    returningMock.mockResolvedValueOnce([{ id: "order-3" }]);
     getOrderMock
       .mockResolvedValueOnce(pendingOrderNoDiscount) // existing check
       .mockResolvedValueOnce(confirmedOrderNoDiscount); // confirmed load
@@ -455,8 +394,6 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
   //   2. The order still completes (emailsSent=true, alreadyPaid=false).
   //   3. incrementDiscountUsage is still called exactly once (winner path).
   it("FIX #2: when incrementDiscountUsage returns false (over-redemption race), review-log event is emitted and order still completes", async () => {
-    // Winner path: orders UPDATE returns [{ id }] → we are on the winner branch.
-    returningMock.mockResolvedValueOnce([{ id: "order-2" }]);
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER_WITH_DISCOUNT) // existing check
       .mockResolvedValueOnce(CONFIRMED_ORDER_WITH_DISCOUNT); // confirmed load after winner work
@@ -500,7 +437,6 @@ describe("completePaidOrder — discount usage increment (P6-02 mutation-proof)"
 
   it("true-return path: when incrementDiscountUsage returns true, NO review-log event is emitted", async () => {
     // Regression lock for the true (normal) path: no review-log event.
-    returningMock.mockResolvedValueOnce([{ id: "order-2" }]);
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER_WITH_DISCOUNT)
       .mockResolvedValueOnce(CONFIRMED_ORDER_WITH_DISCOUNT);

@@ -30,11 +30,13 @@ const statusLabels: Record<string, string> = {
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: session, status: authStatus } = useSession();
+  const userId = session?.user?.id ?? null;
 
   const { data: order, isLoading, isError } = useQuery({
-    queryKey: ["order", id],
+    // Keyed by account: another sign-in in this tab must never read this one.
+    queryKey: ["order", userId, id],
     queryFn: () => fetchOrder(id),
-    enabled: Boolean(session?.user?.id && id),
+    enabled: Boolean(userId && id),
   });
 
   if (authStatus === "loading" || isLoading) {

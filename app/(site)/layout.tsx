@@ -12,6 +12,7 @@ import { ThemeStyler } from "@/components/layout/theme-styler";
 import { GlobalToaster } from "@/components/global-toaster";
 import { SiteWidgets } from "@/components/widgets/site-widgets";
 import { DrapeRoomPortalHost } from "@/components/drape-room/drape-room-portal-host";
+import { Providers } from "@/components/providers";
 import {
   organizationJsonLd,
   safeJsonLd,
@@ -84,35 +85,37 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         className="bg-background font-sans text-foreground"
         suppressHydrationWarning
       >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: safeJsonLd(organizationJsonLd()),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: safeJsonLd(websiteJsonLd()),
-          }}
-        />
-        {/* Skip to content link for keyboard navigation */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-full focus:bg-primary focus:px-6 focus:py-3 focus:text-primary-foreground focus:shadow-lg"
-        >
-          Skip to main content
-        </a>
-        <SiteHeaderServer />
-        <main id="main-content" className="min-h-[70vh]" role="main">
-          {children}
-        </main>
-        <SiteFooterServer />
-        <SiteWidgets />
-        <DrapeRoomPortalHost
-          enabledHint={process.env.FTT_TRYON_ENABLED === "true"}
-        />
-        <GlobalToaster />
+        <Providers>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: safeJsonLd(organizationJsonLd()),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: safeJsonLd(websiteJsonLd()),
+            }}
+          />
+          {/* Skip to content link for keyboard navigation */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-full focus:bg-primary focus:px-6 focus:py-3 focus:text-primary-foreground focus:shadow-lg"
+          >
+            Skip to main content
+          </a>
+          <SiteHeaderServer />
+          <main id="main-content" className="min-h-[70vh]" role="main">
+            {children}
+          </main>
+          <SiteFooterServer />
+          <SiteWidgets />
+          <DrapeRoomPortalHost
+            enabledHint={process.env.FTT_TRYON_ENABLED === "true"}
+          />
+          <GlobalToaster />
+        </Providers>
         {isVercelRuntime ? (
           <>
             <Analytics />

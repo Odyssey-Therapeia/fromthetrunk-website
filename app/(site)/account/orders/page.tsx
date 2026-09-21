@@ -26,10 +26,12 @@ type OrdersTab = "successful" | "attention";
 
 export default function OrdersPage() {
   const { data: session, status } = useSession();
+  const userId = session?.user?.id ?? null;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["orders"],
+    // Keyed by account: another sign-in in this tab must never read this one.
+    queryKey: ["orders", userId],
     queryFn: fetchOrders,
-    enabled: Boolean(session?.user?.id),
+    enabled: Boolean(userId),
   });
 
   if (status === "loading") {

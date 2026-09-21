@@ -36,6 +36,33 @@ export async function claimEvent(input: CreateEventInput): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Persist a completed external-event receipt.
+ *
+ * Unlike `claimEvent`, this is intentionally called only after the handler's
+ * authoritative work succeeds. If a serverless invocation stops mid-handler,
+ * no completed receipt is left behind to suppress the provider's retry. The
+ * upsert also upgrades receipts written by the older pre-dispatch claim path.
+ */
+export async function markEventProcessed(input: CreateEventInput): Promise<void> {
+  await db
+    .insert(events)
+    .values({
+      eventId: input.eventId,
+      type: input.type,
+      payload: input.payload,
+      occurredAt: input.occurredAt,
+    })
+    .onConflictDoUpdate({
+      target: events.eventId,
+      set: {
+        type: input.type,
+        payload: input.payload,
+        occurredAt: input.occurredAt,
+      },
+    });
+}
+
 /** Reads a single event by its unique `event_id` (null if absent). */
 export async function getEventByEventId(
   eventId: string,

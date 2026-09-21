@@ -1,46 +1,57 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SessionProvider } from "next-auth/react";
 
-const WishlistMergeOnLogin = dynamic(
-  () =>
-    import("@/components/wishlist/wishlist-merge-on-login").then(
-      (module) => module.WishlistMergeOnLogin,
-    ),
-  { ssr: false },
-);
+import { CollectionStockProvider } from "@/lib/realtime/use-collection-stock";
+import { CommerceAuthDialog } from "@/components/commerce/commerce-auth-dialog";
+import { CommerceAuthProvider } from "@/components/commerce/commerce-auth-provider";
+import { CommerceIntentRunners } from "@/components/commerce/commerce-intent-runners";
+import { CartExpirySweeper } from "@/components/cart/cart-expiry-sweeper";
+import { CartServerSync } from "@/components/cart/cart-server-sync";
+import { CartTabSync } from "@/components/cart/cart-tab-sync";
+import { DrapeCoachmarkProvider } from "@/components/drape-room/launch/drape-coachmark-context";
+import { SessionProvider } from "next-auth/react";
 
 export function CommerceProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        {/*
+          Inside CommerceProviders on purpose: the Drape Room mounts this tree
+          too, so a sign-in raised from inside the room reaches the same single
+          dialog instead of stacking one of its own.
+        */}
+        <CommerceAuthProvider>
+          {children}
+          <CommerceAuthDialog />
+          {/* Replays the click that triggered sign-in, once it succeeds. */}
+          <CommerceIntentRunners />
+          {/* Mirrors the account's bag into the store the UI already reads. */}
+          <CartServerSync />
+          {/* Invalidates other tabs and refreshes exactly when a hold expires. */}
+          <CartTabSync />
+          <CartExpirySweeper />
+        </CommerceAuthProvider>
+      </QueryClientProvider>
     </SessionProvider>
   );
-}
-
-function DeferredWishlistMerge() {
-  const [deferredEffectsReady, setDeferredEffectsReady] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDeferredEffectsReady(true), 2500);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  return deferredEffectsReady ? <WishlistMergeOnLogin /> : null;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <CommerceProviders>
-      {/* Route-scoped guest wishlist merge. The global Drape Room reuses only
-          CommerceProviders so this side effect is never mounted twice. */}
-      <DeferredWishlistMerge />
-      {children}
+      {/*
+        One live stock source for every product card on the page. It stays
+        silent until a card registers, so pages without a grid pay nothing.
+        The coach mark provider sits inside it so a Drape Room trigger can
+        register itself from anywhere in the tree.
+      */}
+      <CollectionStockProvider>
+        <DrapeCoachmarkProvider>{children}</DrapeCoachmarkProvider>
+      </CollectionStockProvider>
     </CommerceProviders>
   );
 }

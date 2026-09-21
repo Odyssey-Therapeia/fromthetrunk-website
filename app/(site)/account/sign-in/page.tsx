@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getProviders, signIn } from "next-auth/react";
+import { getProviders, signIn, useSession } from "next-auth/react";
 import type { ClientSafeProvider } from "next-auth/react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
@@ -21,6 +21,7 @@ const providerLabels: Record<string, string> = {
 
 export default function SignInPage() {
   const router = useRouter();
+  const { update } = useSession();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
   const prefilledEmail = searchParams.get("email") ?? "";
@@ -98,6 +99,10 @@ export default function SignInPage() {
                 return;
               }
 
+              // As the OTP panel does: re-reading the session broadcasts the
+              // change, so other open tabs clear the previous account's cart
+              // and wishlist instead of waiting for their own next read.
+              await update();
               router.push(resolvedCallbackUrl);
               router.refresh();
             } finally {

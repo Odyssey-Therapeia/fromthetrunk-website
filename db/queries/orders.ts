@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNull, or, sql } from "drizzle-orm";
 
 import { db, withRetry } from "@/db";
@@ -263,39 +265,60 @@ export const createOrder = async (input: CreateOrderInput): Promise<OrderWithRel
     ...orderData
   } = input;
 
-  const createdOrder = requireFirstRow(
-    await db
-      .insert(orders)
-      .values({
-        ...orderData,
-        updatedAt: new Date(),
-      })
-      .returning(),
-    "Failed to create order."
-  );
+  /*
+   * Neon HTTP cannot run an interactive Drizzle transaction, but `batch`
+   * submits these statements as one non-interactive database transaction.
+   * Pre-generating the id lets the item and event inserts reference the order
+   * without a second round trip. If any insert fails, none of the three is
+   * committed, so an idempotent checkout attempt cannot be stranded as an
+   * empty pending order that every retry mistakes for work in progress.
+   */
+  const orderId = orderData.id ?? randomUUID();
+  const updatedAt = new Date();
+  const orderInsert = db
+    .insert(orders)
+    .values({
+      ...orderData,
+      id: orderId,
+      updatedAt,
+    })
+    .returning();
+  const eventInsert = db
+    .insert(orderEvents)
+    .values({
+      note: initialEvent?.note ?? "Order created",
+      orderId,
+      payload: initialEvent?.payload ?? null,
+      status: initialEvent?.status ?? orderData.status ?? "pending",
+    })
+    .returning();
 
-  if (items.length > 0) {
-    await db.insert(orderItems).values(
+  if (items.length === 0) {
+    const [createdRows, eventRows] = await db.batch([
+      orderInsert,
+      eventInsert,
+    ] as const);
+    const createdOrder = requireFirstRow(createdRows, "Failed to create order.");
+    return { ...createdOrder, events: eventRows, items: [] };
+  }
+
+  const itemInsert = db
+    .insert(orderItems)
+    .values(
       items.map((item) => ({
         ...item,
-        orderId: createdOrder.id,
-      }))
-    );
-  }
+        orderId,
+      })),
+    )
+    .returning();
+  const [createdRows, itemRows, eventRows] = await db.batch([
+    orderInsert,
+    itemInsert,
+    eventInsert,
+  ] as const);
+  const createdOrder = requireFirstRow(createdRows, "Failed to create order.");
 
-  await db.insert(orderEvents).values({
-    orderId: createdOrder.id,
-    status: initialEvent?.status ?? createdOrder.status,
-    note: initialEvent?.note ?? "Order created",
-    payload: initialEvent?.payload ?? null,
-  });
-
-  const order = await getOrder(createdOrder.id);
-  if (!order) {
-    throw new Error("Failed to load created order.");
-  }
-
-  return order;
+  return { ...createdOrder, events: eventRows, items: itemRows };
 };
 
 export const updateOrderStatus = async (

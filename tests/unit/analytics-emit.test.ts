@@ -51,7 +51,14 @@ import { emitAnalyticsEvent, _resetSinks } from "@/lib/analytics/emit";
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * This suite is about fan-out, env-gating and error isolation, so its events
+ * carry FULL consent: a sink that declines to fire for lack of consent would
+ * look here like an env gate that failed. Consent enforcement itself is tested
+ * in analytics-consent-server.test.ts, including the default-deny case.
+ */
 const makeEvent = (overrides: Partial<Parameters<typeof emitAnalyticsEvent>[0]> = {}) => ({
+  consent: { advertising: true, analytics: true },
   event_id: "evt-test-uuid-1234",
   type: "order_created" as const,
   payload: { orderId: "order-1", totalPaise: 100000 },

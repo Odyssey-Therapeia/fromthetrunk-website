@@ -4,6 +4,7 @@ export type OneOfOneConflictCode =
   | "CHECKOUT_IN_PROGRESS"
   | "GENERIC_CREATE_ORDER_FAILURE"
   | "INVALID_PRODUCT_IDS"
+  | "PAYMENT_IN_PROGRESS"
   | "PRODUCT_RESERVED"
   | "PRODUCT_SOLD"
   | "PRODUCT_UNAVAILABLE"
@@ -78,6 +79,16 @@ export const oneOfOneConflictCopyByCode: Record<
     title: "We could not start checkout",
   },
   INVALID_PRODUCT_IDS: unavailableCopy,
+  // The shopper's own open payment. The piece stays theirs, so it is never
+  // removed, but a second payment for it may not start.
+  PAYMENT_IN_PROGRESS: {
+    blockPayment: true,
+    ctaLabel: "Return to checkout",
+    message:
+      "The payment for this piece is already in progress. Please complete it in the payment window you opened, or wait a few minutes and try again.",
+    removeProduct: false,
+    title: "Your payment is already in progress",
+  },
   PRODUCT_RESERVED: reservedCopy,
   PRODUCT_SOLD: {
     blockPayment: true,

@@ -3,12 +3,14 @@
  *
  * Discipline:
  *   - mock @/db/queries/orders (claimOrderRefund, finalizeOrderRefund, revertOrderRefundClaim, getOrder)
- *   - mock @/db/queries/products (restockProduct)
  *   - mock @/lib/ports/payments refund port (fixture-stub, no live Razorpay)
  *   - Concurrency proof: two overlapping refund requests → only ONE Razorpay call, loser gets 422
  *   - Claim-WHERE proof (collectPrimitives): claim UPDATE WHERE contains paymentStatus="paid"
  *   - Razorpay-fails test: refund throws → revertOrderRefundClaim is called, order stays refundable
  *   - Idempotency: sequential second refund on already-claimed order is 422
+ *   - Inventory proof: @/db and the product queries are silent spies, so no
+ *     refund outcome (200, 422, 502) can write a product. A refunded saree
+ *     stays Sold until an admin restores it (admin-product-restore.test.ts).
  */
 
 import { OpenAPIHono } from "@hono/zod-openapi";
@@ -33,9 +35,27 @@ const getOrderMock = vi.hoisted(() => vi.fn());
 const claimOrderRefundMock = vi.hoisted(() => vi.fn());
 const finalizeOrderRefundMock = vi.hoisted(() => vi.fn());
 const revertOrderRefundClaimMock = vi.hoisted(() => vi.fn());
-const restockProductMock = vi.hoisted(() => vi.fn());
 const refundPaymentMock = vi.hoisted(() => vi.fn());
 const sendEmailMock = vi.hoisted(() => vi.fn());
+
+/*
+ * Any inventory write on the refund path would have to reach the database
+ * client or a product query. Both are spies here and must stay silent; a
+ * re-added restock helper import would also fail, because the product query
+ * mock does not provide one.
+ */
+const dbWriteMocks = vi.hoisted(() => ({
+  delete: vi.fn(),
+  execute: vi.fn(),
+  insert: vi.fn(),
+  transaction: vi.fn(),
+  update: vi.fn(),
+}));
+const productWriteMocks = vi.hoisted(() => ({
+  deleteProduct: vi.fn(),
+  updateProduct: vi.fn(),
+  updateProductsBatch: vi.fn(),
+}));
 
 vi.mock("@/db/queries/orders", () => ({
   getOrder: getOrderMock,
@@ -48,9 +68,12 @@ vi.mock("@/db/queries/orders", () => ({
   updateOrderTracking: vi.fn(),
 }));
 
-vi.mock("@/db/queries/products", () => ({
-  restockProduct: restockProductMock,
+vi.mock("@/db", () => ({
+  db: dbWriteMocks,
+  withRetry: (operation: () => Promise<unknown>) => operation(),
 }));
+
+vi.mock("@/db/queries/products", () => productWriteMocks);
 
 vi.mock("@/lib/ports/payments", () => ({
   getPaymentsPort: () => ({ refund: refundPaymentMock }),
@@ -83,6 +106,15 @@ function createNonAdminApp() {
   return app;
 }
 
+const expectNoProductWrite = () => {
+  for (const write of [
+    ...Object.values(dbWriteMocks),
+    ...Object.values(productWriteMocks),
+  ]) {
+    expect(write).not.toHaveBeenCalled();
+  }
+};
+
 const ORDER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const PRODUCT_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
@@ -105,9 +137,10 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     claimOrderRefundMock.mockReset();
     finalizeOrderRefundMock.mockReset();
     revertOrderRefundClaimMock.mockReset();
-    restockProductMock.mockReset();
     refundPaymentMock.mockReset();
     sendEmailMock.mockReset();
+    Object.values(dbWriteMocks).forEach((write) => write.mockReset());
+    Object.values(productWriteMocks).forEach((write) => write.mockReset());
 
     // Defaults: successful path
     getOrderMock.mockResolvedValue(paidOrder);
@@ -115,7 +148,6 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     finalizeOrderRefundMock.mockResolvedValue(undefined);
     revertOrderRefundClaimMock.mockResolvedValue(undefined);
     refundPaymentMock.mockResolvedValue({ refundId: "rfnd_test456", amountPaise: 500000 });
-    restockProductMock.mockResolvedValue("restocked");
   });
 
   it("non-admin is rejected with 401/403", async () => {
@@ -142,9 +174,10 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     const body = await res.json();
     expect(body.code).toBe("NO_PAYMENT_ID");
     expect(claimOrderRefundMock).not.toHaveBeenCalled();
+    expectNoProductWrite();
   });
 
-  it("happy path: claims, calls Razorpay once, finalizes, restocks", async () => {
+  it("happy path: claims, calls Razorpay once, finalizes, and keeps inventory sold", async () => {
     const app = createAdminApp();
     const res = await app.request(`/${ORDER_ID}/refund`, { method: "POST" });
     expect(res.status).toBe(200);
@@ -163,15 +196,15 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     expect(finalRefundId).toBe("rfnd_test456");
     expect(finalAmount).toBe(500000);
 
-    // Restock was called for the one-of-one product
-    expect(restockProductMock).toHaveBeenCalledOnce();
-    expect(restockProductMock.mock.calls[0][0]).toBe(PRODUCT_ID);
-
     const body = await res.json();
     expect(body.refunded).toBe(true);
     expect(body.refundId).toBe("rfnd_test456");
+    expect(body.restockRequired).toBe(true);
+    expect(body).not.toHaveProperty("restock");
     // revert NOT called on success
     expect(revertOrderRefundClaimMock).not.toHaveBeenCalled();
+    // The refunded saree stays Sold: nothing touched a product.
+    expectNoProductWrite();
   });
 
   // CONCURRENCY PROOF: Two overlapping requests race.
@@ -211,6 +244,7 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     const loserRes = res1.status === 422 ? res1 : res2;
     const body = await loserRes.json();
     expect(body.code).toBe("ALREADY_REFUNDED");
+    expectNoProductWrite();
   });
 
   // CLAIM-WHERE ROUTE CHECK: the route passes only orderId to claimOrderRefund.
@@ -235,6 +269,7 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     expect(refundPaymentMock).not.toHaveBeenCalled();
     const body = await res.json();
     expect(body.code).toBe("ALREADY_REFUNDED");
+    expectNoProductWrite();
   });
 
   // RAZORPAY-FAILS TEST: if Razorpay throws, revertOrderRefundClaim must be called
@@ -258,11 +293,9 @@ describe("admin orders POST /:id/refund — atomic claim + concurrency + idempot
     // Finalize was NOT called (Razorpay failed)
     expect(finalizeOrderRefundMock).not.toHaveBeenCalled();
 
-    // Restock was NOT called
-    expect(restockProductMock).not.toHaveBeenCalled();
-
     const body = await res.json();
     expect(body.code).toBe("REFUND_FAILED");
+    expectNoProductWrite();
   });
 });
 
@@ -343,6 +376,12 @@ describe("claimOrderRefund SQL AST — WHERE paymentStatus='paid' mutation-proof
     return chain;
   };
 
+  afterEach(() => {
+    // Restore module state for subsequent tests
+    vi.doUnmock("@/db");
+    vi.resetModules();
+  });
+
   it("CLAIM-WHERE AST PROOF: WHERE clause contains orderId and paymentStatus='paid' as literal predicates", async () => {
     capturedWhereArg = undefined;
 
@@ -396,9 +435,5 @@ describe("claimOrderRefund SQL AST — WHERE paymentStatus='paid' mutation-proof
     // db/queries/orders.ts:claimOrderRefund drops "paid" from the queryChunks
     // literals, turning this assertion red and revealing the double-refund risk.
     expect(literals).toContain("paid");
-
-    // Restore module state for subsequent tests
-    vi.doUnmock("@/db");
-    vi.resetModules();
   });
 });

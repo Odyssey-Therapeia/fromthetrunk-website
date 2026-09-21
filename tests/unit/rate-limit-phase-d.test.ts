@@ -84,7 +84,9 @@ describe("Phase D durable rate limiter behavior", () => {
 
     expect(authOtp).toMatch(/auth:otp:start:ip[\s\S]*?requireDurable:\s*true/);
     expect(authOtp).toMatch(/auth:otp:verify:\$\{challengeTokenHash\}[\s\S]*?requireDurable:\s*true/);
-    expect(cart).toMatch(/cart:reserve[\s\S]*?requireDurable:\s*true/);
+    expect(cart).toMatch(
+      /rateLimitResponse\(\s*c\.req\.raw,\s*"cart:items:add",\s*\{[\s\S]*?requireDurable:\s*true/,
+    );
     expect(payments).toMatch(/payment:create:\$\{authUserOrResponse\.id\}[\s\S]*?requireDurable:\s*true/);
     expect(search).toMatch(/search:semantic[\s\S]*?requireDurable:\s*true/);
   });

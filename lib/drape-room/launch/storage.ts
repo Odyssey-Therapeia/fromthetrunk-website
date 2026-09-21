@@ -59,3 +59,53 @@ export function clearDrapeTeaserSeen(): void {
     // Nothing to do: the guard simply stays set for this tab.
   }
 }
+
+/*
+ * The coach mark's memory is a cookie, not storage.
+ *
+ * Three states, deliberately:
+ *   absent   — never taught, so show it
+ *   "true"   — taught and done, never show it again
+ *   "false"  — an explicit reset, so show it again
+ *
+ * Only `absent` and `"false"` show the lesson, which makes clearing it a
+ * one-line edit in devtools rather than a storage inspector hunt, and leaves
+ * the flag readable by the server should a future variant need it.
+ */
+const TAUGHT = "true";
+const SHOW_AGAIN = "false";
+
+/** One year: long enough that a returning shopper is not taught twice. */
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+
+function readCookie(name: string): null | string {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  for (const part of document.cookie.split(";")) {
+    const entry = part.trim();
+    if (entry.startsWith(prefix)) {
+      return decodeURIComponent(entry.slice(prefix.length));
+    }
+  }
+  return null;
+}
+
+function writeCookie(name: string, value: string): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=${value}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
+}
+
+export function hasSeenDrapeCardCoachmark(): boolean {
+  // Server render: claim seen so nothing can depend on the flag in SSR output.
+  if (typeof document === "undefined") return true;
+  return readCookie(drapeLaunchConfig.coachmarkCookie) === TAUGHT;
+}
+
+export function markDrapeCardCoachmarkSeen(): void {
+  writeCookie(drapeLaunchConfig.coachmarkCookie, TAUGHT);
+}
+
+/** Writes the explicit "show again" state rather than deleting the cookie. */
+export function clearDrapeCardCoachmarkSeen(): void {
+  writeCookie(drapeLaunchConfig.coachmarkCookie, SHOW_AGAIN);
+}

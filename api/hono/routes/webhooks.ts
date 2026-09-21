@@ -4,16 +4,25 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import type { HonoBindings } from "@/api/hono/types";
 import { db } from "@/db";
-import { claimEvent } from "@/db/queries/events";
+import {
+  getEventByEventId,
+  markEventProcessed,
+} from "@/db/queries/events";
 import { addOrderEvent, getOrder } from "@/db/queries/orders";
-import { releaseReservationsByOrder } from "@/db/queries/reservations";
-import { orders, products } from "@/db/schema";
+import { orders } from "@/db/schema";
 import { revalidateProductsCache } from "@/lib/cache/product-cache";
+import { createLogger } from "@/lib/log";
 import { completePaidOrder } from "@/lib/orders/complete-paid-order";
 import {
   fetchRazorpayOrderPayments,
   getRazorpayPaymentLinkReferenceId,
 } from "@/lib/payments/razorpay";
+import {
+  reconcilePaymentHoldForOrder,
+  type PaymentHoldOrderReconciliation,
+} from "@/lib/payments/reconcile-expired-holds";
+
+const log = createLogger("webhooks:razorpay");
 
 type RazorpayWebhookEvent = {
   event: string;
@@ -72,6 +81,17 @@ type PaymentOrderForVerification = {
 type PaymentForVerification = Omit<RazorpayWebhookPaymentEntity, "order_id"> & {
   order_id?: null | string;
 };
+
+/*
+ * completePaidOrder outcomes that no redelivery can change. Answering non-2xx
+ * would make Razorpay retry for a day and then disable the endpoint, which
+ * would also stop payment_link.paid deliveries.
+ */
+const FINAL_COMPLETION_ERRORS = new Set([
+  "PAYMENT_CLAIM_CONFLICT",
+  "PAYMENT_ID_MISMATCH",
+  "PRODUCT_SOLD",
+]);
 
 const findOrderByRazorpayOrderId = async (razorpayOrderId: string) => {
   const [order] = await db
@@ -136,6 +156,24 @@ const rejectWebhookCompletion = async (
   });
 };
 
+/** Complete a verified payment; a final rejection is audited and acknowledged. */
+const completeFromWebhook = async (
+  order: Pick<PaymentOrderForVerification, "id" | "status">,
+  input: Parameters<typeof completePaidOrder>[0],
+) => {
+  try {
+    await completePaidOrder(input);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (!FINAL_COMPLETION_ERRORS.has(code)) throw error;
+    await addOrderEvent(order.id, `${input.source} completion rejected`, order.status, {
+      code,
+      paymentId: input.paymentId,
+      paymentReference: input.paymentReference ?? null,
+    });
+  }
+};
+
 const findOrderByRazorpayReference = async (razorpayReference: string) => {
   const [order] = await db
     .select()
@@ -146,6 +184,42 @@ const findOrderByRazorpayReference = async (razorpayReference: string) => {
   return order ? getOrder(order.id) : null;
 };
 
+const orderIdFromPaymentLinkReference = (
+  referenceId: null | string | undefined,
+): null | string => {
+  const match = /^ftt_([a-f0-9]{32})$/i.exec(referenceId ?? "");
+  if (!match) return null;
+  const value = match[1]!.toLowerCase();
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+};
+
+/**
+ * Normal path is the stored provider id. The reference fallback covers the
+ * narrow but important case where Razorpay created the link and our response
+ * was lost before its id could be persisted.
+ */
+const findOrderForPaymentLink = async (
+  paymentLink: RazorpayWebhookPaymentLinkEntity,
+) => {
+  if (!paymentLink.id) return null;
+  const byProviderId = await findOrderByRazorpayReference(paymentLink.id);
+  if (byProviderId) return byProviderId;
+
+  const orderId = orderIdFromPaymentLinkReference(paymentLink.reference_id);
+  if (!orderId) return null;
+  const byReference = await getOrder(orderId);
+  if (
+    !byReference ||
+    getRazorpayPaymentLinkReferenceId(byReference.id) !==
+      paymentLink.reference_id ||
+    (byReference.razorpayOrderId != null &&
+      byReference.razorpayOrderId !== paymentLink.id)
+  ) {
+    return null;
+  }
+  return byReference;
+};
+
 const findOrderByPaymentId = async (paymentId: string) => {
   const [order] = await db
     .select()
@@ -154,40 +228,6 @@ const findOrderByPaymentId = async (paymentId: string) => {
     .limit(1);
 
   return order ?? null;
-};
-
-const releaseOrderReservation = async (orderId: string, eventNote: string) => {
-  const order = await getOrder(orderId);
-  if (!order || order.paymentStatus === "paid") return;
-
-  const productIds = order.items
-    .map((item) => item.productId)
-    .filter((id): id is string => Boolean(id));
-
-  if (productIds.length > 0) {
-    const released = await db
-      .update(products)
-      .set({
-        reservedUntil: null,
-        stockStatus: "available",
-        updatedAt: new Date(),
-      })
-      .where(and(inArray(products.id, productIds), eq(products.stockStatus, "reserved")))
-      .returning({ slug: products.slug });
-    revalidateProductsCache(released.map((product) => product.slug));
-  }
-
-  await releaseReservationsByOrder(order.id);
-
-  await db
-    .update(orders)
-    .set({
-      paymentStatus: "failed",
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, order.id));
-
-  await addOrderEvent(order.id, eventNote, order.status, null);
 };
 
 export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
@@ -236,19 +276,6 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
         );
       }
 
-      const razorpayEventId = c.req.header("x-razorpay-event-id");
-      if (razorpayEventId) {
-        const claimed = await claimEvent({
-          eventId: `razorpay_webhook:${razorpayEventId}`,
-          occurredAt: new Date(),
-          payload: { eventId: razorpayEventId },
-          type: "razorpay_webhook_received",
-        });
-        if (!claimed) {
-          return c.json({ duplicate: true, received: true }, 200);
-        }
-      }
-
       let event: RazorpayWebhookEvent;
       try {
         event = JSON.parse(rawBody) as RazorpayWebhookEvent;
@@ -256,7 +283,19 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
         return c.json({ code: "INVALID_PAYLOAD", message: "Invalid webhook payload." }, 400);
       }
 
-      switch (event.event) {
+      const razorpayEventId = c.req.header("x-razorpay-event-id");
+      const claimedEventId = razorpayEventId
+        ? `razorpay_webhook:${razorpayEventId}`
+        : null;
+      if (claimedEventId) {
+        const existingReceipt = await getEventByEventId(claimedEventId);
+        if (existingReceipt?.type === "razorpay_webhook_processed") {
+          return c.json({ duplicate: true, received: true }, 200);
+        }
+      }
+
+      try {
+        switch (event.event) {
         case "payment.authorized": {
           const payment = event.payload?.payment?.entity;
           if (!payment?.order_id || !payment.id) break;
@@ -275,8 +314,19 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
           const paymentLink = event.payload?.payment_link?.entity;
           if (!payment?.id || !paymentLink?.id) break;
 
-          const order = await findOrderByRazorpayReference(paymentLink.id);
-          if (!order) break;
+          const order = await findOrderForPaymentLink(paymentLink);
+          if (!order) {
+            // The order is written before its link is created, so no
+            // redelivery will ever find one (for example a link made by hand
+            // in the dashboard). Answering non-2xx would only get the endpoint
+            // disabled. A failed lookup still throws and is retried.
+            log.warn("payment_link.paid for a link with no matching order", {
+              paymentId: payment.id,
+              paymentLinkId: paymentLink.id,
+              referenceId: paymentLink.reference_id ?? null,
+            });
+            break;
+          }
 
           const linkFailure = paymentLinkMatchesOrder(order, paymentLink);
           const paymentFailure = paymentMatchesOrder(order, payment);
@@ -289,7 +339,7 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
             break;
           }
 
-          await completePaidOrder({
+          await completeFromWebhook(order, {
             orderId: order.id,
             paidAt: paidAtFromUnixSeconds(payment.created_at),
             paymentId: payment.id,
@@ -305,16 +355,58 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
           const paymentLink = event.payload?.payment_link?.entity;
           if (!paymentLink?.id) break;
 
-          const order = await findOrderByRazorpayReference(paymentLink.id);
+          const order = await findOrderForPaymentLink(paymentLink);
           if (!order) break;
 
-          await releaseOrderReservation(order.id, `Webhook ${event.event}`);
+          /*
+           * Webhooks are not delivered in event order: a capture just before
+           * expiry can arrive after this terminal snapshot. The payload is
+           * therefore never trusted to release anything. Reconciliation
+           * re-reads the link from Razorpay and restores or releases only a
+           * confirmed unpaid hold; anything it cannot prove stays protected
+           * until provider-aware reconciliation settles it, and the delivery
+           * is still acknowledged.
+           */
+          let reconciliation: PaymentHoldOrderReconciliation | null = null;
+          if (order.paymentStatus === "pending") {
+            try {
+              reconciliation = await reconcilePaymentHoldForOrder({
+                now: new Date(),
+                orderId: order.id,
+              });
+            } catch (error) {
+              log.warn("Terminal link reconciliation failed; the scheduled run retries it", {
+                error,
+                orderId: order.id,
+              });
+              reconciliation = { kind: "deferred", reason: "RECONCILIATION_FAILED" };
+            }
+          }
+          if (reconciliation?.kind === "released") {
+            revalidateProductsCache([
+              ...reconciliation.releasedSlugs,
+              ...reconciliation.restoredSlugs,
+            ]);
+          }
+
+          await addOrderEvent(order.id, `Webhook ${event.event}`, order.status, {
+            reconciliation: reconciliation?.kind ?? "skipped",
+            releaseDeferred:
+              reconciliation?.kind === "deferred" ||
+              reconciliation?.kind === "conflict",
+            ...(reconciliation?.kind === "deferred"
+              ? { reason: reconciliation.reason }
+              : {}),
+            terminal: true,
+          });
           break;
         }
         case "payment.captured": {
           const payment = event.payload?.payment?.entity;
           if (!payment?.order_id || !payment.id) break;
 
+          // Payment Link payments carry Razorpay's own order_ id, which no
+          // order stores. A redelivery would never find one either.
           const order = await findOrderByRazorpayOrderId(payment.order_id);
           if (!order) break;
 
@@ -327,7 +419,7 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
             break;
           }
 
-          await completePaidOrder({
+          await completeFromWebhook(order, {
             orderId: order.id,
             paidAt: paidAtFromUnixSeconds(payment.created_at),
             paymentId: payment.id,
@@ -344,13 +436,25 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
           const order = await findOrderByRazorpayOrderId(payment.order_id);
           if (!order) break;
 
-          await releaseOrderReservation(order.id, "Webhook payment.failed");
+          /*
+           * One failed payment attempt is not terminal for the Razorpay order
+           * or its open payment link: the shopper can retry and later succeed.
+           * Releasing here would let a second shopper buy the saree before that
+           * capture arrives. Only provider-aware reconciliation of a terminal
+           * link restores or releases the exact hold.
+           */
+          await addOrderEvent(order.id, "Webhook payment.failed", order.status, {
+            paymentId: payment.id ?? null,
+            paymentReference: payment.order_id,
+            terminal: false,
+          });
           break;
         }
         case "order.paid": {
           const razorpayOrder = event.payload?.order?.entity;
           if (!razorpayOrder?.id) break;
 
+          // As with payment.captured, no stored order means none ever will.
           const order = await findOrderByRazorpayOrderId(razorpayOrder.id);
           if (!order) break;
 
@@ -371,13 +475,13 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
             payment.id && paymentMatchesOrder(order, payment, razorpayOrder.id) === null
           );
           if (!capturedPayment?.id) {
-            await rejectWebhookCompletion(order.id, order.status, "Razorpay order.paid webhook", "CAPTURED_PAYMENT_NOT_FOUND", {
-              paymentReference: razorpayOrder.id,
-            });
-            break;
+            // Razorpay can deliver order.paid before the captured payment is
+            // visible in the order-payments list. This is a retryable provider
+            // propagation gap, not a final verification rejection.
+            throw new Error("WEBHOOK_CAPTURE_NOT_READY");
           }
 
-          await completePaidOrder({
+          await completeFromWebhook(order, {
             orderId: order.id,
             paidAt: paidAtFromUnixSeconds(capturedPayment.created_at),
             paymentId: capturedPayment.id,
@@ -394,19 +498,54 @@ export const registerWebhookRoutes = (app: OpenAPIHono<HonoBindings>) => {
           const order = await findOrderByPaymentId(paymentId);
           if (!order) break;
 
+          /*
+           * A refund changes only the order's payment record. The saree stays
+           * Sold until an admin has checked it and restores it explicitly.
+           */
           await db
             .update(orders)
             .set({
               paymentStatus: "refunded",
               updatedAt: new Date(),
             })
-            .where(eq(orders.id, order.id));
+            .where(
+              and(
+                eq(orders.id, order.id),
+                inArray(orders.paymentStatus, ["paid", "refunded"]),
+              ),
+            );
 
           await addOrderEvent(order.id, "Webhook refund.processed", order.status, {
             paymentId,
           });
           break;
         }
+        }
+
+        if (claimedEventId) {
+          await markEventProcessed({
+            eventId: claimedEventId,
+            occurredAt: new Date(),
+            payload: {
+              eventId: razorpayEventId!,
+              eventType: event.event,
+            },
+            type: "razorpay_webhook_processed",
+          });
+        }
+      } catch {
+        /*
+         * No completed receipt is written until dispatch succeeds. Returning a
+         * non-2xx response therefore lets Razorpay retry a transient lookup,
+         * provider call, database failure, or interrupted serverless run.
+         */
+        return c.json(
+          {
+            code: "WEBHOOK_PROCESSING_RETRY",
+            message: "Webhook processing is incomplete; retry later.",
+          },
+          503,
+        );
       }
 
       return c.json({ received: true }, 200);

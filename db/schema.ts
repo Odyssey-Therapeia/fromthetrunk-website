@@ -313,6 +313,11 @@ export const products = pgTable(
     ),
     statusIdx: index("products_status_idx").on(table.status),
     stockStatusIdx: index("products_stock_status_idx").on(table.stockStatus),
+    // Serves the expiry sweep: stock_status = 'reserved' AND reserved_until < now().
+    stockReservedUntilIdx: index("products_stock_reserved_until_idx").on(
+      table.stockStatus,
+      table.reservedUntil
+    ),
   })
 );
 
@@ -423,16 +428,69 @@ export const wishlistItems = pgTable(
 );
 
 /**
- * P6-04: Restock notify requests — captures restock intent for sold/reserved one-of-one items.
+ * The authenticated shopping bag.
  *
- * When a visitor (guest or logged-in) taps "Notify me if it returns" on a sold/reserved PDP:
- *   - An event is emitted (demand signal, fire-and-forget).
- *   - Optionally, a row is inserted here (durable intent capture).
+ * Commerce is authenticated-first, so a bag always belongs to a signed-in
+ * customer and there is no anonymous cart to merge. One active bag each, so
+ * (user_id, product_id) is the whole key — no separate carts table.
  *
- * Composite PK (product_id, email) ensures at-most-one request per email per product.
- * userId is nullable — guests identify by email only.
- * The actual restock email is OUT OF SCOPE for P6-04 (future cron).
- * Migration: drizzle/0015_wishlist-notify.sql (build-not-run).
+ * This row records WHICH CUSTOMER received a reservation. It is deliberately
+ * not the reservation identity: products.stock_status, products.reserved_until
+ * and the signed token remain authoritative, and only an exact reserved_until
+ * match may release a hold. Widening that to an approximate match would let a
+ * stale bag row free a saree carrying a live payment-link hold.
+ *
+ * Migration: drizzle/0032_user_cart_items.sql
+ */
+export const userCartItems = pgTable(
+  "user_cart_items",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** Signed proof of this exact hold. Null for never-reserved blouses. */
+    reservationToken: text("reservation_token"),
+    reservedUntil: timestamp("reserved_until", { withTimezone: true }),
+    selectedOptions: jsonb("selected_options").$type<Record<string, unknown> | null>(),
+    /**
+     * active          — in the bag, hold live.
+     * payment_pending — a payment link is open against this piece.
+     * ordered         — paid for.
+     * expired         — the hold lapsed; kept only until the next sweep.
+     */
+    status: text("status").notNull().default("active"),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.userId, table.productId],
+      name: "user_cart_items_pkey",
+    }),
+    productIdx: index("user_cart_items_product_idx").on(table.productId),
+    reservedUntilIdx: index("user_cart_items_reserved_until_idx").on(
+      table.reservedUntil
+    ),
+    userStatusIdx: index("user_cart_items_user_status_idx").on(
+      table.userId,
+      table.status
+    ),
+  })
+);
+
+/**
+ * Restock notification requests for reserved one-of-one pieces.
+ *
+ * New requests are authenticated and use the account's verified email. The
+ * nullable user id remains for rows captured before that cutover. The
+ * composite key de-duplicates one shopper/product request, while the lifecycle
+ * fields let the protected cron claim, retry, and finish delivery durably.
+ *
+ * Migrations: drizzle/0015_wishlist-notify.sql and
+ * drizzle/0030_restock-notify-lifecycle.sql.
  */
 export const restockNotifyRequests = pgTable(
   "restock_notify_requests",
@@ -443,6 +501,22 @@ export const restockNotifyRequests = pgTable(
     email: text("email").notNull(),
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * pending  — waiting for the piece to come back.
+     * claimed  — a worker run owns this row; it may not be sent twice.
+     * notified — the shopper has been emailed.
+     * failed   — retried to the ceiling and given up.
+     *
+     * Registering again after a notification resets the row to pending, so a
+     * shopper can wait for the same piece twice.
+     */
+    status: text("status").notNull().default("pending"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    /** Sanitised reason only — never a provider payload, never the recipient. */
+    lastError: text("last_error"),
   },
   (table) => ({
     pk: primaryKey({
@@ -451,6 +525,10 @@ export const restockNotifyRequests = pgTable(
     }),
     productIdx: index("restock_notify_requests_product_idx").on(table.productId),
     emailIdx: index("restock_notify_requests_email_idx").on(table.email),
+    statusCreatedAtIdx: index("restock_notify_requests_status_idx").on(
+      table.status,
+      table.createdAt
+    ),
   })
 );
 
@@ -537,6 +615,19 @@ export const orders = pgTable(
      * Stored on the orders table for direct access; orderEvents captures the audit trail.
      */
     internalNote: text("internal_note"),
+    /*
+     * The visitor's optional-tracking consent, captured when the order was
+     * placed and the browser was still present.
+     *
+     * Payment often completes later, through a Razorpay webhook or the expiry
+     * reconciler, where there are no cookies to read. Without this the server
+     * would have to either drop every purchase conversion or forward it
+     * regardless of what the shopper chose. NULL means no decision was
+     * recorded (orders placed before this column existed) and is treated as
+     * refusal — see lib/analytics/server-consent.ts.
+     */
+    analyticsConsent: boolean("analytics_consent"),
+    advertisingConsent: boolean("advertising_consent"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

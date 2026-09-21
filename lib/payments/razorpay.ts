@@ -5,9 +5,19 @@ import { isGstInclusive } from "@/lib/config/flags";
 import { ENABLE_FREE_SHIPPING, ENABLE_GST, ENABLE_SHIPPING_CHARGES, GST_RATE, SHIPPING_TIERS, type ShippingMethod } from "@/lib/config/order-pricing";
 import { applyDiscountToPaise, type ValidatedDiscount } from "@/lib/discounts/validate";
 import { isLiveRazorpayMode, isUnsafeLiveHost } from "@/lib/payments/payment-host-guard";
+import { PAYMENT_LINK_HOLD_MINUTES } from "@/lib/cart/reservation-policy";
 
 export const RAZORPAY_MIN_AMOUNT_PAISE = 100;
-export const RAZORPAY_PAYMENT_LINK_HOLD_MINUTES = 30;
+/** One number, shared with the data layer that has to bound the same window. */
+export const RAZORPAY_PAYMENT_LINK_HOLD_MINUTES = PAYMENT_LINK_HOLD_MINUTES;
+/**
+ * Razorpay rejects a Payment Link whose expire_by is less than 15 minutes
+ * away ("timestamp must be atleast 15 minutes in future"):
+ * https://razorpay.com/docs/api/payments/payment-links/create-standard/
+ */
+export const RAZORPAY_PAYMENT_LINK_MIN_EXPIRY_MS = 15 * 60 * 1000;
+/** Absorbs request latency and clock skew between this server and Razorpay. */
+const RAZORPAY_PAYMENT_LINK_EXPIRY_MARGIN_MS = 60 * 1000;
 
 let instance: Razorpay | null = null;
 
@@ -21,10 +31,29 @@ const readNumber = (value: unknown, key: string): number | null => {
   return typeof raw === "number" ? raw : null;
 };
 
+/** The SDK types statusCode as string | number. */
+const readStatusCode = (value: unknown): number | null => {
+  const raw = asRecord(value)?.statusCode;
+  if (typeof raw === "number") return raw;
+  return typeof raw === "string" && /^\d{3}$/.test(raw) ? Number(raw) : null;
+};
+
 export function isRazorpayAuthError(error: unknown): boolean {
   const directStatus = readNumber(error, "statusCode");
   const nestedStatus = readNumber(asRecord(error)?.error, "statusCode");
   return directStatus === 401 || nestedStatus === 401;
+}
+
+/**
+ * Razorpay refused the request itself: a validation error, or a link whose
+ * state no longer allows the change. Unlike a timeout, nothing happened.
+ * Razorpay also labels 401s BAD_REQUEST_ERROR, so the status wins when present.
+ */
+export function isRazorpayBadRequest(error: unknown): boolean {
+  const record = asRecord(error);
+  const status = readStatusCode(error) ?? readStatusCode(record?.error);
+  if (status != null) return status === 400;
+  return asRecord(record?.error)?.code === "BAD_REQUEST_ERROR";
 }
 
 const timingSafeHexEqual = (expectedSignature: string, signature: string): boolean => {
@@ -149,8 +178,18 @@ export async function createRazorpayPaymentLink({
   referenceId,
 }: CreateRazorpayPaymentLinkInput): Promise<RazorpayPaymentLinkResponse> {
   const razorpay = getRazorpayInstance();
-  const expiresAt =
-    expireBy ?? new Date(Date.now() + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000);
+  const now = Date.now();
+  const serverDeadline =
+    expireBy ?? new Date(now + RAZORPAY_PAYMENT_LINK_HOLD_MINUTES * 60 * 1000);
+  /*
+   * Only the provider link is floored to Razorpay's minimum. The database
+   * holds keep the caller's deadline, and reconciliation cancels a link that
+   * is still open once that deadline has passed.
+   */
+  const providerExpiresAt = Math.max(
+    serverDeadline.getTime(),
+    now + RAZORPAY_PAYMENT_LINK_MIN_EXPIRY_MS + RAZORPAY_PAYMENT_LINK_EXPIRY_MARGIN_MS,
+  );
   const notifyCustomer = shouldNotifyRazorpayCustomer({ callbackUrl });
 
   const paymentLink = await razorpay.paymentLink.create({
@@ -165,7 +204,7 @@ export async function createRazorpayPaymentLink({
       name: customer.name,
     },
     description,
-    expire_by: Math.floor(expiresAt.getTime() / 1000),
+    expire_by: Math.floor(providerExpiresAt / 1000),
     notes,
     notify: {
       email: notifyCustomer,
@@ -176,6 +215,18 @@ export async function createRazorpayPaymentLink({
   });
 
   return paymentLink as RazorpayPaymentLinkResponse;
+}
+
+/**
+ * Razorpay cancels only a link still in the "created" state; a paid or expired
+ * link is refused with a 400, so callers re-read the link rather than infer.
+ * https://razorpay.com/docs/api/payments/payment-links/cancel-standard/
+ */
+export async function cancelRazorpayPaymentLink(
+  paymentLinkId: string,
+): Promise<RazorpayPaymentLinkResponse> {
+  const razorpay = getRazorpayInstance();
+  return razorpay.paymentLink.cancel(paymentLinkId) as Promise<RazorpayPaymentLinkResponse>;
 }
 
 export async function fetchRazorpayPayment(
@@ -205,6 +256,54 @@ export async function fetchRazorpayPaymentLink(
 ): Promise<RazorpayPaymentLinkResponse> {
   const razorpay = getRazorpayInstance();
   return razorpay.paymentLink.fetch(paymentLinkId) as Promise<RazorpayPaymentLinkResponse>;
+}
+
+/**
+ * Recover a Payment Link when creation succeeded at Razorpay but its response
+ * was lost before this server could persist the returned id and URL.
+ *
+ * Razorpay documents `reference_id` as a Fetch All filter and requires it to
+ * be unique. The installed SDK forwards the parameter at runtime although its
+ * pagination type has not caught up with that documented field.
+ */
+export type RazorpayPaymentLinkReferenceLookup =
+  | { kind: "absent" }
+  | { kind: "ambiguous" }
+  | { kind: "found"; paymentLink: RazorpayPaymentLinkResponse };
+
+/**
+ * Distinguish a confirmed empty provider result from a malformed or duplicate
+ * result. Expiry reconciliation may release a hold for the former, but must
+ * defer the latter.
+ */
+export async function lookupRazorpayPaymentLinkByReferenceId(
+  referenceId: string,
+): Promise<RazorpayPaymentLinkReferenceLookup> {
+  const razorpay = getRazorpayInstance();
+  const list = razorpay.paymentLink.all as unknown as (params: {
+    count: number;
+    reference_id: string;
+  }) => Promise<{ payment_links?: RazorpayPaymentLinkResponse[] }>;
+  const result = await list.call(razorpay.paymentLink, {
+    count: 2,
+    reference_id: referenceId,
+  });
+  const returned = result.payment_links ?? [];
+  if (returned.length === 0) return { kind: "absent" };
+
+  const exact = returned.filter(
+    (link) => link.reference_id === referenceId,
+  );
+  return exact.length === 1 && returned.length === 1
+    ? { kind: "found", paymentLink: exact[0]! }
+    : { kind: "ambiguous" };
+}
+
+export async function findRazorpayPaymentLinkByReferenceId(
+  referenceId: string,
+): Promise<RazorpayPaymentLinkResponse | null> {
+  const result = await lookupRazorpayPaymentLinkByReferenceId(referenceId);
+  return result.kind === "found" ? result.paymentLink : null;
 }
 
 /**

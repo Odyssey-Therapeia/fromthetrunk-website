@@ -1,8 +1,23 @@
-import { and, desc, eq, inArray, InferInsertModel, InferSelectModel, isNull } from "drizzle-orm";
+import {
+  AnyColumn,
+  and,
+  desc,
+  eq,
+  inArray,
+  InferInsertModel,
+  InferSelectModel,
+  isNull,
+  ne,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
+import { alias, QueryBuilder } from "drizzle-orm/pg-core";
 
 import { db, withRetry } from "@/db";
 import { getFirstRow, requireFirstRow } from "@/db/results";
 import { addresses, users } from "@/db/schema";
+import { normalizeOtpPhone } from "@/lib/auth/otp";
 
 type AddressRecord = InferSelectModel<typeof addresses>;
 type UserRecord = InferSelectModel<typeof users>;
@@ -188,4 +203,109 @@ export const claimCheckoutShell = async (
   if (!updated) return null;
   const [hydrated] = await hydrateUsers([updated]);
   return hydrated ?? null;
+};
+
+export type FillMissingCheckoutProfileInput = {
+  userId: string;
+  name?: string | null;
+  phone?: string | null;
+  now?: Date;
+};
+
+export type FillMissingCheckoutProfileResult = {
+  nameFilled: boolean;
+  phoneFilled: boolean;
+};
+
+const otherUsers = alias(users, "other_users");
+// The phone-owner subquery is only a fragment of the UPDATE below, never run
+// on its own, so it is built without a connection.
+const fragmentQuery = new QueryBuilder();
+
+const isMissing = (column: AnyColumn) => or(isNull(column), sql`btrim(${column}) = ''`);
+
+/** A national number is the last ten digits of a phone, however it was typed. */
+const NATIONAL_NUMBER_DIGITS = 10;
+
+/**
+ * Whether a stored phone is this E.164 number in any format.
+ *
+ * Only digits are compared, so "+91 98765-43210" is the same line as
+ * "+919876543210". A value that holds just the national number, perhaps behind
+ * a trunk 0, counts too: its last ten digits are the number's last ten.
+ */
+const isSamePhoneNumber = (column: AnyColumn, e164Phone: string) => {
+  const digits = e164Phone.slice(1);
+  const storedDigits = sql`regexp_replace(${column}, '[^0-9]', '', 'g')`;
+  return or(
+    sql`${storedDigits} = ${digits}`,
+    sql`right(${storedDigits}, ${sql.raw(String(NATIONAL_NUMBER_DIGITS))}) = ${digits.slice(-NATIONAL_NUMBER_DIGITS)}`,
+  );
+};
+
+const toE164Phone = (phone: string | null | undefined): string | null => {
+  if (!phone) return null;
+  try {
+    return normalizeOtpPhone(phone);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Fills the account owner's name and phone from checkout, only where missing.
+ *
+ * Stored values that are already valid always win: every write is guarded in
+ * SQL so it never overwrites. Email is deliberately out of reach; the verified
+ * login email stays the account's identity. Name and phone are separate
+ * UPDATEs so one field can fill even when the other cannot.
+ *
+ * users.phone doubles as an OTP login identity and its index is not unique,
+ * so a phone is stored only in E.164 form and only when no other account
+ * already holds that number in any format. Otherwise a phone sign-in could
+ * reach the wrong account.
+ */
+export const fillMissingCheckoutProfile = async ({
+  userId,
+  name,
+  phone,
+  now = new Date(),
+}: FillMissingCheckoutProfileInput): Promise<FillMissingCheckoutProfileResult> => {
+  const trimmedName = name?.trim();
+  const e164Phone = toE164Phone(phone);
+
+  const nameRow = trimmedName
+    ? getFirstRow(
+        await db
+          .update(users)
+          .set({ name: trimmedName, updatedAt: now })
+          .where(and(eq(users.id, userId), isMissing(users.name)))
+          .returning({ id: users.id })
+      )
+    : undefined;
+
+  const phoneRow = e164Phone
+    ? getFirstRow(
+        await db
+          .update(users)
+          .set({ phone: e164Phone, updatedAt: now })
+          .where(
+            and(
+              eq(users.id, userId),
+              isMissing(users.phone),
+              notExists(
+                fragmentQuery
+                  .select({ one: sql`1` })
+                  .from(otherUsers)
+                  .where(
+                    and(isSamePhoneNumber(otherUsers.phone, e164Phone), ne(otherUsers.id, userId))
+                  )
+              )
+            )
+          )
+          .returning({ id: users.id })
+      )
+    : undefined;
+
+  return { nameFilled: Boolean(nameRow), phoneFilled: Boolean(phoneRow) };
 };

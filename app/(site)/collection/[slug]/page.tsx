@@ -17,16 +17,19 @@ import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { getDisplayOriginalPricePaise } from "@/lib/cart/cart-totals";
-import { BlousePurchaseControls } from "@/components/product/blouse-purchase-controls";
+import {
+  BlousePurchaseControls,
+  BlouseStickyAction,
+} from "@/components/product/blouse-purchase-controls";
+import {
+  PdpAvailabilityNotice,
+  PdpStockBadge,
+} from "@/components/product/pdp-live-availability";
 import { ProductViewTracker } from "@/components/product/product-view-tracker";
 import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { WishlistButton } from "@/components/product/wishlist-button";
 import { DrapeRoomTrigger } from "@/components/drape-room/drape-room-trigger";
 import { DrapeLaunchGallerySlot } from "@/components/drape-room/launch/drape-launch-gallery-slot";
-// Parked alongside the commented-out usage below.
-// import { RestockNotifyButton } from "@/components/product/restock-notify-button";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Accordion,
   AccordionContent,
@@ -270,7 +273,10 @@ export default async function SareePage({ params }: ProductPageProps) {
                     {isBlouse ? "Tailored blouse" : "Unique circular saree"}
                   </p>
                 </div>
-                <StockBadge stockStatus={effectiveStockStatus} />
+                <PdpStockBadge
+                  productId={product.id}
+                  initialStatus={effectiveStockStatus}
+                />
               </div>
 
               <h1 className="mt-4 font-serif text-[clamp(2rem,3.2vw,3.35rem)] leading-[0.93] text-[#601D1C]">
@@ -369,6 +375,13 @@ export default async function SareePage({ params }: ProductPageProps) {
                     <WishlistButton
                       productId={product.id}
                       productName={product.name}
+                      initialViewerState={
+                        effectiveStockStatus === "sold"
+                          ? "sold"
+                          : effectiveStockStatus === "reserved"
+                            ? "reserved_by_other"
+                            : "available"
+                      }
                       className="h-11 w-11 shrink-0 border border-[#E7DDD4] bg-[#FDF7F1] text-[#601D1C] hover:bg-[#601D1C] hover:text-[#FDF7F1]"
                     />
                     {drapeSaree.eligible ? (
@@ -379,31 +392,15 @@ export default async function SareePage({ params }: ProductPageProps) {
                   </div>
                 )}
 
-                {effectiveStockStatus === "available" ? (
-                  <p className="text-xs leading-5 text-[#141D46]/58">
-                    Adding this piece reserves the unique piece in your bag.
-                    Final ownership is confirmed at checkout.
-                  </p>
-                ) : (
-                  <div className="space-y-2 rounded-xl border border-[#601D1C]/16 bg-[#601D1C]/5 p-3">
-                    <p className="text-xs leading-5 text-[#601D1C]/75">
-                      {effectiveStockStatus === "sold"
-                        ? "This piece has found its next wardrobe."
-                        : "This piece is currently reserved by another buyer."}
-                    </p>
-                    {/* Restock notify is parked. The button captured an email
-                        into restock_notify_requests, but nothing ever reads that
-                        table — no cron, no sender — so it promised "we'll let
-                        you know" and then told nobody. Left commented rather
-                        than deleted: the endpoint, table and component all still
-                        exist, so re-enabling is just uncommenting this once a
-                        sender is built.
-                    <RestockNotifyButton
-                      productId={product.id}
-                      productName={product.name}
-                    /> */}
-                  </div>
-                )}
+                {/* Live for this viewer, so a shopper's own hold never reads
+                    as another buyer's. */}
+                <PdpAvailabilityNotice
+                  productId={product.id}
+                  initialStatus={effectiveStockStatus}
+                  availableCopy="Adding this piece reserves the unique piece in your bag. Final ownership is confirmed at checkout."
+                  reservedCopy="This piece is currently reserved by another buyer."
+                  soldCopy="This piece has found its next wardrobe."
+                />
               </div>
 
               <div className="mt-4 grid gap-2 rounded-3xl border border-[#141D46]/10 bg-[#141D46] p-3 text-[#FDF7F1]">
@@ -610,9 +607,10 @@ export default async function SareePage({ params }: ProductPageProps) {
           </div>
           <div className="min-w-0 flex-1">
             {isBlouse ? (
-              <Button asChild className="w-full rounded-full py-6">
-                <a href="#blouse-size-selector">Select size</a>
-              </Button>
+              <BlouseStickyAction
+                product={product}
+                initialStatus={effectiveStockStatus}
+              />
             ) : (
               <AddToCartButton
                 product={product}
@@ -669,27 +667,6 @@ function rankRelatedProducts(
     })
     .sort((a, b) => b.score - a.score)
     .map((item) => item.candidate);
-}
-
-function StockBadge({ stockStatus }: { stockStatus: EffectiveStockStatus }) {
-  const label =
-    stockStatus === "available"
-      ? "In stock"
-      : stockStatus === "reserved"
-        ? "Reserved"
-        : "Sold";
-
-  return (
-    <Badge
-      className={
-        stockStatus === "available"
-          ? "rounded-full border border-[#141D46]/15 bg-[#141D46]/8 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#141D46] shadow-none"
-          : "rounded-full border border-[#601D1C]/20 bg-[#601D1C]/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#601D1C] shadow-none"
-      }
-    >
-      {label}
-    </Badge>
-  );
 }
 
 function DossierFact({ label, value }: { label: string; value: string }) {

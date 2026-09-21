@@ -3,7 +3,7 @@
  *
  * Tests completePaidOrder in isolation with emitAnalyticsEvent mocked to verify:
  *   L3: payment_completed fires EXACTLY ONCE — only in the winner branch.
- *   L2 (money path): emitAnalyticsEvent throwing does NOT break completePaidOrder.
+ *   L2 (money path): analytics delivery is not awaited by completePaidOrder.
  *
  * These are in a separate file because vi.mock("@/lib/analytics/emit") conflicts
  * with the direct emitAnalyticsEvent tests in analytics-emit.test.ts.
@@ -21,43 +21,22 @@ const getOrderNotificationRecipientsMock = vi.hoisted(() => vi.fn());
 const orderConfirmationEmailMock = vi.hoisted(() => vi.fn());
 const orderPurchaseNotificationEmailMock = vi.hoisted(() => vi.fn());
 const sendEmailMock = vi.hoisted(() => vi.fn());
-
-// db.update chain: .set().where().returning()
-const returningMock = vi.hoisted(() => vi.fn());
-const productReturningMock = vi.hoisted(() => vi.fn());
-const whereMock = vi.hoisted(() => vi.fn());
-const setMock = vi.hoisted(() => vi.fn());
-const updateMock = vi.hoisted(() => vi.fn());
+const completePaidCommerceStateMock = vi.hoisted(() => vi.fn());
 
 // emitAnalyticsEvent spy — mocked so we can assert call count without network
 const emitAnalyticsEventMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-
-vi.mock("@/db", () => ({
-  db: { update: updateMock },
-}));
-
-vi.mock("@/db/schema", () => ({
-  orders: { id: "id", paymentStatus: "paymentStatus" },
-  products: { id: "id", slug: "slug", stockStatus: "stockStatus" },
-  reservations: { id: "id", orderId: "orderId", productId: "productId" },
-  events: { eventId: "eventId" },
-}));
-
-vi.mock("@/db/queries/reservations", () => ({
-  releaseReservationsByOrder: vi.fn().mockResolvedValue(undefined),
-  releaseReservationsByProducts: vi.fn().mockResolvedValue(undefined),
-  insertReservation: vi.fn().mockResolvedValue({ id: "res-1" }),
-  expireReservations: vi.fn().mockResolvedValue({ deleted: 0 }),
-}));
 
 vi.mock("@/db/queries/orders", () => ({
   addOrderEvent: addOrderEventMock,
   getOrder: getOrderMock,
 }));
 
-// Blouses are excluded from the paid→sold claim; default to none (all reservable).
-vi.mock("@/db/queries/products", () => ({
-  getBlouseProductIdSet: vi.fn().mockResolvedValue(new Set()),
+vi.mock("@/db/queries/user-cart", () => ({
+  completePaidCommerceState: completePaidCommerceStateMock,
+}));
+
+vi.mock("@/db/queries/discounts", () => ({
+  incrementDiscountUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/email/send", () => ({
@@ -73,18 +52,13 @@ vi.mock("@/lib/email/templates", () => ({
   orderPurchaseNotificationEmail: orderPurchaseNotificationEmailMock,
 }));
 
-vi.mock("drizzle-orm", () => ({
-  and: (...args: unknown[]) => ({ _and: args }),
-  eq: (col: unknown, val: unknown) => ({ _eq: [col, val] }),
-  inArray: (col: unknown, vals: unknown) => ({ _inArray: [col, vals] }),
-  isNull: (col: unknown) => ({ _isNull: col }),
-  ne: (col: unknown, val: unknown) => ({ _ne: [col, val] }),
-  or: (...args: unknown[]) => ({ _or: args }),
-}));
-
 vi.mock("@/lib/analytics/emit", () => ({
   emitAnalyticsEvent: emitAnalyticsEventMock,
   _resetSinks: vi.fn(),
+}));
+
+vi.mock("@/lib/cache/product-cache", () => ({
+  revalidateProductsCache: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -133,11 +107,6 @@ const INPUT = {
 
 describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
   beforeEach(() => {
-    updateMock.mockReset();
-    setMock.mockReset();
-    whereMock.mockReset();
-    returningMock.mockReset();
-    productReturningMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
     sendEmailMock.mockReset();
@@ -146,20 +115,7 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
     orderPurchaseNotificationEmailMock.mockReset();
     emitAnalyticsEventMock.mockReset();
     emitAnalyticsEventMock.mockResolvedValue(undefined);
-
-    updateMock.mockReturnValue({ set: setMock });
-    setMock.mockImplementation((values: Record<string, unknown>) => {
-      const isProductUpdate = Object.prototype.hasOwnProperty.call(values, "stockStatus");
-      const activeReturningMock = isProductUpdate ? productReturningMock : returningMock;
-
-      return {
-        where: (...args: unknown[]) => {
-          whereMock(...args);
-          return { returning: activeReturningMock };
-        },
-      };
-    });
-    productReturningMock.mockResolvedValue([{ slug: "saree" }]);
+    completePaidCommerceStateMock.mockReset();
 
     getOrderNotificationRecipientsMock.mockReturnValue(["admin@example.com"]);
     orderConfirmationEmailMock.mockReturnValue({ subject: "Order confirmed", html: "<p>confirmed</p>" });
@@ -168,9 +124,12 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
     addOrderEventMock.mockResolvedValue(undefined);
   });
 
-  it("emits payment_completed exactly once in winner branch (rows returned)", async () => {
-    // Winner: atomic UPDATE returns rows
-    returningMock.mockResolvedValue([{ id: "order-1" }]);
+  it("emits payment_completed exactly once for the atomic commerce winner", async () => {
+    completePaidCommerceStateMock.mockResolvedValue({
+      kind: "completed",
+      soldCount: 1,
+      soldSlugs: [],
+    });
 
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER)  // existing check
@@ -194,8 +153,11 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
   });
 
   it("does NOT emit payment_completed in loser (already-paid) branch", async () => {
-    // Loser: atomic UPDATE returns empty (order already paid by concurrent call)
-    returningMock.mockResolvedValue([]);
+    completePaidCommerceStateMock.mockResolvedValue({
+      kind: "already_paid",
+      soldCount: 0,
+      soldSlugs: [],
+    });
 
     getOrderMock
       .mockResolvedValueOnce(CONFIRMED_ORDER)  // existing check passes (order exists)
@@ -209,14 +171,17 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
   });
 
   it("emits exactly once under concurrent winner + loser calls", async () => {
-    let updateCallCount = 0;
-    returningMock.mockImplementation(() => {
-      updateCallCount++;
-      // First UPDATE call = winner, second = loser (concurrent race)
-      return updateCallCount === 1
-        ? Promise.resolve([{ id: "order-1" }])
-        : Promise.resolve([]);
-    });
+    completePaidCommerceStateMock
+      .mockResolvedValueOnce({
+        kind: "completed",
+        soldCount: 1,
+        soldSlugs: [],
+      })
+      .mockResolvedValueOnce({
+        kind: "already_paid",
+        soldCount: 0,
+        soldSlugs: [],
+      });
 
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER)   // call 1 existing check
@@ -242,24 +207,21 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
     );
   });
 
-  it("completePaidOrder succeeds (returns order) even when emitAnalyticsEvent rejects", async () => {
-    // Simulate a failing analytics sink — should not break the money path
-    emitAnalyticsEventMock.mockRejectedValue(new Error("Analytics infrastructure down"));
-
-    // Winner path
-    returningMock.mockResolvedValue([{ id: "order-1" }]);
+  it("does not await analytics delivery before returning the confirmed order", async () => {
+    // The production analytics adapter absorbs sink failures. A promise that
+    // never settles proves this money path is fire-and-forget without creating
+    // an artificial unhandled rejection in Vitest.
+    emitAnalyticsEventMock.mockReturnValue(new Promise(() => undefined));
+    completePaidCommerceStateMock.mockResolvedValue({
+      kind: "completed",
+      soldCount: 1,
+      soldSlugs: [],
+    });
 
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER)
       .mockResolvedValueOnce(CONFIRMED_ORDER);
 
-    // Because the SUT uses `void emitAnalyticsEvent(...)` the rejection is fire-and-forget.
-    // The mock rejection here still propagates synchronously into the void since the
-    // actual emitAnalyticsEvent wraps each sink call in .catch() — but we test that
-    // completePaidOrder itself doesn't throw.
-    //
-    // NOTE: Even if the mocked function rejects, the `void` in the SUT means it
-    // does not await or propagate the error into completePaidOrder.
     const result = await completePaidOrder(INPUT);
 
     // The order must be confirmed and emails sent despite analytics failure
@@ -269,7 +231,11 @@ describe("completePaidOrder — payment_completed exactly-once (L3)", () => {
   });
 
   it("payment_completed event_id is a valid UUID string (generated server-side)", async () => {
-    returningMock.mockResolvedValue([{ id: "order-1" }]);
+    completePaidCommerceStateMock.mockResolvedValue({
+      kind: "completed",
+      soldCount: 1,
+      soldSlugs: [],
+    });
 
     getOrderMock
       .mockResolvedValueOnce(PENDING_ORDER)

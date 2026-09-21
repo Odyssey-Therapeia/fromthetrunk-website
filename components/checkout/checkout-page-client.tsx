@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { useCartLineVerdicts } from "@/components/cart/cart-item";
 import { Checkbox } from "@/components/ui/checkbox";
 import { trackOncePerSession } from "@/lib/analytics/client";
 import { trackStartFlow } from "@/lib/analytics/track";
@@ -27,6 +28,17 @@ import {
   toSavedAddressPayload,
   validateAddressForm,
 } from "@/lib/checkout/address-form";
+import { announceCartChangedAcrossTabs } from "@/lib/commerce/cart-tab-bus";
+import { useServerCart } from "@/lib/commerce/use-server-cart";
+import {
+  readViewerProductState,
+  type ViewerProductState,
+} from "@/lib/commerce/viewer-state";
+import {
+  announceViewerState,
+  commerceViewerKey,
+  readViewerStateSequence,
+} from "@/lib/commerce/viewer-state-bus";
 import {
   getOneOfOneConflictCopy,
   type OneOfOneConflictCopy,
@@ -34,7 +46,7 @@ import {
 import { type CheckoutStep, STEP_COPY } from "@/lib/checkout/steps";
 import { clearCheckoutAttempt } from "@/lib/checkout/checkout-attempt";
 import { useCheckoutPayment } from "@/lib/checkout/use-checkout-payment";
-import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { getCartTotals } from "@/lib/store/cart-store";
 import { cn } from "@/lib/utils";
 import type { Address, Product } from "@/types/domain";
 
@@ -50,11 +62,47 @@ import { PackagingStep } from "./packaging-step";
 import { ReviewStep } from "./review-step";
 import { SavedAddressPicker } from "./saved-address-picker";
 
-const fetchAddresses = async (): Promise<Address[]> => {
+export const fetchAddresses = async (): Promise<Address[]> => {
   const response = await fetch("/api/v2/addresses");
-  if (!response.ok) return [];
+  // A failed load stays a failure. Read as an empty book, it let the next
+  // saved checkout address replace the customer's own default.
+  if (!response.ok) {
+    throw new Error(`Unable to load saved addresses (${response.status}).`);
+  }
   return (await response.json()) as Address[];
 };
+
+/**
+ * A checkout address becomes the default only in a book known to have none.
+ * An unfinished or failed load proves nothing about the customer's default.
+ */
+export const shouldDefaultCheckoutAddress = (addressBook: {
+  data?: Address[];
+  isSuccess: boolean;
+}): boolean =>
+  addressBook.isSuccess &&
+  !(addressBook.data ?? []).some((address) => address.isDefault);
+
+/**
+ * A create-order conflict removes the line only when its copy says the piece
+ * is gone. A payment already in progress keeps its line and its hold, so the
+ * bag is re-read instead and the line redraws as "In bag" with no remove.
+ */
+export async function applyCheckoutConflict(
+  conflict: { copy: OneOfOneConflictCopy; productId?: string },
+  actions: {
+    refresh: () => Promise<void>;
+    removeFromBag: (productId: string) => Promise<unknown>;
+    showConflict: (copy: OneOfOneConflictCopy) => void;
+  },
+): Promise<void> {
+  actions.showConflict(conflict.copy);
+  if (conflict.copy.removeProduct && conflict.productId) {
+    await actions.removeFromBag(conflict.productId);
+    return;
+  }
+  await actions.refresh();
+}
 
 const saveCheckbox =
   "border-ftt-navy data-[state=checked]:border-ftt-navy data-[state=checked]:bg-ftt-navy";
@@ -88,24 +136,54 @@ const addressDedupeKey = (parts: {
     .map(normalizeAddressPart)
     .join("|");
 
-export function CheckoutPageClient({
-  embedded = false,
-  featuredPicks,
-}: {
+type CheckoutPageClientProps = {
   embedded?: boolean;
   featuredPicks: Product[];
-}) {
+};
+
+/** A session change remounts every customer-entered field and one-time seed. */
+export function CheckoutPageClient(props: CheckoutPageClientProps) {
+  const { data: session, status } = useSession();
+  const viewerKey =
+    status === "authenticated" && session?.user?.id
+      ? session.user.id
+      : status;
+
+  return <CheckoutPageClientForViewer key={viewerKey} {...props} />;
+}
+
+function CheckoutPageClientForViewer({
+  embedded = false,
+  featuredPicks,
+}: CheckoutPageClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session, status: sessionStatus } = useSession();
   const isAuthenticated = Boolean(session?.user?.id);
+  // The key the live stock snapshot files verdicts under, so what the
+  // preflight learns lands where every card, the drawer and the PDP read.
+  const viewerKey = commerceViewerKey(sessionStatus, session?.user?.id ?? null);
 
-  const items = useCartStore((state) => state.items);
-  const hasHydrated = useCartStore((state) => state.hasHydrated);
-  const clearCart = useCartStore((state) => state.clearCart);
-  const removeItem = useCartStore((state) => state.removeItem);
+  const {
+    isReleasing,
+    presentedItems: items,
+    presentationHasHydrated: hasHydrated,
+    refresh: refreshServerCart,
+    refreshAfterBagChange,
+    removeFromBag,
+    userId: serverCartUserId,
+  } = useServerCart();
   const { subtotal } = getCartTotals(items);
   const hasItems = hasHydrated && items.length > 0;
+  // The summary's lines report the verdicts they draw; payment obeys the same.
+  const { reportVerdict: reportLineVerdict, verdictFor: lineVerdictFor } =
+    useCartLineVerdicts();
+  const hasSoldCartItem = items.some(
+    (item) => lineVerdictFor(item) === "sold",
+  );
+  const hasUncheckedCartItem = items.some(
+    (item) => lineVerdictFor(item) === "checking",
+  );
 
   const payment = useCheckoutPayment();
   const { isSubmitting, error } = payment;
@@ -168,6 +246,9 @@ export function CheckoutPageClient({
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [checkoutConflict, setCheckoutConflict] =
     useState<OneOfOneConflictCopy | null>(null);
+  const [checkoutViewerStatus, setCheckoutViewerStatus] = useState<
+    "blocked" | "checking" | "trusted"
+  >("checking");
 
   const showCheckoutConflict = useCallback((copy: OneOfOneConflictCopy) => {
     setCheckoutConflict(copy);
@@ -175,54 +256,104 @@ export function CheckoutPageClient({
   }, []);
 
   const recheckCheckoutAvailability = useCallback(async () => {
-    if (!hasItems) return true;
-    let isStillAvailable = true;
+    if (!hasItems) {
+      setCheckoutViewerStatus("trusted");
+      return true;
+    }
+    const productIds = [...new Set(items.map((item) => item.id))];
+    // Noted as the request leaves. A removal announced while it travels is
+    // newer than anything this answer can say about that saree.
+    const sentAtSequence = readViewerStateSequence();
+    const response = await fetch("/api/v2/products/viewer-state", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ productIds }),
+    }).catch(() => null);
+
+    // A failed preflight is not availability. Keep payment disabled until an
+    // authoritative response succeeds; the create-order guard remains the
+    // final server-side enforcement as well.
+    if (!response?.ok) {
+      setCheckoutViewerStatus("checking");
+      return false;
+    }
+
+    const payload = (await response.json().catch(() => null)) as {
+      products?: Record<
+        string,
+        { reservedUntil?: unknown; state?: unknown } | null
+      >;
+    } | null;
+    if (
+      !payload?.products ||
+      typeof payload.products !== "object" ||
+      Array.isArray(payload.products)
+    ) {
+      setCheckoutViewerStatus("checking");
+      return false;
+    }
+
+    /*
+     * Every verdict this answer proves is told to every surface before any
+     * line is judged, so the cards, the drawer and the product page share the
+     * snapshot these summary lines draw instead of waiting for their own poll.
+     * An entry that does not parse is not told: it must never replace a
+     * verdict another surface already trusts. Each one carries when this
+     * request left, so a removal the shopper made while it travelled keeps
+     * its newer verdict instead of getting this answer's "In bag" back.
+     */
+    const verdicts = new Map<string, ViewerProductState>();
+    for (const productId of productIds) {
+      const verdict = payload.products[productId];
+      const state = readViewerProductState(verdict?.state);
+      if (!state) continue;
+      verdicts.set(productId, state);
+      announceViewerState({
+        productId,
+        reservedUntil:
+          typeof verdict?.reservedUntil === "string"
+            ? verdict.reservedUntil
+            : null,
+        sentAtSequence,
+        state,
+        viewerKey,
+      });
+    }
 
     for (const item of items) {
-      if (item.reservedUntil && new Date(item.reservedUntil).getTime() <= Date.now()) {
-        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE"));
-        removeItem(item.id);
-        isStillAvailable = false;
-        continue;
+      const state = verdicts.get(item.id);
+      if (!state) {
+        setCheckoutViewerStatus("checking");
+        return false;
       }
-
-      if (!item.slug) continue;
-
-      const response = await fetch(`/api/v2/products/${encodeURIComponent(item.slug)}/stock`, {
-        headers: { Accept: "application/json" },
-      }).catch(() => null);
-      if (!response?.ok) continue;
-
-      const stock = (await response.json().catch(() => null)) as {
-        reservedUntil?: null | string;
-        stockStatus?: "available" | "reserved" | "sold";
-      } | null;
-      if (!stock) continue;
-
-      if (stock.stockStatus === "sold") {
+      if (state === "sold") {
+        setCheckoutViewerStatus("blocked");
         showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_SOLD"));
-        removeItem(item.id);
-        isStillAvailable = false;
-        continue;
+        await refreshServerCart();
+        return false;
       }
-
-      const heldByAnotherBuyer =
-        stock.stockStatus === "reserved" &&
-        (!item.reservedUntil ||
-          !stock.reservedUntil ||
-          Math.abs(
-            new Date(stock.reservedUntil).getTime() -
-              new Date(item.reservedUntil).getTime(),
-          ) > 1000);
-      if (heldByAnotherBuyer) {
+      if (state === "reserved_by_other") {
+        setCheckoutViewerStatus("blocked");
         showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_RESERVED"));
-        removeItem(item.id);
-        isStillAvailable = false;
+        await refreshServerCart();
+        return false;
+      }
+      // Made-to-order blouses legitimately stay available while in a bag. An
+      // available line that carried a one-of-one expiry, however, has lapsed.
+      if (state === "available" && item.reservedUntil) {
+        setCheckoutViewerStatus("blocked");
+        showCheckoutConflict(getOneOfOneConflictCopy("PRODUCT_UNAVAILABLE"));
+        await refreshServerCart();
+        return false;
       }
     }
 
-    return isStillAvailable;
-  }, [hasItems, items, removeItem, showCheckoutConflict]);
+    setCheckoutViewerStatus("trusted");
+    return true;
+  }, [hasItems, items, refreshServerCart, showCheckoutConflict, viewerKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,7 +368,7 @@ export function CheckoutPageClient({
   }, [recheckCheckoutAvailability]);
 
   const addressesQuery = useQuery({
-    queryKey: ["addresses"],
+    queryKey: ["addresses", serverCartUserId ?? "anonymous"],
     queryFn: fetchAddresses,
     enabled: isAuthenticated,
   });
@@ -252,9 +383,11 @@ export function CheckoutPageClient({
     if (authRefreshRef.current) return;
 
     authRefreshRef.current = true;
-    void queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["addresses", serverCartUserId ?? "anonymous"],
+    });
     void addressesQuery.refetch();
-  }, [addressesQuery, isAuthenticated, queryClient]);
+  }, [addressesQuery, isAuthenticated, queryClient, serverCartUserId]);
 
   // Seed name + email from the account once the session loads (sessions resolve
   // after the first client render). Done during render with a guard — the
@@ -379,10 +512,34 @@ export function CheckoutPageClient({
     toast.success("Address added from your saved trunk.");
   };
 
-  const handleRemoveItem = (id: string) => {
+  /*
+   * The toast waits for the answer.
+   *
+   * It used to fire the request and announce success in the same breath, so a
+   * refusal — a payment already open on the piece, or a signed-out session with
+   * no bag to delete from — still read "Removed from your trunk." while the
+   * line sat there untouched in the summary.
+   */
+  const handleRemoveItem = async (id: string) => {
     setCheckoutConflict(null);
-    removeItem(id);
-    toast("Removed from your trunk.");
+    const result = await removeFromBag(id);
+    if (result.ok) {
+      toast("Removed from your trunk.");
+      return;
+    }
+    // The answer belongs to an account that has since signed out.
+    if (result.code === "VIEWER_CHANGED") return;
+    toast.error(
+      result.viewerState === "payment_pending"
+        ? "This piece has a payment in progress"
+        : "Could not remove this piece",
+      {
+        description:
+          result.viewerState === "payment_pending"
+            ? "Finish or cancel that payment before removing it."
+            : "It is still in your trunk. Check your connection and try again.",
+      },
+    );
   };
 
   // Addresses are saved to the account as soon as the customer advances past
@@ -463,7 +620,7 @@ export function CheckoutPageClient({
               saveLabelKind === "Other"
                 ? customSaveLabel.trim() || "Other"
                 : saveLabelKind,
-            isDefault: true,
+            isDefault: shouldDefaultCheckoutAddress(addressesQuery),
           }),
         ),
       });
@@ -580,7 +737,6 @@ export function CheckoutPageClient({
           items: items.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
-            ...(item.reservationToken ? { reservationToken: item.reservationToken } : {}),
             ...(item.selectedOptions ? { selectedOptions: item.selectedOptions } : {}),
           })),
           shippingAddress: toOrderAddress(shippingAddress),
@@ -602,16 +758,23 @@ export function CheckoutPageClient({
           contact: shippingAddress.phone,
         },
         description: `Order for ${items.length} piece${items.length > 1 ? "s" : ""}`,
-        onAvailabilityError: ({ code, productId }) => {
-          const copy = getOneOfOneConflictCopy(code);
-          showCheckoutConflict(copy);
-          if (copy.removeProduct && productId) {
-            removeItem(productId);
-          }
-        },
-        onPaid: (path) => {
+        onAvailabilityError: ({ copy, productId }) =>
+          applyCheckoutConflict(
+            { copy, productId },
+            {
+              // A create-order refusal can settle lines on the server.
+              refresh: refreshAfterBagChange,
+              removeFromBag,
+              showConflict: showCheckoutConflict,
+            },
+          ),
+        onPaid: async (path) => {
           clearCheckoutAttempt();
-          clearCart();
+          // The paid order removes only its own server cart rows. Pull that
+          // canonical bag before leaving; clearing the whole browser mirror
+          // would also hide unrelated items added in another tab.
+          await refreshAfterBagChange();
+          announceCartChangedAcrossTabs(serverCartUserId);
           toast.success("Order placed successfully!");
           router.push(path);
         },
@@ -623,11 +786,17 @@ export function CheckoutPageClient({
       submitLockRef.current = false;
     }
   };
-  const payBlockedByConflict = checkoutConflict?.blockPayment ?? false;
+  const payBlockedByConflict =
+    (checkoutConflict?.blockPayment ?? false) ||
+    checkoutViewerStatus !== "trusted" ||
+    hasSoldCartItem ||
+    hasUncheckedCartItem;
 
   const handleCheckoutAuthSuccess = async () => {
     goToStep("shipping");
-    await queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["addresses", serverCartUserId ?? "anonymous"],
+    });
     await addressesQuery.refetch();
     router.refresh();
   };
@@ -673,6 +842,8 @@ export function CheckoutPageClient({
                 taxRateLabel={taxRateLabel}
                 total={total}
                 onRemoveItem={handleRemoveItem}
+                isReleasing={isReleasing}
+                onViewerState={reportLineVerdict}
                 disabled={isSubmitting}
                 error={error}
                 conflict={checkoutConflict}
@@ -902,7 +1073,14 @@ export function CheckoutPageClient({
                   <CheckoutStepActions
                     secondaryLabel="Back to packaging"
                     onSecondary={() => goToStep("packaging")}
-                    primaryLabel={isSubmitting ? "Processing…" : "Proceed to payment"}
+                    primaryLabel={
+                      isSubmitting
+                        ? "Processing…"
+                        : checkoutViewerStatus === "checking" ||
+                            hasUncheckedCartItem
+                          ? "Checking availability…"
+                          : "Proceed to payment"
+                    }
                     onPrimary={handlePay}
                     disabledPrimary={!hasItems || isSubmitting || !agreedToTerms || payBlockedByConflict}
                     primaryLoading={isSubmitting}
@@ -923,6 +1101,8 @@ export function CheckoutPageClient({
                 taxRateLabel={taxRateLabel}
                 total={total}
                 onRemoveItem={handleRemoveItem}
+                isReleasing={isReleasing}
+                onViewerState={reportLineVerdict}
                 disabled={isSubmitting}
                 error={error}
                 conflict={checkoutConflict}

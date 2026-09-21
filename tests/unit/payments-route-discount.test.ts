@@ -33,6 +33,7 @@ const addOrderEventMock = vi.hoisted(() => vi.fn());
 
 // db/queries/users
 const getOrCreateCheckoutCustomerMock = vi.hoisted(() => vi.fn());
+const fillMissingCheckoutProfileMock = vi.hoisted(() => vi.fn());
 
 // lib/orders/complete-paid-order (not under test here)
 const completePaidOrderMock = vi.hoisted(() => vi.fn());
@@ -49,6 +50,12 @@ const getCollectionProductIdsMock = vi.hoisted(() => vi.fn());
 
 // rate-limit middleware always passes
 const rateLimitResponseMock = vi.hoisted(() => vi.fn());
+const getLivePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
+const listUserCartItemsMock = vi.hoisted(() => vi.fn());
+const startPaymentForOwnedCartItemsMock = vi.hoisted(() => vi.fn());
+const releasePaymentCartItemsMock = vi.hoisted(() => vi.fn());
+const listLapsedOwnPaymentOrderIdsMock = vi.hoisted(() => vi.fn());
+const reconcilePaymentHoldForOrderMock = vi.hoisted(() => vi.fn());
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
@@ -70,7 +77,20 @@ vi.mock("@/db/queries/orders", () => ({
 }));
 
 vi.mock("@/db/queries/users", () => ({
+  fillMissingCheckoutProfile: fillMissingCheckoutProfileMock,
   getOrCreateCheckoutCustomer: getOrCreateCheckoutCustomerMock,
+}));
+
+vi.mock("@/db/queries/user-cart", () => ({
+  getLivePaymentHoldForOrder: getLivePaymentHoldForOrderMock,
+  listLapsedOwnPaymentOrderIds: listLapsedOwnPaymentOrderIdsMock,
+  listUserCartItems: listUserCartItemsMock,
+  releasePaymentCartItems: releasePaymentCartItemsMock,
+  startPaymentForOwnedCartItems: startPaymentForOwnedCartItemsMock,
+}));
+
+vi.mock("@/lib/payments/reconcile-expired-holds", () => ({
+  reconcilePaymentHoldForOrder: reconcilePaymentHoldForOrderMock,
 }));
 
 vi.mock("@/db/queries/collections", () => ({
@@ -96,7 +116,9 @@ vi.mock("@/lib/payments/razorpay", async (importOriginal) => {
     verifyPaymentSignature: verifyPaymentSignatureMock,
     isRazorpayAuthError: isRazorpayAuthErrorMock,
     RAZORPAY_MIN_AMOUNT_PAISE: 100,
-    RAZORPAY_PAYMENT_LINK_HOLD_MINUTES: 30,
+    // RAZORPAY_PAYMENT_LINK_HOLD_MINUTES is intentionally NOT overridden:
+    // `...actual` carries the real payment window, so this suite can never
+    // drift from lib/cart/reservation-policy.ts again.
   };
 });
 
@@ -108,6 +130,8 @@ vi.mock("@/lib/http/rate-limit", () => ({
 
 import { registerPaymentRoutes } from "@/api/hono/routes/payments";
 import { createRouteHarness } from "../helpers/route-harness";
+import { CART_RESERVATION_MINUTES } from "@/lib/cart/reservation-policy";
+import { createReservationToken } from "@/lib/cart/reservation-token";
 import { GST_RATE, SHIPPING_TIERS } from "@/lib/config/order-pricing";
 import { calculateOrderTotals } from "@/lib/payments/razorpay";
 
@@ -118,6 +142,7 @@ const PRODUCT_ID_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const ORDER_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const DISCOUNT_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const COLLECTION_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const CART_RESERVED_UNTIL = new Date(Date.now() + 60 * 60 * 1000);
 
 // Product A: 5000 INR (500_000 paise) — well above Razorpay minimum
 const PRODUCT_A_PAISE = 500_000; // ₹5,000
@@ -138,8 +163,8 @@ function makeProductRow(id: string, pricePaise: number, extra: Record<string, un
     id,
     name: `Test Saree ${id.slice(0, 4)}`,
     pricePaise,
-    stockStatus: "available",
-    reservedUntil: null,
+    stockStatus: "reserved",
+    reservedUntil: CART_RESERVED_UNTIL,
     status: "published",
     ...extra,
   };
@@ -166,7 +191,9 @@ function makeDiscountRow(overrides: Partial<Record<string, unknown>> = {}) {
 
 function makeCreatedOrder(id = ORDER_ID) {
   return {
+    createdAt: new Date(),
     id,
+    placedAt: new Date(),
     razorpayOrderId: null,
     status: "pending",
     userId: null,
@@ -176,6 +203,24 @@ function makeCreatedOrder(id = ORDER_ID) {
     discountCode: null,
   };
 }
+
+// The route requires an active hold to equal addedAt + 60 minutes exactly.
+const CART_ADDED_AT = new Date(
+  CART_RESERVED_UNTIL.getTime() - CART_RESERVATION_MINUTES * 60 * 1000,
+);
+
+const makeOwnedCartItems = (productIds: string[]) =>
+  productIds.map((productId) => ({
+    addedAt: CART_ADDED_AT,
+    productId,
+    reservationToken: createReservationToken({
+      productId,
+      reservedUntil: CART_RESERVED_UNTIL,
+    }),
+    reservedUntil: CART_RESERVED_UNTIL,
+    selectedOptions: null,
+    status: "active",
+  }));
 
 // ── DB select chain builder ───────────────────────────────────────────────────
 
@@ -235,10 +280,29 @@ beforeEach(() => {
   createOrderMock.mockResolvedValue(makeCreatedOrder());
   addOrderEventMock.mockResolvedValue(undefined);
   getOrCreateCheckoutCustomerMock.mockResolvedValue({ id: "customer-1" });
+  fillMissingCheckoutProfileMock.mockResolvedValue({
+    nameFilled: false,
+    phoneFilled: false,
+  });
+  getLivePaymentHoldForOrderMock.mockResolvedValue(null);
+  listLapsedOwnPaymentOrderIdsMock.mockResolvedValue([]);
+  reconcilePaymentHoldForOrderMock.mockResolvedValue({ kind: "none" });
   rateLimitResponseMock.mockResolvedValue(null);
   createRazorpayPaymentLinkMock.mockResolvedValue({
     id: "plink_test123",
     short_url: "https://rzp.io/l/test123",
+  });
+  listUserCartItemsMock.mockResolvedValue(makeOwnedCartItems([PRODUCT_ID_A]));
+  startPaymentForOwnedCartItemsMock.mockImplementation(
+    async ({ items }: { items: Array<{ productId: string }> }) =>
+      items.map((item) => ({ productId: item.productId, slug: `product-${item.productId}` })),
+  );
+  releasePaymentCartItemsMock.mockResolvedValue({
+    kind: "released",
+    releasedProductIds: [],
+    releasedSlugs: [],
+    restoredProductIds: [],
+    restoredSlugs: [],
   });
 });
 
@@ -427,6 +491,9 @@ describe("payments route — discount: create-order (FIX #3)", () => {
       collectionId: COLLECTION_ID,
     });
     const collectionRow = { id: COLLECTION_ID, rules: null };
+    listUserCartItemsMock.mockResolvedValue(
+      makeOwnedCartItems([PRODUCT_ID_A, PRODUCT_ID_B]),
+    );
 
     // Route db.select() calls:
     // 1. products lookup (both products)

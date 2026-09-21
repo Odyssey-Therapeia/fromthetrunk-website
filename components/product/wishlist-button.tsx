@@ -3,239 +3,164 @@
 import { useState } from "react";
 import { Heart } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { OtpAuthPanel } from "@/components/account/otp-auth-panel";
+import { useCommerceAuth } from "@/components/commerce/commerce-auth-provider";
+
 import { Button } from "@/components/ui/button";
 import { DrapeRoomActionTile } from "@/components/drape-room/drape-room-action-tile";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import type { ViewerProductDisplayState } from "@/lib/commerce/viewer-state";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import { cn } from "@/lib/utils";
-import { dispatchWishlistUpdated } from "@/lib/wishlist/wishlist-events";
+import {
+  useWishlistActions,
+  useWishlistMembership,
+} from "@/lib/wishlist/use-wishlist";
 
 interface WishlistButtonProps {
   productId: string;
   productName: string;
   className?: string;
   presentation?: "icon" | "drape-room";
+  /** Server-rendered seed, replaced by the shared viewer-state batch. */
+  initialViewerState?: ViewerProductDisplayState;
+  /** Only the Wishlist page may remove a save after the product is sold. */
+  allowSoldRemoval?: boolean;
 }
 
-const fetchWishlist = async (): Promise<string[]> => {
-  const res = await fetch("/api/v2/wishlist");
-  if (!res.ok) return [];
-  return (await res.json()) as string[];
-};
-
+/**
+ * Saves a saree to the shopper's trunk.
+ *
+ * A signed-out shopper is sent through CommerceAuthProvider, which owns the
+ * only sign-in dialog on the page and replays this save once they are in. This
+ * button raises no dialog of its own — one raised from inside the Drape Room
+ * stacked a second aria-modal over the first and blacked out the screen.
+ */
 export function WishlistButton({
   productId,
   productName,
   className,
   presentation = "icon",
+  initialViewerState = "checking",
+  allowSoldRemoval = false,
 }: WishlistButtonProps) {
   const { data: session } = useSession();
-  const queryClient = useQueryClient();
-  const [optimisticWished, setOptimisticWished] = useState<boolean | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
-
-  // Account-backed wishlist (only when logged in).
-  // Key ["wishlist","ids"] — returns string[].
-  // Distinct from ["wishlist","products"] used by the wishlist page (returns Product[]).
-  // Invalidating ["wishlist"] (prefix) refreshes both.
-  const { data: wishlist } = useQuery({
-    queryKey: ["wishlist", "ids"],
-    queryFn: fetchWishlist,
-    enabled: Boolean(session?.user?.id),
-    staleTime: 30_000,
+  const isAuthenticated = Boolean(session?.user?.id);
+  const commerceAuth = useCommerceAuth();
+  const { isReady, isSaved } = useWishlistMembership(productId);
+  const { isPending, toggle } = useWishlistActions();
+  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null);
+  const viewer = useCollectionStock(productId, {
+    reservedUntil: null,
+    state: initialViewerState,
   });
 
-  // Determine current saved state: optimistic override → account list → guest list.
-  const isInWishlist =
-    optimisticWished ??
-    (session?.user?.id
-      ? (wishlist ?? []).some((item) => item === productId)
-      : false);
+  const showSaved = optimisticSaved ?? isSaved;
+  const isCheckingAvailability = viewer.state === "checking";
+  const isSold = viewer.state === "sold";
+  const canRemoveSoldSave = isSold && allowSoldRemoval && showSaved;
+  /*
+   * A verdict still loading blocks a new save only. Taking a save back out is
+   * never a commerce action, so it cannot wait on availability — otherwise a
+   * sold piece could get stuck on the Wishlist page behind "checking".
+   */
+  const checkingBlocksSave = isCheckingAvailability && !showSaved;
 
-  // ── Account mutations ──────────────────────────────────────────────────────
+  const handleClick = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (
+      isPending ||
+      checkingBlocksSave ||
+      (isSold && !canRemoveSoldSave) ||
+      (isAuthenticated && !isReady)
+    )
+      return;
 
-  const addMutation = useMutation({
-    mutationFn: async (targetProductId: string) => {
-      const res = await fetch("/api/v2/wishlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: targetProductId }),
+    /*
+     * Signed out, this hands off and returns. The provider opens the popup and
+     * replays the save afterwards, so the shopper never taps the heart twice.
+     */
+    if (commerceAuth && !isAuthenticated) {
+      commerceAuth.requireAuth({
+        productId,
+        source: presentation === "drape-room" ? "drape-room" : "product",
+        type: "wishlist-toggle",
       });
-      if (!res.ok) throw new Error("Failed to add");
-      return res.json();
-    },
-    onMutate: () => setOptimisticWished(true),
-    onSuccess: (_data, targetProductId) => {
-      queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-      // The header island runs its own QueryClient, so the invalidation above
-      // never reaches it. The shared event does.
-      dispatchWishlistUpdated({ reason: "add", productId: targetProductId });
-      toast.success("Saved to your trunk");
-    },
-    onError: () => {
-      setOptimisticWished(null);
-      toast.error("Unable to save to wishlist");
-    },
-    onSettled: () => setOptimisticWished(null),
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/v2/wishlist", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      if (!res.ok) throw new Error("Failed to remove");
-      return res.json();
-    },
-    onMutate: () => setOptimisticWished(false),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-      dispatchWishlistUpdated({ reason: "remove", productId });
-      toast(`${productName} removed from wishlist`);
-    },
-    onError: () => {
-      setOptimisticWished(null);
-      toast.error("Unable to remove from wishlist");
-    },
-    onSettled: () => setOptimisticWished(null),
-  });
-
-  const isPending = addMutation.isPending || removeMutation.isPending;
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (session?.user?.id) {
-      // Logged-in path: persist to account.
-      if (isInWishlist) {
-        removeMutation.mutate();
-      } else {
-        addMutation.mutate(productId);
-      }
-    } else {
-      setPendingProductId(productId);
-      setAuthMode("sign-in");
-      setAuthOpen(true);
+      return;
     }
-  };
 
-  const handleAuthSuccess = async () => {
-    if (!pendingProductId) return;
+    const nextSaved = !showSaved;
+    setOptimisticSaved(nextSaved);
 
     try {
-      await addMutation.mutateAsync(pendingProductId);
-      await queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-      setAuthOpen(false);
+      await toggle(productId, showSaved);
+      toast[nextSaved ? "success" : "message"](
+        nextSaved
+          ? "Saved to your trunk"
+          : `${productName} removed from wishlist`,
+      );
     } catch {
-      setPendingProductId(null);
+      setOptimisticSaved(null);
+      toast.error("Unable to update your wishlist");
+      return;
     }
+    setOptimisticSaved(null);
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setAuthOpen(open);
-    if (!open) {
-      setPendingProductId(null);
-      setAuthMode("sign-in");
-    }
-  };
+  const label = showSaved
+    ? `Remove ${productName} from wishlist`
+    : `Save ${productName} to wishlist`;
+
+  // Sold pieces offer no new save. The one exception is the Wishlist page,
+  // where an already-saved piece remains removable from the account.
+  if (isSold && !canRemoveSoldSave) return null;
+
+  if (presentation === "drape-room") {
+    return (
+      <DrapeRoomActionTile
+        active={showSaved}
+        icon={
+          <Heart
+            className={cn("transition", showSaved && "fill-current")}
+            aria-hidden="true"
+          />
+        }
+        label="Wishlist"
+        status={showSaved ? "Saved" : undefined}
+        className={className}
+        disabled={
+          isPending || checkingBlocksSave || (isAuthenticated && !isReady)
+        }
+        onClick={handleClick}
+        aria-pressed={showSaved}
+        aria-label={label}
+      />
+    );
+  }
 
   return (
-    <>
-      {presentation === "drape-room" ? (
-        <DrapeRoomActionTile
-          active={isInWishlist}
-          icon={
-            <Heart
-              className={cn("transition", isInWishlist && "fill-current")}
-              aria-hidden="true"
-            />
-          }
-          label="Wishlist"
-          status={isInWishlist ? "Saved" : undefined}
-          className={className}
-          disabled={isPending}
-          onClick={handleClick}
-          aria-pressed={isInWishlist}
-          aria-haspopup={!session?.user?.id ? "dialog" : undefined}
-          aria-expanded={!session?.user?.id ? authOpen : undefined}
-          aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
-        />
-      ) : (
-      <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          "rounded-full transition",
-          isInWishlist
-            ? "text-red-500 hover:text-red-600"
-            : "text-muted-foreground hover:text-red-400",
-          className,
-        )}
-        disabled={isPending}
-        onClick={handleClick}
-        aria-pressed={isInWishlist}
-        aria-label={isInWishlist ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`}
-      >
-        <Heart
-          className={cn("h-5 w-5 transition", isInWishlist && "fill-current")}
-          aria-hidden="true"
-        />
-      </Button>
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "rounded-full transition",
+        showSaved
+          ? "text-red-500 hover:text-red-600"
+          : "text-muted-foreground hover:text-red-400",
+        className,
       )}
-
-      <Dialog open={authOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-h-[92vh] w-[calc(100%-2rem)] overflow-y-auto rounded-[1.75rem] border-ftt-border bg-ftt-ivory p-5 shadow-[0_24px_80px_rgba(20,29,70,0.18)] sm:max-w-xl sm:p-6">
-          <DialogHeader className="pr-7 text-left">
-            <DialogTitle className="font-serif text-3xl leading-tight text-ftt-navy">
-              Save this piece to your trunk
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-6 text-ftt-burgundy/65">
-              Log in or create an account to keep this one-of-one piece saved.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-2 gap-2 rounded-full border border-ftt-border bg-ftt-card p-1">
-            {(["sign-in", "sign-up"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setAuthMode(mode)}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-semibold transition",
-                  authMode === mode
-                    ? "bg-ftt-navy text-ftt-ivory shadow-[0_8px_18px_rgba(20,29,70,0.16)]"
-                    : "text-ftt-burgundy/65 hover:bg-ftt-gold/10 hover:text-ftt-navy",
-                )}
-              >
-                {mode === "sign-in" ? "Sign in" : "Create account"}
-              </button>
-            ))}
-          </div>
-
-          <OtpAuthPanel
-            key={authMode}
-            mode={authMode}
-            context="wishlist"
-            compact
-            onCancel={() => handleDialogOpenChange(false)}
-            onSuccess={handleAuthSuccess}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+      disabled={
+        isPending || checkingBlocksSave || (isAuthenticated && !isReady)
+      }
+      onClick={handleClick}
+      aria-pressed={showSaved}
+      aria-label={label}
+    >
+      <Heart
+        className={cn("h-5 w-5 transition", showSaved && "fill-current")}
+        aria-hidden="true"
+      />
+    </Button>
   );
 }

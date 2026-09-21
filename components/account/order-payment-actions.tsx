@@ -6,6 +6,7 @@ import { AlertTriangle, CreditCard, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useServerCart } from "@/lib/commerce/use-server-cart";
 import { useCartStore } from "@/lib/store/cart-store";
 
 type PaymentStatus = "failed" | "paid" | "pending" | "refunded" | null | undefined;
@@ -19,15 +20,20 @@ type ReorderPreviewItem = {
   image: string | null;
   selectedOptions?: Record<string, boolean | null | number | string>;
   available: boolean;
+  /** Already the requester's exact hold, so adding it again is pointless. */
+  inBag?: boolean;
 };
 
 /**
  * Repay / Reorder controls for an unpaid order.
  *  - pending → warning + Repay (money may be in transit; no reorder — pieces are
  *    still reserved to this order).
- *  - failed  → Repay + Reorder (re-add the still-available one-of-one pieces).
- * Repay re-surfaces the order's existing (server-priced) Razorpay payment link.
- * Reorder reuses the standard /api/v2/cart/reserve flow — no reservation logic here.
+ *  - failed  → Reorder only (re-add the still-available one-of-one pieces). A
+ *    failed order's hold is already restored or released, so there is no
+ *    payment window left to repay into.
+ * Repay re-surfaces the order's existing (server-priced) Razorpay payment link
+ * while the server still finds its exact live hold.
+ * Reorder claims through the account's bag — no reservation logic here.
  */
 export function OrderPaymentActions({
   orderId,
@@ -40,6 +46,7 @@ export function OrderPaymentActions({
 }) {
   const router = useRouter();
   const addItem = useCartStore((state) => state.addItem);
+  const { addToBag } = useServerCart();
   const [repaying, setRepaying] = useState(false);
   const [reordering, setReordering] = useState(false);
 
@@ -91,30 +98,40 @@ export function OrderPaymentActions({
       }
 
       let added = 0;
+      let alreadyInBag = 0;
       let skipped = 0;
       for (const item of items) {
+        // Already the shopper's own hold: count it, never claim it again.
+        if (item.inBag && item.productId && item.slug) {
+          alreadyInBag += 1;
+          continue;
+        }
         if (!item.available || !item.productId || !item.slug) {
           skipped += 1;
           continue;
         }
         try {
-          const reserve = await fetch("/api/v2/cart/reserve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: item.productId, quantity: 1 }),
-          });
-          const payload = (await reserve.json().catch(() => ({}))) as {
-            reservationToken?: string;
-            reservedUntil?: string;
-          };
-          if (!reserve.ok) {
-            skipped += 1;
-            continue;
-          }
           const size =
             typeof item.selectedOptions?.size === "string"
               ? item.selectedOptions.size
               : undefined;
+          /*
+           * Into the account's bag, not a browser-held reservation.
+           *
+           * Reorder is only reachable while signed in, and it kept claiming
+           * pieces through the guest endpoint — which writes a hold with no
+           * user_cart_items row behind it. The next sync mirrored the account's
+           * real bag over the top and the reordered lines simply vanished,
+           * leaving the sarees held by nobody the server could name.
+           */
+          const result = await addToBag({
+            productId: item.productId,
+            ...(size ? { selectedOptions: { size } } : {}),
+          });
+          if (!result.ok) {
+            skipped += 1;
+            continue;
+          }
           addItem({
             id: item.productId,
             name: item.name,
@@ -122,8 +139,6 @@ export function OrderPaymentActions({
             originalPricePaise: item.originalPricePaise ?? null,
             image: item.image ?? "",
             slug: item.slug,
-            reservationToken: payload.reservationToken ?? null,
-            reservedUntil: payload.reservedUntil ?? null,
             ...(size ? { selectedOptions: { size } } : {}),
           });
           added += 1;
@@ -132,11 +147,15 @@ export function OrderPaymentActions({
         }
       }
 
-      if (added > 0) {
+      if (added > 0 || alreadyInBag > 0) {
         toast.success(
-          skipped > 0
-            ? `${added} added to your bag · ${skipped} no longer available`
-            : `${added} added to your bag`,
+          [
+            added > 0 ? `${added} added to your bag` : null,
+            alreadyInBag > 0 ? `${alreadyInBag} already in your bag` : null,
+            skipped > 0 ? `${skipped} no longer available` : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
         );
         router.push("/cart");
       } else {
@@ -154,7 +173,7 @@ export function OrderPaymentActions({
       {isFailed ? (
         <p className="flex items-start gap-2 text-xs leading-5 text-[#601D1C]">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Payment failed for this order. Repay to complete it, or reorder the available pieces.</span>
+          <span>Payment failed for this order. You can reorder the pieces that are still available.</span>
         </p>
       ) : (
         <p className="flex items-start gap-2 rounded-xl border border-[#B39152]/25 bg-[#B39152]/8 px-3 py-2 text-xs leading-5 text-[#601D1C]">
@@ -167,20 +186,24 @@ export function OrderPaymentActions({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          onClick={handleRepay}
-          disabled={repaying || reordering}
-          className="rounded-full text-[#FDF7F1]"
-          size={compact ? "sm" : "default"}
-        >
-          {repaying ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-          )}
-          Repay
-        </Button>
+        {/* A failed order has no payment window left; repaying it would
+            reopen a link after its hold was restored or released. */}
+        {!isFailed ? (
+          <Button
+            type="button"
+            onClick={handleRepay}
+            disabled={repaying || reordering}
+            className="rounded-full text-[#FDF7F1]"
+            size={compact ? "sm" : "default"}
+          >
+            {repaying ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+            )}
+            Repay
+          </Button>
+        ) : null}
 
         {isFailed ? (
           <Button
