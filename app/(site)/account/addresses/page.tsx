@@ -109,14 +109,17 @@ const mergeAutocompleteAddress = (
 
 export default function AddressesPage() {
   const { data: session, status } = useSession();
+  const userId = session?.user?.id ?? null;
+  // Checkout's key shape, so both share one account-scoped cache.
+  const addressesKey = ["addresses", userId ?? "anonymous"] as const;
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["addresses"],
+    queryKey: addressesKey,
     queryFn: fetchAddresses,
-    enabled: Boolean(session?.user?.id),
+    enabled: Boolean(userId),
   });
 
   const createMutation = useMutation({
@@ -132,7 +135,7 @@ export default function AddressesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      queryClient.invalidateQueries({ queryKey: addressesKey });
       setForm(emptyForm);
     },
   });
@@ -156,7 +159,7 @@ export default function AddressesPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      queryClient.invalidateQueries({ queryKey: addressesKey });
       setEditingId(null);
       setForm(emptyForm);
     },
@@ -172,7 +175,7 @@ export default function AddressesPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      queryClient.invalidateQueries({ queryKey: addressesKey });
     },
   });
 

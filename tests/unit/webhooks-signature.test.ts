@@ -8,7 +8,8 @@ const getOrderMock = vi.hoisted(() => vi.fn());
 const addOrderEventMock = vi.hoisted(() => vi.fn());
 const dbUpdateMock = vi.hoisted(() => vi.fn());
 const dbSelectMock = vi.hoisted(() => vi.fn());
-const claimEventMock = vi.hoisted(() => vi.fn());
+const getEventByEventIdMock = vi.hoisted(() => vi.fn());
+const markEventProcessedMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/orders/complete-paid-order", () => ({
   completePaidOrder: completePaidOrderMock,
@@ -20,7 +21,8 @@ vi.mock("@/db/queries/orders", () => ({
 }));
 
 vi.mock("@/db/queries/events", () => ({
-  claimEvent: claimEventMock,
+  getEventByEventId: getEventByEventIdMock,
+  markEventProcessed: markEventProcessedMock,
 }));
 
 // Mock the db module to avoid real DB calls
@@ -64,11 +66,13 @@ describe("Webhook signature verification", () => {
     completePaidOrderMock.mockReset();
     getOrderMock.mockReset();
     addOrderEventMock.mockReset();
-    claimEventMock.mockReset();
+    getEventByEventIdMock.mockReset();
+    markEventProcessedMock.mockReset();
     completePaidOrderMock.mockResolvedValue({ alreadyPaid: false, emailsSent: true });
     getOrderMock.mockResolvedValue(null);
     addOrderEventMock.mockResolvedValue(undefined);
-    claimEventMock.mockResolvedValue(true);
+    getEventByEventIdMock.mockResolvedValue(null);
+    markEventProcessedMock.mockResolvedValue(undefined);
   });
 
   it("Test A: valid signature is accepted (does not return INVALID_SIGNATURE 400)", async () => {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Heart,
   LogOut,
@@ -13,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 
+import { clearAccountClientState } from "@/components/cart/cart-server-sync";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,6 +55,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const { nudge } = useUiHaptics();
 
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
@@ -106,6 +109,9 @@ export function AccountShell({ children }: { children: ReactNode }) {
                       callbackUrl: buildClientCallbackUrl("/", "/"),
                       redirect: false,
                     });
+                    // The router keeps this tab's caches across the redirect,
+                    // so the signed-out account's picture goes before it.
+                    clearAccountClientState(queryClient);
                     router.push(buildClientCallbackUrl(result?.url, "/"));
                     router.refresh();
                   }}

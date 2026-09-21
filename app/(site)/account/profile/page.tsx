@@ -58,6 +58,7 @@ const requestEmailChange = async (payload: { newEmail: string }) => {
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const userId = session?.user?.id ?? null;
   const queryClient = useQueryClient();
   const [form, setForm] = useState<{
     name: null | string;
@@ -72,15 +73,16 @@ export default function ProfilePage() {
   const [emailChangeSent, setEmailChangeSent] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["profile"],
+    // Keyed by account: another sign-in in this tab must never read this one.
+    queryKey: ["profile", userId],
     queryFn: fetchProfile,
-    enabled: Boolean(session?.user?.id),
+    enabled: Boolean(userId),
   });
 
   const mutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
     },
   });
 

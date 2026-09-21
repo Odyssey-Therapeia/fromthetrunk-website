@@ -48,6 +48,7 @@ import {
 import {
   setDrapeRoomProgressMessage,
 } from "./drape-room-live-status";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import type { DrapeRoomResult } from "./types";
 import { useDrapeRoomGeneration } from "./use-drape-room-generation";
 
@@ -101,6 +102,21 @@ export function DrapeRoomExperience({
   const photoPreparation = React.useRef<AbortController | null>(null);
   const photoUrlRef = React.useRef<string | null>(null);
   const resultUrls = React.useRef(new Map<string, string>());
+  const productViewer = useCollectionStock(product?.productId ?? "", {
+    reservedUntil: null,
+    state:
+      product?.stockStatus === "sold"
+        ? "sold"
+        : product?.stockStatus === "reserved"
+          ? "reserved_by_other"
+          : product
+            ? "available"
+            : "checking",
+  });
+  // Sold closes generation and a verdict still loading pauses it. Another
+  // shopper's hold does not: trying a saree on is not buying it.
+  const productCanGenerate =
+    productViewer.state !== "sold" && productViewer.state !== "checking";
 
   const consentIdentity = React.useMemo<DrapeRoomConsentIdentity | null>(
     () =>
@@ -152,7 +168,8 @@ export function DrapeRoomExperience({
     availability.generationAvailable &&
       config &&
       consentToken &&
-      product?.generationReady !== false,
+      product?.generationReady !== false &&
+      productCanGenerate,
   );
   const photoReady = Boolean(
     currentPhoto?.readiness?.state === "ready" &&
@@ -571,38 +588,48 @@ export function DrapeRoomExperience({
       isCacheChecking={Boolean(currentPhoto) && !cacheLookupReady}
       statusMessage={statusMessage}
       errorMessage={errorMessage}
+      /*
+       * False, not null, for a sold saree. The result actions read a missing
+       * control as "draw a disabled placeholder", which put an inert Wishlist
+       * and Add to bag tile back in the room for a piece that offers neither.
+       */
       wishlistControl={
-        <WishlistButton
-          productId={product.productId}
-          productName={product.productName}
-          presentation="drape-room"
-        />
+        productViewer.state === "sold" ? false : (
+          <WishlistButton
+            productId={product.productId}
+            productName={product.productName}
+            presentation="drape-room"
+            initialViewerState={productViewer.state}
+          />
+        )
       }
       addToCartControl={
-        <AddToCartButton
-          product={{
-            id: product.productId,
-            name: product.productName,
-            slug: product.productSlug,
-            pricePaise: product.pricePaise,
-            originalPricePaise: product.originalPricePaise ?? null,
-            detailsFabric: product.fabric,
-            stockStatus: product.stockStatus,
-            imageUrl: product.displayImageUrl,
-          }}
-          presentation="drape-room"
-          analyticsSource="drape-room"
-          // Drape Room -> Add to cart -> Drape Room closes -> Shopping Bag
-          // opens. The bag auto-opens on any cart-quantity increase, so without
-          // this the Sheet would mount on top of this still-open dialog: two
-          // aria-modal surfaces, with the Drape Room subtree left inert and
-          // unreachable by assistive technology.
-          //
-          // close() rather than handleClose(): the bag takes focus next, so the
-          // trigger-focus restore in handleClose would fight it. The generated
-          // preview stays in IndexedDB and reopens free from the AI-star.
-          onAdded={close}
-        />
+        productViewer.state === "sold" ? false : (
+          <AddToCartButton
+            product={{
+              id: product.productId,
+              name: product.productName,
+              slug: product.productSlug,
+              pricePaise: product.pricePaise,
+              originalPricePaise: product.originalPricePaise ?? null,
+              detailsFabric: product.fabric,
+              stockStatus: product.stockStatus,
+              imageUrl: product.displayImageUrl,
+            }}
+            presentation="drape-room"
+            analyticsSource="drape-room"
+            // Drape Room -> Add to cart -> Drape Room closes -> Shopping Bag
+            // opens. The bag auto-opens on any cart-quantity increase, so without
+            // this the Sheet would mount on top of this still-open dialog: two
+            // aria-modal surfaces, with the Drape Room subtree left inert and
+            // unreachable by assistive technology.
+            //
+            // close() rather than handleClose(): the bag takes focus next, so the
+            // trigger-focus restore in handleClose would fight it. The generated
+            // preview stays in IndexedDB and reopens free from the AI-star.
+            onAdded={close}
+          />
+        )
       }
       onOpenChange={(nextOpen) => {
         if (!nextOpen) handleClose();

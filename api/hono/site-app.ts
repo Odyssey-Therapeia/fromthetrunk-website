@@ -14,6 +14,7 @@ import { registerCartRoutes } from "@/api/hono/routes/cart";
 import { registerCollectionRoutes } from "@/api/hono/routes/collections";
 import { registerConversationRoutes } from "@/api/hono/routes/conversations";
 import { registerContactRoutes } from "@/api/hono/routes/contact";
+import { registerCronRoutes } from "@/api/hono/routes/cron";
 import { registerDiscountRoutes } from "@/api/hono/routes/discounts";
 import { registerEventsRoutes } from "@/api/hono/routes/events";
 import { registerFeedsRoutes } from "@/api/hono/routes/feeds";
@@ -112,6 +113,12 @@ app.route("/newsletter", newsletterApp);
 const contactApp = new OpenAPIHono<HonoBindings>();
 registerContactRoutes(contactApp);
 app.route("/contact", contactApp);
+
+// Vercel's scheduled requests enter through this runtime app. Each cron route
+// verifies CRON_SECRET itself before doing any work.
+const cronApp = new OpenAPIHono<HonoBindings>();
+registerCronRoutes(cronApp);
+app.route("/cron", cronApp);
 
 const siteFeedbackApp = new OpenAPIHono<HonoBindings>();
 registerSiteFeedbackRoutes(siteFeedbackApp);

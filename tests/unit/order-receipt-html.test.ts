@@ -11,6 +11,8 @@ const baseOrder = {
   cartFingerprint: null,
   events: [],
   id: "14ad266a-8682-4579-8265-ca21aa374b65",
+  analyticsConsent: null,
+  advertisingConsent: null,
   internalNote: null,
   items: [
     {

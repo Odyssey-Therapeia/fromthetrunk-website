@@ -11,11 +11,21 @@
  *   - internal-events: ALWAYS ON (default, no env gate)
  *   - ga4: env-gated (GA4_MEASUREMENT_ID + GA4_API_SECRET)
  *   - meta-capi: env-gated (META_CAPI_PIXEL_ID + META_CAPI_ACCESS_TOKEN)
+ *
+ * CONSENT: being configured is not permission to send. A sink that declares
+ * `requiresConsent` receives an event only when the event carries that consent,
+ * so a visitor who refused advertising never reaches Meta even though the env
+ * vars are set. An event with no `consent` reaches first-party sinks only —
+ * which is what cron runs and provider webhooks deliberately get.
  */
 import { buildGa4Sink } from "@/lib/adapters/ga4-sink";
 import { internalEventsSink } from "@/lib/adapters/internal-events-sink";
 import { buildMetaCapiSink } from "@/lib/adapters/meta-capi-sink";
-import type { AnalyticsEvent, AnalyticsSink } from "@/lib/ports/analytics-sink";
+import {
+  NO_TRACKING_CONSENT,
+  type AnalyticsEvent,
+  type AnalyticsSink,
+} from "@/lib/ports/analytics-sink";
 import { createLogger } from "@/lib/log";
 
 const log = createLogger("analytics:emit");
@@ -61,13 +71,27 @@ function getActiveSinks(): AnalyticsSink[] {
 }
 
 /**
- * Emit an analytics event to all configured sinks.
+ * Whether this sink may receive this event.
+ *
+ * A sink with no `requiresConsent` is first-party and always permitted. A sink
+ * that names a category needs an explicit `true` for it: a missing `consent`
+ * object is treated as refusal, never as "not established, so go ahead".
+ */
+function isPermitted(sink: AnalyticsSink, event: AnalyticsEvent): boolean {
+  if (!sink.requiresConsent) return true;
+  const consent = event.consent ?? NO_TRACKING_CONSENT;
+  return consent[sink.requiresConsent] === true;
+}
+
+/**
+ * Emit an analytics event to every configured sink the visitor's consent
+ * permits.
  *
  * Fire-and-forget: errors from individual sinks are caught and logged.
  * This function itself never throws.
  */
 export async function emitAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
-  const sinks = getActiveSinks();
+  const sinks = getActiveSinks().filter((sink) => isPermitted(sink, event));
 
   await Promise.all(
     sinks.map((sink) =>

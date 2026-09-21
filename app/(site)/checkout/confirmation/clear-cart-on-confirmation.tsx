@@ -2,15 +2,17 @@
 
 import { useEffect } from "react";
 
-import { useCartStore } from "@/lib/store/cart-store";
+import { useServerCart } from "@/lib/commerce/use-server-cart";
 
 export function ClearCartOnConfirmation({ enabled }: { enabled: boolean }) {
-  const clearCart = useCartStore((state) => state.clearCart);
+  const { isAuthenticated, refresh } = useServerCart();
 
   useEffect(() => {
-    if (!enabled) return;
-    clearCart();
-  }, [clearCart, enabled]);
+    if (!enabled || !isAuthenticated) return;
+    // The paid-order transaction clears only matching database rows. Mirroring
+    // that answer preserves any unrelated item added from another tab.
+    void refresh();
+  }, [enabled, isAuthenticated, refresh]);
 
   return null;
 }

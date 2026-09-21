@@ -7,6 +7,8 @@ interface SendEmailOptions {
   to: string | string[];
   subject: string;
   html: string;
+  /** Stable operation key for provider-safe retries. */
+  idempotencyKey?: string;
 }
 
 const normalizeRecipients = (to: string | string[]) =>
@@ -35,19 +37,27 @@ const getSmtpFrom = () =>
  *
  * Falls back to SMTP when configured, then console logging in development.
  */
-export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<boolean> {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  idempotencyKey,
+}: SendEmailOptions): Promise<boolean> {
   const recipients = normalizeRecipients(to);
   if (recipients.length === 0) return false;
 
   try {
     if (process.env.RESEND_API_KEY) {
       const resend = getResendClient();
-      const { error } = await resend.emails.send({
+      const message = {
         from: FROM_EMAIL,
         to: recipients,
         subject,
         html,
-      });
+      };
+      const { error } = idempotencyKey
+        ? await resend.emails.send(message, { idempotencyKey })
+        : await resend.emails.send(message);
       if (error) {
         log.error("Resend error", { message: error.message });
         return false;
@@ -71,10 +81,25 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
       await transporter.sendMail({
         from: getSmtpFrom(),
         html,
+        // SMTP has no universal idempotency contract, but a stable Message-ID
+        // lets providers and mail clients de-duplicate a retried delivery.
+        ...(idempotencyKey
+          ? { messageId: `<${idempotencyKey}@fromthetrunk.shop>` }
+          : {}),
         subject,
         to: recipients.join(", "),
       });
       return true;
+    }
+
+    if (
+      process.env.NODE_ENV === "production" ||
+      process.env.VERCEL_ENV === "production"
+    ) {
+      // A production worker must never mark a notification delivered when no
+      // provider exists. Returning false keeps its durable row retryable.
+      log.error("Email transport is not configured in production");
+      return false;
     }
 
     log.info("Dev mock: email not sent (no transport configured)", {

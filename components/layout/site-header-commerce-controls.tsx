@@ -1,14 +1,10 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { CommerceCountBadge } from "@/components/layout/commerce-count-badge";
-import { CommerceProviders } from "@/components/providers";
-import { subscribeToWishlistUpdated } from "@/lib/wishlist/wishlist-events";
+import { useWishlistIds } from "@/lib/wishlist/use-wishlist";
 
 /**
  * The header's commerce island.
@@ -42,58 +38,11 @@ function HeartIcon() {
   );
 }
 
-/** Account-scoped wishlist ids. Returns [] for guests — /api/v2/wishlist 401s. */
-const fetchWishlistIds = async (): Promise<string[]> => {
-  const response = await fetch("/api/v2/wishlist", {
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) return [];
-
-  const payload = (await response.json().catch(() => null)) as unknown;
-  return Array.isArray(payload)
-    ? payload.filter((id): id is string => typeof id === "string")
-    : [];
-};
-
 function HeaderWishlistControl() {
-  const { data: session, status } = useSession();
-  const queryClient = useQueryClient();
-  const isAuthenticated = Boolean(session?.user?.id);
-
-  // Same policy as components/product/wishlist-button.tsx: the wishlist is
-  // account-backed only. Guests are prompted to sign in before saving, so the
-  // header must never surface a guest-store count the account does not have.
-  // `enabled` keeps anonymous page loads from firing a pointless 401.
-  const { data: wishlistIds, refetch } = useQuery({
-    queryKey: ["wishlist", "ids"],
-    queryFn: fetchWishlistIds,
-    enabled: isAuthenticated,
-    staleTime: 30_000,
-  });
-
-  // Product buttons and the Drape Room mutate under their own QueryClient, so
-  // their invalidation never reaches this tree — the shared browser event does.
-  // refetch() runs even while the query is disabled, which covers the sign-in
-  // dialog case where this provider's session has not caught up yet; the
-  // endpoint 401s for guests and fetchWishlistIds turns that into [].
-  const handleWishlistUpdated = useCallback(() => {
-    void refetch();
-  }, [refetch]);
-
-  useEffect(
-    () => subscribeToWishlistUpdated(handleWishlistUpdated),
-    [handleWishlistUpdated],
-  );
-
-  // Drop the cached count on sign-out so a previous account's total never
-  // lingers in the header.
-  useEffect(() => {
-    if (status !== "unauthenticated") return;
-    queryClient.setQueryData(["wishlist", "ids"], []);
-  }, [queryClient, status]);
-
-  // Deduplicated: the endpoint is the sole authority for this number.
-  const wishlistCount = new Set(wishlistIds ?? []).size;
+  // The global provider gives every surface this same account-keyed query.
+  // Signed-out shoppers have no browser-owned list and therefore count zero.
+  const { ids: wishlistIds } = useWishlistIds();
+  const wishlistCount = new Set(wishlistIds).size;
   const wishlistLabel =
     wishlistCount > 0
       ? `Wishlist, ${wishlistCount} saved ${wishlistCount === 1 ? "piece" : "pieces"}`
@@ -133,16 +82,10 @@ function SiteHeaderCommerceControlsInner() {
 }
 
 /**
- * Mounted inside the server header's icon row. CommerceProviders is the
- * smallest wrapper that satisfies the wishlist's session + query needs; the
- * cart drawer needs neither and reads the persisted Zustand store directly.
- * The guest-wishlist merge worker stays out — it belongs to route-level
- * Providers and must not run twice.
+ * Mounted inside the server header's icon row. The site layout owns the one
+ * CommerceProviders tree, so this island shares its session and QueryClient
+ * with cards, PDP, checkout and the Drape Room.
  */
 export function SiteHeaderCommerceControls() {
-  return (
-    <CommerceProviders>
-      <SiteHeaderCommerceControlsInner />
-    </CommerceProviders>
-  );
+  return <SiteHeaderCommerceControlsInner />;
 }

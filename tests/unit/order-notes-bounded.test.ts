@@ -11,7 +11,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // --- Hoisted mocks ---
 const getOrderMock = vi.hoisted(() => vi.fn());
 const updateOrderNoteMock = vi.hoisted(() => vi.fn());
-const restockProductMock = vi.hoisted(() => vi.fn());
 const refundPaymentMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/orders", () => ({
@@ -20,10 +19,6 @@ vi.mock("@/db/queries/orders", () => ({
   updateOrderRefund: vi.fn(),
   updateOrderTracking: vi.fn(),
   updateOrderStatus: vi.fn(),
-}));
-
-vi.mock("@/db/queries/products", () => ({
-  restockProduct: restockProductMock,
 }));
 
 vi.mock("@/lib/ports/payments", () => ({

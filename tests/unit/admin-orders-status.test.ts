@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getOrderMock = vi.hoisted(() => vi.fn());
 const updateOrderStatusMock = vi.hoisted(() => vi.fn());
 const sendEmailMock = vi.hoisted(() => vi.fn());
-const restockProductMock = vi.hoisted(() => vi.fn());
 const refundPaymentMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db/queries/orders", () => ({
@@ -14,11 +13,6 @@ vi.mock("@/db/queries/orders", () => ({
   updateOrderRefund: vi.fn(),
   updateOrderTracking: vi.fn(),
   updateOrderNote: vi.fn(),
-}));
-
-// P6-05: admin-orders.ts now imports restockProduct; must mock to avoid DATABASE_URL error
-vi.mock("@/db/queries/products", () => ({
-  restockProduct: restockProductMock,
 }));
 
 // P6-05: admin-orders.ts now imports getPaymentsPort; must mock

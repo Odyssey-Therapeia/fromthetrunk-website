@@ -1,4 +1,4 @@
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
 import {
@@ -20,6 +20,10 @@ import {
 import { requireAdmin } from "@/api/hono/middleware/auth";
 import type { HonoBindings } from "@/api/hono/types";
 import { resolveProductRowStockStatus } from "@/db/inventory";
+import {
+  MAX_VIEWER_STATE_IDS,
+  resolveViewerStates,
+} from "@/lib/commerce/viewer-state";
 import { refreshProductEmbedding } from "@/lib/ai/embeddings";
 import { recommendProducts } from "@/lib/ai/recommendations";
 import { suggestTagIds } from "@/lib/ai/tag-suggestions";
@@ -453,6 +457,83 @@ export const registerProductRoutes = (app: OpenAPIHono<HonoBindings>) => {
           "Content-Disposition": `attachment; filename="ftt-products-export.csv"`,
         },
       });
+    },
+  );
+
+  /*
+   * What each of these sarees should offer THIS shopper.
+   *
+   * Authentication is optional: a signed-out viewer gets the public verdict.
+   * Signed in, the server compares their own bag row and payment state, so the
+   * browser never has to infer ownership — which is how a card's badge and its
+   * button came to contradict each other.
+   */
+  app.openapi(
+    createRoute({
+      method: "post",
+      path: "/viewer-state",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                productIds: z
+                  .array(z.string().uuid())
+                  .min(1)
+                  .max(MAX_VIEWER_STATE_IDS),
+              }),
+            },
+          },
+          required: true,
+        },
+      },
+      responses: {
+        200: { description: "Per-product state for the current viewer" },
+      },
+      tags: ["Products"],
+    }),
+    async (c) => {
+      const rateLimited = await rateLimitResponse(
+        c.req.raw,
+        "products:viewer-state",
+        { limit: 120, windowSeconds: 60 },
+      );
+      if (rateLimited) return rateLimited;
+
+      // The answer depends on who is asking. A shared cache or a back step
+      // must never hand one shopper's verdicts to another.
+      c.header("Cache-Control", "private, no-store");
+
+      const { productIds } = c.req.valid("json");
+      const viewer = c.get("authUser");
+      const now = new Date();
+
+      // Imported lazily, matching the repo's idiom for query modules that pull
+      // in the Drizzle client: a static import would initialise it whenever
+      // this route file is loaded, including in tests that never call this.
+      const { expireCommerceHoldsForProducts, getViewerStateRows } = await import(
+        "@/db/queries/user-cart"
+      );
+
+      // Free anything whose window has passed before deciding, so a lapsed
+      // hold never keeps a saree off the shelf waiting for a scheduled sweep.
+      const expiry = await expireCommerceHoldsForProducts(productIds, now);
+      const paymentProtectedIds = new Set(expiry.blockedProductIds);
+
+      const rows = await getViewerStateRows(productIds, viewer?.id ?? null);
+
+      return c.json(
+        {
+          products: resolveViewerStates(
+            rows.map((row) => ({
+              ...row,
+              paymentProtected: paymentProtectedIds.has(row.productId),
+            })),
+            now,
+          ),
+        },
+        200,
+      );
     },
   );
 

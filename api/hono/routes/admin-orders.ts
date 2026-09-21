@@ -5,7 +5,6 @@ import { idParamSchema } from "@/api/hono/schemas/common";
 import { orderNotePatchSchema, orderStatusPatchSchema, orderTrackingPatchSchema } from "@/api/hono/schemas/orders";
 import type { HonoBindings } from "@/api/hono/types";
 import { claimOrderRefund, finalizeOrderRefund, getOrder, revertOrderRefundClaim, updateOrderNote, updateOrderStatus, updateOrderTracking } from "@/db/queries/orders";
-import { restockProduct } from "@/db/queries/products";
 import { sendEmail } from "@/lib/email/send";
 import { orderShippedEmail } from "@/lib/email/templates";
 import { getPaymentsPort } from "@/lib/ports/payments";
@@ -255,24 +254,17 @@ export const registerAdminOrderRoutes = (app: OpenAPIHono<HonoBindings>) => {
       // Razorpay succeeded — finalize the DB record.
       await finalizeOrderRefund(id, refundResult.refundId, refundResult.amountPaise);
 
-      // ONE-OF-ONE RESTOCK: for each item in the order, attempt to restock the product.
-      // Pass orderId so restockProduct can distinguish "sold for THIS order" (restock) from
-      // "genuinely re-sold to a different customer" (skip).
-      const restockResults: Record<string, string> = {};
-      for (const item of order.items) {
-        if (item.productId) {
-          const result = await restockProduct(item.productId, id);
-          restockResults[item.productId] = result;
-        }
-      }
-
       return c.json(
         {
           id,
           refunded: true,
           refundId: refundResult.refundId,
           refundedAmountPaise: refundResult.amountPaise,
-          restock: restockResults,
+          // Refund and inventory restoration are deliberately separate admin
+          // decisions for one-of-one pieces. A refunded saree remains Sold
+          // until it has physically returned, been checked, and an admin
+          // explicitly restores its stock status through the product editor.
+          restockRequired: true,
         },
         200
       );

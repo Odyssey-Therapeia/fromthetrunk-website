@@ -56,6 +56,70 @@ describe("computeCartFingerprint", () => {
       ),
     ).not.toBe(base);
   });
+
+  // The server fingerprints these too (api/hono/routes/payments.ts). Missing
+  // any of them kept a stale attempt id that the server refused as changed.
+  it.each([
+    ["name", { name: "B" }],
+    ["phone", { phone: "+919876543210" }],
+    ["line 2", { line2: "Flat 4" }],
+    ["state", { state: "Karnataka" }],
+    ["email", { email: "c@d.com" }],
+    ["postal code", { postalCode: "560002" }],
+    ["line 1", { line1: "L2" }],
+    ["city", { city: "Town" }],
+    ["country", { country: "US" }],
+  ] satisfies Array<[string, Partial<Payload["shippingAddress"]>]>)(
+    "changes when the delivery %s changes",
+    (_label, addressChange) => {
+      const base = payload();
+      expect(
+        computeCartFingerprint(
+          payload({ shippingAddress: { ...base.shippingAddress, ...addressChange } }),
+        ),
+      ).not.toBe(computeCartFingerprint(base));
+    },
+  );
+
+  it("changes when gift details change on a gift order", () => {
+    const gift = computeCartFingerprint(
+      payload({ giftFrom: "Asha", giftMessage: "Happy Onam", isGift: true }),
+    );
+    expect(gift).not.toBe(computeCartFingerprint(payload()));
+    expect(
+      computeCartFingerprint(
+        payload({ giftFrom: "Ravi", giftMessage: "Happy Onam", isGift: true }),
+      ),
+    ).not.toBe(gift);
+    expect(
+      computeCartFingerprint(
+        payload({ giftFrom: "Asha", giftMessage: "Happy Diwali", isGift: true }),
+      ),
+    ).not.toBe(gift);
+  });
+
+  it("ignores gift details the server drops from a non-gift order", () => {
+    expect(
+      computeCartFingerprint(payload({ giftFrom: "Asha", giftMessage: "Hi" })),
+    ).toBe(computeCartFingerprint(payload()));
+  });
+
+  it("ignores case and spacing the server normalises away", () => {
+    const base = payload({ discountCode: "SAVE10" });
+    expect(
+      computeCartFingerprint(
+        payload({
+          discountCode: " save10 ",
+          shippingAddress: {
+            ...base.shippingAddress,
+            city: "  CITY ",
+            email: "A@B.com",
+            name: " a ",
+          },
+        }),
+      ),
+    ).toBe(computeCartFingerprint(base));
+  });
 });
 
 describe("getCheckoutAttempt", () => {

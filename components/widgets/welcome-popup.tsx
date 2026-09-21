@@ -6,10 +6,17 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, X } from "lucide-react";
 
 import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
+import {
+  anotherModalIsOpen,
+  decideWelcomeReveal,
+  shopperIsTyping,
+} from "@/lib/widgets/welcome-popup-guard";
 
 const WELCOME_SEEN_KEY = "ftt-welcome-seen-v1";
 const SHOW_AFTER_MS = 20000; // 20s of browsing
 const SCROLL_THRESHOLD_PX = 200;
+const REVEAL_CHECK_MS = 1000;
+const YIELD_CHECK_MS = 200;
 
 // Faint heritage mandala that bleeds from the card's corner.
 const MANDALA =
@@ -18,40 +25,74 @@ const MANDALA =
 /**
  * Welcome modal — appears once, after ~20s of browsing AND the visitor has
  * scrolled. Dismissal is remembered in localStorage so it never returns.
+ *
+ * It never interrupts: SiteWidgets keeps it unmounted on sign-in, checkout and
+ * payment routes and while the sign-in dialog or Drape Room is open, and it
+ * waits out any other modal or a half-typed field before it appears.
  */
 export function WelcomePopup() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
+  // Bumped when the card gives way to another modal, so the reveal re-arms.
+  const [armCount, setArmCount] = useState(0);
 
-  // Reveal trigger: 20s elapsed + a real scroll, whichever lands last.
+  // Reveal trigger: 20s elapsed + a real scroll + a settled page, whichever
+  // lands last.
   useEffect(() => {
     if (localStorage.getItem(WELCOME_SEEN_KEY)) return;
 
-    let elapsed = false;
+    const mountedAt = Date.now();
     let scrolled = window.scrollY > SCROLL_THRESHOLD_PX;
-    let done = false;
+    let lastBusyAt: number | null = null;
 
-    const reveal = () => {
-      if (done || !elapsed || !scrolled) return;
-      done = true;
-      setOpen(true);
-    };
     const onScroll = () => {
       if (window.scrollY > SCROLL_THRESHOLD_PX) scrolled = true;
-      reveal();
     };
-    const timer = window.setTimeout(() => {
-      elapsed = true;
-      reveal();
-    }, SHOW_AFTER_MS);
+
+    /*
+     * Checked on a steady beat, not on scroll. An open modal locks page
+     * scroll, so once it closes there may be no scroll event left to let the
+     * welcome through; the beat also sees typing before the 20s are up.
+     */
+    const beat = window.setInterval(() => {
+      const now = Date.now();
+      const decision = decideWelcomeReveal({
+        busy: anotherModalIsOpen(document) || shopperIsTyping(document),
+        elapsed: now - mountedAt >= SHOW_AFTER_MS,
+        lastBusyAt,
+        now,
+        scrolled,
+      });
+      lastBusyAt = decision.lastBusyAt;
+      if (!decision.open) return;
+      window.clearInterval(beat);
+      setOpen(true);
+    }, REVEAL_CHECK_MS);
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      window.clearTimeout(timer);
+      window.clearInterval(beat);
       window.removeEventListener("scroll", onScroll);
     };
-  }, []);
+  }, [armCount]);
+
+  /*
+   * Give way if another modal opens over the card once it is up, such as the
+   * bag drawer landing at the end of an add-to-bag animation. Radix locks
+   * pointer input to that modal, so staying would leave the card unclickable
+   * and turn a click on it into a dismissal of the modal. It is not marked
+   * seen: the shopper never answered it, so the reveal re-arms and waits again.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const watch = window.setInterval(() => {
+      if (!anotherModalIsOpen(document)) return;
+      setOpen(false);
+      setArmCount((count) => count + 1);
+    }, YIELD_CHECK_MS);
+    return () => window.clearInterval(watch);
+  }, [open]);
 
   // Escape to close + lock body scroll while open.
   useEffect(() => {
@@ -97,6 +138,8 @@ export function WelcomePopup() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="ftt-welcome-heading"
+          // Lets the modal guard tell this card apart from a competing modal.
+          data-ftt-welcome-popup=""
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

@@ -1,6 +1,5 @@
 "use client";
 
-import { CommerceProviders } from "@/components/providers";
 import type { DrapeRoomClientTransport } from "@/lib/drape-room/client/api";
 import type { DrapeRoomAvailability } from "@/lib/drape-room/client/types";
 import { DrapeRoomExperience } from "./drape-room-experience";
@@ -17,12 +16,10 @@ export function DrapeRoomCommerceShell({
   onRefreshConfig,
 }: DrapeRoomCommerceShellProps) {
   return (
-    <CommerceProviders>
-      <DrapeRoomExperience
-        availability={availability}
-        transport={transport}
-        onRefreshConfig={onRefreshConfig}
-      />
-    </CommerceProviders>
+    <DrapeRoomExperience
+      availability={availability}
+      transport={transport}
+      onRefreshConfig={onRefreshConfig}
+    />
   );
 }

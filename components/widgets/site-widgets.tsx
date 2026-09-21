@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 
+import { useCommerceAuth } from "@/components/commerce/commerce-auth-provider";
 import { useDrapeRoomOperationalStore } from "@/lib/drape-room/client/store";
 import type { LatestReel } from "@/lib/social/latest-reel";
+import { canMountWelcomePopup } from "@/lib/widgets/welcome-popup-guard";
 
 const OPTIONAL_WIDGET_DELAY_MS = 6500;
 
@@ -29,18 +31,30 @@ const WelcomePopup = dynamic(
  * The reel + WhatsApp are gated to the landing hero: on the homepage they stay
  * hidden while the hero (`#home-hero`) is on screen and only appear once it has
  * scrolled out of view. On every other route there is no `#home-hero`, so they
- * show normally. The welcome popup coordinates with Drape Room internally so
- * two modal layers cannot compete for focus or pointer input.
+ * show normally.
+ *
+ * The welcome popup is an invitation, so it gives way to anything the shopper
+ * is actually doing: it stays unmounted on sign-in, checkout and payment
+ * routes, and while the Drape Room or the sign-in email dialog holds the modal
+ * layer, so two modals never compete for focus or pointer input.
  */
 export function SiteWidgets() {
   const pathname = usePathname();
   const drapeRoomPresentationOpen = useDrapeRoomOperationalStore(
     (state) => state.isOpen,
   );
+  const commerceAuthDialogOpen = useCommerceAuth()?.isDialogOpen ?? false;
   const [heroPassed, setHeroPassed] = useState(false);
   const [latestReel, setLatestReel] = useState<LatestReel | null>(null);
   const [widgetsReady, setWidgetsReady] = useState(false);
   const shouldRenderReel = pathname === "/" && heroPassed && latestReel;
+  const shouldRenderWelcomePopup =
+    widgetsReady &&
+    canMountWelcomePopup({
+      commerceAuthDialogOpen,
+      drapeRoomOpen: drapeRoomPresentationOpen,
+      pathname,
+    });
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -95,7 +109,7 @@ export function SiteWidgets() {
 
   return (
     <>
-      {widgetsReady && !drapeRoomPresentationOpen ? <WelcomePopup /> : null}
+      {shouldRenderWelcomePopup ? <WelcomePopup /> : null}
       {widgetsReady && heroPassed ? (
         <>
           <FloatingWhatsApp />

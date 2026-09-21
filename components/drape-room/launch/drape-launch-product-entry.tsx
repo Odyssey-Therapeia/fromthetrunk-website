@@ -7,6 +7,7 @@ import { Sparkles } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/track";
 import { useDrapeRoomOperationalStore } from "@/lib/drape-room/client/store";
 import type { DrapeSaree } from "@/lib/drape-room/product";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import { cn } from "@/lib/utils";
 import type { DrapeLaunchTeaserProps } from "./drape-launch-teaser";
 import { useDrapeLaunchTrigger } from "./use-drape-launch-trigger";
@@ -45,6 +46,19 @@ export function DrapeLaunchProductEntry({
   );
   const openDrapeRoom = useDrapeRoomOperationalStore((state) => state.open);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const viewer = useCollectionStock(product.productId, {
+    reservedUntil: null,
+    state:
+      product.stockStatus === "sold"
+        ? "sold"
+        : product.stockStatus === "reserved"
+          ? "reserved_by_other"
+          : "available",
+  });
+  const isSold = viewer.state === "sold";
+  // Sold removes the entry; a verdict still loading only pauses it. Another
+  // shopper's hold never stopped anyone trying a saree on.
+  const canDrape = !isSold && viewer.state !== "checking";
 
   const onAutoOpen = useCallback(
     (trigger: "gallery" | "scroll" | "timer") => {
@@ -58,7 +72,7 @@ export function DrapeLaunchProductEntry({
 
   const { isOpen, showPersistentButton, openManually, dismiss } =
     useDrapeLaunchTrigger({
-      enabled: drapeUiAvailable && Boolean(product.productId),
+      enabled: drapeUiAvailable && Boolean(product.productId) && canDrape,
       viewedGalleryCount,
       onAutoOpen,
     });
@@ -69,14 +83,16 @@ export function DrapeLaunchProductEntry({
   }, [dismiss, product.productSlug]);
 
   const handlePrimary = useCallback(() => {
+    if (!canDrape) return;
     trackEvent("drape_teaser_primary_click", {
       product_slug: product.productSlug,
     });
     dismiss();
     openDrapeRoom(product, buttonRef.current);
-  }, [dismiss, openDrapeRoom, product]);
+  }, [canDrape, dismiss, openDrapeRoom, product]);
 
   const handlePersistentClick = useCallback(() => {
+    if (!canDrape) return;
     trackEvent("drape_persistent_button_click", {
       product_slug: product.productSlug,
     });
@@ -84,9 +100,9 @@ export function DrapeLaunchProductEntry({
       product_slug: product.productSlug,
     });
     openManually();
-  }, [openManually, product.productSlug]);
+  }, [canDrape, openManually, product.productSlug]);
 
-  if (!drapeUiAvailable) return null;
+  if (!drapeUiAvailable || isSold) return null;
 
   return (
     <>

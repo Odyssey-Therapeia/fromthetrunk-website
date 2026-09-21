@@ -1,157 +1,80 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Cart store tests.
- *
- * We test the store logic in isolation by re-creating the store functions
- * without the persist middleware (localStorage is unavailable in vitest node).
- */
-
-// Mock the global fetch for releaseReservation calls
-const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-vi.stubGlobal("fetch", fetchMock);
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
-
-async function releaseReservation(productId: string): Promise<void> {
-  try {
-    await fetch("/api/v2/cart/release", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId }),
-    });
-  } catch {
-    // ignored
-  }
-}
-
-function createCartStore() {
-  let items: CartItem[] = [];
-
-  return {
-    getItems: () => items,
-    addItem: (item: Omit<CartItem, "quantity">) => {
-      if (items.some((i) => i.id === item.id)) return;
-      items = [...items, { ...item, quantity: 1 }];
+vi.hoisted(() => {
+  const memory = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => memory.clear(),
+      getItem: (key: string) => memory.get(key) ?? null,
+      removeItem: (key: string) => void memory.delete(key),
+      setItem: (key: string, value: string) => void memory.set(key, value),
     },
-    removeItem: (id: string) => {
-      releaseReservation(id);
-      items = items.filter((i) => i.id !== id);
-    },
-    updateQuantity: (_id: string, _qty: number) => {
-      // No-op for unique items
-    },
-    clearCart: () => {
-      items = [];
-    },
-    clearCartWithRelease: () => {
-      for (const item of items) {
-        releaseReservation(item.id);
-      }
-      items = [];
-    },
-    hasItem: (id: string) => items.some((i) => i.id === id),
-  };
-}
+  });
+});
 
-function getCartTotals(items: CartItem[]) {
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.quantity * item.price,
-    0
-  );
-  return { totalItems, subtotal };
-}
+const { getCartTotals, useCartStore } = await import("@/lib/store/cart-store");
 
-describe("cart store", () => {
-  let store: ReturnType<typeof createCartStore>;
+const item = (id = "p1", price = 28500) => ({
+  id,
+  image: `/${id}.jpg`,
+  name: `Saree ${id}`,
+  price,
+});
 
+describe("cart presentation store", () => {
   beforeEach(() => {
-    store = createCartStore();
-    fetchMock.mockClear();
+    useCartStore.setState({ addSerial: 0, items: [], releasingIds: [] });
   });
 
-  it("adds an item with quantity 1", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    expect(store.getItems()).toHaveLength(1);
-    expect(store.getItems()[0].quantity).toBe(1);
+  it("draws a unique item at quantity one", () => {
+    useCartStore.getState().addItem(item());
+    expect(useCartStore.getState().items).toEqual([
+      expect.objectContaining({ id: "p1", quantity: 1 }),
+    ]);
   });
 
-  it("prevents duplicate items (one-of-a-kind)", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    expect(store.getItems()).toHaveLength(1);
+  it("updates a duplicate's display fields without duplicating membership", () => {
+    useCartStore.getState().addItem(item());
+    useCartStore.getState().addItem({ ...item(), image: "/canonical.jpg" });
+    expect(useCartStore.getState().items).toHaveLength(1);
+    expect(useCartStore.getState().items[0]?.image).toBe("/canonical.jpg");
   });
 
-  it("allows different items", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
-    expect(store.getItems()).toHaveLength(2);
+  it("keeps background replacement silent but counts a deliberate add", () => {
+    useCartStore.getState().replaceItems([
+      { ...item(), quantity: 1 },
+    ]);
+    expect(useCartStore.getState().addSerial).toBe(0);
+
+    useCartStore.getState().addItem(item("p2"));
+    expect(useCartStore.getState().addSerial).toBe(1);
   });
 
-  it("removes an item and releases reservation", async () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
-    store.removeItem("p1");
-    expect(store.getItems()).toHaveLength(1);
-    expect(store.getItems()[0].id).toBe("p2");
-    // Should have called release API
-    expect(fetchMock).toHaveBeenCalledWith("/api/v2/cart/release", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ productId: "p1" }),
-    }));
+  it("keeps quantity fixed for one-of-one products", () => {
+    useCartStore.getState().addItem(item());
+    useCartStore.getState().updateQuantity("p1", 5);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(1);
   });
 
-  it("clears all items without releasing (for post-payment)", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
-    store.clearCart();
-    expect(store.getItems()).toHaveLength(0);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("clearCartWithRelease releases all reservations", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.addItem({ id: "p2", name: "Saree B", price: 32000, image: "/b.jpg" });
-    store.clearCartWithRelease();
-    expect(store.getItems()).toHaveLength(0);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("hasItem returns correct state", () => {
-    expect(store.hasItem("p1")).toBe(false);
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    expect(store.hasItem("p1")).toBe(true);
-    expect(store.hasItem("p2")).toBe(false);
-  });
-
-  it("updateQuantity is a no-op for unique items", () => {
-    store.addItem({ id: "p1", name: "Saree A", price: 28500, image: "/a.jpg" });
-    store.updateQuantity("p1", 5);
-    expect(store.getItems()[0].quantity).toBe(1);
+  it("clears display after a paid order without issuing a release", () => {
+    useCartStore.getState().addItem(item());
+    useCartStore.getState().clearCart();
+    expect(useCartStore.getState().items).toEqual([]);
   });
 });
 
 describe("getCartTotals", () => {
-  it("calculates totals correctly", () => {
-    const items: CartItem[] = [
-      { id: "p1", name: "A", price: 28500, image: "", quantity: 1 },
-      { id: "p2", name: "B", price: 32000, image: "", quantity: 1 },
-    ];
-    const { totalItems, subtotal } = getCartTotals(items);
-    expect(totalItems).toBe(2);
-    expect(subtotal).toBe(60500);
+  it("calculates rupee totals from display rows", () => {
+    const totals = getCartTotals([
+      { ...item("p1", 28500), quantity: 1 },
+      { ...item("p2", 32000), quantity: 1 },
+    ]);
+    expect(totals).toMatchObject({ subtotal: 60500, totalItems: 2 });
   });
 
-  it("returns zero for empty cart", () => {
-    const { totalItems, subtotal } = getCartTotals([]);
-    expect(totalItems).toBe(0);
-    expect(subtotal).toBe(0);
+  it("returns zero for an empty bag", () => {
+    expect(getCartTotals([])).toMatchObject({ subtotal: 0, totalItems: 0 });
   });
 });

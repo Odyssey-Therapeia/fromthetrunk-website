@@ -30,6 +30,7 @@ describe("one-of-one checkout conflict copy", () => {
   it.each([
     ["PRODUCT_UNAVAILABLE", "This piece is no longer available"],
     ["CHECKOUT_IN_PROGRESS", "We’re preparing your checkout"],
+    ["PAYMENT_IN_PROGRESS", "Your payment is already in progress"],
     ["TOO_MANY_PENDING_ORDERS", "You already have pending checkouts"],
   ] satisfies Array<[OneOfOneConflictCode, string]>)(
     "maps %s to approved customer copy",
@@ -38,12 +39,55 @@ describe("one-of-one checkout conflict copy", () => {
     },
   );
 
+  it("keeps the shopper's own in-progress payment in the bag while blocking a second payment", () => {
+    const copy = getOneOfOneConflictCopy("PAYMENT_IN_PROGRESS");
+
+    // Not an unknown code falling back to the generic retry copy.
+    expect(copy.code).toBe("PAYMENT_IN_PROGRESS");
+    expect(copy.removeProduct).toBe(false);
+    expect(copy.blockPayment).toBe(true);
+    expect(copy.message).toContain("already in progress");
+    // It is the shopper's own payment, never another shopper's claim.
+    expect(copy.message.toLowerCase()).not.toContain("another shopper");
+    expect(copy.message.toLowerCase()).not.toContain("no longer available");
+    expect(copy.ctaHref).toBeUndefined();
+  });
+
+  it("removes a line only for codes that mean the piece is no longer the shopper's", () => {
+    const removing = (
+      [
+        "CHECKOUT_ATTEMPT_NOT_REUSABLE",
+        "CHECKOUT_CART_CHANGED",
+        "CHECKOUT_IN_PROGRESS",
+        "GENERIC_CREATE_ORDER_FAILURE",
+        "INVALID_PRODUCT_IDS",
+        "PAYMENT_IN_PROGRESS",
+        "PRODUCT_RESERVED",
+        "PRODUCT_SOLD",
+        "PRODUCT_UNAVAILABLE",
+        "RESERVATION_CONFLICT",
+        "RESERVATION_EXPIRED",
+        "TOO_MANY_PENDING_ORDERS",
+      ] satisfies OneOfOneConflictCode[]
+    ).filter((code) => getOneOfOneConflictCopy(code).removeProduct);
+
+    expect(removing).toEqual([
+      "INVALID_PRODUCT_IDS",
+      "PRODUCT_RESERVED",
+      "PRODUCT_SOLD",
+      "PRODUCT_UNAVAILABLE",
+      "RESERVATION_CONFLICT",
+      "RESERVATION_EXPIRED",
+    ]);
+  });
+
   it("does not expose raw backend codes in customer copy", () => {
     const rawCodes = [
       "PRODUCT_RESERVED",
       "PRODUCT_SOLD",
       "PRODUCT_UNAVAILABLE",
       "CHECKOUT_IN_PROGRESS",
+      "PAYMENT_IN_PROGRESS",
       "TOO_MANY_PENDING_ORDERS",
       "409",
     ];

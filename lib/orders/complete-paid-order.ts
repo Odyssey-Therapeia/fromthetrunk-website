@@ -1,11 +1,7 @@
-import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
-
-import { db } from "@/db";
 import { addOrderEvent, getOrder } from "@/db/queries/orders";
+import { consentFromRecord } from "@/lib/analytics/server-consent";
 import { incrementDiscountUsage } from "@/db/queries/discounts";
-import { getBlouseProductIdSet } from "@/db/queries/products";
-import { releaseReservationsByOrder } from "@/db/queries/reservations";
-import { orders, products } from "@/db/schema";
+import { completePaidCommerceState } from "@/db/queries/user-cart";
 import { getOrderNotificationRecipients } from "@/lib/email/recipients";
 import { sendEmail } from "@/lib/email/send";
 import {
@@ -96,30 +92,62 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
   }
 
   const paidAt = input.paidAt ?? new Date();
+  const productIds = existing.items
+    .map((item) => item.productId)
+    .filter((id): id is string => Boolean(id));
 
-  // Atomic conditional claim: only the first concurrent caller gets rows back.
-  // Mark the payment as paid first, but do not confirm fulfilment until the
-  // reserved one-of-one products are successfully moved to sold.
-  const rows = await db
-    .update(orders)
-    .set({
-      paidAt,
-      paymentId: input.paymentId,
-      paymentMethod: input.paymentMethod ?? "razorpay",
-      paymentStatus: "paid",
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(orders.id, input.orderId),
-        ne(orders.paymentStatus, "paid"),
-        or(isNull(orders.paymentId), eq(orders.paymentId, input.paymentId))
-      )
-    )
-    .returning({ id: orders.id });
+  /*
+   * This is the sole authoritative commit point. Order payment/confirmation,
+   * one-of-one sale, exact payment reservation cleanup and the account bag are
+   * one guarded SQL statement. The statement derives both the order product
+   * set and its one-of-one subset from order_items + reservations, so a mutable
+   * catalogue type cannot change what this payment owns. A failed inventory
+   * guard changes none of them; an already-paid retry is read-only.
+   */
+  const commerce = await completePaidCommerceState({
+    orderId: input.orderId,
+    paidAt,
+    paymentId: input.paymentId,
+    paymentMethod: input.paymentMethod ?? "razorpay",
+    updatedAt: new Date(),
+    userId: existing.userId ?? null,
+  });
 
-  if (rows.length === 0) {
-    // Loser path: another call already completed this order.
+  if (commerce.kind === "payment_conflict") {
+    throw new Error("PAYMENT_ID_MISMATCH");
+  }
+  if (commerce.kind === "order_state_conflict") {
+    // Money was captured against an order that is no longer pending (for
+    // example, one reconciliation already failed). It cannot claim inventory,
+    // so record it for a manual review or refund.
+    await addOrderEvent(
+      input.orderId,
+      "Captured payment on non-pending order",
+      existing.status ?? "pending",
+      {
+        code: "PAYMENT_ON_CLOSED_ORDER",
+        paymentId: input.paymentId,
+        paymentReference: input.paymentReference ?? null,
+        previousPaymentStatus: existing.paymentStatus,
+        source: input.source,
+      },
+    );
+    throw new Error("PAYMENT_CLAIM_CONFLICT");
+  }
+  if (commerce.kind === "inventory_conflict") {
+    await addOrderEvent(
+      input.orderId,
+      "Payment completion inventory conflict",
+      existing.status ?? "pending",
+      {
+        code: "PRODUCT_SOLD",
+        requestedProductIds: productIds,
+        soldCount: commerce.soldCount,
+      },
+    );
+    throw new Error("PRODUCT_SOLD");
+  }
+  if (commerce.kind === "already_paid") {
     const current = await getOrder(input.orderId);
     if (current?.paymentId && current.paymentId !== input.paymentId) {
       throw new Error("PAYMENT_ID_MISMATCH");
@@ -130,58 +158,13 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
     return {
       alreadyPaid: true as const,
       emailsSent: false,
-      order: current ?? existing,
+      order: current,
     };
   }
 
-  // Winner path: this call owns completion — update stock, confirm the order,
-  // emit event, and send emails.
-  const productIds = existing.items
-    .map((item) => item.productId)
-    .filter((id): id is string => Boolean(id));
-
-  // Blouses are made-to-order and were never reserved, so they never transition
-  // to sold. Only one-of-one products are claimed here — excluding blouses keeps
-  // the sold-count assertion correct when an order mixes blouses and sarees.
-  const blouseProductIds = await getBlouseProductIdSet(productIds);
-  const reservableProductIds = productIds.filter((id) => !blouseProductIds.has(id));
-
-  if (reservableProductIds.length > 0) {
-    const soldRows = await db
-      .update(products)
-      .set({
-        reservedUntil: null,
-        soldAt: new Date(),
-        stockStatus: "sold",
-        // Dual-write: quantity_available set to 0 on sale (v2 state mirrors stockStatus)
-        quantityAvailable: 0,
-        updatedAt: new Date(),
-      })
-      .where(and(inArray(products.id, reservableProductIds), eq(products.stockStatus, "reserved")))
-      .returning({ slug: products.slug });
-    const soldProducts = soldRows ?? [];
-    if (soldProducts.length !== reservableProductIds.length) {
-      await addOrderEvent(input.orderId, "Payment completion inventory conflict", existing.status ?? "pending", {
-        code: "PRODUCT_SOLD",
-        requestedProductIds: reservableProductIds,
-        soldCount: soldProducts.length,
-      });
-      throw new Error("PRODUCT_SOLD");
-    }
-
-    revalidateProductsCache(soldProducts.map((product) => product.slug));
-
-    // Dual-write: release reservation rows now that the order is paid
-    await releaseReservationsByOrder(input.orderId);
+  if (commerce.soldSlugs.length > 0) {
+    revalidateProductsCache(commerce.soldSlugs);
   }
-
-  await db
-    .update(orders)
-    .set({
-      status: "confirmed",
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, input.orderId));
 
   await addOrderEvent(input.orderId, `${input.source} payment confirmed`, "confirmed", {
     paymentId: input.paymentId,
@@ -193,7 +176,7 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
   // (or usage_limit IS NULL). The conditional guard closes the stale-read over-redemption
   // window: if the code was exhausted between create-order and payment confirmation,
   // incrementDiscountUsage returns false and we log an order event for review.
-  // Only the winner branch reaches here (rows.length > 0 guard above), so this
+  // Only the atomic commerce winner reaches here, so this
   // call executes EXACTLY ONCE per order — no double-counting across concurrent callbacks.
   if (existing.discountId) {
     const incremented = await incrementDiscountUsage(existing.discountId);
@@ -212,6 +195,14 @@ export async function completePaidOrder(input: CompletePaidOrderInput) {
   // Fire-and-forget: payment_completed event — winner branch only (EXACTLY ONCE).
   // emitAnalyticsEvent() never throws; errors are caught + logged inside.
   void emitAnalyticsEvent({
+    /*
+     * Payment can complete here with no browser attached — a Razorpay webhook,
+     * or the expiry reconciler. The consent recorded on the order when the
+     * shopper placed it is the only honest source, and a NULL column (an order
+     * from before we recorded it) reads as refusal, so Google and Meta receive
+     * nothing unless the shopper actually agreed.
+     */
+    consent: consentFromRecord(existing),
     event_id: crypto.randomUUID(),
     type: "payment_completed",
     payload: {

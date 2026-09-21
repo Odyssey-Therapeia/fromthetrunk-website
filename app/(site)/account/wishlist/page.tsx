@@ -10,11 +10,12 @@ import { ProductCard } from "@/components/product/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/types/domain";
+import { useWishlistIds } from "@/lib/wishlist/use-wishlist";
 
-const fetchWishlist = async (): Promise<Product[]> => {
-  const wishlistResponse = await fetch("/api/v2/wishlist");
-  if (!wishlistResponse.ok) return [];
-  const wishlistIds = (await wishlistResponse.json()) as string[];
+/** Hydrate the signed-in account's ids into product cards. */
+const fetchWishlistProducts = async (
+  wishlistIds: string[],
+): Promise<Product[]> => {
   if (wishlistIds.length === 0) return [];
 
   const params = new URLSearchParams({
@@ -32,22 +33,29 @@ const fetchWishlist = async (): Promise<Product[]> => {
 
 export default function WishlistPage() {
   const { data: session, status } = useSession();
+  const userId = session?.user?.id ?? null;
+  // Commerce is account-first. A signed-out heart opens the shared OTP flow,
+  // so this page never needs a second browser-owned wishlist.
+  const { ids, isReady } = useWishlistIds();
 
   const { data: products, isLoading, isError } = useQuery({
-    queryKey: ["wishlist", "products"],
-    queryFn: fetchWishlist,
-    enabled: Boolean(session?.user?.id),
+    // Keyed by account as well as ids: two accounts can save the same pieces.
+    queryKey: ["wishlist", "products", userId, ids],
+    queryFn: () => fetchWishlistProducts(ids),
+    enabled: status === "authenticated" && isReady,
   });
 
-  if (status === "loading") {
+  if (status === "loading" || !isReady) {
     return <WishlistState message="Loading your saved pieces..." />;
   }
 
-  if (!session?.user?.id) {
+  if (status === "unauthenticated") {
     return (
       <WishlistState message="Please sign in to view your wishlist.">
         <Button asChild className="mt-4 rounded-full bg-ftt-navy text-ftt-ivory">
-          <Link href="/account/sign-in">Sign in</Link>
+          <Link href="/account/sign-in?callbackUrl=%2Faccount%2Fwishlist">
+            Sign in
+          </Link>
         </Button>
       </WishlistState>
     );
@@ -113,7 +121,11 @@ export default function WishlistPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-3">
           {items.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              allowSoldWishlistRemoval
+            />
           ))}
         </div>
       )}

@@ -1,11 +1,14 @@
 "use client";
 
+import { useServerCart } from "@/lib/commerce/use-server-cart";
 import { formatCurrency } from "@/lib/formatters";
-import { getCartTotals, useCartStore } from "@/lib/store/cart-store";
+import { getCartTotals } from "@/lib/store/cart-store";
 
 export function CartHeroStats() {
-  const items = useCartStore((state) => state.items);
-  const hasHydrated = useCartStore((state) => state.hasHydrated);
+  const {
+    presentedItems: items,
+    presentationHasHydrated: hasHydrated,
+  } = useServerCart();
   const { subtotal, totalItems } = getCartTotals(items);
 
   return (

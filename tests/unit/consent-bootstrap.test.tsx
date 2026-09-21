@@ -60,15 +60,20 @@ describe("consent first-paint bootstrap", () => {
 
   it("renders the complete keyboard-accessible first-visit interface without late text replacement", () => {
     const html = renderToStaticMarkup(
-      <ConsentBanner onAccept={() => {}} onDecline={() => {}} />,
+      <ConsentBanner
+        onAccept={() => {}}
+        onDecline={() => {}}
+        onSave={() => {}}
+      />,
     );
     expect(html).toContain('data-ftt-consent-banner="true"');
     expect(html).toContain('role="region"');
-    expect(html).toContain('aria-label="Analytics cookie preferences"');
+    expect(html).toContain('aria-label="Cookie and tracking preferences"');
     expect(html).toContain('href="/policies/privacy-policy"');
     expect(html).toContain('<button');
-    expect(html).toContain("Continue without cookies");
-    expect(html).toContain("Allow cookies");
+    expect(html).toContain("Reject optional cookies");
+    expect(html).toContain("Accept optional cookies");
+    expect(html).toContain("Manage preferences");
     expect(html).not.toContain("aria-live");
   });
 });

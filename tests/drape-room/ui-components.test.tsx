@@ -429,7 +429,7 @@ describe("Drape Room UI contracts", () => {
     expect(html.match(/Create · Uses 1 generation/g)).toHaveLength(3);
   });
 
-  it("defers the welcome popup while Drape Room owns the modal layer", () => {
+  it("defers the welcome popup while Drape Room or sign-in owns the modal layer", () => {
     const source = readFileSync(
       join(process.cwd(), "components/widgets/site-widgets.tsx"),
       "utf8",
@@ -439,8 +439,10 @@ describe("Drape Room UI contracts", () => {
       "const drapeRoomPresentationOpen = useDrapeRoomOperationalStore(",
     );
     expect(source).toContain("(state) => state.isOpen");
+    expect(source).toContain("useCommerceAuth()?.isDialogOpen");
+    expect(source).toContain("drapeRoomOpen: drapeRoomPresentationOpen");
     expect(source).toContain(
-      "widgetsReady && !drapeRoomPresentationOpen ? <WelcomePopup /> : null",
+      "{shouldRenderWelcomePopup ? <WelcomePopup /> : null}",
     );
   });
 });

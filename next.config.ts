@@ -36,18 +36,28 @@ const GA_IMG_SRC =
 const GTM_FRAME_SRC =
   "https://www.googletagmanager.com https://tagmanager.google.com";
 
+// Meta Pixel (browser PageView only; conversions stay server-side in
+// lib/adapters/meta-capi-sink.ts). fbevents.js is served from
+// connect.facebook.net; the Pixel then reports to www.facebook.com, as an
+// image beacon on older browsers and via fetch/sendBeacon on current ones.
+// Additive only — no wildcard `*`, no 'unsafe-eval', nothing removed.
+const META_PIXEL_SCRIPT_SRC = "https://connect.facebook.net";
+const META_PIXEL_IMG_SRC = "https://www.facebook.com";
+const META_PIXEL_CONNECT_SRC =
+  "https://www.facebook.com https://connect.facebook.net";
+
 const cspReportOnly = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self'",
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
-  `script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com ${META_PIXEL_SCRIPT_SRC}`,
+  `script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com ${GTM_SCRIPT_SRC} https://www.google-analytics.com ${META_PIXEL_SCRIPT_SRC}`,
   "style-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://tagmanager.google.com https://fonts.googleapis.com",
-  `img-src 'self' data: blob: ${MEDIA_CSP_SRC} https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC}`,
+  `img-src 'self' data: blob: ${MEDIA_CSP_SRC} https://behold.pictures https://*.behold.pictures https://*.cdninstagram.com ${GA_IMG_SRC} ${META_PIXEL_IMG_SRC}`,
   "font-src 'self' data: https://fonts.gstatic.com",
-  `connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://region1.google-analytics.com ${GA_CONNECT_SRC} https://photon.komoot.io https://*.tile.openstreetmap.org ${MEDIA_CSP_SRC}`,
+  `connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://region1.google-analytics.com ${GA_CONNECT_SRC} https://photon.komoot.io https://*.tile.openstreetmap.org ${MEDIA_CSP_SRC} ${META_PIXEL_CONNECT_SRC}`,
   `frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com ${GTM_FRAME_SRC}`,
   "worker-src 'self' blob:",
   "report-uri /api/v2/security/csp-report",

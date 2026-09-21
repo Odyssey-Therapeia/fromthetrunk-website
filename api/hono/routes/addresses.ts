@@ -97,6 +97,14 @@ export const registerAddressRoutes = (app: OpenAPIHono<HonoBindings>) => {
         "Failed to create address."
       );
 
+      /*
+       * Do not copy address.name/phone into users here. This payload describes
+       * the delivery recipient and carries no owner-vs-gift signal; isDefault
+       * and label are address-book preferences, not proof of whose details
+       * they are. The verified account email is likewise never sourced from an
+       * address. Profile enrichment must wait for an explicit owner signal.
+       */
+
       if (body.isDefault) {
         await db
           .update(addresses)

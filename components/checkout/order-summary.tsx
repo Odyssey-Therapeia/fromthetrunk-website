@@ -1,9 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Info, ShieldCheck, X } from "lucide-react";
 
+import {
+  CART_LINE_STATUS_LABEL,
+  type CartLineVerdictReporter,
+} from "@/components/cart/cart-item";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,6 +22,7 @@ import { CART_DELIVERY_ESTIMATE } from "@/lib/cart/delivery-estimate";
 import type { OneOfOneConflictCopy } from "@/lib/checkout/one-of-one-conflict-copy";
 import { formatCurrency } from "@/lib/formatters";
 import type { ShippingMethod } from "@/lib/config/order-pricing";
+import { useCollectionStock } from "@/lib/realtime/use-collection-stock";
 import type { CartItem } from "@/lib/store/cart-store";
 
 export type DiscountState = {
@@ -42,6 +48,10 @@ type OrderSummaryProps = {
   conflict?: OneOfOneConflictCopy | null;
   disabled?: boolean;
   error?: string | null;
+  /** True while this line's removal is still travelling to the server. */
+  isReleasing?: (id: string) => boolean;
+  /** Receives each line's verdict so the page gates payment on the same one. */
+  onViewerState?: CartLineVerdictReporter;
 };
 
 // LAUNCH: the order summary now shows a flat "Shipping — Free" line instead of
@@ -63,6 +73,8 @@ export function OrderSummary({
   onRemoveItem,
   disabled,
   error,
+  isReleasing,
+  onViewerState,
 }: OrderSummaryProps) {
   return (
     <div className="space-y-6">
@@ -79,49 +91,14 @@ export function OrderSummary({
         <div className="space-y-6 p-6">
           <ul className="space-y-5">
             {items.map((item) => (
-              <li key={item.id} className="flex min-w-0 gap-4">
-                <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-ftt-border bg-ftt-ivory">
-                  {item.image ? (
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      width={80}
-                      height={80}
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-[8px] uppercase tracking-widest text-ftt-burgundy/50">
-                      No image
-                    </span>
-                  )}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center">
-                  <p className="break-words text-sm font-semibold text-ftt-navy">
-                    {item.name}
-                  </p>
-                  <p className="mt-1 text-[11px] uppercase tracking-widest text-ftt-burgundy/50">
-                    Qty {item.quantity}
-                  </p>
-                  {getSelectedSizeLabel(item.selectedOptions) ? (
-                    <p className="mt-1 text-xs font-semibold text-ftt-navy/70">
-                      {getSelectedSizeLabel(item.selectedOptions)}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-sm font-semibold text-ftt-burgundy">
-                    {formatCurrency(item.price)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemoveItem(item.id)}
-                  disabled={disabled}
-                  aria-label={`Remove ${item.name}`}
-                  title="Remove item"
-                  className="grid size-7 shrink-0 place-items-center self-start rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy/50 transition hover:border-ftt-burgundy/40 hover:text-ftt-burgundy disabled:opacity-50"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </li>
+              <OrderSummaryLine
+                key={item.id}
+                item={item}
+                disabled={disabled}
+                isReleasing={isReleasing?.(item.id) ?? false}
+                onRemoveItem={onRemoveItem}
+                onViewerState={onViewerState}
+              />
             ))}
           </ul>
 
@@ -235,6 +212,88 @@ export function OrderSummary({
         </div>
       </div>
     </div>
+  );
+}
+
+/** One manifest line, drawn from the verdict every other surface reads. */
+function OrderSummaryLine({
+  disabled,
+  isReleasing,
+  item,
+  onRemoveItem,
+  onViewerState,
+}: {
+  disabled?: boolean;
+  isReleasing: boolean;
+  item: CartItem;
+  onRemoveItem: (id: string) => void;
+  onViewerState?: CartLineVerdictReporter;
+}) {
+  const viewer = useCollectionStock(item.id, {
+    reservedUntil: item.reservedUntil ?? null,
+    state: item.viewerState ?? "checking",
+  });
+  const viewerState = viewer.state;
+  useEffect(() => {
+    if (!onViewerState) return;
+    onViewerState(item.id, viewerState);
+    return () => onViewerState(item.id, null);
+  }, [item.id, onViewerState, viewerState]);
+  const isHeldForMe = viewerState === "in_my_cart";
+  // Only the shopper's own live hold can be removed from checkout, and never
+  // a row already in payment while the last poll still says in_my_cart.
+  const canRemove = isHeldForMe && item.status !== "payment_pending";
+
+  return (
+    <li className="flex min-w-0 gap-4">
+      <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-ftt-border bg-ftt-ivory">
+        {item.image ? (
+          <Image
+            src={item.image}
+            alt={item.name}
+            width={80}
+            height={80}
+            className="size-full object-cover"
+          />
+        ) : (
+          <span className="text-[8px] uppercase tracking-widest text-ftt-burgundy/50">
+            No image
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
+        <p className="break-words text-sm font-semibold text-ftt-navy">
+          {item.name}
+        </p>
+        <p className="mt-1 text-[11px] uppercase tracking-widest text-ftt-burgundy/50">
+          {isReleasing
+            ? "Releasing…"
+            : isHeldForMe
+              ? `Qty ${item.quantity}`
+              : CART_LINE_STATUS_LABEL[viewerState]}
+        </p>
+        {getSelectedSizeLabel(item.selectedOptions) ? (
+          <p className="mt-1 text-xs font-semibold text-ftt-navy/70">
+            {getSelectedSizeLabel(item.selectedOptions)}
+          </p>
+        ) : null}
+        <p className="mt-1 text-sm font-semibold text-ftt-burgundy">
+          {formatCurrency(item.price)}
+        </p>
+      </div>
+      {canRemove ? (
+        <button
+          type="button"
+          onClick={() => onRemoveItem(item.id)}
+          disabled={disabled || isReleasing}
+          aria-label={`Remove ${item.name}`}
+          title="Remove item"
+          className="grid size-7 shrink-0 place-items-center self-start rounded-full border border-ftt-border bg-ftt-ivory text-ftt-burgundy/50 transition hover:border-ftt-burgundy/40 hover:text-ftt-burgundy disabled:opacity-50"
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : null}
+    </li>
   );
 }
 

@@ -1,6 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { installCartReservationStub } from "./support/cart-reservation-stub";
+import {
+  E2E_SHOPPER,
+  installCommerceStub,
+  type CommerceStub,
+} from "./support/cart-reservation-stub";
 
 /**
  * Header cart/wishlist regression + cart value UI.
@@ -9,12 +13,10 @@ import { installCartReservationStub } from "./support/cart-reservation-stub";
  * is added to the bag, then the drawer, badges, savings, and delivery card are
  * asserted against real catalogue data.
  *
- * WRITE SAFETY: page rendering is a database read and stays real, but the two
- * state-changing endpoints (cart reserve/release) are intercepted by
- * installCartReservationStub below, so the suite performs zero database writes.
- * Previously it created genuine one-hour holds on live one-of-one inventory —
- * an interrupted run left real pieces unbuyable, and the suite's own results
- * depended on which pieces happened to be free.
+ * WRITE SAFETY: page rendering is a database read and stays real, while the
+ * authenticated server-cart API and session are intercepted by the in-memory
+ * harness below. The browser still sends the production GET/POST/DELETE cart
+ * requests, but the suite performs zero database writes.
  */
 
 const cartTrigger = (page: Page) => page.locator("[data-ftt-cart-target]");
@@ -24,13 +26,13 @@ const wishlistTrigger = (page: Page) =>
 const drawer = (page: Page) => page.getByRole("dialog");
 
 /**
- * Pieces are one-of-one: a successful add holds the product on the server for an
- * hour. Walk the grid until a card actually commits, so a piece another test
- * already reserved (the card can still render as available from a cached page)
- * just moves us to the next one.
+ * Walk the grid until a card commits. The catalogue stays real, while the
+ * account-scoped cart command is handled by the in-memory server-cart harness.
  */
-async function addFirstAvailableProduct(page: Page) {
-  await page.goto("/collection");
+async function addFirstAvailableProduct(page: Page): Promise<Locator> {
+  if (new URL(page.url()).pathname !== "/collection") {
+    await page.goto("/collection");
+  }
   await expect(cartTrigger(page)).toBeVisible();
 
   const addButtons = page.getByRole("button", { name: /^\+ Cart$|^Add to bag$/ });
@@ -44,14 +46,23 @@ async function addFirstAvailableProduct(page: Page) {
   const candidates = Math.min(await addButtons.count(), 12);
 
   for (let index = 0; index < candidates; index += 1) {
-    await addButtons.nth(index).click();
+    const button = addButtons.nth(index);
+    const candidateCard = button.locator(
+      "xpath=ancestor::*[@data-ftt-product-card][1]",
+    );
+    const marker = `cart-selection-${index}`;
+    await candidateCard.evaluate((node, value) => {
+      node.setAttribute("data-ftt-e2e-selection", value);
+    }, marker);
+    const card = page.locator(`[data-ftt-e2e-selection="${marker}"]`);
+    await button.click();
 
     // The card runs a scramble/seal/fly sequence before committing to the store.
     try {
       await expect(cartBadge(page)).toBeVisible({ timeout: 12_000 });
-      return;
+      return card;
     } catch {
-      // Reserved by another buyer (or an earlier test) — try the next piece.
+      // A card can become unavailable while the page hydrates — try the next.
       await page.keyboard.press("Escape");
     }
   }
@@ -60,39 +71,77 @@ async function addFirstAvailableProduct(page: Page) {
 }
 
 /**
- * Release the server-side hold before clearing the local cart, so the suite does
- * not burn through the catalogue's available pieces. This is the same endpoint
- * the store calls on removeItem.
+ * Empty the account through the same authenticated DELETE command as the UI.
+ * Membership is never seeded, read, or cleared through browser storage.
  */
 async function emptyTheBag(page: Page) {
   await page.evaluate(async () => {
-    const raw = window.localStorage.getItem("ftt-cart-v2");
-    const items = raw ? (JSON.parse(raw)?.state?.items ?? []) : [];
-
-    for (const item of items) {
-      if (!item?.reservationToken) continue;
-      await fetch("/api/v2/cart/release", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: item.id,
-          reservationToken: item.reservationToken,
-        }),
-      }).catch(() => undefined);
+    const response = await fetch("/api/v2/cart/items", {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error(`Unable to read the E2E server cart (${response.status}).`);
     }
+    const payload = (await response.json()) as {
+      items?: Array<{ productId?: string }>;
+    };
 
-    window.localStorage.removeItem("ftt-cart-v2");
+    for (const item of payload.items ?? []) {
+      if (!item.productId) continue;
+      const removal = await fetch(
+        `/api/v2/cart/items/${encodeURIComponent(item.productId)}`,
+        { cache: "no-store", method: "DELETE" },
+      );
+      const result = (await removal.json().catch(() => null)) as {
+        removed?: boolean;
+      } | null;
+      if (!removal.ok || result?.removed !== true) {
+        throw new Error(`Unable to empty E2E cart item ${item.productId}.`);
+      }
+    }
   });
 }
+
+const currencyPaise = (value: string | null) => {
+  const amount = Number((value ?? "").replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(amount)) throw new Error(`Invalid currency: ${value}`);
+  return Math.round(amount * 100);
+};
+
+async function useSignedOutSession(page: Page) {
+  await page.route("**/api/auth/session", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    await route.fulfill({ status: 200, json: null });
+  });
+}
+
+let serverCart: CommerceStub;
 
 // Declared before every describe-level hook, so the write endpoints are already
 // intercepted by the time any test or hook navigates.
 test.beforeEach(async ({ page }) => {
-  await installCartReservationStub(page);
+  // These unrelated first-visit overlays can appear while a slow local
+  // catalogue request is still warming and intercept the cart click. The cart
+  // suite owns neither flow, so keep its browser fixture deterministic.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("ftt-welcome-seen-v1", "1");
+    window.sessionStorage.setItem("ftt:drape-room:teaser-shown:v1", "1");
+    document.cookie =
+      "ftt_analytics_consent=denied; path=/; max-age=3600; SameSite=Lax";
+    document.cookie =
+      "ftt_drape_guide_v1=true; path=/; max-age=3600; SameSite=Lax";
+  });
+  // installCommerceStub is signed out by default; this suite's assertions are
+  // about an account-scoped bag, so it installs as the E2E shopper.
+  serverCart = await installCommerceStub(page, { account: E2E_SHOPPER });
 });
 
 test.afterEach(async ({ page }) => {
-  await page.goto("/collection");
+  // Every test has already reached a same-origin storefront page. Navigating
+  // back through the database-backed collection solely for cleanup doubled a
+  // slow local failure into a second hook timeout.
+  if (page.url() === "about:blank") return;
   await emptyTheBag(page);
 });
 
@@ -123,6 +172,8 @@ test.describe("header cart control", () => {
   test("adding shows 1, opens the drawer once, and keeps the URL", async ({ page }) => {
     await addFirstAvailableProduct(page);
 
+    expect(serverCart.addCalls).toBe(1);
+    expect(serverCart.productIds).toHaveLength(1);
     await expect(cartBadge(page)).toHaveText("1");
     await expect(drawer(page)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe("/collection");
@@ -162,12 +213,47 @@ test.describe("header cart control", () => {
 
     await cartTrigger(page).click();
     await drawer(page)
-      .getByRole("button", { name: /Remove .* from bag/ })
+      .getByRole("button", { name: /Remove .* from (?:your )?bag/ })
       .first()
       .click();
 
     await expect(cartBadge(page)).toHaveCount(0);
     await expect(cartTrigger(page)).toHaveAttribute("aria-label", "Open bag, empty");
+    expect(serverCart.removeCalls).toBe(1);
+    expect(serverCart.productIds).toHaveLength(0);
+  });
+
+  test("drawer removal resets that card and permits the same saree to be added again", async ({
+    page,
+  }) => {
+    const card = await addFirstAvailableProduct(page);
+    await expect(
+      card.getByRole("button", { name: "In bag", exact: true }),
+    ).toBeVisible();
+
+    await drawer(page)
+      .getByRole("button", { name: /Remove .* from (?:your )?bag/ })
+      .first()
+      .click();
+
+    await expect(cartBadge(page)).toHaveCount(0);
+    expect(serverCart.removeCalls).toBe(1);
+    expect(serverCart.productIds).toHaveLength(0);
+
+    await page.keyboard.press("Escape");
+    const addAgain = card.getByRole("button", {
+      name: /^\+ Cart$|^Add to bag$/,
+    });
+    // Shorter than ADDED_HOLD_MS (1.9s): animation state must not postpone the
+    // canonical server-driven removal.
+    await expect(addAgain).toBeVisible({ timeout: 1_500 });
+    await expect(addAgain).toBeEnabled();
+    await addAgain.click();
+
+    await expect(cartBadge(page)).toHaveText("1", { timeout: 12_000 });
+    await expect(drawer(page)).toBeVisible();
+    expect(serverCart.addCalls).toBe(2);
+    expect(serverCart.productIds).toHaveLength(1);
   });
 });
 
@@ -177,7 +263,7 @@ test.describe("cart value UI", () => {
     await emptyTheBag(page);
   });
 
-  test("shows the green savings banner and the delivery card in the drawer", async ({
+  test("shows savings and delivery in the drawer", async ({
     page,
   }) => {
     await addFirstAvailableProduct(page);
@@ -185,45 +271,43 @@ test.describe("cart value UI", () => {
 
     const savings = panel.locator("[data-ftt-cart-savings]");
     await expect(savings).toBeVisible();
-    await expect(savings).toContainText("saving");
+    await expect(savings).toContainText("You save");
     await expect(savings).toContainText("₹");
-    await expect(savings).toHaveCSS("background-color", "rgb(231, 245, 236)");
+    await expect(savings.locator("svg")).toBeVisible();
 
     const delivery = panel.locator("[data-ftt-cart-delivery]");
     await expect(delivery).toBeVisible();
     await expect(delivery).toContainText("Estimated delivery");
-    await expect(delivery).toContainText("7–10 days");
-    await expect(delivery).toContainText(
-      "Your order will be delivered in 7 to 10 days.",
-    );
+    await expect(delivery).toContainText("7 to 10 days");
   });
 
   test("savings equals original minus current price", async ({ page }) => {
     await addFirstAvailableProduct(page);
-
-    const stored = await page.evaluate(() => {
-      const raw = window.localStorage.getItem("ftt-cart-v2");
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed?.state?.items?.[0] ?? null;
-    });
-
-    expect(stored).not.toBeNull();
-    // Every add-to-cart pathway must persist the catalogue original price.
-    expect(typeof stored.originalPricePaise).toBe("number");
-
-    const expected =
-      stored.originalPricePaise - Math.round(stored.price * 100);
-    expect(expected).toBeGreaterThan(0);
-
-    const formatted = new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(expected / 100);
-
-    await expect(drawer(page).locator("[data-ftt-cart-savings]")).toContainText(
-      formatted,
+    const ledger = drawer(page).locator("dl");
+    const originalTotal = currencyPaise(
+      await ledger
+        .getByText("Subtotal", { exact: true })
+        .locator("..")
+        .locator("dd")
+        .textContent(),
     );
+    const savings = currencyPaise(
+      await ledger
+        .getByText("Savings", { exact: true })
+        .locator("..")
+        .locator("dd")
+        .textContent(),
+    );
+    const currentTotal = currencyPaise(
+      await ledger
+        .getByText("Total", { exact: true })
+        .locator("..")
+        .locator("dd")
+        .textContent(),
+    );
+
+    expect(savings).toBeGreaterThan(0);
+    expect(originalTotal - currentTotal).toBe(savings);
   });
 
   test("cart page shows the banner near the top and the delivery card", async ({
@@ -263,7 +347,7 @@ test.describe("cart value UI", () => {
     await expect(drawer(page).locator("[data-ftt-cart-savings]")).toBeVisible();
 
     await drawer(page)
-      .getByRole("button", { name: /Remove .* from bag/ })
+      .getByRole("button", { name: /Remove .* from (?:your )?bag/ })
       .first()
       .click();
 
@@ -273,6 +357,7 @@ test.describe("cart value UI", () => {
 
 test.describe("accessibility", () => {
   test.beforeEach(async ({ page }) => {
+    await useSignedOutSession(page);
     await page.goto("/collection");
     await emptyTheBag(page);
   });
@@ -314,6 +399,10 @@ test.describe("accessibility", () => {
 });
 
 test.describe("mobile wishlist control", () => {
+  test.beforeEach(async ({ page }) => {
+    await useSignedOutSession(page);
+  });
+
   test("is visible at 390px and does not collide with the cart", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/collection");
@@ -406,7 +495,7 @@ test.describe("responsive", () => {
       await expect(panel.locator("[data-ftt-cart-savings]")).toBeVisible();
       await expect(panel.locator("[data-ftt-cart-delivery]")).toBeVisible();
 
-      const checkout = panel.getByRole("link", { name: /Proceed to Checkout/ });
+      const checkout = panel.getByRole("link", { name: /Proceed to checkout/i });
       await expect(checkout).toBeInViewport();
       await expect(panel.getByRole("link", { name: "View full bag" })).toBeInViewport();
 

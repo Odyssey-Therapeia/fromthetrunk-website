@@ -24,11 +24,14 @@ Object.defineProperty(globalThis, "localStorage", {
   },
 });
 
+let migrateCartState: typeof import("@/lib/store/cart-store").migrateCartState;
 let getCartTotals: typeof import("@/lib/store/cart-store").getCartTotals;
 let useCartStore: typeof import("@/lib/store/cart-store").useCartStore;
 
 beforeAll(async () => {
-  ({ getCartTotals, useCartStore } = await import("@/lib/store/cart-store"));
+  ({ getCartTotals, migrateCartState, useCartStore } = await import(
+    "@/lib/store/cart-store"
+  ));
 });
 
 const saree = (overrides: Partial<Omit<CartItem, "quantity">> = {}) => ({
@@ -76,14 +79,32 @@ describe("cart item original price", () => {
     expect(totals.savingsPaise).toBe(0);
   });
 
-  it("does not bump the persist version, so existing carts survive", () => {
+  it("keeps existing carts through a persist version bump", () => {
     const source = readFileSync("lib/store/cart-store.ts", "utf8");
 
+    // The storage key must not move: a new key orphans every stored cart.
     expect(source).toContain('name: "ftt-cart-v2"');
-    expect(source).toContain("version: 2");
-    // An optional field needs no migration; adding one without a migrate()
-    // would silently discard every stored cart.
-    expect(source).not.toContain("migrate:");
+    // A version bump is only safe alongside a migration. Bumping without one
+    // silently discards every stored cart.
+    expect(source).toContain("migrate:");
+  });
+
+  it("carries a version 2 cart forward with a fresh expiry window", () => {
+    const legacyLine = {
+      id: "legacy-1",
+      name: "Legacy Saree",
+      price: 3200,
+      image: "",
+      quantity: 1,
+      originalPricePaise: 400_000,
+    } as CartItem;
+
+    const migrated = migrateCartState({ items: [legacyLine] }, 2);
+
+    expect(migrated.items).toHaveLength(1);
+    expect(migrated.items[0]!.id).toBe("legacy-1");
+    // Version 2 lines carried no window, so they would sit in the bag forever.
+    expect(migrated.items[0]!.expiresAt).toBeTruthy();
   });
 
   it("exposes savings through the shared totals helper", () => {

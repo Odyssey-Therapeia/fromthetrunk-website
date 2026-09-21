@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -202,14 +202,40 @@ const upgradeCheckoutShellForOtp = async (user: OtpUser, now: Date) => {
   return upgraded;
 };
 
-const createOrLoadEmailOtpCustomer = async (email: string, now: Date) => {
+const createOrLoadEmailOtpCustomer = async (
+  email: string,
+  now: Date,
+  fullName?: string,
+) => {
   const normalizedEmail = normalizeOtpEmail(email);
+  const name = fullName?.trim() || null;
   const existing = await getUserByEmail(normalizedEmail);
 
   if (existing) {
     if (isCheckoutShellUser(existing)) {
       return upgradeCheckoutShellForOtp(existing, now);
     }
+
+    /*
+     * Fill a blank name, never replace one.
+     *
+     * A shopper who set their name in their profile must not have it
+     * rewritten by whatever they typed into a checkout popup months later.
+     */
+    if (name && !existing.name?.trim()) {
+      const [named] = await db
+        .update(users)
+        .set({ name, updatedAt: now })
+        .where(
+          and(
+            eq(users.id, existing.id),
+            or(isNull(users.name), sql`btrim(${users.name}) = ''`),
+          ),
+        )
+        .returning();
+      return named ?? existing;
+    }
+
     return existing;
   }
 
@@ -224,6 +250,7 @@ const createOrLoadEmailOtpCustomer = async (email: string, now: Date) => {
             authMethod: "email_otp",
             source: "otp_sign_in",
           },
+          ...(name ? { name } : {}),
           passwordHash: randomPasswordHash(),
           role: "customer",
           updatedAt: now,
@@ -596,7 +623,12 @@ export const registerAuthOtpRoutes = (app: OpenAPIHono<HonoBindings>) => {
       if (verified.purpose !== "sign_up" && verified.identifierType === "email") {
         const otpUser = await timed(
           "auth.otp.verify.ensureEmailUser",
-          () => createOrLoadEmailOtpCustomer(verified.identifierNormalized, now),
+          () =>
+            createOrLoadEmailOtpCustomer(
+              verified.identifierNormalized,
+              now,
+              body.fullName,
+            ),
         );
         loginUserId = otpUser.id;
 

@@ -12,8 +12,9 @@
  *
  * The id is persisted in sessionStorage keyed by a fingerprint of the
  * payment-relevant request. When any payment-relevant field changes (items,
- * size, shipping method, discount, or the destination address), the fingerprint
- * changes and a fresh attempt id is minted. It is cleared on a terminal success.
+ * size, shipping method, discount, gift details, or the delivery name, contact
+ * and address), the fingerprint changes and a fresh attempt id is minted. It is
+ * cleared on a terminal success.
  */
 
 import type { CheckoutOrderPayload } from "./use-checkout-payment";
@@ -46,9 +47,19 @@ function randomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
+// Same normalisation as the server's cart fingerprint, so an edit the server
+// ignores (case, spacing) never mints an attempt it would treat as new.
+const normalizeText = (value: null | string | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 /**
  * Fingerprint of everything that changes the resulting order/amount, so a real
  * change starts a new attempt but a pure retry keeps the same one.
+ *
+ * It covers every request field the server fingerprints. A field the server
+ * compared but this one skipped (name, phone, line 2, state, gift details)
+ * kept the old attempt id after an edit, so each retry came back as a changed
+ * cart.
  */
 export function computeCartFingerprint(payload: CheckoutOrderPayload): string {
   const items = payload.items
@@ -59,16 +70,24 @@ export function computeCartFingerprint(payload: CheckoutOrderPayload): string {
     .sort()
     .join("|");
   const address = payload.shippingAddress;
+  const isGift = Boolean(payload.isGift);
   const parts = [
     items,
     payload.shippingMethod ?? "",
-    payload.discountCode ?? "",
-    payload.isGift ? "gift" : "",
-    address.email ?? "",
-    address.postalCode ?? "",
-    address.line1 ?? "",
-    address.city ?? "",
-    address.country ?? "",
+    normalizeText(payload.discountCode),
+    isGift ? "gift" : "",
+    // The server drops gift details from a non-gift order.
+    isGift ? normalizeText(payload.giftFrom) : "",
+    isGift ? normalizeText(payload.giftMessage) : "",
+    normalizeText(address.name),
+    normalizeText(address.email),
+    normalizeText(address.phone),
+    normalizeText(address.line1),
+    normalizeText(address.line2),
+    normalizeText(address.city),
+    normalizeText(address.state),
+    normalizeText(address.postalCode),
+    normalizeText(address.country),
   ];
   return stableHash(parts.join("~"));
 }

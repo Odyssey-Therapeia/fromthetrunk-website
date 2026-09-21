@@ -505,6 +505,56 @@ export function reservationExpiryReminderEmail(params: {
   };
 }
 
+/**
+ * "The piece you were waiting for is available again."
+ *
+ * Sent only after the saree has stayed free for the stabilisation window and
+ * a final availability check, so the promise still holds when it lands. It is
+ * deliberately not a guarantee of purchase: every piece is one-of-one and the
+ * next shopper to reach checkout takes it.
+ */
+export function restockAvailableEmail(params: {
+  productName: string;
+  productSlug: string;
+}): { subject: string; html: string } {
+  const productUrl = `${getSiteOrigin()}/collection/${encodeURIComponent(params.productSlug)}`;
+
+  const content = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="font-size:22px;color:${brandStyles.text};margin:0 0 4px;">It is back</h2>
+      <p style="font-size:14px;color:${brandStyles.muted};margin:0;">The piece you asked us about is available again</p>
+    </div>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      <strong style="color:${brandStyles.text};">${escapeHtml(params.productName)}</strong>
+      has returned to the collection. Another shopper had it held, and their
+      hold is no longer active.
+    </p>
+
+    <p style="font-size:14px;color:${brandStyles.muted};line-height:1.7;">
+      Every piece from the trunk is one of one, so it stays available only until
+      someone completes checkout. We cannot hold it for you from here.
+    </p>
+
+    <div style="text-align:center;margin-top:28px;">
+      <a href="${productUrl}"
+         style="display:inline-block;padding:12px 32px;background:${brandStyles.primary};color:#fff;border-radius:100px;text-decoration:none;font-size:14px;letter-spacing:0.05em;">
+        View this saree
+      </a>
+    </div>
+
+    <p style="font-size:12px;color:${brandStyles.muted};margin-top:24px;text-align:center;line-height:1.6;">
+      You are receiving this because you asked to be told if this piece became
+      available. We will not email you about it again unless you ask us to.
+    </p>
+  `;
+
+  return {
+    subject: `${params.productName} is available again | From the Trunk`,
+    html: wrapper(content),
+  };
+}
+
 export function otpEmail(params: {
   expiresInMinutes: number;
   otp: string;
