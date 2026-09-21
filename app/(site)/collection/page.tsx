@@ -1279,7 +1279,7 @@ export default async function CollectionPage({
           }}
         />
       ) : null}
-      <div className="mx-auto w-full max-w-[1720px] space-y-4 px-3 py-3 sm:px-5 md:px-6 lg:px-8 lg:py-6">
+      <div className="mx-auto w-full space-y-4 px-3 py-3 sm:px-5 md:px-6 lg:px-8 lg:py-6 2xl:px-10 min-[1920px]:px-14">
         <HomeHeroCarousel slides={heroSlides} prioritizeFirst />
         <DrapeLaunchCollectionEntry />
 
@@ -1458,7 +1458,7 @@ export default async function CollectionPage({
                         {suggestionLabel}
                       </h3>
                     </div>
-                    <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-5 min-[520px]:grid-cols-2 md:grid-cols-3 md:gap-y-6 xl:grid-cols-4 [&>*]:min-w-0">
+                    <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-5 min-[520px]:grid-cols-2 md:grid-cols-3 md:gap-y-6 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 min-[2400px]:grid-cols-7 [&>*]:min-w-0">
                       {suggestedItems.map(renderProduct)}
                     </div>
                   </section>
@@ -1466,7 +1466,7 @@ export default async function CollectionPage({
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-5 min-[520px]:grid-cols-2 md:grid-cols-3 md:gap-y-6 xl:grid-cols-4 [&>*]:min-w-0">
+                <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-5 min-[520px]:grid-cols-2 md:grid-cols-3 md:gap-y-6 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6 min-[2400px]:grid-cols-7 [&>*]:min-w-0">
                   {items.slice(0, 3).map(renderProduct)}
                   {items.length > 4 ? (
                     <CollectionPromoCarousel className="hidden md:flex xl:hidden" />
