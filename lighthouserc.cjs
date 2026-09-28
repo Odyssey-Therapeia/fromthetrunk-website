@@ -12,6 +12,8 @@ const defaultPaths = [
   "/policies/shipping-delivery-policy",
   "/policies/return-refund-policy",
   "/packing",
+  "/journal",
+  "/journal/preloved-sarees-meaning",
 ];
 
 const adminPaths = [

@@ -37,7 +37,8 @@ export function FloatingWhatsApp() {
     pathname === "/our-story" ||
     pathname.startsWith("/policies") ||
     pathname.endsWith("-policy") ||
-    pathname === "/terms-of-service";
+    pathname === "/terms-of-service" ||
+    pathname.startsWith("/journal/");
   const commerceOrAuthPage =
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/cart") ||
