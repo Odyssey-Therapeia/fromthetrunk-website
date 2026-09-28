@@ -18,7 +18,10 @@
     ]
   },
   "publishedAt": "2026-09-28",
-  "cover": null,
+  "cover": {
+    "src": "/blog1a.avif",
+    "alt": "Hands holding the gold floral border of a burgundy saree over an open wooden trunk"
+  },
   "body": [
     {
       "type": "paragraph",
@@ -74,8 +77,8 @@
       "type": "figure",
       "images": [
         {
-          "src": "/journal/preloved-sarees-meaning/vintage-saree-pallu-daylight.avif",
-          "alt": "Pallu of a vintage saree photographed in daylight"
+          "src": "/blog1b.avif",
+          "alt": "Burgundy saree with gold floral motifs draped from a wooden trunk onto a table"
         }
       ]
     },
@@ -153,19 +156,6 @@
     {
       "type": "paragraph",
       "text": "**The zari.** Pure zari darkens slowly and evenly with age, which is expected and often beautiful. Patchy darkening, flaking or loose threads mean damage."
-    },
-    {
-      "type": "figure",
-      "images": [
-        {
-          "src": "/journal/preloved-sarees-meaning/preloved-silk-saree-fold-lines.avif",
-          "alt": "Soft fold lines on a well kept preloved silk saree"
-        },
-        {
-          "src": "/journal/preloved-sarees-meaning/preloved-saree-zari-border-closeup.avif",
-          "alt": "Gently aged zari border on a preloved silk saree"
-        }
-      ]
     },
     {
       "type": "paragraph",

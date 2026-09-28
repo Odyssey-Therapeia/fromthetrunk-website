@@ -10,7 +10,7 @@ import {
   type JournalArticle,
 } from "@/lib/journal/derive";
 import { createJournalLinkResolver, type JournalLinkResolver } from "@/lib/journal/links";
-import { JournalContentError, parseJournalArticle } from "@/lib/journal/schema";
+import { isJournalImageSource, JournalContentError, parseJournalArticle } from "@/lib/journal/schema";
 
 /**
  * Reads and validates every `content/journal/*.json` file.
@@ -22,12 +22,16 @@ import { JournalContentError, parseJournalArticle } from "@/lib/journal/schema";
  */
 
 // The folders are written out literally, not built from constants, so the
-// server bundle traces only `content/journal` and `public/journal` rather than
-// the whole project. ISR regeneration reads them at runtime.
+// server bundle traces `content/journal`, `public/journal` and the two exact
+// root photographs rather than the whole project. ISR reads them at runtime.
 const contentDir = () => path.join(process.cwd(), "content", "journal");
 const JOURNAL_IMAGE_PREFIX = "/journal/";
-const imagePath = (src: string) =>
-  path.join(process.cwd(), "public", "journal", src.slice(JOURNAL_IMAGE_PREFIX.length));
+const imagePath = (src: string): string | null => {
+  if (src === "/blog1a.avif") return path.join(process.cwd(), "public", "blog1a.avif");
+  if (src === "/blog1b.avif") return path.join(process.cwd(), "public", "blog1b.avif");
+  if (!src.startsWith(JOURNAL_IMAGE_PREFIX) || !isJournalImageSource(src)) return null;
+  return path.join(process.cwd(), "public", "journal", src.slice(JOURNAL_IMAGE_PREFIX.length));
+};
 
 function readArticles(): JournalArticle[] {
   const dir = contentDir();
@@ -49,7 +53,10 @@ function readArticles(): JournalArticle[] {
         );
       }
       return deriveJournalArticle(parseJournalArticle(file, raw), {
-        imageExists: (src) => src.startsWith(JOURNAL_IMAGE_PREFIX) && existsSync(imagePath(src)),
+        imageExists: (src) => {
+          const filePath = imagePath(src);
+          return filePath !== null && existsSync(filePath);
+        },
         onMissingImage: (src) => {
           if (warned.has(src)) return;
           warned.add(src);

@@ -43,6 +43,29 @@ describe("journal content schema", () => {
     expect(parseJournalArticle("caring-for-silk.json", validArticle()).seo.keywords).toEqual([]);
   });
 
+  it.each(["/blog1a.avif", "/blog1b.avif"])("accepts the approved root image %s", (src) => {
+    const image = { src, alt: "Burgundy saree with gold floral motifs" };
+    const article = parseJournalArticle("caring-for-silk.json", validArticle({
+      cover: image,
+      body: [{ type: "figure", images: [image] }],
+    }));
+    expect(article.cover).toEqual(image);
+    expect(article.body).toEqual([{ type: "figure", images: [image] }]);
+  });
+
+  it.each([
+    "/blog1c.avif", "/blog1a.jpg", "/blog1a.avif?width=800", "/blog1a.avif#image",
+    "/blog/blog1a.avif", "/../blog1a.avif", "/journal/../blog1a.avif",
+    "/journal/caring-for-silk/../../blog1a.avif", "/journal/caring-for-silk/%2e%2e/blog1a.avif",
+    "//blog1a.avif", "https://example.com/blog1a.avif", "/Blog1a.avif",
+  ])("rejects unapproved or unsafe image path %s", (src) => {
+    const image = { src, alt: "Saree" };
+    for (const overrides of [{ cover: image }, { body: [{ type: "figure", images: [image] }] }]) {
+      expect(() => parseJournalArticle("caring-for-silk.json", validArticle(overrides)))
+        .toThrow(JournalContentError);
+    }
+  });
+
   it("rejects a malformed slug", () => {
     expect(() =>
       parseJournalArticle("Caring_For_Silk.json", validArticle({ slug: "Caring_For_Silk" })),
@@ -120,27 +143,25 @@ describe("journal article derivation", () => {
   it("drops figures and covers whose files are missing, and reports each missing file", () => {
     const missing: string[] = [];
     const article = deriveJournalArticle(
-      { ...source, cover: { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" } },
+      source,
       { imageExists: () => false, onMissingImage: (src) => missing.push(src) },
     );
 
     expect(article.cover).toBeNull();
     expect(article.body.some((block) => block.type === "figure")).toBe(false);
     expect(missing).toEqual([
-      "/journal/preloved-sarees-meaning/vintage-saree-pallu-daylight.avif",
-      "/journal/preloved-sarees-meaning/preloved-silk-saree-fold-lines.avif",
-      "/journal/preloved-sarees-meaning/preloved-saree-zari-border-closeup.avif",
-      "/journal/preloved-sarees-meaning/cover.avif",
+      "/blog1b.avif",
+      "/blog1a.avif",
     ]);
   });
 
   it("keeps figures and the cover when the files exist", () => {
     const article = deriveJournalArticle(
-      { ...source, cover: { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" } },
-      { imageExists: () => true },
+      source,
+      { imageExists: (src) => ["/blog1a.avif", "/blog1b.avif"].includes(src) },
     );
-    expect(article.cover?.src).toBe("/journal/preloved-sarees-meaning/cover.avif");
-    expect(article.body.filter((block) => block.type === "figure")).toHaveLength(2);
+    expect(article.cover?.src).toBe("/blog1a.avif");
+    expect(article.body.filter((block) => block.type === "figure")).toHaveLength(1);
   });
 
   it("picks a JPG or PNG social image for the cover, never the AVIF itself", () => {
@@ -158,7 +179,9 @@ describe("journal article derivation", () => {
         { imageExists: () => true },
       ).socialImage,
     ).toBe("/journal/preloved-sarees-meaning/cover.png");
-    expect(deriveJournalArticle(source, { imageExists: () => true }).socialImage).toBeNull();
+    expect(deriveJournalArticle(source, {
+      imageExists: (src) => ["/blog1a.avif", "/blog1b.avif"].includes(src),
+    }).socialImage).toBeNull();
   });
 
   it("suffixes duplicate heading ids", () => {
@@ -257,6 +280,36 @@ describe("journal loader", () => {
     );
   });
 
+  it("loads approved root files and keeps the default social image fallback", () => {
+    write(ARTICLE_FILE, realArticle);
+    writeFileSync(path.join(root, "public/blog1a.avif"), "");
+    writeFileSync(path.join(root, "public/blog1b.avif"), "");
+
+    const [article] = getPublishedJournalArticles();
+    expect(article?.cover?.src).toBe("/blog1a.avif");
+    expect(article?.body.filter((block) => block.type === "figure")).toEqual([
+      { type: "figure", images: [{ src: "/blog1b.avif", alt: expect.any(String) }] },
+    ]);
+    expect(article?.socialImage).toBeNull();
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("omits missing approved root files instead of finding same-named files in public/journal", () => {
+    write(ARTICLE_FILE, realArticle);
+    writeFileSync(path.join(root, "public/journal/blog1a.avif"), "");
+    writeFileSync(path.join(root, "public/journal/blog1b.avif"), "");
+
+    const [article] = getPublishedJournalArticles();
+    expect(article?.cover).toBeNull();
+    expect(article?.body.some((block) => block.type === "figure")).toBe(false);
+    expect(article?.socialImage).toBeNull();
+    for (const src of ["/blog1a.avif", "/blog1b.avif"]) {
+      expect(console.warn).toHaveBeenCalledWith(
+        `[journal] ${ARTICLE_FILE}: image public${src} not found; it will not render.`,
+      );
+    }
+  });
+
   it("fails loudly on invalid JSON", () => {
     writeFileSync(path.join(root, "content/journal/broken.json"), "{ not json");
     expect(() => getAllJournalArticles()).toThrow(/content\/journal\/broken\.json: not valid JSON/);
@@ -277,6 +330,15 @@ describe("journal loader", () => {
 });
 
 describe("journal content in the repo", () => {
+  it("renders both supplied photographs from the actual public files", () => {
+    const article = getPublishedJournalArticle("preloved-sarees-meaning");
+    expect(article?.cover?.src).toBe("/blog1a.avif");
+    expect(article?.body.filter((block) => block.type === "figure")).toEqual([
+      { type: "figure", images: [{ src: "/blog1b.avif", alt: expect.any(String) }] },
+    ]);
+    expect(article?.socialImage).toBeNull();
+  });
+
   it("every committed article validates and only links to site paths or published stories", () => {
     const articles = getAllJournalArticles();
     expect(articles.length).toBeGreaterThan(0);

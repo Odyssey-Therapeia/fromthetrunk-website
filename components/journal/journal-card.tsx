@@ -19,6 +19,10 @@ import { cn } from "@/lib/utils";
  * start. With reduced motion on a hover device, text also stays visible and
  * hover only crossfades the ink layer in; nothing moves.
  */
+// Capped tracks keep even a single story at the same size as a full grid.
+export const JOURNAL_CARD_GRID =
+  "grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),22rem))] gap-4 @3xl:gap-6";
+
 const EASE = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 
 const imageMotion = cn(
@@ -50,8 +54,6 @@ const fadeInMotion = cn(
 
 type JournalCardProps = {
   article: JournalCardData;
-  /** The wide lead story at the top of the index. */
-  lead?: boolean;
   headingLevel?: "h2" | "h3";
   priority?: boolean;
   className?: string;
@@ -59,7 +61,6 @@ type JournalCardProps = {
 
 export function JournalCard({
   article,
-  lead = false,
   headingLevel: Heading = "h2",
   priority = false,
   className,
@@ -69,112 +70,96 @@ export function JournalCard({
   return (
     <article
       className={cn(
-        "group/card @container relative isolate overflow-hidden rounded-[1.35rem] bg-ftt-navy text-ftt-ivory shadow-[var(--ftt-soft-shadow)]",
+        "group/card @container relative isolate h-[26.25rem] w-full max-w-[22rem] overflow-hidden rounded-[1.35rem] bg-ftt-navy text-ftt-ivory shadow-[var(--ftt-soft-shadow)]",
         "outline-offset-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ftt-gold",
         className,
       )}
     >
-      <div
-        className={cn(
-          "relative aspect-3/4 @sm:aspect-4/5",
-          lead && "@2xl:aspect-[16/10] @4xl:aspect-[2/1] @6xl:aspect-[12/5]",
-        )}
+      <Link
+        href={article.path}
+        aria-label={title}
+        title={title}
+        className="block h-full outline-none"
       >
-        {article.cover ? (
-          <Image
-            src={article.cover.src}
-            alt=""
-            fill
-            priority={priority}
-            quality={75}
-            sizes={
-              lead
-                ? "(min-width: 1280px) 1216px, 100vw"
-                : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            }
-            className={cn("object-cover", imageMotion)}
-          />
-        ) : (
-          <JournalCoverPlaceholder
-            tag={article.tag}
-            variant="card"
-            className={imageMotion}
-          />
-        )}
-      </div>
+        <div className="relative h-full">
+          {article.cover ? (
+            <Image
+              src={article.cover.src}
+              alt=""
+              fill
+              priority={priority}
+              quality={75}
+              sizes="(max-width: 383px) calc(100vw - 32px), 352px"
+              className={cn("object-cover", imageMotion)}
+            />
+          ) : (
+            <JournalCoverPlaceholder
+              tag={article.tag}
+              variant="card"
+              className={imageMotion}
+            />
+          )}
+        </div>
 
-      <div
-        aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-ftt-midnight/70",
-          inkLayerMotion,
-        )}
-      />
+        <div
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-ftt-midnight/70",
+            inkLayerMotion,
+          )}
+        />
 
-      {/*
-        The scrim is drawn by this wrapper's ::before, so it grows with the text
-        block (touch shows the description; a long title wraps). Every line sits
-        on at least 65% ink, which keeps ivory text above 4.5:1 even over a
-        white photo; it fades out 7rem above the block. The placeholder plate is
-        dark navy already (ivory on it is well above 4.5:1), so it goes without,
-        keeping its line art visible.
-      */}
-      <div
-        className={cn(
-          "absolute inset-x-0 bottom-0",
-          article.cover &&
-            "before:pointer-events-none before:absolute before:inset-x-0 before:-top-28 before:bottom-0 before:bg-[linear-gradient(to_top,rgb(14_13_14/0.9),rgb(14_13_14/0.65)_calc(100%-7rem),transparent)] before:content-['']",
-        )}
-      >
+        {/*
+          The scrim is drawn by this wrapper's ::before, so it grows with the text
+          block (touch shows the description; a long title wraps). Every line sits
+          on at least 65% ink, which keeps ivory text above 4.5:1 even over a
+          white photo; it fades out 7rem above the block. The placeholder plate is
+          dark navy already (ivory on it is well above 4.5:1), so it goes without,
+          keeping its line art visible.
+        */}
         <div
           className={cn(
-            "relative flex flex-col p-5 @sm:p-6",
-            lead && "@2xl:max-w-[38rem] @2xl:p-9 @4xl:p-11",
+            "absolute inset-x-0 bottom-0",
+            article.cover &&
+              "before:pointer-events-none before:absolute before:inset-x-0 before:-top-28 before:bottom-0 before:bg-[linear-gradient(to_top,rgb(14_13_14/0.9),rgb(14_13_14/0.65)_calc(100%-7rem),transparent)] before:content-['']",
           )}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-ftt-ivory">
-            {article.tag}
-          </p>
-          <Heading
-            className={cn(
-              "mt-3 text-balance font-serif text-[1.55rem] leading-[1.12] text-ftt-ivory @sm:text-[1.7rem]",
-              lead && "@2xl:text-[2.4rem] @4xl:text-[2.75rem]",
-            )}
-          >
-            <Link
-              href={article.path}
-              className="outline-none after:absolute after:inset-0 after:z-10 after:content-['']"
+          <div className="relative flex flex-col p-5 @xs:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-ftt-ivory">
+              {article.tag}
+            </p>
+            <Heading
+              className="mt-3 font-serif text-[1.55rem] leading-[1.16] text-ftt-ivory"
             >
-              {title}
-            </Link>
-          </Heading>
-          <div className={revealRowMotion}>
-            <div className="min-h-0 overflow-hidden">
-              <p
-                className={cn(
-                  "pt-3 text-sm leading-6 text-ftt-ivory/90 line-clamp-2 can-hover:line-clamp-3",
-                  lead && "@2xl:text-base @2xl:leading-7",
-                  fadeInMotion,
-                  "can-hover-motion:group-hover/card:delay-100 can-hover-motion:group-has-[:focus-visible]/card:delay-100",
-                )}
-              >
-                {smartApostrophes(article.description)}
-              </p>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-ftt-ivory",
-                  fadeInMotion,
-                  "can-hover-motion:group-hover/card:delay-200 can-hover-motion:group-has-[:focus-visible]/card:delay-200",
-                )}
-              >
-                Read more
-                <span className="text-ftt-gold">→</span>
-              </span>
+              <span className="line-clamp-4 break-words">{title}</span>
+            </Heading>
+            <div className={revealRowMotion}>
+              <div className="min-h-0 overflow-hidden">
+                <p
+                  className={cn(
+                    "pt-3 text-sm leading-6 text-ftt-ivory/90 line-clamp-2 can-hover:line-clamp-3",
+                    fadeInMotion,
+                    "can-hover-motion:group-hover/card:delay-100 can-hover-motion:group-has-[:focus-visible]/card:delay-100",
+                  )}
+                >
+                  {smartApostrophes(article.description)}
+                </p>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-ftt-ivory",
+                    fadeInMotion,
+                    "can-hover-motion:group-hover/card:delay-200 can-hover-motion:group-has-[:focus-visible]/card:delay-200",
+                  )}
+                >
+                  Read more
+                  <span className="text-ftt-gold">→</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }

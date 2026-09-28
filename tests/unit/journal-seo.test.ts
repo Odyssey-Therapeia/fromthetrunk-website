@@ -59,7 +59,7 @@ describe("journal SEO", () => {
       section: "Buying Guide",
     });
     expect(openGraph.tags).toContain("preloved designer sarees");
-    // No cover yet, so the site's default social image stands in.
+    // The AVIF cover has no approved JPG/PNG companion, so the default stands in.
     expect(openGraph.images).toEqual([
       expect.objectContaining({ url: `${ORIGIN}/banner/from-the-trunk-social-v1.jpg` }),
     ]);
@@ -88,8 +88,8 @@ describe("journal SEO", () => {
     });
     expect(jsonLd.keywords).toMatch(/^preloved sarees meaning, pre loved meaning, /);
     expect(jsonLd.wordCount).toBeGreaterThan(700);
-    // No cover, so no image rather than a placeholder.
-    expect(jsonLd).not.toHaveProperty("image");
+    // Structured data can use the article's AVIF cover; social previews use the JPG fallback.
+    expect(jsonLd.image).toEqual([`${ORIGIN}/blog1a.avif`]);
     expect(JSON.stringify(jsonLd)).not.toContain("FAQPage");
   });
 

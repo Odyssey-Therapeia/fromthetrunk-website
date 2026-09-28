@@ -94,6 +94,8 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/404/**", search: "" },
       { pathname: "/banner/**", search: "" },
+      { pathname: "/blog1a.avif", search: "" },
+      { pathname: "/blog1b.avif", search: "" },
       { pathname: "/category/**", search: "" },
       { pathname: "/footer/**", search: "" },
       { pathname: "/founder/**", search: "" },

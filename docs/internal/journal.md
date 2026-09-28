@@ -7,7 +7,7 @@ The Journal (`/journal`) is the site's blog. Each article is one JSON file in th
 | What | Where |
 | --- | --- |
 | Articles | `content/journal/<slug>.json` |
-| Images | `public/journal/<slug>/` |
+| Images | `public/journal/<slug>/`; supplied photographs at `public/blog1a.avif` and `public/blog1b.avif` |
 | Schema and validation | `lib/journal/schema.ts` |
 | Loader (server only) | `lib/journal/articles.ts` |
 | Index page | `app/(site)/journal/page.tsx` |
@@ -94,13 +94,15 @@ A link to `/journal/<slug>` becomes a real link only if that article exists and 
 ## Images
 
 - Put the files in `public/journal/<slug>/`. The `src` must start with `/journal/<slug>/`.
+- The two supplied photographs are exact exceptions: `/blog1a.avif` is the cover of `preloved-sarees-meaning`, and `/blog1b.avif` is its body figure after the vintage comparison. Other root paths are not allowed.
 - Use lowercase, hyphenated file names ending `.avif`, `.webp`, `.jpg` or `.png`, for example `vintage-saree-pallu-daylight.avif`.
 - Write `alt` text for every image. It is required.
 - Recommended sizes:
-  - Cover: at least 1600 × 1280 (5:4). It is cropped to 4:3 on phones, 5:4 on desktop, and 4:5 or wide on the index cards, so keep the subject central.
+  - Cover: at least 1600 × 1280 (5:4). It is cropped to 4:3 on phones and 5:4 on desktop. Index cards are 352 × 420, capped to the available width on narrow screens, so keep the subject central.
   - Single figure: at least 1400 × 934 (3:2).
   - Pair of figures: at least 800 × 1000 each (4:5).
-- **A cover also needs a JPG for social previews.** WhatsApp, Facebook, X and Pinterest do not render AVIF. If the cover is `.avif` or `.webp`, add a `.jpg` (or `.png`) with the same name beside it, for example `cover.avif` plus `cover.jpg`, at 1200 × 630 or larger. The page picks it up automatically for `og:image`, the Pinterest share and the BlogPosting image. Without one, links show the site's default social image, never the AVIF.
+- **A cover also needs a JPG for social previews.** WhatsApp, Facebook, X and Pinterest do not render AVIF. If the cover is `.avif` or `.webp`, add a `.jpg` (or `.png`) with the same name beside it, for example `cover.avif` plus `cover.jpg`, at 1200 × 630 or larger. The page picks it up automatically for `og:image` and the Pinterest share. Without one, social previews use the site's default JPG, never the AVIF. BlogPosting structured data can still use the article's AVIF cover.
+- The two root AVIF exceptions have no approved JPG/PNG companions; this article uses the site's default JPG for social previews.
 - If a referenced file is missing, it is left out rather than shown broken, and the build logs a warning:
   - a missing cover shows the placeholder;
   - if any image in a figure is missing, the whole figure is left out.

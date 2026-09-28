@@ -64,11 +64,11 @@ export function JournalArticleHero({ article, shareUrl, shareImageUrl }: Journal
           <h1 className="mt-5 text-balance font-serif text-[clamp(2.25rem,8cqi,3.6rem)] leading-[1.04] tracking-[-0.015em] text-ftt-navy @4xl:text-[clamp(2.6rem,4.6cqi,4rem)]">
             {smartApostrophes(article.title)}
           </h1>
-          <p className="mt-5 max-w-[36rem] text-pretty text-base leading-7 text-ftt-burgundy/85 sm:text-lg sm:leading-8">
+          <p className="mt-5 max-w-[36rem] text-pretty text-base leading-7 text-ftt-burgundy/85 @xl:text-lg @xl:leading-8">
             {smartApostrophes(article.description)}
           </p>
 
-          <ul className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-ftt-border pt-4 text-sm text-ftt-burgundy/85">
+          <ul className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-ftt-burgundy/20 pt-4 text-sm text-ftt-burgundy/85">
             <li className="flex h-10 items-center gap-2">
               <CalendarDays aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
               <span className="sr-only">Published </span>

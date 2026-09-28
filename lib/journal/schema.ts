@@ -17,6 +17,12 @@ export const JOURNAL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
 
 const IMAGE_SRC = /^\/journal\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9][a-z0-9._-]*\.(?:avif|webp|jpe?g|png)$/;
+const ROOT_IMAGE_SOURCES = new Set(["/blog1a.avif", "/blog1b.avif"]);
+
+/** Only article-folder images and the two supplied root photographs are allowed. */
+export function isJournalImageSource(src: string): boolean {
+  return ROOT_IMAGE_SOURCES.has(src) || IMAGE_SRC.test(src);
+}
 
 const plainText = z.string().trim().min(1, "must not be empty");
 
@@ -51,7 +57,10 @@ const isoDate = z
 const image = z.strictObject({
   src: z
     .string()
-    .regex(IMAGE_SRC, "must be /journal/<slug>/<file>.avif|webp|jpg|png (lowercase file name)"),
+    .refine(
+      isJournalImageSource,
+      "must be /journal/<slug>/<file>.avif|webp|jpg|png (lowercase file name), /blog1a.avif or /blog1b.avif",
+    ),
   alt: plainText,
 });
 
@@ -134,11 +143,11 @@ export const journalArticleSchema = z
   .superRefine((article, ctx) => {
     const imageFolder = `/journal/${article.slug}/`;
     const checkImage = (src: string, path: (string | number)[]) => {
-      if (!src.startsWith(imageFolder)) {
+      if (!src.startsWith(imageFolder) && !ROOT_IMAGE_SOURCES.has(src)) {
         ctx.addIssue({
           code: "custom",
           path,
-          message: `must live in public${imageFolder}`,
+          message: `must live in public${imageFolder} or be /blog1a.avif or /blog1b.avif`,
         });
       }
     };

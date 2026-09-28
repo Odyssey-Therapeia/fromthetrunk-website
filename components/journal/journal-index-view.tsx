@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import type { ChangeEventHandler, FormEventHandler, RefObject } from "react";
 
-import { JournalCard } from "@/components/journal/journal-card";
+import { JOURNAL_CARD_GRID, JournalCard } from "@/components/journal/journal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JOURNAL_PATH } from "@/lib/journal/constants";
@@ -21,7 +21,7 @@ type SearchControls = {
 
 type JournalIndexViewProps = {
   articles: readonly JournalCardData[];
-  /** Trimmed query; empty shows the editorial layout (lead story + grid). */
+  /** Trimmed query; all result counts use the same card grid. */
   query: string;
   /**
    * Interactive controls from the client wrapper. Without them the form is a
@@ -29,8 +29,6 @@ type JournalIndexViewProps = {
    */
   controls?: SearchControls;
 };
-
-const gridClass = "grid gap-5 @xl:grid-cols-2 @xl:gap-6 @4xl:grid-cols-3";
 
 function JournalSearchForm({ controls }: { controls?: SearchControls }) {
   return (
@@ -125,7 +123,6 @@ function NoResults({ query, onClear }: { query: string; onClear?: () => void }) 
  */
 export function JournalIndexView({ articles, query, controls }: JournalIndexViewProps) {
   const searching = query.length > 0;
-  const [lead, ...rest] = articles;
 
   return (
     <>
@@ -153,33 +150,16 @@ export function JournalIndexView({ articles, query, controls }: JournalIndexView
             </>
           ) : null}
         </p>
-        {searching ? (
-          <>
-            {articles.length > 0 ? (
-              <ul role="list" className={gridClass}>
-                {articles.map((article) => (
-                  <li key={article.slug}>
-                    <JournalCard article={article} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <NoResults query={query} onClear={controls?.onClear} />
-            )}
-          </>
-        ) : lead ? (
-          <div className="grid gap-5 @xl:gap-6">
-            <JournalCard article={lead} lead priority />
-            {rest.length > 0 ? (
-              <ul role="list" className={cn(gridClass)}>
-                {rest.map((article) => (
-                  <li key={article.slug}>
-                    <JournalCard article={article} />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+        {articles.length > 0 ? (
+          <ul role="list" className={JOURNAL_CARD_GRID}>
+            {articles.map((article, index) => (
+              <li key={article.slug} className="min-w-0">
+                <JournalCard article={article} priority={index === 0} />
+              </li>
+            ))}
+          </ul>
+        ) : searching ? (
+          <NoResults query={query} onClear={controls?.onClear} />
         ) : (
           <p className="text-base text-ftt-burgundy/80">The first stories are on their way.</p>
         )}

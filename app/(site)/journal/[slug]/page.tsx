@@ -68,17 +68,22 @@ export default async function JournalArticlePage({ params }: JournalArticlePageP
         }}
       />
 
-      <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-10 lg:px-8 lg:pb-24 lg:pt-12">
-        <JournalBreadcrumb title={article.title} />
+      <article>
+        <div className="border-b border-ftt-border bg-secondary">
+          <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:pb-14">
+            <JournalBreadcrumb title={article.title} />
+            <div className="mt-8 lg:mt-10">
+              <JournalArticleHero
+                article={article}
+                shareUrl={absoluteUrl(article.path)}
+                shareImageUrl={toSeoImageUrl(article.socialImage)}
+              />
+            </div>
+          </div>
+        </div>
 
-        <article className="mt-8 lg:mt-10">
-          <JournalArticleHero
-            article={article}
-            shareUrl={absoluteUrl(article.path)}
-            shareImageUrl={toSeoImageUrl(article.socialImage)}
-          />
-
-          <div className="mx-auto mt-12 max-w-[68ch] sm:mt-16 lg:mt-20">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-20">
+          <div className="mx-auto max-w-[68ch]">
             <JournalArticleBody body={article.body} resolveLink={resolveLink} />
             {article.faq ? <JournalFaq faq={article.faq} resolveLink={resolveLink} /> : null}
             <JournalSignOff
@@ -87,12 +92,12 @@ export default async function JournalArticlePage({ params }: JournalArticlePageP
               resolveLink={resolveLink}
             />
           </div>
-        </article>
-
-        <div className="mt-16 grid gap-16 sm:mt-20 sm:gap-20">
-          <JournalCollectionCta />
-          <JournalMoreStories articles={moreStories} />
         </div>
+      </article>
+
+      <div className="mx-auto mt-16 grid w-full max-w-7xl gap-16 px-4 pb-16 sm:mt-20 sm:gap-20 sm:px-6 sm:pb-20 lg:px-8 lg:pb-24">
+        <JournalCollectionCta />
+        <JournalMoreStories articles={moreStories} />
       </div>
     </div>
   );

@@ -28,13 +28,13 @@ export default function JournalIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd(journalBreadcrumbItems())) }}
       />
-      <section className="mx-auto w-full max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:px-8 lg:pb-24 lg:pt-16">
+      <section className="mx-auto w-full max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:px-8 lg:pb-24 lg:pt-12">
         <header className="max-w-3xl">
           <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-ftt-burgundy">
             <span aria-hidden="true" className="h-px w-8 bg-ftt-gold" />
             {JOURNAL_LABEL}
           </p>
-          <h1 className="mt-5 text-balance font-serif text-[clamp(2.5rem,7vw,4.75rem)] leading-[0.98] tracking-[-0.02em] text-ftt-navy">
+          <h1 className="mt-5 text-balance font-serif text-[clamp(2.5rem,7vw,4rem)] leading-[0.98] tracking-[-0.02em] text-ftt-navy">
             Stories from the trunk
           </h1>
           <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-ftt-burgundy/85 sm:text-lg sm:leading-8">

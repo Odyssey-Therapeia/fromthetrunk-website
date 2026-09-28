@@ -1,13 +1,14 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-import { JournalCard } from "@/components/journal/journal-card";
+import { JOURNAL_CARD_GRID, JournalCard } from "@/components/journal/journal-card";
 import { JournalInline } from "@/components/journal/journal-inline";
 import { Button } from "@/components/ui/button";
 import { JOURNAL_LABEL } from "@/lib/journal/constants";
 import type { JournalArticle, JournalCardData } from "@/lib/journal/derive";
 import type { JournalLinkResolver } from "@/lib/journal/links";
 import { smartApostrophes } from "@/lib/journal/text";
+import { cn } from "@/lib/utils";
 
 /** "Questions people ask": every answer visible, no accordion. */
 export function JournalFaq({
@@ -124,9 +125,9 @@ export function JournalMoreStories({ articles }: { articles: readonly JournalCar
       >
         More from the {JOURNAL_LABEL}
       </h2>
-      <ul role="list" className="mt-7 grid gap-5 @xl:grid-cols-2 @xl:gap-6 @4xl:grid-cols-3">
+      <ul role="list" className={cn("mt-7", JOURNAL_CARD_GRID)}>
         {articles.map((article) => (
-          <li key={article.slug}>
+          <li key={article.slug} className="min-w-0">
             <JournalCard article={article} headingLevel="h3" />
           </li>
         ))}
