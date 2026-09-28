@@ -28,3 +28,12 @@ export function formatJournalDate(iso: string): string {
   if (!monthLabel) return iso;
   return `${Number(day)} ${monthLabel} ${year}`;
 }
+
+/**
+ * `2026-09-28` -> `2026-09-28T00:00:00+05:30` for structured data and Open
+ * Graph, which read a bare date as UTC midnight. Values that already carry a
+ * time are returned unchanged.
+ */
+export function journalDateTime(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00+05:30` : iso;
+}

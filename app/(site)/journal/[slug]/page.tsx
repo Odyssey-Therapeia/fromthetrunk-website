@@ -75,7 +75,7 @@ export default async function JournalArticlePage({ params }: JournalArticlePageP
           <JournalArticleHero
             article={article}
             shareUrl={absoluteUrl(article.path)}
-            shareImageUrl={article.cover ? toSeoImageUrl(article.cover.src) : null}
+            shareImageUrl={toSeoImageUrl(article.socialImage)}
           />
 
           <div className="mx-auto mt-12 max-w-[68ch] sm:mt-16 lg:mt-20">

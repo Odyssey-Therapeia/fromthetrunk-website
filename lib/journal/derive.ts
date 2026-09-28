@@ -15,6 +15,12 @@ export type JournalArticle = Omit<JournalArticleSource, "body" | "cover"> & {
   path: string;
   body: JournalRenderBlock[];
   cover: JournalImage | null;
+  /**
+   * JPG or PNG for og:image, Pinterest and BlogPosting: the cover itself, or a
+   * same-named .jpg/.jpeg/.png beside an AVIF/WebP cover. WhatsApp, Facebook
+   * and X do not render AVIF previews, so null means "use the site default".
+   */
+  socialImage: string | null;
   /** updatedAt when present, otherwise publishedAt. */
   modifiedAt: string;
   dateLabel: string;
@@ -35,6 +41,18 @@ export type DeriveOptions = {
   imageExists: (src: string) => boolean;
   onMissingImage?: (src: string) => void;
 };
+
+const SOCIAL_IMAGE_FILE = /\.(?:jpe?g|png)$/;
+
+export function journalSocialImage(
+  cover: JournalImage | null,
+  imageExists: (src: string) => boolean,
+): string | null {
+  if (!cover) return null;
+  if (SOCIAL_IMAGE_FILE.test(cover.src)) return cover.src;
+  const stem = cover.src.replace(/\.[a-z0-9]+$/, "");
+  return [".jpg", ".jpeg", ".png"].map((ext) => stem + ext).find(imageExists) ?? null;
+}
 
 function withHeadingIds(body: readonly JournalBlock[]): JournalRenderBlock[] {
   const used = new Map<string, number>();
@@ -75,6 +93,7 @@ export function deriveJournalArticle(
     path: journalArticlePath(source.slug),
     body: withHeadingIds(visibleBody),
     cover,
+    socialImage: journalSocialImage(cover, imageExists),
     modifiedAt,
     dateLabel: formatJournalDate(source.publishedAt),
     readingMinutes: readingMinutes(articleVisibleText(source, visibleBody)),

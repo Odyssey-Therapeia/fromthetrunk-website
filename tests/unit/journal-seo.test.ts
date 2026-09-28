@@ -54,13 +54,15 @@ describe("journal SEO", () => {
       url: ARTICLE_URL,
       title: "Preloved Sarees Meaning, Explained | From The Trunk",
       description: DESCRIPTION,
-      publishedTime: "2026-09-28",
-      modifiedTime: "2026-09-28",
+      publishedTime: "2026-09-28T00:00:00+05:30",
+      modifiedTime: "2026-09-28T00:00:00+05:30",
       section: "Buying Guide",
     });
     expect(openGraph.tags).toContain("preloved designer sarees");
     // No cover yet, so the site's default social image stands in.
-    expect(openGraph.images).toBeDefined();
+    expect(openGraph.images).toEqual([
+      expect.objectContaining({ url: `${ORIGIN}/banner/from-the-trunk-social-v1.jpg` }),
+    ]);
   });
 
   it("describes the article as a BlogPosting, without FAQPage", () => {
@@ -71,8 +73,8 @@ describe("journal SEO", () => {
       "@type": "BlogPosting",
       headline: "What Does Preloved Mean? Preloved Sarees Explained",
       description: DESCRIPTION,
-      datePublished: "2026-09-28",
-      dateModified: "2026-09-28",
+      datePublished: "2026-09-28T00:00:00+05:30",
+      dateModified: "2026-09-28T00:00:00+05:30",
       author: { "@type": "Organization", name: "From The Trunk", url: `${ORIGIN}/` },
       publisher: {
         "@type": "Organization",
@@ -97,6 +99,28 @@ describe("journal SEO", () => {
       cover: { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" },
     });
     expect(jsonLd.image).toEqual([`${ORIGIN}/journal/preloved-sarees-meaning/cover.avif`]);
+  });
+
+  it("never uses an AVIF cover for og:image; a same-named JPG takes its place", () => {
+    const cover = { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" };
+    const ogImages = (article: JournalArticle) =>
+      (journalArticleMetadata(article).openGraph as { images: { url: string }[] }).images.map(
+        (image) => image.url,
+      );
+
+    const avifOnly = { ...loadArticle(), cover, socialImage: null };
+    expect(ogImages(avifOnly)).toEqual([`${ORIGIN}/banner/from-the-trunk-social-v1.jpg`]);
+    expect(JSON.stringify(journalArticleMetadata(avifOnly))).not.toContain(".avif");
+
+    const withJpg = {
+      ...loadArticle(),
+      cover,
+      socialImage: "/journal/preloved-sarees-meaning/cover.jpg",
+    };
+    expect(ogImages(withJpg)).toEqual([`${ORIGIN}/journal/preloved-sarees-meaning/cover.jpg`]);
+    expect(journalArticleJsonLd(withJpg).image).toEqual([
+      `${ORIGIN}/journal/preloved-sarees-meaning/cover.jpg`,
+    ]);
   });
 
   it("builds the breadcrumb trail", () => {

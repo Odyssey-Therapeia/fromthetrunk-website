@@ -134,15 +134,27 @@ export function JournalIndexView({ articles, query, controls }: JournalIndexView
       </div>
 
       <div className="@container mt-10 sm:mt-12 lg:mt-14">
-        {searching ? (
-          <>
-            <p
-              role="status"
-              className="mb-6 text-[11px] font-semibold uppercase tracking-[0.3em] text-ftt-burgundy/80"
-            >
+        {/*
+          Always mounted, so screen readers announce each new count; a live
+          region inserted together with its text is often read silently.
+        */}
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "text-[11px] font-semibold uppercase tracking-[0.3em] text-ftt-burgundy/80",
+            searching ? "mb-6" : "sr-only",
+          )}
+        >
+          {searching ? (
+            <>
               {formatStoryCount(articles.length)}
               <span className="sr-only"> for “{query}”</span>
-            </p>
+            </>
+          ) : null}
+        </p>
+        {searching ? (
+          <>
             {articles.length > 0 ? (
               <ul role="list" className={gridClass}>
                 {articles.map((article) => (

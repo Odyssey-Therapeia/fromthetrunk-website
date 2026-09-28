@@ -143,6 +143,24 @@ describe("journal article derivation", () => {
     expect(article.body.filter((block) => block.type === "figure")).toHaveLength(2);
   });
 
+  it("picks a JPG or PNG social image for the cover, never the AVIF itself", () => {
+    const cover = { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" };
+    const withFiles = (files: string[]) =>
+      deriveJournalArticle({ ...source, cover }, { imageExists: (src) => files.includes(src) });
+
+    expect(withFiles([cover.src]).socialImage).toBeNull();
+    expect(withFiles([cover.src, "/journal/preloved-sarees-meaning/cover.jpg"]).socialImage).toBe(
+      "/journal/preloved-sarees-meaning/cover.jpg",
+    );
+    expect(
+      deriveJournalArticle(
+        { ...source, cover: { src: "/journal/preloved-sarees-meaning/cover.png", alt: "Cover" } },
+        { imageExists: () => true },
+      ).socialImage,
+    ).toBe("/journal/preloved-sarees-meaning/cover.png");
+    expect(deriveJournalArticle(source, { imageExists: () => true }).socialImage).toBeNull();
+  });
+
   it("suffixes duplicate heading ids", () => {
     const article = deriveJournalArticle(
       {
@@ -290,5 +308,18 @@ describe("journal content in the repo", () => {
         }
       }
     }
+  });
+
+  it("links the About block to the collection and to Instagram, and leaves unwritten guides as text", () => {
+    const article = getAllJournalArticles().find((entry) => entry.slug === "preloved-sarees-meaning");
+    const resolve = getJournalLinkResolver();
+
+    expect(collectInlineHrefs(article?.about ?? "")).toEqual([
+      "/collection",
+      "https://www.instagram.com/from.thetrunk/",
+    ]);
+    expect(resolve("https://www.instagram.com/from.thetrunk/").kind).toBe("external");
+    expect(resolve("/journal/how-to-identify-pure-silk-saree").kind).toBe("unavailable");
+    expect(resolve("/journal/how-to-care-for-silk-sarees").kind).toBe("unavailable");
   });
 });

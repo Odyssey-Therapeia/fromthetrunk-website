@@ -2,6 +2,7 @@ import type { Metadata, MetadataRoute } from "next";
 
 import { JOURNAL_LABEL, JOURNAL_PATH } from "@/lib/journal/constants";
 import type { JournalArticle } from "@/lib/journal/derive";
+import { journalDateTime } from "@/lib/journal/format-date";
 import { toSeoImageUrl } from "@/lib/seo/image-urls";
 import { publicPageMetadata, SITE_NAME } from "@/lib/seo/metadata";
 import { absoluteUrl } from "@/lib/seo/site-url";
@@ -31,7 +32,11 @@ export function journalArticleMetadata(article: JournalArticle): Metadata {
     title: article.seo.title,
     description: article.seo.description,
     path: article.path,
-    image: article.cover ? { url: article.cover.src, alt: article.cover.alt } : undefined,
+    // Never the AVIF cover itself: social previews need a JPG or PNG, so
+    // without one the site's default social image stands in.
+    image: article.socialImage
+      ? { url: article.socialImage, alt: article.cover?.alt }
+      : undefined,
   });
   const keywords = articleKeywords(article);
 
@@ -41,8 +46,8 @@ export function journalArticleMetadata(article: JournalArticle): Metadata {
     openGraph: {
       ...base.openGraph,
       type: "article",
-      publishedTime: article.publishedAt,
-      modifiedTime: article.modifiedAt,
+      publishedTime: journalDateTime(article.publishedAt),
+      modifiedTime: journalDateTime(article.modifiedAt),
       section: article.tag,
       tags: keywords,
     },
@@ -57,7 +62,7 @@ const FTT_ORGANIZATION = {
 
 export function journalArticleJsonLd(article: JournalArticle): Record<string, unknown> {
   const url = absoluteUrl(article.path);
-  const image = article.cover ? toSeoImageUrl(article.cover.src) : null;
+  const image = toSeoImageUrl(article.socialImage ?? article.cover?.src);
 
   return {
     "@context": "https://schema.org",
@@ -65,8 +70,8 @@ export function journalArticleJsonLd(article: JournalArticle): Record<string, un
     headline: article.title,
     description: article.description,
     ...(image ? { image: [image] } : {}),
-    datePublished: article.publishedAt,
-    dateModified: article.modifiedAt,
+    datePublished: journalDateTime(article.publishedAt),
+    dateModified: journalDateTime(article.modifiedAt),
     author: { ...FTT_ORGANIZATION },
     publisher: {
       ...FTT_ORGANIZATION,

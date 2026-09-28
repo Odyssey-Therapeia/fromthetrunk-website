@@ -100,6 +100,7 @@ A link to `/journal/<slug>` becomes a real link only if that article exists and 
   - Cover: at least 1600 × 1280 (5:4). It is cropped to 4:3 on phones, 5:4 on desktop, and 4:5 or wide on the index cards, so keep the subject central.
   - Single figure: at least 1400 × 934 (3:2).
   - Pair of figures: at least 800 × 1000 each (4:5).
+- **A cover also needs a JPG for social previews.** WhatsApp, Facebook, X and Pinterest do not render AVIF. If the cover is `.avif` or `.webp`, add a `.jpg` (or `.png`) with the same name beside it, for example `cover.avif` plus `cover.jpg`, at 1200 × 630 or larger. The page picks it up automatically for `og:image`, the Pinterest share and the BlogPosting image. Without one, links show the site's default social image, never the AVIF.
 - If a referenced file is missing, it is left out rather than shown broken, and the build logs a warning:
   - a missing cover shows the placeholder;
   - if any image in a figure is missing, the whole figure is left out.

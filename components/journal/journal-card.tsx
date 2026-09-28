@@ -115,9 +115,17 @@ export function JournalCard({
         The scrim is drawn by this wrapper's ::before, so it grows with the text
         block (touch shows the description; a long title wraps). Every line sits
         on at least 65% ink, which keeps ivory text above 4.5:1 even over a
-        white photo; it fades out 7rem above the block.
+        white photo; it fades out 7rem above the block. The placeholder plate is
+        dark navy already (ivory on it is well above 4.5:1), so it goes without,
+        keeping its line art visible.
       */}
-      <div className="absolute inset-x-0 bottom-0 before:pointer-events-none before:absolute before:inset-x-0 before:-top-28 before:bottom-0 before:bg-[linear-gradient(to_top,rgb(14_13_14/0.9),rgb(14_13_14/0.65)_calc(100%-7rem),transparent)] before:content-['']">
+      <div
+        className={cn(
+          "absolute inset-x-0 bottom-0",
+          article.cover &&
+            "before:pointer-events-none before:absolute before:inset-x-0 before:-top-28 before:bottom-0 before:bg-[linear-gradient(to_top,rgb(14_13_14/0.9),rgb(14_13_14/0.65)_calc(100%-7rem),transparent)] before:content-['']",
+        )}
+      >
         <div
           className={cn(
             "relative flex flex-col p-5 @sm:p-6",
