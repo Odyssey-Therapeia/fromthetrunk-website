@@ -72,6 +72,7 @@ const paragraphBlock = z.strictObject({
 const headingBlock = z.strictObject({
   type: z.literal("heading"),
   text: inlineText,
+  level: z.union([z.literal(2), z.literal(3)]).optional(),
 });
 
 const listBlock = z.strictObject({
@@ -125,7 +126,7 @@ export const journalArticleSchema = z
       primaryKeyword: plainText.optional(),
       keywords: z.array(plainText).default([]),
     }),
-    publishedAt: isoDate,
+    publishedAt: isoDate.optional(),
     updatedAt: isoDate.optional(),
     cover: image.nullable().optional(),
     body: z.array(journalBlockSchema).min(1, "needs at least one block"),
@@ -160,7 +161,7 @@ export const journalArticleSchema = z
       );
     });
 
-    if (article.updatedAt && Date.parse(article.updatedAt) < Date.parse(article.publishedAt)) {
+    if (article.updatedAt && article.publishedAt && Date.parse(article.updatedAt) < Date.parse(article.publishedAt)) {
       ctx.addIssue({
         code: "custom",
         path: ["updatedAt"],

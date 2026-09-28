@@ -41,8 +41,8 @@ Invalid journal article content/journal/caring-for-silk.json:
 | `seo.description` | yes | Meta description, used exactly as written. |
 | `seo.primaryKeyword` | no | First entry in the page keywords. |
 | `seo.keywords` | no | Extra keywords. Also searchable on the index. |
-| `publishedAt` | yes | `2026-09-28` or `2026-09-28T09:30:00+05:30`. Controls order (newest first). |
-| `updatedAt` | no | Same format. Must not be earlier than `publishedAt`. |
+| `publishedAt` | no | Set only a known publication date, such as `2026-09-28` or `2026-09-28T09:30:00+05:30`. Unknown dates are omitted from the UI, Open Graph, BlogPosting and sitemap. Dated stories sort newest first, then undated stories alphabetically by title. |
+| `updatedAt` | no | Same format. Must not be earlier than `publishedAt` when both are known. |
 | `cover` | no | `{ "src", "alt" }` or `null`. Without one, a designed placeholder is shown. |
 | `body` | yes | Array of blocks (below). |
 | `faq` | no | `{ "heading", "items": [{ "question", "answer" }] }`. All answers are shown; nothing is folded away. |
@@ -61,7 +61,7 @@ Reading time (about 200 words a minute, rounded up) and the date label ("28 Sep 
 { "type": "figure", "images": [{ "src": "/journal/<slug>/pallu.avif", "alt": "..." }], "caption": "Optional" }
 ```
 
-- **heading** renders as an H2. Its anchor id comes from the text (for example `#how-much-do-preloved-sarees-cost`).
+- **heading** renders as an H2 by default; optional `"level": 3` preserves a subsection H3. Its anchor id comes from the text (for example `#how-much-do-preloved-sarees-cost`).
 - **list** is bulleted unless `"ordered": true`.
 - **table** needs at least two columns, and every row needs one cell per column. The first cell of each row is the row heading. Wide screens show a table; narrow screens show one card per row. It never scrolls sideways.
 - **figure** takes one or two images; two are shown side by side on wider screens. Add a caption only when there is one to give. Don't make captions up.
@@ -129,3 +129,9 @@ To rename a published article, add a permanent redirect from the old path in `re
 ## Search
 
 The index filters in the browser as the reader types and keeps the query in `?q=`, so a search can be shared. It matches the title, description, tag, keywords and body, ignoring case and punctuation. "pre-loved", "pre loved" and "preloved" all match each other, and the same goes for pre-owned, pre-used and second-hand.
+
+## Current article handoff
+
+All five articles are published in the content registry. The four newly supplied articles have no publication or update dates because the sources supplied none. Set their real dates only when confirmed: `how-to-identify-pure-silk-saree`, `how-to-care-for-silk-sarees`, `where-to-sell-old-silk-sarees`, and `what-is-the-silk-mark`. The existing first article retains `2026-09-28`; this integration does not establish its historical accuracy.
+
+See [journal-images.md](journal-images.md) for the two existing photos and ten pending source photographs. Missing figures are omitted; all missing covers use the intentional branded fallback. Blog 5 has no FAQ because none was supplied. References to the two unwritten guides stay plain text. `/sell` remains unwired because no ready route has been established; supplied email links remain available.

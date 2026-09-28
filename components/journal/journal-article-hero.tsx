@@ -69,11 +69,11 @@ export function JournalArticleHero({ article, shareUrl, shareImageUrl }: Journal
           </p>
 
           <ul className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-ftt-burgundy/20 pt-4 text-sm text-ftt-burgundy/85">
-            <li className="flex h-10 items-center gap-2">
+            {article.publishedAt ? <li className="flex h-10 items-center gap-2">
               <CalendarDays aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
               <span className="sr-only">Published </span>
               <time dateTime={article.publishedAt}>{article.dateLabel}</time>
-            </li>
+            </li> : null}
             <li className="flex h-10 items-center gap-2">
               <Clock aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
               {formatReadingTime(article.readingMinutes)}

@@ -29,13 +29,19 @@ function Paragraph({ block, resolveLink, lede }: BlockProps<"paragraph"> & { led
 }
 
 function Heading({ block, resolveLink }: BlockProps<"heading">) {
+  const Tag = block.level === 3 ? "h3" : "h2";
   return (
-    <h2
+    <Tag
       id={block.id}
-      className="mt-14 scroll-mt-28 text-balance font-serif text-[1.65rem] leading-[1.15] text-ftt-navy before:mb-5 before:block before:h-px before:w-10 before:bg-ftt-gold before:content-[''] sm:mt-16 sm:text-[2rem]"
+      className={cn(
+        "scroll-mt-28 text-balance font-serif leading-[1.15] text-ftt-navy",
+        block.level === 3
+          ? "mt-9 text-[1.4rem] sm:text-[1.65rem]"
+          : "mt-14 text-[1.65rem] before:mb-5 before:block before:h-px before:w-10 before:bg-ftt-gold before:content-[''] sm:mt-16 sm:text-[2rem]",
+      )}
     >
       <JournalInline text={block.text} resolveLink={resolveLink} />
-    </h2>
+    </Tag>
   );
 }
 

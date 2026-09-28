@@ -46,8 +46,8 @@ export function journalArticleMetadata(article: JournalArticle): Metadata {
     openGraph: {
       ...base.openGraph,
       type: "article",
-      publishedTime: journalDateTime(article.publishedAt),
-      modifiedTime: journalDateTime(article.modifiedAt),
+      ...(article.publishedAt ? { publishedTime: journalDateTime(article.publishedAt) } : {}),
+      ...(article.modifiedAt ? { modifiedTime: journalDateTime(article.modifiedAt) } : {}),
       section: article.tag,
       tags: keywords,
     },
@@ -70,8 +70,8 @@ export function journalArticleJsonLd(article: JournalArticle): Record<string, un
     headline: article.title,
     description: article.description,
     ...(image ? { image: [image] } : {}),
-    datePublished: journalDateTime(article.publishedAt),
-    dateModified: journalDateTime(article.modifiedAt),
+    ...(article.publishedAt ? { datePublished: journalDateTime(article.publishedAt) } : {}),
+    ...(article.modifiedAt ? { dateModified: journalDateTime(article.modifiedAt) } : {}),
     author: { ...FTT_ORGANIZATION },
     publisher: {
       ...FTT_ORGANIZATION,
@@ -107,12 +107,12 @@ export function journalSitemapEntries(
 ): MetadataRoute.Sitemap {
   const articleEntries = articles.map((article) => ({
     url: absoluteUrl(article.path),
-    lastModified: new Date(article.modifiedAt),
+    ...(article.modifiedAt ? { lastModified: new Date(article.modifiedAt) } : {}),
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
   const newest = articleEntries.reduce<Date | undefined>(
-    (latest, entry) => (!latest || entry.lastModified > latest ? entry.lastModified : latest),
+    (latest, entry) => entry.lastModified && (!latest || entry.lastModified > latest) ? entry.lastModified : latest,
     undefined,
   );
 

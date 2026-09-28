@@ -341,7 +341,7 @@ describe("journal content in the repo", () => {
 
   it("every committed article validates and only links to site paths or published stories", () => {
     const articles = getAllJournalArticles();
-    expect(articles.length).toBeGreaterThan(0);
+    expect(articles).toHaveLength(5);
 
     const published = new Set(getPublishedJournalArticles().map((article) => article.slug));
     expect(readPublishedJournalSlugs()).toEqual([...published].sort());
@@ -381,7 +381,9 @@ describe("journal content in the repo", () => {
       "https://www.instagram.com/from.thetrunk/",
     ]);
     expect(resolve("https://www.instagram.com/from.thetrunk/").kind).toBe("external");
-    expect(resolve("/journal/how-to-identify-pure-silk-saree").kind).toBe("unavailable");
-    expect(resolve("/journal/how-to-care-for-silk-sarees").kind).toBe("unavailable");
+    expect(resolve("/journal/how-to-identify-pure-silk-saree").kind).toBe("internal");
+    expect(resolve("/journal/how-to-care-for-silk-sarees").kind).toBe("internal");
+    expect(resolve("/journal/indian-saree-fabrics-and-weaves").kind).toBe("unavailable");
+    expect(resolve("/journal/how-to-care-for-sarees").kind).toBe("unavailable");
   });
 });

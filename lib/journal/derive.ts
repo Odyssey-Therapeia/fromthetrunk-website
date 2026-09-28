@@ -8,7 +8,7 @@ import { articleVisibleText, bodyPlainText, countWords, slugifyHeading } from "@
 
 export type JournalRenderBlock =
   | Exclude<JournalBlock, { type: "heading" | "list" }>
-  | { type: "heading"; text: string; id: string }
+  | { type: "heading"; text: string; id: string; level: 2 | 3 }
   | { type: "list"; ordered: boolean; items: string[] };
 
 export type JournalArticle = Omit<JournalArticleSource, "body" | "cover"> & {
@@ -22,8 +22,8 @@ export type JournalArticle = Omit<JournalArticleSource, "body" | "cover"> & {
    */
   socialImage: string | null;
   /** updatedAt when present, otherwise publishedAt. */
-  modifiedAt: string;
-  dateLabel: string;
+  modifiedAt: string | undefined;
+  dateLabel: string | null;
   readingMinutes: number;
   /** Words in the body, for BlogPosting.wordCount. */
   wordCount: number;
@@ -64,7 +64,7 @@ function withHeadingIds(body: readonly JournalBlock[]): JournalRenderBlock[] {
     const base = slugifyHeading(inlineToPlainText(block.text));
     const seen = used.get(base) ?? 0;
     used.set(base, seen + 1);
-    return { type: "heading", text: block.text, id: seen === 0 ? base : `${base}-${seen + 1}` };
+    return { type: "heading", text: block.text, level: block.level ?? 2, id: seen === 0 ? base : `${base}-${seen + 1}` };
   });
 }
 
@@ -95,7 +95,7 @@ export function deriveJournalArticle(
     cover,
     socialImage: journalSocialImage(cover, imageExists),
     modifiedAt,
-    dateLabel: formatJournalDate(source.publishedAt),
+    dateLabel: source.publishedAt ? formatJournalDate(source.publishedAt) : null,
     readingMinutes: readingMinutes(articleVisibleText(source, visibleBody)),
     wordCount: countWords(bodyPlainText(visibleBody)),
     searchText: normalizeJournalSearchText(
@@ -111,13 +111,14 @@ export function deriveJournalArticle(
   };
 }
 
-/** Newest first; ties fall back to title so the order is stable. */
+/** Dated stories newest first, then undated stories; title breaks date ties. */
 export function compareJournalArticles(
   a: Pick<JournalArticleSource, "publishedAt" | "title">,
   b: Pick<JournalArticleSource, "publishedAt" | "title">,
 ): number {
-  const byDate = Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
-  return byDate !== 0 ? byDate : a.title.localeCompare(b.title);
+  const aDate = a.publishedAt ? Date.parse(a.publishedAt) : -Infinity;
+  const bDate = b.publishedAt ? Date.parse(b.publishedAt) : -Infinity;
+  return aDate !== bDate ? (bDate > aDate ? 1 : -1) : a.title.localeCompare(b.title, "en");
 }
 
 export function toJournalCardData(article: JournalArticle): JournalCardData {
