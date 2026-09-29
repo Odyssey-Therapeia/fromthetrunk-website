@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import type { ChangeEventHandler, FormEventHandler, RefObject } from "react";
 
-import { JOURNAL_CARD_GRID, JournalCard } from "@/components/journal/journal-card";
+import { JournalCard } from "@/components/journal/journal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JOURNAL_PATH } from "@/lib/journal/constants";
@@ -10,6 +10,11 @@ import { formatStoryCount } from "@/lib/journal/search";
 import { cn } from "@/lib/utils";
 
 export const JOURNAL_SEARCH_PLACEHOLDER = "Search the journal";
+
+// Fill the listing width while retaining empty tracks when search has few results.
+// The container-relative minimum lets wider screens grow both cards and columns.
+const JOURNAL_INDEX_GRID =
+  "grid grid-cols-[repeat(auto-fill,minmax(min(100%,clamp(20rem,18cqw,28rem)),1fr))] gap-4 @3xl:gap-6";
 
 type SearchControls = {
   value: string;
@@ -151,10 +156,15 @@ export function JournalIndexView({ articles, query, controls }: JournalIndexView
           ) : null}
         </p>
         {articles.length > 0 ? (
-          <ul role="list" className={JOURNAL_CARD_GRID}>
+          <ul role="list" className={JOURNAL_INDEX_GRID}>
             {articles.map((article, index) => (
               <li key={article.slug} className="min-w-0">
-                <JournalCard article={article} priority={index === 0} />
+                <JournalCard
+                  article={article}
+                  priority={index === 0}
+                  className="aspect-[88/105] h-auto min-h-[26.25rem] max-w-none"
+                  sizes="(min-width: 2400px) 20vw, (min-width: 1800px) 25vw, (min-width: 1200px) 33vw, (min-width: 688px) 50vw, 100vw"
+                />
               </li>
             ))}
           </ul>

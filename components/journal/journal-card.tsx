@@ -57,6 +57,7 @@ type JournalCardProps = {
   headingLevel?: "h2" | "h3";
   priority?: boolean;
   className?: string;
+  sizes?: string;
 };
 
 export function JournalCard({
@@ -64,6 +65,7 @@ export function JournalCard({
   headingLevel: Heading = "h2",
   priority = false,
   className,
+  sizes = "(max-width: 383px) calc(100vw - 32px), 352px",
 }: JournalCardProps) {
   const title = smartApostrophes(article.title);
 
@@ -89,7 +91,7 @@ export function JournalCard({
               fill
               priority={priority}
               quality={75}
-              sizes="(max-width: 383px) calc(100vw - 32px), 352px"
+              sizes={sizes}
               className={cn("object-cover", imageMotion)}
             />
           ) : (
