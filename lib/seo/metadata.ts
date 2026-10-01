@@ -11,6 +11,7 @@ export const DEFAULT_SOCIAL_IMAGE = {
   url: "/banner/from-the-trunk-social-v1.jpg",
   width: 1200,
   height: 630,
+  type: "image/jpeg",
   alt: "From The Trunk curated preloved luxury saree collection",
 } as const;
 
@@ -19,6 +20,7 @@ export type SeoImageInput = {
   width?: null | number;
   height?: null | number;
   alt?: null | string;
+  mimeType?: null | string;
 };
 
 export type SeoImageMetadata = {
@@ -26,6 +28,7 @@ export type SeoImageMetadata = {
   width?: number;
   height?: number;
   alt: string;
+  type: "image/jpeg" | "image/png";
 };
 
 type PublicPageMetadataInput = {
@@ -50,17 +53,37 @@ const positiveInteger = (value: null | number | undefined): number | undefined =
 export function seoImageMetadata(input?: SeoImageInput): SeoImageMetadata {
   const requestedUrl = input?.url?.trim();
   const safeRequestedUrl = requestedUrl ? toSeoImageUrl(requestedUrl) : null;
-  const usesDefaultImage = !safeRequestedUrl;
+  const url = safeRequestedUrl ? new URL(safeRequestedUrl) : null;
+  const extensionType = url?.pathname.match(/\.jpe?g$/i)
+    ? "image/jpeg"
+    : url?.pathname.match(/\.png$/i)
+      ? "image/png"
+      : undefined;
+  const mimeType = input?.mimeType?.trim().toLowerCase() || extensionType;
+  const isPublicPath = url &&
+    !/^\/(?:api|_next|admin|account|checkout|cart|search|wishlist)(?:\/|$)/i.test(url.pathname);
+
+  // Social fetchers need directly crawlable JPEG/PNG assets. Reset the entire
+  // descriptor on rejection: the requested image's dimensions/alt do not
+  // describe the brand fallback. Never infer dimensions for custom assets.
+  if (
+    !url ||
+    !isPublicPath ||
+    url.username ||
+    url.password ||
+    (mimeType !== "image/jpeg" && mimeType !== "image/png") ||
+    (extensionType && extensionType !== mimeType) ||
+    /\.(?:avif|webp|svg|gif)$/i.test(url.pathname)
+  ) {
+    return { ...DEFAULT_SOCIAL_IMAGE, url: absoluteUrl(DEFAULT_SOCIAL_IMAGE.url) };
+  }
 
   return {
-    url: safeRequestedUrl ?? absoluteUrl(DEFAULT_SOCIAL_IMAGE.url),
-    width:
-      positiveInteger(input?.width) ??
-      (usesDefaultImage ? DEFAULT_SOCIAL_IMAGE.width : undefined),
-    height:
-      positiveInteger(input?.height) ??
-      (usesDefaultImage ? DEFAULT_SOCIAL_IMAGE.height : undefined),
+    url: url.toString(),
+    width: positiveInteger(input?.width),
+    height: positiveInteger(input?.height),
     alt: input?.alt?.trim() || DEFAULT_SOCIAL_IMAGE.alt,
+    type: mimeType,
   };
 }
 

@@ -24,9 +24,6 @@ const faqBaseMetadata = publicPageMetadata({
   title: "Preloved Saree FAQs | From The Trunk",
   description: faqDescription,
   path: "/faqs",
-  image: {
-    alt: "From The Trunk FAQ guide for authenticated preloved sarees",
-  },
 });
 
 export const metadata: Metadata = {
