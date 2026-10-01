@@ -68,6 +68,7 @@ describe("journal SEO", () => {
     expect(openGraph.images).toEqual([
       {
         url: OG,
+        type: "image/jpeg",
         width: 1200,
         height: 630,
         alt: "Hands holding the gold floral border of a burgundy saree over an open wooden trunk",

@@ -227,3 +227,42 @@ describe("resolvePage — adversarial", () => {
     expect(joined).toBe("a/b");
   });
 });
+
+
+describe("CMS public social metadata", () => {
+  it("uses the page title when SEO fields are blank and supplies complete cards", async () => {
+    const store = createInMemoryContentStore();
+    await makePublishedPage(store, { slug: "craft-notes", seo: { title: "  ", description: "  " } })();
+    const meta = await resolveMetadata("craft-notes", store);
+    expect(meta.title).toBe("Test Page");
+    expect(meta.description).toBe("Test Page — From The Trunk.");
+    expect(meta.alternates?.canonical).toBe("https://www.fromthetrunk.shop/craft-notes");
+    expect(meta.openGraph).toMatchObject({
+      title: "Test Page", description: meta.description, type: "website", siteName: "From The Trunk",
+      url: meta.alternates?.canonical,
+      images: [{ url: "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg", width: 1200, height: 630, type: "image/jpeg" }],
+    });
+    expect(meta.twitter).toMatchObject({ card: "summary_large_image", title: "Test Page", description: meta.description, images: meta.openGraph?.images });
+  });
+
+  it("keeps unpublished metadata noindex and does not expose a share card", async () => {
+    const meta = await resolveMetadata("missing", createInMemoryContentStore());
+    expect(meta.robots).toEqual({ index: false, follow: true });
+    expect(meta.openGraph).toBeNull();
+    expect(meta.twitter).toBeNull();
+  });
+});
+
+
+describe("CMS preview metadata", () => {
+  it("suppresses public share cards for preview URLs before resolving published content", async () => {
+    const { generateMetadata } = await import("@/app/(site)/[...slug]/page");
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ slug: ["published-cms-page"] }),
+      searchParams: Promise.resolve({ __preview_token: "test-preview-token" }),
+    });
+    expect(metadata).toEqual({
+      robots: { index: false, follow: false }, openGraph: null, twitter: null,
+    });
+  });
+});

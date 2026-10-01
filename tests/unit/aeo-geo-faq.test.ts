@@ -114,7 +114,7 @@ describe("AEO/GEO FAQ expansion", () => {
       "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
     );
     expect(ogImage?.alt).toBe(
-      "From The Trunk FAQ guide for authenticated preloved sarees",
+      "From The Trunk curated preloved luxury saree collection",
     );
     expect(twitterImage?.url).toBe(ogImage?.url);
     expect(twitterImage?.alt).toBe(ogImage?.alt);

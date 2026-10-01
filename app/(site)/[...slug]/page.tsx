@@ -62,12 +62,19 @@ function joinSlug(segments: string[]): string {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CmsPageProps): Promise<Metadata> {
+  // Preview URLs must never advertise a published page's social card, even
+  // when that slug also has a public version. Rendering/auth guards stay below.
+  const query = await searchParams;
+  if ("__preview_token" in query) {
+    return { robots: { index: false, follow: false }, openGraph: null, twitter: null };
+  }
   const { slug: segments } = await params;
   const slug = joinSlug(segments);
   const store = createDrizzleContentStore();
 
-  // resolveMetadata never throws — returns safe-empty for missing/draft/reserved.
+  // Missing/draft/reserved slugs return noindex metadata without a share card.
   return resolveMetadata(slug, store);
 }
 

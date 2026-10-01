@@ -358,6 +358,9 @@ const safeFailureReason = (
   if (!candidate.mimeType || !APPROVED_SOURCE_MIME_TYPES.has(candidate.mimeType)) {
     return "unsupported_mime";
   }
+  if (role === "social" && candidate.mimeType !== "image/jpeg" && candidate.mimeType !== "image/png") {
+    return "unsupported_mime";
+  }
   if (!candidate.width || !candidate.height) return "unknown_dimensions";
   if (!candidate.filesize) return "unknown_filesize";
   const limits = DIRECT_ROLE_LIMITS[role];

@@ -1,3 +1,4 @@
+import { seoImageMetadata, DEFAULT_SOCIAL_IMAGE } from "@/lib/seo/metadata";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const getProductBySlugMock = vi.hoisted(() => vi.fn());
@@ -194,9 +195,22 @@ describe("OG and social preview metadata", () => {
       url: "https://njufw8f4mlcjsl7g.public.blob.vercel-storage.com/media/tangerine-noir.jpg",
       width: 1600,
       height: 2400,
+      type: "image/jpeg",
       alt: "Tangerine chiffon saree photographed for From the Trunk",
     });
     expectSafeSocialMetadata(metadata);
+  });
+
+  it("skips an AVIF social candidate when a real JPEG exists", async () => {
+    const product = productFixture();
+    const jpeg = product.images[0]!;
+    getProductBySlugMock.mockResolvedValue({ ...product, images: [
+      { ...jpeg, media: { ...jpeg.media, url: jpeg.media.url.replace(".jpg", ".avif"), mimeType: "image/avif", filesize: 100000 }, sortOrder: 0 },
+      { ...jpeg, sortOrder: 1 },
+    ] });
+    const pdp = await import("@/app/(site)/collection/[slug]/page");
+    const metadata = await pdp.generateMetadata({ params: Promise.resolve({ slug: product.slug }) });
+    expect(firstOgImage(metadata as { openGraph?: MetadataRecord })).toMatchObject({ url: jpeg.media.url, type: "image/jpeg" });
   });
 
   it("falls back to brand-safe metadata when a product image URL is unsafe", async () => {
@@ -274,5 +288,29 @@ describe("OG and social preview metadata", () => {
     expect(serialized).not.toContain("StretchFit Blouse");
     expect(serialized).not.toContain("stretchfit-blouse.jpg");
     expectSafeSocialMetadata(metadata);
+  });
+});
+
+
+describe("social image safety and structured properties", () => {
+  it.each([
+    "https://images.unsplash.com/photo.jpg",
+    "http://www.fromthetrunk.shop/photo.jpg",
+    "https://preview.vercel.app/photo.jpg",
+    "https://localhost/photo.jpg",
+    "/photo.avif", "/photo.webp", "/photo.svg", "/api/private.jpg",
+  ])("resets every image field when rejecting %s", (url) => {
+    expect(seoImageMetadata({ url, width: 1600, height: 2400, alt: "Rejected photo" })).toEqual({
+      ...DEFAULT_SOCIAL_IMAGE,
+      url: "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
+      type: "image/jpeg",
+    });
+  });
+
+  it("preserves a real JPEG's dimensions, alt and MIME", () => {
+    expect(seoImageMetadata({ url: "/journal/example.JPG", width: 1200, height: 630, alt: "Silk weave" })).toEqual({
+      url: "https://www.fromthetrunk.shop/journal/example.JPG",
+      width: 1200, height: 630, alt: "Silk weave", type: "image/jpeg",
+    });
   });
 });
