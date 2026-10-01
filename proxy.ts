@@ -164,6 +164,24 @@ const getCollectionProductSlug = (pathname: string): string | null => {
   return segments[1] ?? null;
 };
 
+/**
+ * True for a `/journal/*` path with no published article behind it. Article
+ * pages are prerendered with `dynamicParams = false`, so the slugs inlined by
+ * next.config at build time are the only ones that exist. Production only:
+ * `next dev` reads the list once at startup, so an article added mid-session
+ * would 404 until a restart.
+ */
+const isMissingJournalPath = (pathname: string): boolean => {
+  if (process.env.NODE_ENV !== "production") return false;
+
+  const segments = getPathSegments(pathname);
+  if (segments[0] !== "journal" || segments.length < 2) return false;
+  if (segments.length > 2) return true;
+
+  const published = (process.env.FTT_JOURNAL_PUBLISHED_SLUGS ?? "").split(",");
+  return !published.includes(segments[1] ?? "");
+};
+
 const getCmsSlugCandidate = (pathname: string): string | null => {
   const segments = getPathSegments(pathname);
   if (segments.length === 0 || isReservedSlug(segments[0])) {
@@ -289,6 +307,11 @@ export async function proxy(request: NextRequest) {
     ) {
       return rewriteNotFound(request, startedAt);
     }
+  }
+
+  // Journal slugs are reserved, so the CMS preflight below never sees them.
+  if (!isRscNavigation(request) && isMissingJournalPath(pathname)) {
+    return rewriteNotFound(request, startedAt);
   }
 
   // ─── P3-09: Managed redirects ───────────────────────────────────

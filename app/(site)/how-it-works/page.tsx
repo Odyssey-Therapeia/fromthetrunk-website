@@ -10,7 +10,7 @@ export const revalidate = 300;
 export const metadata: Metadata = publicPageMetadata({
   title: "How It Works — Buying & Authentication",
   description:
-    "How From The Trunk sources, authenticates and ships pre-loved sarees — with provenance, care and confidence at every step.",
+    "How From The Trunk sources, authenticates and ships preloved sarees — with provenance, care and confidence at every step.",
   path: "/how-it-works",
 });
 
@@ -27,7 +27,7 @@ export default async function HowItWorksPage() {
       title: textOrFallback(howItWorksPage?.stepOneTitle, "Sourcing"),
       description: textOrFallback(
         howItWorksPage?.stepOneBody,
-        "We receive pre-loved sarees from homes, family trunks, and private wardrobes where beautiful textiles are waiting for their next chapter.",
+        "We receive preloved sarees from homes, family trunks, and private wardrobes where beautiful textiles are waiting for their next chapter.",
       ),
     },
     {
@@ -70,7 +70,7 @@ export default async function HowItWorksPage() {
       )}
       description={textOrFallback(
         howItWorksPage?.description,
-        "Have a pre-loved saree you are ready to part with? We thoughtfully review, authenticate, restore, photograph, and prepare each piece so it can be loved all over again.",
+        "Have a preloved saree you are ready to part with? We thoughtfully review, authenticate, restore, photograph, and prepare each piece so it can be loved all over again.",
       )}
       steps={steps}
     />

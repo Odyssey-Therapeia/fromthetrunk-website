@@ -83,7 +83,7 @@ describe("the live contradictory product", () => {
 
   it("no longer shows NEW anywhere customer-facing", () => {
     const display = productConditionDisplay(mayil);
-    expect(display.commerceLabel).toBe("Pre-loved");
+    expect(display.commerceLabel).toBe("Preloved");
     expect(display.qualityGrade).toBeNull();
     expect(JSON.stringify(display)).not.toMatch(/\bnew\b/i);
   });
@@ -96,7 +96,7 @@ describe("the live contradictory product", () => {
     const parsed = JSON.parse(serialised);
     const condition = (parsed.additionalProperty as Array<Record<string, string>>)
       .find((property) => property.name === "Condition");
-    expect(condition?.value).toBe("Pre-loved");
+    expect(condition?.value).toBe("Preloved");
   });
 });
 
@@ -113,7 +113,7 @@ describe("visible label can never contradict schema condition", () => {
       const itemCondition = resolveSchemaItemCondition(saree);
 
       expect(itemCondition).toBe(SCHEMA_USED_CONDITION);
-      expect(display.commerceLabel).toBe("Pre-loved");
+      expect(display.commerceLabel).toBe("Preloved");
 
       // The whole rendered condition surface, grade included.
       const visible = [display.commerceLabel, display.qualityGrade ?? ""].join(
@@ -158,7 +158,7 @@ describe("quality grade is independent of commerce condition", () => {
       const display = productConditionDisplay(
         productWith({ detailsCondition: grade }),
       );
-      expect(display.commerceLabel).toBe("Pre-loved");
+      expect(display.commerceLabel).toBe("Preloved");
       expect(display.qualityGrade).toBe(grade);
     }
   });
@@ -192,9 +192,9 @@ describe("quality grade is independent of commerce condition", () => {
   });
 
   it("exposes exactly two customer-facing commerce labels", () => {
-    expect(COMMERCE_CONDITION_LABELS).toEqual({ new: "New", used: "Pre-loved" });
+    expect(COMMERCE_CONDITION_LABELS).toEqual({ new: "New", used: "Preloved" });
     expect(commerceConditionLabel(productWith({ typeSlug: "saree" }))).toBe(
-      "Pre-loved",
+      "Preloved",
     );
     expect(commerceConditionLabel(productWith({ typeSlug: "blouse" }))).toBe(
       "New",
@@ -223,7 +223,7 @@ describe("all commerce surfaces agree", () => {
 
   it("JSON-LD, feed and label agree for both product kinds", () => {
     for (const [typeSlug, feed, schema, label] of [
-      ["saree", "used", SCHEMA_USED_CONDITION, "Pre-loved"],
+      ["saree", "used", SCHEMA_USED_CONDITION, "Preloved"],
       ["blouse", "new", SCHEMA_NEW_CONDITION, "New"],
     ] as const) {
       const product = productWith({ typeSlug, detailsCondition: "NEW" });

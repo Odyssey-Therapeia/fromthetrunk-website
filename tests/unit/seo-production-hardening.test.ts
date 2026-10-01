@@ -128,7 +128,7 @@ describe("SEO production hardening", () => {
       "https://www.fromthetrunk.shop/collection/occasion/festive",
     );
     expect(urls).toContain("https://www.fromthetrunk.shop/sell-your-saree");
-    expect(urls).toContain(
+    expect(urls).not.toContain(
       "https://www.fromthetrunk.shop/guides/what-is-a-pre-loved-saree",
     );
     expect(urls).toContain(

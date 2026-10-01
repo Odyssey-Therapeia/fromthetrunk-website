@@ -11,7 +11,7 @@ export const DEFAULT_SOCIAL_IMAGE = {
   url: "/banner/from-the-trunk-social-v1.jpg",
   width: 1200,
   height: 630,
-  alt: "From The Trunk curated pre-loved luxury saree collection",
+  alt: "From The Trunk curated preloved luxury saree collection",
 } as const;
 
 export type SeoImageInput = {

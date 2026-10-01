@@ -42,7 +42,7 @@ const beats = [
   },
   {
     paragraphs: [
-      "By giving your pre-loved sarees a second life, you\u2019re not just clearing space, you\u2019re passing on heritage, emotion, and craftsmanship.",
+      "By giving your preloved sarees a second life, you\u2019re not just clearing space, you\u2019re passing on heritage, emotion, and craftsmanship.",
       "Each saree becomes a bridge between past and present, finding new meaning in someone else\u2019s journey.",
     ],
     layout: "image-left" as const,

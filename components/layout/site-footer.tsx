@@ -4,6 +4,7 @@ import { CookieSettingsButton } from "@/components/analytics/cookie-settings-but
 import { WhatsAppLink } from "@/components/analytics/whatsapp-link";
 import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
 import type { FooterSection } from "@/components/layout/nav-data";
+import { JOURNAL_LABEL, JOURNAL_PATH } from "@/lib/journal/constants";
 
 const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
   {
@@ -17,19 +18,19 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
       { href: "/sell-your-saree", label: "Sell Your Saree" },
       { href: "/our-team", label: "Our Team" },
       {
-        href: "/guides/what-is-a-pre-loved-saree",
-        label: "What Pre-Loved Means",
+        href: "/journal/preloved-sarees-meaning",
+        label: "What Preloved Means",
       },
     ],
   },
   {
     title: "Shop By",
     links: [
-      { href: "/collection/fabric/silk", label: "Pre-Loved Silk Sarees" },
+      { href: "/collection/fabric/silk", label: "Preloved Silk Sarees" },
       { href: "/collection/occasion/festive", label: "Festive Sarees" },
       {
         href: "/guides/pre-loved-vs-second-hand-saree",
-        label: "Pre-Loved vs Second-Hand",
+        label: "Preloved vs Second-Hand",
       },
     ],
   },
@@ -74,6 +75,15 @@ const CONTACT_FOOTER_LINK = {
 const AUTHENTICATION_FOOTER_LINK = {
   href: "/authentication",
   label: "How We Authenticate",
+} as const;
+
+/**
+ * The Journal ships with the code, not the CMS, so its footer entry is
+ * guaranteed the same way as the authentication link above.
+ */
+const JOURNAL_FOOTER_LINK = {
+  href: JOURNAL_PATH,
+  label: JOURNAL_LABEL,
 } as const;
 
 function ensureFooterLink(
@@ -360,9 +370,13 @@ export function SiteFooter({
 }) {
   const year = new Date().getFullYear();
   const resolvedFooterSections = ensureFooterLink(
-    ensureContactFooterLink(footerSections),
-    AUTHENTICATION_FOOTER_LINK,
-    "Customer Care",
+    ensureFooterLink(
+      ensureContactFooterLink(footerSections),
+      AUTHENTICATION_FOOTER_LINK,
+      "Customer Care",
+    ),
+    JOURNAL_FOOTER_LINK,
+    "Explore",
   );
 
   const footerNavGridClass =

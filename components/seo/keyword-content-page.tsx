@@ -55,7 +55,7 @@ export function KeywordContentPage({ config }: KeywordContentPageProps) {
 
   const heroNote = isSupplyPage
     ? "A careful, respectful way to pass your saree into its next chapter."
-    : "A quiet guide for choosing, caring for, and understanding pre-loved sarees.";
+    : "A quiet guide for choosing, caring for, and understanding preloved sarees.";
 
   const processItems: ProcessItem[] = isSupplyPage
     ? [
@@ -95,7 +95,7 @@ export function KeywordContentPage({ config }: KeywordContentPageProps) {
           icon: Leaf,
           title: "Choose consciously",
           description:
-            "Pre-loved sarees keep craft in circulation and make luxury feel more thoughtful, personal, and lasting.",
+            "Preloved sarees keep craft in circulation and make luxury feel more thoughtful, personal, and lasting.",
         },
       ];
 

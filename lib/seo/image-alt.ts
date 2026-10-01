@@ -23,7 +23,7 @@ export function buildProductCardAlt(product: ProductAltSource): string {
   const fabric = normalizeFabric(product.detailsFabric);
   const fabricPhrase = fabric ? `${fabric} saree` : "saree";
 
-  return `${name}, pre-loved ${fabricPhrase} from From the Trunk`;
+  return `${name}, preloved ${fabricPhrase} from From the Trunk`;
 }
 
 export function buildPdpMainImageAlt(product: ProductAltSource): string {
@@ -31,7 +31,7 @@ export function buildPdpMainImageAlt(product: ProductAltSource): string {
   const fabric = normalizeFabric(product.detailsFabric);
   const detail = fabric ? `, ${fabric}` : "";
 
-  return `${name} shown as a pre-loved saree${detail}`;
+  return `${name} shown as a preloved saree${detail}`;
 }
 
 export function buildPdpGalleryImageAlt(

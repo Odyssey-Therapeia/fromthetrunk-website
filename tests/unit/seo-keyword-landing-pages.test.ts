@@ -86,10 +86,13 @@ describe("keyword landing page architecture", () => {
     expect(sitemapPaths).toContain("/collection/fabric/silk");
     expect(sitemapPaths).toContain("/collection/occasion/festive");
     expect(sitemapPaths).toContain("/sell-your-saree");
-    expect(sitemapPaths).not.toContain("/collection/fabric/chiffon");
+    expect(sitemapPaths).toContain("/collection/fabric/chiffon");
+    expect(sitemapPaths).toContain("/collection/fabric/georgette");
+    expect(sitemapPaths).toContain("/collection/fabric/kanjeevaram");
+    expect(sitemapPaths).not.toContain("/guides/what-is-a-pre-loved-saree");
   });
 
-  it("keeps Phase 2 deferred pages noindex and out of sitemap", () => {
+  it("keeps empty product pages noindex and defers the wedding sitemap entry", () => {
     const deferred = [
       getKeywordLandingByTypeSlug("fabric", "kanjeevaram"),
       getKeywordLandingByTypeSlug("fabric", "chiffon"),
@@ -99,12 +102,12 @@ describe("keyword landing page architecture", () => {
 
     for (const config of deferred) {
       expect(config).toBeDefined();
-      expect(config?.sitemap).toBe(false);
       expect(keywordLandingMetadata(config!, 0).robots).toEqual({
         index: false,
         follow: true,
       });
     }
+    expect(getKeywordLandingByTypeSlug("occasion", "wedding")?.sitemap).toBe(false);
   });
 
   it("keeps P0 indexable pages configured with production canonical metadata", () => {

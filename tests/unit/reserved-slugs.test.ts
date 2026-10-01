@@ -54,6 +54,10 @@ describe("isReservedSlug — reserved segments", () => {
     expect(isReservedSlug("search")).toBe(true);
   });
 
+  it("rejects 'journal' (site route)", () => {
+    expect(isReservedSlug("journal")).toBe(true);
+  });
+
   it("rejects 'how-it-works' (site route)", () => {
     expect(isReservedSlug("how-it-works")).toBe(true);
   });

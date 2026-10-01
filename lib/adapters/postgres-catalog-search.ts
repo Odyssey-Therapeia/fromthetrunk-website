@@ -64,6 +64,7 @@ import {
   tags,
 } from "@/db/schema";
 import {
+  expandFabricAliases,
   normalizeColorSlug,
   normalizeFacetSlug,
   toFacetSlugs,
@@ -440,7 +441,9 @@ export function createPostgresCatalogSearch(): CatalogSearchPort {
       const activeTypes = normalizeInputSlugs([...(types ?? []), type]);
       const activeExcludeTypes = normalizeInputSlugs(excludeTypes);
       const activeSleeves = normalizeInputSlugs(sleeveTypes);
-      const activeFabrics = normalizeInputSlugs([...(fabrics ?? []), fabric]);
+      const activeFabrics = expandFabricAliases(
+        normalizeInputSlugs([...(fabrics ?? []), fabric]),
+      );
       const activeColors = normalizeInputSlugs(colors, { color: true });
       const activeOccasions = normalizeInputSlugs(occasions);
       const activeWorks = normalizeInputSlugs(works);

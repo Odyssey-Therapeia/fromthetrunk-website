@@ -3,16 +3,26 @@ import Link from "next/link";
 
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { SiteHeaderCommerceControls } from "@/components/layout/site-header-commerce-controls";
+import { SiteHeaderNavLink } from "@/components/layout/site-header-nav-link";
 import { DrapeRoomPhotoMenu } from "@/components/drape-room/drape-room-photo-menu";
+import { JOURNAL_LABEL, JOURNAL_PATH } from "@/lib/journal/constants";
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string;
+  label: string;
+  /** Highlights the item on this path and below (e.g. every /journal/* article). */
+  activePrefix?: string;
+};
+
+const NAV_ITEMS: readonly NavItem[] = [
   { href: "/collection", label: "Collection" },
   { href: "/top-viewed", label: "Top Viewed" },
   { href: "/blouses", label: "Blouses" },
+  { href: JOURNAL_PATH, label: JOURNAL_LABEL, activePrefix: JOURNAL_PATH },
   { href: "/#connect", label: "Connect With Us" },
   { href: "/our-team", label: "About Us" },
   { href: "/faqs", label: "FAQ & Policies" },
-] as const;
+];
 
 function SearchIcon() {
   return (
@@ -66,14 +76,15 @@ export async function SiteHeaderServer() {
 
             <nav aria-label="Primary navigation" className="hidden items-center gap-6 xl:flex">
               {NAV_ITEMS.map((item) => (
-                <Link
+                <SiteHeaderNavLink
                   key={item.href}
                   href={item.href}
+                  activePrefix={item.activePrefix}
                   prefetch={false}
-                  className="whitespace-nowrap text-sm font-medium text-[#601D1C] underline-offset-8 transition hover:text-[#B39152] hover:underline"
+                  className="whitespace-nowrap text-sm font-medium text-[#601D1C] underline-offset-8 transition hover:text-[#B39152] hover:underline aria-[current=page]:underline aria-[current=page]:decoration-[#B39152] aria-[current=page]:decoration-2"
                 >
                   {item.label}
-                </Link>
+                </SiteHeaderNavLink>
               ))}
             </nav>
           </div>
@@ -106,7 +117,7 @@ export async function SiteHeaderServer() {
                 </form>
                 <nav aria-label="Mobile navigation" className="grid gap-1">
                   {NAV_ITEMS.map((item) => (
-                    <Link key={item.href} href={item.href} prefetch={false} className="rounded-xl px-3 py-2.5 text-base font-medium text-[#601D1C] hover:bg-[#B39152]/10">{item.label}</Link>
+                    <SiteHeaderNavLink key={item.href} href={item.href} activePrefix={item.activePrefix} prefetch={false} className="rounded-xl px-3 py-2.5 text-base font-medium text-[#601D1C] hover:bg-[#B39152]/10 aria-[current=page]:bg-[#B39152]/12">{item.label}</SiteHeaderNavLink>
                   ))}
                   {/* Compact fallback for headers too narrow to carry the heart
                       icon. Mirrors the icon's own gate in

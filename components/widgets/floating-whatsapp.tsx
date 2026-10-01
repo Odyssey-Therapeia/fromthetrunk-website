@@ -37,13 +37,15 @@ export function FloatingWhatsApp() {
     pathname === "/our-story" ||
     pathname.startsWith("/policies") ||
     pathname.endsWith("-policy") ||
-    pathname === "/terms-of-service";
+    pathname === "/terms-of-service" ||
+    pathname.startsWith("/journal/");
   const commerceOrAuthPage =
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/account") ||
     pathname.startsWith("/collection/");
-  const suppressAutoBubble = mobileReadingPage || commerceOrAuthPage;
+  // The Journal index opens on its featured story, which the bubble would cover.
+  const suppressAutoBubble = mobileReadingPage || commerceOrAuthPage || pathname === "/journal";
 
   useEffect(() => {
     if (suppressAutoBubble) return;
@@ -88,7 +90,9 @@ export function FloatingWhatsApp() {
         }}
         className={cn(
           "pointer-events-auto absolute right-4 flex touch-none cursor-grab flex-col items-end gap-3 active:cursor-grabbing sm:right-6",
-          commerceOrAuthPage ? "bottom-5 sm:bottom-6" : "bottom-24 sm:bottom-6",
+          // bottom-24 clears the product page's mobile add-to-bag bar; the
+          // Journal index has none, and there the lift put it over the featured story.
+          commerceOrAuthPage || pathname === "/journal" ? "bottom-5 sm:bottom-6" : "bottom-24 sm:bottom-6",
         )}
       >
         {showBubble && !suppressAutoBubble ? (

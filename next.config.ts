@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { readPublishedJournalSlugs } from "./lib/journal/published-slugs";
+
 const isStandaloneBuild = process.env.BUILD_STANDALONE === "true";
 
 const isVercelPublicBlobHost = (host: string) =>
@@ -78,6 +80,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Inlined for proxy.ts, which 404s unknown /journal/* paths before the
+  // streamed shell can lock a 200. See lib/journal/published-slugs.ts.
+  env: {
+    FTT_JOURNAL_PUBLISHED_SLUGS: readPublishedJournalSlugs(__dirname).join(","),
+  },
   images: {
     formats: ["image/webp"],
     deviceSizes: [360, 414, 640, 768, 1080, 1280, 1600, 1920],
@@ -87,10 +94,12 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/404/**", search: "" },
       { pathname: "/banner/**", search: "" },
+      { pathname: "/blog[1-8][ab].avif", search: "" },
       { pathname: "/category/**", search: "" },
       { pathname: "/footer/**", search: "" },
       { pathname: "/founder/**", search: "" },
       { pathname: "/hero/**", search: "" },
+      { pathname: "/journal/**", search: "" },
       { pathname: "/media/**", search: "" },
       { pathname: "/our-story/**", search: "" },
       { pathname: "/packaging/**", search: "" },
@@ -211,6 +220,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/guides/what-is-a-pre-loved-saree",
+        destination: "/journal/preloved-sarees-meaning",
+        permanent: true,
+      },
+      {
         source: "/Welcoming.mp4",
         destination: "/welcome-poster.avif",
         permanent: true,
@@ -228,6 +242,11 @@ const nextConfig: NextConfig = {
       {
         source: "/Welcoming.webm",
         destination: "/video/welcoming-v2.webm",
+        permanent: true,
+      },
+      {
+        source: "/sell",
+        destination: "/sell-your-saree",
         permanent: true,
       },
       {

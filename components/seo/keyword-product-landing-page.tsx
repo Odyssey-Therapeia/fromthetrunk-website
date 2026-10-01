@@ -1,10 +1,14 @@
 import Link from "next/link";
 
+import type { ProductWithRelations } from "@/db/queries/products";
 import { ProductCard } from "@/components/product/product-card";
 import { Badge } from "@/components/ui/badge";
-import { searchProducts } from "@/lib/ports/catalog-search";
 import {
-  isKeywordLandingIndexable,
+  searchProducts,
+  type CatalogSearchFilters,
+} from "@/lib/ports/catalog-search";
+import {
+  getKeywordLandingByTypeSlug,
   keywordBreadcrumbJsonLd,
   keywordFaqJsonLd,
   keywordItemListJsonLd,
@@ -16,15 +20,21 @@ type KeywordProductLandingPageProps = {
   config: KeywordLandingConfig;
 };
 
-export async function getKeywordLandingProducts(config: KeywordLandingConfig) {
-  if (!config.searchFilters) {
-    return { products: [], totalDocs: 0 };
-  }
+const LANDING_PRODUCT_LIMIT = 12;
+const RELATED_PRODUCT_LIMIT = 4;
 
+// Same column steps as the /collection grid, keyed to the section's own width.
+const PRODUCT_GRID =
+  "grid grid-cols-1 items-stretch gap-x-4 gap-y-5 @[30rem]:grid-cols-2 @[44rem]:grid-cols-3 @[44rem]:gap-y-6 @[64rem]:grid-cols-4 [&>*]:min-w-0";
+
+async function searchLandingProducts(
+  searchFilters: CatalogSearchFilters,
+  limit: number,
+) {
   const result = await searchProducts({
-    ...config.searchFilters,
+    ...searchFilters,
     includeFacets: false,
-    limit: 12,
+    limit,
     offset: 0,
   });
 
@@ -34,17 +44,84 @@ export async function getKeywordLandingProducts(config: KeywordLandingConfig) {
   };
 }
 
+export async function getKeywordLandingProducts(config: KeywordLandingConfig) {
+  if (!config.searchFilters) {
+    return { products: [], totalDocs: 0 };
+  }
+
+  return searchLandingProducts(config.searchFilters, LANDING_PRODUCT_LIMIT);
+}
+
+function pieceCount(count: number) {
+  return `${count} piece${count === 1 ? "" : "s"}`;
+}
+
+function ProductGridFooter({
+  href,
+  label,
+  shown,
+  total,
+}: {
+  href: string;
+  label: string;
+  shown: number;
+  total: number;
+}) {
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-ftt-border pt-5">
+      <p className="text-sm text-ftt-burgundy/70">
+        {shown < total
+          ? `Showing ${shown} of ${pieceCount(total)} available now`
+          : `${pieceCount(total)} available now`}
+      </p>
+      <Link
+        href={href}
+        aria-label={label}
+        className="inline-flex min-h-11 items-center rounded-full border border-ftt-navy px-5 text-sm font-semibold text-ftt-navy transition hover:bg-ftt-navy hover:text-ftt-ivory"
+      >
+        View all
+      </Link>
+    </div>
+  );
+}
+
+function ProductGrid({ products }: { products: ProductWithRelations[] }) {
+  return (
+    <div className={PRODUCT_GRID}>
+      {products.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  );
+}
+
 export async function KeywordProductLandingPage({
   config,
 }: KeywordProductLandingPageProps) {
   const { products, totalDocs } = await getKeywordLandingProducts(config);
-  const indexable = isKeywordLandingIndexable(config, totalDocs);
+  const section = config.productSection;
+  // Only when this edit is empty: pieces from the closest related edit, shown
+  // under that edit's own heading so nothing is labelled as something it isn't.
+  const relatedConfig =
+    products.length === 0 && section?.relatedEdit
+      ? getKeywordLandingByTypeSlug(config.type, section.relatedEdit)
+      : undefined;
+  const relatedSection = relatedConfig?.productSection;
+  const related =
+    relatedConfig?.searchFilters && relatedSection
+      ? await searchLandingProducts(
+          relatedConfig.searchFilters,
+          RELATED_PRODUCT_LIMIT,
+        )
+      : null;
+  const showProducts = products.length > 0;
   const breadcrumbJsonLd = keywordBreadcrumbJsonLd(config);
   const faqJsonLd = keywordFaqJsonLd(config);
   const itemListJsonLd = keywordItemListJsonLd(config, products);
 
+  // The site layout already provides <main>; this page is a region inside it.
   return (
-    <main className="bg-ftt-ivory pb-16 text-ftt-midnight">
+    <div className="bg-ftt-ivory pb-16 text-ftt-midnight">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
@@ -65,7 +142,7 @@ export async function KeywordProductLandingPage({
       <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <nav
           aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-ftt-burgundy/55"
+          className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-ftt-burgundy/75"
         >
           <Link href="/" className="hover:text-ftt-navy">
             Home
@@ -80,7 +157,7 @@ export async function KeywordProductLandingPage({
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,0.45fr)] lg:items-start">
           <div>
-            <Badge className="rounded-full border border-ftt-gold/35 bg-ftt-gold/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.28em] text-ftt-gold">
+            <Badge className="rounded-full border border-ftt-gold/35 bg-ftt-gold/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.28em] text-[#74531B]">
               {config.primaryKeyword}
             </Badge>
             <h1 className="mt-5 max-w-4xl font-serif text-[clamp(2.7rem,6vw,5.6rem)] leading-[0.92] text-ftt-burgundy">
@@ -94,16 +171,23 @@ export async function KeywordProductLandingPage({
           </div>
 
           <aside className="rounded-[1.5rem] border border-ftt-border bg-ftt-card p-5 shadow-[0_16px_42px_rgba(20,29,70,0.08)]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-ftt-gold">
-              Page status
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#74531B]">
+              In this edit
             </p>
-            <p className="mt-3 text-sm leading-7 text-ftt-burgundy/70">
-              {indexable
-                ? `${totalDocs} available pieces match this edit.`
-                : totalDocs > 0
-                  ? `${totalDocs} piece${totalDocs === 1 ? "" : "s"} available now. This page is kept out of the sitemap until the edit is fuller.`
-                  : "No available pieces match this edit right now, so this page is not indexed as a product landing page."}
-            </p>
+            {totalDocs > 0 ? (
+              <p className="mt-3 text-sm leading-7 text-ftt-burgundy/70">
+                <span className="font-serif text-3xl leading-none text-ftt-navy">
+                  {totalDocs}
+                </span>{" "}
+                {totalDocs === 1 ? "piece" : "pieces"} available now, each one of
+                one.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm leading-7 text-ftt-burgundy/70">
+                No pieces are available right now. New ones arrive as each saree
+                is authenticated and restored.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               {config.related.map((link) => (
                 <Link
@@ -119,13 +203,32 @@ export async function KeywordProductLandingPage({
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        {products.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+      <section
+        aria-labelledby={
+          showProducts && section ? "edit-products-title" : undefined
+        }
+        className="@container mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
+      >
+        {showProducts ? (
+          <>
+            {section ? (
+              <h2
+                id="edit-products-title"
+                className="mb-6 font-serif text-3xl text-ftt-navy @[44rem]:text-4xl"
+              >
+                {section.heading}
+              </h2>
+            ) : null}
+            <ProductGrid products={products} />
+            {section ? (
+              <ProductGridFooter
+                href={section.viewAllHref}
+                label={section.viewAllLabel}
+                shown={products.length}
+                total={totalDocs}
+              />
+            ) : null}
+          </>
         ) : (
           <div className="rounded-[1.5rem] border border-ftt-border bg-ftt-card p-6 text-ftt-burgundy/72 shadow-[0_16px_42px_rgba(20,29,70,0.08)]">
             <h2 className="font-serif text-3xl text-ftt-navy">
@@ -143,6 +246,26 @@ export async function KeywordProductLandingPage({
             </Link>
           </div>
         )}
+        {relatedSection && related && related.products.length > 0 ? (
+          <section aria-labelledby="related-edit-title" className="mt-10">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#74531B]">
+              You may also like
+            </p>
+            <h2
+              id="related-edit-title"
+              className="mt-2 mb-6 font-serif text-3xl text-ftt-navy"
+            >
+              {relatedSection.heading}
+            </h2>
+            <ProductGrid products={related.products} />
+            <ProductGridFooter
+              href={relatedSection.viewAllHref}
+              label={relatedSection.viewAllLabel}
+              shown={related.products.length}
+              total={related.totalDocs}
+            />
+          </section>
+        ) : null}
       </section>
 
       {config.faq.length > 0 ? (
@@ -166,6 +289,6 @@ export async function KeywordProductLandingPage({
           </div>
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }

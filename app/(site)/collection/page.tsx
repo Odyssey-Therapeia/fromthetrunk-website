@@ -173,9 +173,9 @@ export async function generateMetadata({
 
   return {
     ...publicPageMetadata({
-      title: "Pre-Loved & Vintage Luxury Sarees – Shop All | From The Trunk",
+      title: "Preloved & Vintage Luxury Sarees – Shop All | From The Trunk",
       description:
-        "Browse our full collection of authenticated pre-loved sarees — silk, chiffon, Banarasi and designer drapes. One-of-a-kind pieces, new arrivals weekly.",
+        "Browse our full collection of authenticated preloved sarees — silk, chiffon, Banarasi and designer drapes. One-of-a-kind pieces, new arrivals weekly.",
       path: paginationOnly ? canonicalLocation.href : "/collection",
       // `canonicalLocation.href` has already been through
       // canonicalizeCollectionSearchParams, so its query is safe to keep, and
@@ -550,13 +550,13 @@ export default async function CollectionPage({
       type: "collection",
       navigationLabel: isBlouseMode
         ? "Blouse collection"
-        : "Pre-loved saree collection",
+        : "Preloved saree collection",
       eyebrow: cms?.eyebrow ?? "The Collection",
       title: isBlouseMode
         ? ["Blouses with a story", "of their own"]
         : cms?.title
           ? [cms.title]
-          : ["Pre-Loved", "& Vintage", "Luxury Sarees"],
+          : ["Preloved", "& Vintage", "Luxury Sarees"],
       description: isBlouseMode
         ? "Blouses that once completed a drape, kept and cared for. Ready to begin again with yours."
         : cms?.description ??
@@ -675,7 +675,7 @@ export default async function CollectionPage({
   const activeCollectionLabel = activeCollection?.name ?? "All pieces";
   const filterDescription = isBlouseMode
     ? "Find your blouse, refine by sleeve and colour."
-    : "Find your pre-loved saree, refine by category, fabric, colour, price, occasion, and availability.";
+    : "Find your preloved saree, refine by category, fabric, colour, price, occasion, and availability.";
   const buildUrl = (patch: BuildUrlPatch = {}) => {
     const nextCollectionSlug =
       "collectionSlug" in patch

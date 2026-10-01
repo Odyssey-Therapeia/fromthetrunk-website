@@ -10,9 +10,9 @@ import { absoluteUrl } from "@/lib/seo/site-url";
 export const revalidate = 300;
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Most-Viewed Pre-Loved Sarees – Top Picks | From The Trunk",
+  title: "Most-Viewed Preloved Sarees – Top Picks | From The Trunk",
   description:
-    "Our most-viewed pre-loved sarees this week — authenticated silk, chiffon and designer drapes shoppers keep coming back to. One-of-a-kind, updated often.",
+    "Our most-viewed preloved sarees this week — authenticated silk, chiffon and designer drapes shoppers keep coming back to. One-of-a-kind, updated often.",
   path: "/top-viewed",
 });
 
@@ -38,7 +38,7 @@ export default async function TopViewedPage() {
               { name: "Home", url: absoluteUrl("/") },
               { name: "Collection", url: absoluteUrl("/collection") },
               {
-                name: "Most-Loved Pre-Loved Sarees",
+                name: "Most-Loved Preloved Sarees",
                 url: absoluteUrl("/top-viewed"),
               },
             ]),
@@ -67,11 +67,11 @@ export default async function TopViewedPage() {
             The Collection
           </p>
           <h1 className="mt-4 font-serif text-[clamp(2.7rem,6vw,5.6rem)] leading-[0.92] text-ftt-burgundy">
-            Most-Loved Pre-Loved Sarees
+            Most-Loved Preloved Sarees
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-ftt-burgundy/74">
             The pieces shoppers keep coming back to — our most-viewed authenticated
-            pre-loved sarees right now, ranked by what buyers are loving this month
+            preloved sarees right now, ranked by what buyers are loving this month
             and updated often. Every drape is one-of-a-kind, so a favourite can find
             its person quickly.
           </p>
@@ -92,7 +92,7 @@ export default async function TopViewedPage() {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-7">
               As shoppers browse, the most-viewed pieces rise to the top here.
-              Meanwhile, explore the full collection of authenticated pre-loved
+              Meanwhile, explore the full collection of authenticated preloved
               sarees.
             </p>
             <Link

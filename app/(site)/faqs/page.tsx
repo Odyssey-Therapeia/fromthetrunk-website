@@ -15,33 +15,33 @@ import { safeJsonLd } from "@/lib/seo/json-ld";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 
 const faqDescription =
-  "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.";
+  "Answers on authenticity, sizing, shipping, returns and consignment for preloved sarees at From The Trunk.";
 
 const faqSocialDescription =
-  "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.";
+  "Answers on authenticity, sizing, shipping, returns and consignment for preloved sarees at From The Trunk.";
 
 const faqBaseMetadata = publicPageMetadata({
-  title: "Pre-Loved Saree FAQs | From The Trunk",
+  title: "Preloved Saree FAQs | From The Trunk",
   description: faqDescription,
   path: "/faqs",
   image: {
-    alt: "From The Trunk FAQ guide for authenticated pre-loved sarees",
+    alt: "From The Trunk FAQ guide for authenticated preloved sarees",
   },
 });
 
 export const metadata: Metadata = {
   ...faqBaseMetadata,
   title: {
-    absolute: "Pre-Loved Saree FAQs | From The Trunk",
+    absolute: "Preloved Saree FAQs | From The Trunk",
   },
   openGraph: {
     ...(faqBaseMetadata.openGraph ?? {}),
-    title: "Pre-Loved Saree FAQs | From The Trunk",
+    title: "Preloved Saree FAQs | From The Trunk",
     description: faqSocialDescription,
   },
   twitter: {
     ...(faqBaseMetadata.twitter ?? {}),
-    title: "Pre-Loved Saree FAQs | From The Trunk",
+    title: "Preloved Saree FAQs | From The Trunk",
     description: faqSocialDescription,
   },
 };
@@ -59,7 +59,7 @@ export default function FaqsPage() {
           Support
         </p>
         <h1 className="font-serif text-4xl text-foreground md:text-5xl">
-          Pre-Loved Saree FAQs
+          Preloved Saree FAQs
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
           Everything you need before bringing a unique piece home. Read our
