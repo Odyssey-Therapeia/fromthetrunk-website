@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -14,6 +14,8 @@ import { deriveJournalArticle } from "@/lib/journal/derive";
 import { collectInlineHrefs } from "@/lib/journal/inline";
 import { readPublishedJournalSlugs } from "@/lib/journal/published-slugs";
 import { JournalContentError, parseJournalArticle, type JournalArticleSource } from "@/lib/journal/schema";
+import { journalArticleJsonLd } from "@/lib/journal/seo";
+import { keywordLandingByPath } from "@/lib/seo/keyword-landing-pages";
 
 const ARTICLE_FILE = "preloved-sarees-meaning.json";
 const realArticle = JSON.parse(
@@ -43,7 +45,9 @@ describe("journal content schema", () => {
     expect(parseJournalArticle("caring-for-silk.json", validArticle()).seo.keywords).toEqual([]);
   });
 
-  it.each(["/blog1a.avif", "/blog1b.avif"])("accepts the approved root image %s", (src) => {
+  it.each(
+    [1, 2, 3, 4, 5, 6, 7, 8].flatMap((n) => [`/blog${n}a.avif`, `/blog${n}b.avif`]),
+  )("accepts the approved root image %s", (src) => {
     const image = { src, alt: "Burgundy saree with gold floral motifs" };
     const article = parseJournalArticle("caring-for-silk.json", validArticle({
       cover: image,
@@ -58,6 +62,7 @@ describe("journal content schema", () => {
     "/blog/blog1a.avif", "/../blog1a.avif", "/journal/../blog1a.avif",
     "/journal/caring-for-silk/../../blog1a.avif", "/journal/caring-for-silk/%2e%2e/blog1a.avif",
     "//blog1a.avif", "https://example.com/blog1a.avif", "/Blog1a.avif",
+    "/blog0a.avif", "/blog9a.avif", "/blog2c.avif", "/blog10a.avif",
   ])("rejects unapproved or unsafe image path %s", (src) => {
     const image = { src, alt: "Saree" };
     for (const overrides of [{ cover: image }, { body: [{ type: "figure", images: [image] }] }]) {
@@ -178,7 +183,17 @@ describe("journal article derivation", () => {
         { ...source, cover: { src: "/journal/preloved-sarees-meaning/cover.png", alt: "Cover" } },
         { imageExists: () => true },
       ).socialImage,
+    ).toBe("/journal/og/preloved-sarees-meaning.jpg");
+    expect(
+      deriveJournalArticle(
+        { ...source, cover: { src: "/journal/preloved-sarees-meaning/cover.png", alt: "Cover" } },
+        { imageExists: (src) => !src.startsWith("/journal/og/") },
+      ).socialImage,
     ).toBe("/journal/preloved-sarees-meaning/cover.png");
+    // The 1200x630 cut in public/journal/og/ wins over a same-named JPG, but only with a cover.
+    expect(withFiles([cover.src, "/journal/preloved-sarees-meaning/cover.jpg", "/journal/og/preloved-sarees-meaning.jpg"]).socialImage)
+      .toBe("/journal/og/preloved-sarees-meaning.jpg");
+    expect(deriveJournalArticle({ ...source, cover: null }, { imageExists: () => true }).socialImage).toBeNull();
     expect(deriveJournalArticle(source, {
       imageExists: (src) => ["/blog1a.avif", "/blog1b.avif"].includes(src),
     }).socialImage).toBeNull();
@@ -336,35 +351,20 @@ describe("journal content in the repo", () => {
     expect(article?.body.filter((block) => block.type === "figure")).toEqual([
       { type: "figure", images: [{ src: "/blog1b.avif", alt: expect.any(String) }] },
     ]);
-    expect(article?.socialImage).toBeNull();
+    expect(article?.socialImage).toBe("/journal/og/preloved-sarees-meaning.jpg");
   });
 
   it("every committed article validates and only links to site paths or published stories", () => {
     const articles = getAllJournalArticles();
-    expect(articles).toHaveLength(5);
+    expect(articles).toHaveLength(8);
 
     const published = new Set(getPublishedJournalArticles().map((article) => article.slug));
     expect(readPublishedJournalSlugs()).toEqual([...published].sort());
     const resolve = getJournalLinkResolver();
     for (const article of articles) {
-      const texts = [
-        ...article.body.flatMap((block) =>
-          block.type === "paragraph" || block.type === "heading"
-            ? [block.text]
-            : block.type === "list"
-              ? block.items
-              : block.type === "table"
-                ? block.rows.flat()
-                : block.caption
-                  ? [block.caption]
-                  : [],
-        ),
-        ...(article.faq?.items.map((item) => item.answer) ?? []),
-        article.about ?? "",
-      ];
-      for (const href of texts.flatMap(collectInlineHrefs)) {
+      for (const href of articleHrefs(article)) {
         const resolved = resolve(href);
-        expect(["internal", "anchor", "external", "unavailable"]).toContain(resolved.kind);
+        expect(["internal", "anchor", "external"]).toContain(resolved.kind);
         if (href.startsWith("/journal/") && resolved.kind === "internal") {
           expect(published.has(href.split("/")[2]?.split(/[?#]/)[0] ?? "")).toBe(true);
         }
@@ -382,8 +382,158 @@ describe("journal content in the repo", () => {
     ]);
     expect(resolve("https://www.instagram.com/from.thetrunk/").kind).toBe("external");
     expect(resolve("/journal/how-to-identify-pure-silk-saree").kind).toBe("internal");
-    expect(resolve("/journal/how-to-care-for-silk-sarees").kind).toBe("internal");
-    expect(resolve("/journal/indian-saree-fabrics-and-weaves").kind).toBe("unavailable");
-    expect(resolve("/journal/how-to-care-for-sarees").kind).toBe("unavailable");
+    expect(resolve("/journal/indian-saree-fabrics-and-weaves").kind).toBe("internal");
+    expect(resolve("/journal/how-to-care-for-sarees").kind).toBe("internal");
+    expect(resolve("/journal/a-guide-that-is-not-written-yet").kind).toBe("unavailable");
+  });
+});
+
+/** Every inline href in an article: body, captions, FAQ answers and the About block. */
+function articleHrefs(article: {
+  body: JournalArticleSource["body"];
+  faq?: JournalArticleSource["faq"];
+  about?: string;
+}): string[] {
+  const texts = [
+    ...article.body.flatMap((block) =>
+      block.type === "paragraph" || block.type === "heading"
+        ? [block.text]
+        : block.type === "list"
+          ? block.items
+          : block.type === "table"
+            ? block.rows.flat()
+            : block.caption
+              ? [block.caption]
+              : [],
+    ),
+    ...(article.faq?.items.map((item) => item.answer) ?? []),
+    article.about ?? "",
+  ];
+  return texts.flatMap(collectInlineHrefs);
+}
+
+/** Static pages under app/, with route groups removed, e.g. "/sell-your-saree". */
+function staticSiteRoutes(): Set<string> {
+  const routes = new Set<string>();
+  const walk = (dir: string, segments: string[]) => {
+    for (const entry of readdirSync(dir)) {
+      const full = path.join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        if (entry.startsWith("[") || entry.startsWith("@") || entry.startsWith("_")) continue;
+        walk(full, entry.startsWith("(") ? segments : [...segments, entry]);
+      } else if (entry === "page.tsx") {
+        routes.add(`/${segments.join("/")}`);
+      }
+    }
+  };
+  walk(path.join(process.cwd(), "app"), []);
+  return routes;
+}
+
+/**
+ * The eight owner-approved articles. `n` is the article number in the owner's
+ * PDFs, which fixes the image names `/blogNa.avif` (cover) and `/blogNb.avif`.
+ */
+const OWNER_ARTICLES = [
+  { n: 1, slug: "preloved-sarees-meaning", publishedAt: "2026-09-28", faq: true },
+  { n: 2, slug: "how-to-identify-pure-silk-saree", publishedAt: "2026-09-29", faq: true },
+  { n: 3, slug: "how-to-care-for-silk-sarees", publishedAt: "2026-09-29", faq: true },
+  { n: 4, slug: "where-to-sell-old-silk-sarees", publishedAt: "2026-09-29", faq: true },
+  { n: 5, slug: "what-is-the-silk-mark", publishedAt: "2026-09-29", faq: false },
+  { n: 6, slug: "buying-second-hand-sarees-online", publishedAt: "2026-09-29", faq: false },
+  { n: 7, slug: "indian-saree-fabrics-and-weaves", publishedAt: "2026-09-29", faq: false },
+  { n: 8, slug: "how-to-care-for-sarees", publishedAt: "2026-09-29", faq: false },
+] as const;
+
+describe("the eight owner-approved articles", () => {
+  const routes = staticSiteRoutes();
+  const published = new Set(readPublishedJournalSlugs());
+
+  it.each(OWNER_ARTICLES)("article $n ($slug) is published and complete", ({ n, slug, publishedAt, faq }) => {
+    const file = path.join(process.cwd(), "content/journal", `${slug}.json`);
+    expect(existsSync(file)).toBe(true);
+    const raw = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    const source = parseJournalArticle(`${slug}.json`, raw);
+
+    expect(source.slug).toBe(slug);
+    expect(source.draft).toBeUndefined();
+    expect(published.has(slug)).toBe(true);
+    expect(source.publishedAt).toBe(publishedAt);
+    expect(source.updatedAt).toBeUndefined();
+
+    expect(source.seo.title).toMatch(/\| From The Trunk$/);
+    expect(source.seo.description.length).toBeGreaterThanOrEqual(70);
+    expect(source.seo.description.length).toBeLessThanOrEqual(160);
+    expect(source.description).toBe(source.seo.description);
+
+    // The title is the page's only H1; body headings are H2 or H3.
+    expect(source.title.trim()).not.toBe("");
+    for (const block of source.body) {
+      if (block.type === "heading") expect([undefined, 2, 3]).toContain(block.level);
+    }
+
+    // Every article shows its supplied photos: `/blogNa.avif` as the cover and
+    // `/blogNb.avif` as its one figure, with a 1200x630 JPG for social previews.
+    const figures = source.body.filter((block) => block.type === "figure");
+    expect(source.cover?.src).toBe(`/blog${n}a.avif`);
+    expect(figures.map((block) => block.images.map((image) => image.src))).toEqual([[`/blog${n}b.avif`]]);
+    expect(existsSync(path.join(process.cwd(), "public/journal/og", `${slug}.jpg`))).toBe(true);
+
+    expect(Boolean(source.faq)).toBe(faq);
+    if (source.faq) expect(source.faq.heading).toBe("Questions people ask");
+    expect(source.about).toMatch(/^\*\*About From The Trunk\.\*\* /);
+    expect(collectInlineHrefs(source.about ?? "")).toEqual([
+      "/collection",
+      "https://www.instagram.com/from.thetrunk/",
+    ]);
+    expect(source.closingLine).toBe("Some treasures aren't made. They're found.");
+
+    const resolve = getJournalLinkResolver();
+    for (const href of articleHrefs(source)) {
+      const resolved = resolve(href);
+      if (!href.startsWith("/")) {
+        expect(["external", "anchor"]).toContain(resolved.kind);
+        continue;
+      }
+      expect(resolved.kind).toBe("internal");
+      const pathname = href.split(/[?#]/)[0] ?? href;
+      const exists =
+        routes.has(pathname) ||
+        keywordLandingByPath.has(pathname) ||
+        (pathname.startsWith("/journal/") && published.has(pathname.split("/")[2] ?? ""));
+      expect(exists, `${slug}: ${href} has no page`).toBe(true);
+    }
+
+    const article = getPublishedJournalArticle(slug);
+    expect(article).not.toBeNull();
+    const jsonLd = journalArticleJsonLd(article!);
+    expect(jsonLd.author).toMatchObject({ "@type": "Organization", name: "From The Trunk" });
+  });
+});
+
+describe("supplied Journal photos", () => {
+  const sources = readdirSync(path.join(process.cwd(), "content/journal"))
+    .filter((file) => file.endsWith(".json"))
+    .map((file) =>
+      parseJournalArticle(file, JSON.parse(readFileSync(path.join(process.cwd(), "content/journal", file), "utf8"))),
+    );
+
+  it.each(sources.map((source) => [source.slug, source] as const))("%s has a cover whose file exists", (_, source) => {
+    expect(source.cover).not.toBeNull();
+    expect(existsSync(path.join(process.cwd(), "public", source.cover!.src))).toBe(true);
+  });
+
+  it("every public/blog*.avif is used by an article", () => {
+    const referenced = new Set(
+      sources.flatMap((source) => [
+        ...(source.cover ? [source.cover.src] : []),
+        ...source.body.flatMap((block) => (block.type === "figure" ? block.images.map((image) => image.src) : [])),
+      ]),
+    );
+    const supplied = readdirSync(path.join(process.cwd(), "public"))
+      .filter((file) => /^blog.*\.avif$/.test(file))
+      .map((file) => `/${file}`);
+    expect(supplied.length).toBeGreaterThan(0);
+    expect(supplied.filter((src) => !referenced.has(src))).toEqual([]);
   });
 });

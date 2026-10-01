@@ -10,20 +10,30 @@ import { parseJournalArticle } from "@/lib/journal/schema";
 import { filterJournalSearch } from "@/lib/journal/search";
 import { journalArticleJsonLd, journalArticleMetadata, journalSitemapEntries } from "@/lib/journal/seo";
 
+// All eight stories in their published order with reading minutes: newest
+// first, and title order within a date (Blog 1 is dated a day before the rest).
 const expected = [
-  ["preloved-sarees-meaning", 6],
+  ["indian-saree-fabrics-and-weaves", 8],
+  ["buying-second-hand-sarees-online", 4],
+  ["how-to-care-for-sarees", 7],
   ["how-to-identify-pure-silk-saree", 8],
-  ["how-to-care-for-silk-sarees", 6],
+  ["how-to-care-for-silk-sarees", 7],
   ["what-is-the-silk-mark", 4],
   ["where-to-sell-old-silk-sarees", 6],
+  ["preloved-sarees-meaning", 6],
 ] as const;
 
-describe("five published Journal stories", () => {
+const PUBLISHED_ON: Record<string, string> = {
+  "preloved-sarees-meaning": "2026-09-28",
+};
+
+describe("published Journal stories", () => {
   it("keeps stable order, reading times, search and optional FAQs", () => {
     const articles = getPublishedJournalArticles();
     expect(articles.map(({ slug, readingMinutes }) => [slug, readingMinutes])).toEqual(expected);
+    expect(articles.every(({ draft }) => !draft)).toBe(true);
     expect([...articles].reverse().sort(compareJournalArticles).map(({ slug }) => slug))
-      .toEqual(expected.map(([slug]) => slug));
+      .toEqual(articles.map(({ slug }) => slug));
     for (const article of articles) {
       expect(filterJournalSearch(articles, article.title)).toContain(article.slug);
     }
@@ -31,12 +41,25 @@ describe("five published Journal stories", () => {
     expect(articles.find(({ slug }) => slug === "what-is-the-silk-mark")?.faq).toBeUndefined();
   });
 
-  it("omits unknown dates from the rendered hero, SEO and sitemap", () => {
+  it("dates every story the same way in the hero, JSON-LD, Open Graph and sitemap", () => {
     const articles = getPublishedJournalArticles();
-    for (const article of articles.filter(({ slug }) => slug !== "preloved-sarees-meaning")) {
-      expect(article.publishedAt).toBeUndefined();
-      expect(article.modifiedAt).toBeUndefined();
-      expect(article.dateLabel).toBeNull();
+    for (const article of articles) {
+      const day = PUBLISHED_ON[article.slug] ?? "2026-09-29";
+      expect(article.publishedAt).toBe(day);
+      const zoned = `${day}T00:00:00+05:30`;
+      const html = renderToStaticMarkup(<JournalArticleHero article={article} shareUrl={article.path} shareImageUrl={null} />);
+      expect(html).toContain(`<time dateTime="${day}">${article.dateLabel}</time>`);
+      expect(journalArticleJsonLd(article)).toMatchObject({ datePublished: zoned, dateModified: zoned });
+      expect(journalArticleMetadata(article).openGraph).toMatchObject({ publishedTime: zoned, modifiedTime: zoned });
+      expect(journalSitemapEntries([article])[1]).toHaveProperty("lastModified", zoned);
+    }
+    expect(journalSitemapEntries(articles)).toHaveLength(articles.length + 1);
+    expect(journalSitemapEntries(articles)[0]).toHaveProperty("lastModified", "2026-09-29T00:00:00+05:30");
+  });
+
+  it("omits unknown dates from the rendered hero, SEO and sitemap", () => {
+    for (const published of getPublishedJournalArticles()) {
+      const article = { ...published, publishedAt: undefined, updatedAt: undefined, modifiedAt: undefined, dateLabel: null };
       const html = renderToStaticMarkup(<JournalArticleHero article={article} shareUrl={article.path} shareImageUrl={null} />);
       expect(html).not.toContain("<time");
       expect(html).not.toContain("Published ");
@@ -47,7 +70,6 @@ describe("five published Journal stories", () => {
       expect(journalArticleJsonLd(article)).not.toHaveProperty("dateModified");
       expect(journalSitemapEntries([article]).every((entry) => !("lastModified" in entry))).toBe(true);
     }
-    expect(journalSitemapEntries(articles)).toHaveLength(6);
   });
 
   it("validates an unknown date while rejecting empty, malformed or reversed dates", () => {

@@ -80,7 +80,7 @@ export function resolveFeedCondition(
  */
 export const COMMERCE_CONDITION_LABELS: Record<CommerceCondition, string> = {
   new: "New",
-  used: "Pre-loved",
+  used: "Preloved",
 };
 
 export function commerceConditionLabel(

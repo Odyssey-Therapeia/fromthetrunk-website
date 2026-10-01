@@ -114,6 +114,17 @@
   --color-ftt-border: var(--ftt-border);
   --color-ftt-muted: var(--ftt-muted);
   --color-ftt-card: var(--ftt-card);
+  /* The Trunk Journal only: set under .journal-theme, unset everywhere else. */
+  --color-journal-ivory: var(--journal-ivory);
+  --color-journal-paper: var(--journal-paper);
+  --color-journal-navy: var(--journal-navy);
+  --color-journal-navy-raised: var(--journal-navy-raised);
+  --color-journal-gold: var(--journal-gold);
+  --color-journal-burgundy: var(--journal-burgundy);
+  --color-journal-muted: var(--journal-muted);
+  --font-journal-serif: var(--journal-font-serif), var(--font-serif);
+  --font-journal-serif-italic: var(--journal-font-serif-italic), var(--journal-font-serif), var(--font-serif);
+  --font-journal-sans: var(--journal-font-sans), var(--font-sans);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -1115,5 +1126,163 @@ html[data-ftt-analytics-consent="denied"] [data-ftt-consent-banner] {
   .ftt-drape-fill-sheen {
     animation: none;
     opacity: 0.18;
+  }
+}
+
+/*
+ * The Trunk Journal (/journal and /journal/*): brand-book colours, scoped to
+ * the Journal layout's wrapper so no sitewide token changes. Gold is for
+ * hairlines and accents on navy (5.53:1); on ivory it never carries text
+ * (2.77:1). Burgundy is kept for signal roles. Muted is navy at 72% on
+ * ivory, 6.45:1. Fonts come from next/font in app/(site)/journal/layout.tsx.
+ */
+@layer base {
+  .journal-theme {
+    --journal-ivory: #fff7ef;
+    --journal-paper: #fffcf8;
+    --journal-navy: #0b1d4b;
+    --journal-navy-raised: #132a63;
+    --journal-gold: #c18d39;
+    --journal-burgundy: #720912;
+    --journal-muted: #4f5a79;
+    background-color: var(--journal-ivory);
+    color: var(--journal-navy);
+    font-family: var(--journal-font-sans), var(--font-sans);
+  }
+}
+
+/*
+ * Journal article hero cover. Below a 56rem header it follows the meta line at
+ * full width, 16:9 up to 18rem tall, fading in from the top and the left and
+ * softening at the bottom. From
+ * 56rem it sits behind the right 55% of the band, from the top of the band to
+ * 0.5rem above the separator. Its left edge stays fully transparent up to the
+ * H1's 44rem box (--journal-hero-clear, measured from the image's left edge),
+ * so no visible pixel ever sits under text, then eases in over --journal-hero-ramp:
+ * fully opaque by 58% of the image where the band is wide, and never over less
+ * than 20% of it where the text column takes more of the band (1024-1280px).
+ * Smoothstep stops keep the fade from banding.
+ */
+.journal-hero-media {
+  --journal-hero-clear: 0px;
+  --journal-hero-ramp: 22%;
+  --journal-hero-side: linear-gradient(
+    to right,
+    transparent var(--journal-hero-clear),
+    rgb(0 0 0 / 0.03) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.1),
+    rgb(0 0 0 / 0.1) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.2),
+    rgb(0 0 0 / 0.22) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.3),
+    rgb(0 0 0 / 0.35) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.4),
+    rgb(0 0 0 / 0.5) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.5),
+    rgb(0 0 0 / 0.65) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.6),
+    rgb(0 0 0 / 0.78) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.7),
+    rgb(0 0 0 / 0.9) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.8),
+    rgb(0 0 0 / 0.97) calc(var(--journal-hero-clear) + var(--journal-hero-ramp) * 0.9),
+    #000 calc(var(--journal-hero-clear) + var(--journal-hero-ramp))
+  );
+  --journal-hero-ends: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(0 0 0 / 0.1) 8%,
+    rgb(0 0 0 / 0.35) 16%,
+    rgb(0 0 0 / 0.65) 24%,
+    rgb(0 0 0 / 0.9) 32%,
+    #000 40%,
+    #000 88%,
+    rgb(0 0 0 / 0.6) 96%,
+    rgb(0 0 0 / 0.35)
+  );
+  position: relative;
+  width: 100%;
+  margin-top: 0.5rem;
+  aspect-ratio: 16 / 9;
+  max-height: 18rem;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: var(--journal-hero-side), var(--journal-hero-ends);
+  mask-image: var(--journal-hero-side), var(--journal-hero-ends);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+@container (min-width: 56rem) {
+  .journal-hero-media {
+    --journal-hero-clear: max(0px, 44rem - 45cqw);
+    --journal-hero-ramp: clamp(20%, 58% - var(--journal-hero-clear), 42%);
+    --journal-hero-ends: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(0 0 0 / 0.5) 4%,
+      #000 10%,
+      #000 82%,
+      rgb(0 0 0 / 0.5) 92%,
+      transparent
+    );
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: -1.5rem;
+    z-index: -1;
+    width: 55%;
+    max-height: none;
+    margin-top: 0;
+    aspect-ratio: auto;
+  }
+}
+
+/*
+ * Journal accordion (components/journal/journal-accordion.tsx). React cannot
+ * server-render hidden="until-found", so closed panels arrive visible and get
+ * the attribute on hydration (data-ready). Until then, with scripting on,
+ * closed panels collapse here so nothing jumps; with scripting off every panel
+ * stays open and the inert toggles are hidden.
+ */
+@media (scripting: enabled) {
+  .journal-accordion:not([data-ready]) .journal-accordion-panel[data-state="closed"] {
+    display: none;
+  }
+}
+
+@media (scripting: none) {
+  .journal-accordion-toggle-all,
+  .journal-accordion-icon {
+    display: none;
+  }
+}
+
+@keyframes journal-accordion-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes journal-accordion-close {
+  from {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+/* Only user toggles animate (data-animating), never the first render. */
+@media (prefers-reduced-motion: no-preference) {
+  .journal-accordion-panel[data-animating] {
+    overflow: hidden;
+  }
+
+  .journal-accordion-panel[data-animating][data-state="open"] {
+    animation: journal-accordion-open 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .journal-accordion-panel[data-animating][data-state="closed"] {
+    animation: journal-accordion-close 240ms cubic-bezier(0.4, 0, 1, 1);
   }
 }

@@ -18,19 +18,19 @@ const DEFAULT_FOOTER_SECTIONS: FooterSection[] = [
       { href: "/sell-your-saree", label: "Sell Your Saree" },
       { href: "/our-team", label: "Our Team" },
       {
-        href: "/guides/what-is-a-pre-loved-saree",
-        label: "What Pre-Loved Means",
+        href: "/journal/preloved-sarees-meaning",
+        label: "What Preloved Means",
       },
     ],
   },
   {
     title: "Shop By",
     links: [
-      { href: "/collection/fabric/silk", label: "Pre-Loved Silk Sarees" },
+      { href: "/collection/fabric/silk", label: "Preloved Silk Sarees" },
       { href: "/collection/occasion/festive", label: "Festive Sarees" },
       {
         href: "/guides/pre-loved-vs-second-hand-saree",
-        label: "Pre-Loved vs Second-Hand",
+        label: "Preloved vs Second-Hand",
       },
     ],
   },

@@ -114,7 +114,7 @@ export async function generateMetadata({
         product.storyNarrative,
         product.storyTitle,
       )
-    : "Explore authenticated pre-loved luxury sarees from From The Trunk.";
+    : "Explore authenticated preloved luxury sarees from From The Trunk.";
   const socialImage = seoImageMetadata(
     imageUrl
       ? {
@@ -350,10 +350,10 @@ export default async function SareePage({ params }: ProductPageProps) {
                 ) : null}
                 {!isBlouse ? (
                   <Link
-                    href="/guides/what-is-a-pre-loved-saree"
+                    href="/journal/preloved-sarees-meaning"
                     className="rounded-full border border-[#E7DDD4] bg-[#FDF7F1] px-3 py-1.5 text-[11px] font-medium text-[#601D1C]/70 transition hover:border-[#B39152] hover:text-[#141D46]"
                   >
-                    What pre-loved means
+                    What preloved means
                   </Link>
                 ) : null}
               </div>
@@ -498,7 +498,7 @@ export default async function SareePage({ params }: ProductPageProps) {
                 Provenance Promise
               </p>
               <h2 className="mt-2 max-w-xl font-serif text-[clamp(1.7rem,2.6vw,2.7rem)] leading-[0.98]">
-                Not just pre-loved. Carefully re-stored.
+                Not just preloved. Carefully re-stored.
               </h2>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:mt-0">

@@ -25,7 +25,7 @@ export function productJsonLd(product: Product): Record<string, unknown> {
   });
   const displayDetails = getProductDisplayDetails(product);
   const conditionDisplay = productConditionDisplay(product);
-  const category = product.collection?.name ?? "Pre-loved saree";
+  const category = product.collection?.name ?? "Preloved saree";
   const additionalProperty = [
     displayDetails.fabric
       ? {
@@ -105,19 +105,33 @@ export function productJsonLd(product: Product): Record<string, unknown> {
 }
 
 /**
+ * Stable node ids for the sitewide Organization and WebSite, so page-level
+ * JSON-LD (e.g. a Journal BlogPosting) can reference them instead of
+ * describing the brand again.
+ */
+export function organizationJsonLdId(): string {
+  return `${absoluteUrl("/")}#organization`;
+}
+
+export function websiteJsonLdId(): string {
+  return `${absoluteUrl("/")}#website`;
+}
+
+/**
  * Generate JSON-LD for the organization.
  */
 export function organizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "OnlineStore",
+    "@id": organizationJsonLdId(),
     name: "From The Trunk",
     url: absoluteUrl("/"),
     logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     email: "hello@fromthetrunk.shop",
     sameAs: ["https://www.instagram.com/from.thetrunk/"],
     description:
-      "Curated collection of authenticated, pre-loved luxury sarees with provenance.",
+      "Curated collection of authenticated, preloved luxury sarees with provenance.",
     contactPoint: {
       "@type": "ContactPoint",
       email: "hello@fromthetrunk.shop",
@@ -132,6 +146,7 @@ export function websiteJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": websiteJsonLdId(),
     name: "From The Trunk",
     alternateName: [
       "FTT",
@@ -142,6 +157,7 @@ export function websiteJsonLd(): Record<string, unknown> {
     url: absoluteUrl("/"),
     publisher: {
       "@type": "Organization",
+      "@id": organizationJsonLdId(),
       name: "From The Trunk",
       logo: absoluteUrl("/Ftt_logo_navbar.avif"),
     },

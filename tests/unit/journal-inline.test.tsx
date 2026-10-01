@@ -85,7 +85,7 @@ describe("journal inline rendering", () => {
     expect(html).not.toContain("<img");
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
-    expect(html).toContain('<strong class="font-semibold text-ftt-navy">bold</strong>');
+    expect(html).toContain('<strong class="font-semibold">bold</strong>');
   });
 
   it("renders internal, external and unpublished journal links correctly", () => {

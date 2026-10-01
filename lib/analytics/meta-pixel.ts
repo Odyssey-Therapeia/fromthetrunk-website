@@ -212,10 +212,19 @@ export function flushMetaPixelQueue(win: MetaPixelWindow): number {
  * one that is already reporting its own PageViews. The caller uses that answer
  * to decide whether the URL has actually been counted.
  */
-export function trackMetaPageView(win: MetaPixelWindow): boolean {
+export function trackMetaPageView(
+  win: MetaPixelWindow,
+  eventId: string,
+): boolean {
   const fbq = win.fbq;
-  if (typeof fbq !== "function" || fbq.fttInitialisedId == null) return false;
-  fbq("track", "PageView");
+  if (
+    typeof fbq !== "function" ||
+    fbq.fttInitialisedId == null ||
+    !eventId.trim()
+  ) return false;
+  // Meta expects the deduplication ID in options, not custom event data.
+  // OpenBridge must forward this unchanged as the server-side event_id.
+  fbq("track", "PageView", {}, { eventID: eventId });
   return true;
 }
 

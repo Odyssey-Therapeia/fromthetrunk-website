@@ -1,7 +1,9 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+import { JournalAccordion } from "@/components/journal/journal-accordion";
 import { JournalInline } from "@/components/journal/journal-inline";
+import { segmentJournalBody } from "@/lib/journal/accordion";
 import type { JournalRenderBlock } from "@/lib/journal/derive";
 import type { JournalLinkResolver } from "@/lib/journal/links";
 import { cn } from "@/lib/utils";
@@ -13,14 +15,15 @@ type BlockProps<T extends JournalRenderBlock["type"]> = {
   resolveLink: JournalLinkResolver;
 };
 
-const paragraphClass = "text-[1.0625rem] leading-[1.8] text-foreground";
+/** Body 17/30 → 18/32, set to ~40rem so lines stay near 70 characters. */
+const paragraphClass = "max-w-[40rem] text-[1.0625rem] leading-[1.875rem] text-journal-navy @xl:text-lg @xl:leading-8";
 
 function Paragraph({ block, resolveLink, lede }: BlockProps<"paragraph"> & { lede: boolean }) {
   return (
     <p
       className={cn(
         paragraphClass,
-        lede && "text-[1.1875rem] leading-[1.7] text-ftt-navy sm:text-[1.3125rem] sm:leading-[1.65]",
+        lede && "text-[1.1875rem] leading-[1.875rem] @xl:text-xl @xl:leading-8",
       )}
     >
       <JournalInline text={block.text} resolveLink={resolveLink} />
@@ -34,10 +37,10 @@ function Heading({ block, resolveLink }: BlockProps<"heading">) {
     <Tag
       id={block.id}
       className={cn(
-        "scroll-mt-28 text-balance font-serif leading-[1.15] text-ftt-navy",
+        "max-w-[40rem] scroll-mt-32 text-balance font-journal-serif font-semibold text-journal-navy",
         block.level === 3
-          ? "mt-9 text-[1.4rem] sm:text-[1.65rem]"
-          : "mt-14 text-[1.65rem] before:mb-5 before:block before:h-px before:w-10 before:bg-ftt-gold before:content-[''] sm:mt-16 sm:text-[2rem]",
+          ? "mt-9 text-[1.375rem] leading-7 @xl:text-2xl @xl:leading-[1.875rem]"
+          : "mt-12 text-[1.625rem] font-medium leading-8 before:mb-4 before:block before:h-px before:w-10 before:bg-journal-gold before:content-[''] @xl:mt-14 @xl:text-[2rem] @xl:leading-9",
       )}
     >
       <JournalInline text={block.text} resolveLink={resolveLink} />
@@ -56,13 +59,13 @@ function List({ block, resolveLink }: BlockProps<"list">) {
     <ol
       className={cn(
         paragraphClass,
-        "list-decimal space-y-3.5 pl-8 marker:font-serif marker:text-[1.15em] marker:text-ftt-burgundy",
+        "list-decimal space-y-3 pl-8 marker:font-journal-serif marker:font-semibold marker:text-[1.1em]",
       )}
     >
       {items}
     </ol>
   ) : (
-    <ul className={cn(paragraphClass, "list-disc space-y-3 pl-7 marker:text-ftt-gold")}>{items}</ul>
+    <ul className={cn(paragraphClass, "list-disc space-y-3 pl-7 marker:text-journal-gold")}>{items}</ul>
   );
 }
 
@@ -78,14 +81,14 @@ function Table({ block, resolveLink, labelledBy }: BlockProps<"table"> & { label
   return (
     <div className="@container">
       <div className="hidden @xl:block">
-        <table aria-labelledby={labelledBy} className="w-full border-collapse text-left text-[0.9375rem] leading-6">
+        <table aria-labelledby={labelledBy} className="w-full border-collapse text-left text-[0.9375rem] leading-6 text-journal-navy">
           <thead>
-            <tr className="border-b border-ftt-navy/70">
+            <tr className="border-b border-journal-navy/70">
               {block.columns.map((column) => (
                 <th
                   key={column}
                   scope="col"
-                  className="pb-3 pr-6 align-bottom text-[10px] font-semibold uppercase tracking-[0.24em] text-ftt-burgundy/80 last:pr-0"
+                  className="pb-3 pr-6 align-bottom text-xs font-medium uppercase leading-4 tracking-[0.18em] text-journal-muted last:pr-0"
                 >
                   {column}
                 </th>
@@ -94,12 +97,12 @@ function Table({ block, resolveLink, labelledBy }: BlockProps<"table"> & { label
           </thead>
           <tbody>
             {block.rows.map(([rowHeader, ...cells], rowIndex) => (
-              <tr key={rowIndex} className="border-b border-ftt-border">
-                <th scope="row" className="py-4 pr-6 align-top font-serif text-[1.0625rem] font-normal text-ftt-navy">
+              <tr key={rowIndex} className="border-b border-journal-gold/45">
+                <th scope="row" className="py-4 pr-6 align-top font-journal-serif text-lg font-semibold leading-6 text-journal-navy">
                   <JournalInline text={rowHeader} resolveLink={resolveLink} />
                 </th>
                 {cells.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="py-4 pr-6 align-top text-foreground last:pr-0">
+                  <td key={cellIndex} className="py-4 pr-6 align-top text-journal-navy last:pr-0">
                     <JournalInline text={cell} resolveLink={resolveLink} />
                   </td>
                 ))}
@@ -111,18 +114,18 @@ function Table({ block, resolveLink, labelledBy }: BlockProps<"table"> & { label
 
       <ul aria-labelledby={labelledBy} className="grid gap-3 @xl:hidden">
         {block.rows.map(([rowHeader, ...cells], rowIndex) => (
-          <li key={rowIndex} className="rounded-2xl border border-ftt-border bg-ftt-card px-5 py-4">
-            <p className="font-serif text-lg leading-snug text-ftt-navy">
+          <li key={rowIndex} className="rounded-2xl border border-journal-navy/15 bg-journal-paper px-5 py-4">
+            <p className="font-journal-serif text-xl font-semibold leading-6 text-journal-navy">
               <span className="sr-only">{rowHeaderColumn}: </span>
               <JournalInline text={rowHeader} resolveLink={resolveLink} />
             </p>
-            <dl className="mt-3 grid gap-3 border-t border-ftt-border pt-3 text-[0.9375rem] leading-6">
+            <dl className="mt-3 grid gap-3 border-t border-journal-gold/45 pt-3 text-[0.9375rem] leading-6 text-journal-navy">
               {cells.map((cell, cellIndex) => (
                 <div key={cellIndex}>
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ftt-burgundy/80">
+                  <dt className="text-xs font-medium uppercase leading-4 tracking-[0.18em] text-journal-muted">
                     {valueColumns[cellIndex]}
                   </dt>
-                  <dd className="mt-1 text-foreground">
+                  <dd className="mt-1">
                     <JournalInline text={cell} resolveLink={resolveLink} />
                   </dd>
                 </div>
@@ -145,7 +148,7 @@ function Figure({ block, resolveLink }: BlockProps<"figure">) {
           <div
             key={image.src}
             className={cn(
-              "relative overflow-hidden rounded-[1.1rem] bg-ftt-border/40",
+              "relative overflow-hidden rounded-[1.1rem] bg-journal-navy/10",
               pair ? "aspect-4/3 @md:aspect-4/5" : "aspect-4/3 @md:aspect-3/2",
             )}
           >
@@ -154,14 +157,14 @@ function Figure({ block, resolveLink }: BlockProps<"figure">) {
               alt={image.alt}
               fill
               quality={75}
-              sizes={pair ? "(min-width: 768px) 340px, 100vw" : "(min-width: 768px) 700px, 100vw"}
+              sizes={pair ? "(min-width: 768px) 346px, calc(100vw - 32px)" : "(min-width: 768px) 704px, calc(100vw - 32px)"}
               className="object-cover"
             />
           </div>
         ))}
       </div>
       {block.caption ? (
-        <figcaption className="mt-3 text-sm leading-6 text-ftt-burgundy/80">
+        <figcaption className="mt-3 text-sm leading-5 text-journal-muted">
           <JournalInline text={block.caption} resolveLink={resolveLink} />
         </figcaption>
       ) : null}
@@ -178,39 +181,69 @@ function precedingHeadingIds(body: readonly JournalRenderBlock[]): (string | und
   return ids;
 }
 
-/** The article body: paragraphs, H2s, lists, tables and figures in order. */
+/**
+ * The article body: paragraphs, H2s, lists, tables and figures in order, on a
+ * 44rem column. When `expandableSectionId` names an H2 with a clean run of H3
+ * subsections, those subsections render as expandable cards under it, each
+ * keeping its heading level, id and blocks.
+ */
 export function JournalArticleBody({
   body,
   resolveLink,
+  afterLede,
+  expandableSectionId,
 }: {
   body: readonly JournalRenderBlock[];
   resolveLink: JournalLinkResolver;
+  /** Rendered straight after the opening paragraph (the contents, below 1280px). */
+  afterLede?: ReactNode;
+  /** An H2 id from `JOURNAL_EXPANDABLE_SECTIONS`. */
+  expandableSectionId?: string;
 }) {
   const sectionHeadingIds = precedingHeadingIds(body);
 
-  const blocks: ReactNode[] = body.map((block, index) => {
+  const renderBlock = (block: JournalRenderBlock, index: number): ReactNode[] => {
     switch (block.type) {
       case "paragraph":
-        return <Paragraph key={index} block={block} resolveLink={resolveLink} lede={index === 0} />;
+        return index === 0 && afterLede
+          ? [<Paragraph key={index} block={block} resolveLink={resolveLink} lede />, <div key="after-lede">{afterLede}</div>]
+          : [<Paragraph key={index} block={block} resolveLink={resolveLink} lede={index === 0} />];
       case "heading":
-        return <Heading key={index} block={block} resolveLink={resolveLink} />;
+        return [<Heading key={index} block={block} resolveLink={resolveLink} />];
       case "list":
-        return <List key={index} block={block} resolveLink={resolveLink} />;
+        return [<List key={index} block={block} resolveLink={resolveLink} />];
       case "table":
-        return (
+        return [
           <Table
             key={index}
             block={block}
             resolveLink={resolveLink}
             labelledBy={sectionHeadingIds[index]}
-          />
-        );
+          />,
+        ];
       case "figure":
-        return <Figure key={index} block={block} resolveLink={resolveLink} />;
+        return [<Figure key={index} block={block} resolveLink={resolveLink} />];
     }
-  });
+  };
+
+  const blocks: ReactNode[] = segmentJournalBody(body, expandableSectionId).flatMap<ReactNode>((segment) =>
+    segment.kind === "block"
+      ? renderBlock(segment.block, segment.index)
+      : [
+          <JournalAccordion
+            key={`subsections-${segment.subsections[0].heading.id}`}
+            variant="card"
+            headingLevel={segment.subsections[0].heading.level}
+            items={segment.subsections.map(({ heading, blocks: panel }) => ({
+              id: heading.id,
+              label: <JournalInline text={heading.text} resolveLink={resolveLink} />,
+              content: <div className="space-y-5 *:last:mb-0">{panel.flatMap(({ block, index }) => renderBlock(block, index))}</div>,
+            }))}
+          />,
+        ],
+  );
 
   // space-y sets a zero-specificity bottom margin, so headings and figures can
   // widen the gap with their own margins (sibling margins collapse).
-  return <div className="space-y-6">{blocks}</div>;
+  return <div className="@container space-y-6">{blocks}</div>;
 }

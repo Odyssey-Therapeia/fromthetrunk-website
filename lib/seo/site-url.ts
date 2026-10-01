@@ -14,22 +14,6 @@ function normalizeOrigin(value: string | undefined): string | null {
   }
 }
 
-function isUnsafeCanonicalOrigin(origin: string): boolean {
-  try {
-    const url = new URL(origin);
-    const host = url.hostname.toLowerCase();
-
-    return (
-      url.protocol !== "https:" ||
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host.endsWith(".vercel.app")
-    );
-  } catch {
-    return true;
-  }
-}
-
 function warnInvalidProductionOrigin(origin: string | null): void {
   if (warnedInvalidProductionOrigin) return;
   warnedInvalidProductionOrigin = true;
@@ -52,7 +36,7 @@ export function getCanonicalOrigin(): string {
 
   if (
     process.env.NODE_ENV === "production" &&
-    isUnsafeCanonicalOrigin(configured)
+    configured !== DEFAULT_CANONICAL_ORIGIN
   ) {
     warnInvalidProductionOrigin(configured);
     return DEFAULT_CANONICAL_ORIGIN;

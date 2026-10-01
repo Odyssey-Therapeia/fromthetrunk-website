@@ -18,8 +18,9 @@
       "zari care"
     ]
   },
+  "publishedAt": "2026-09-29",
   "cover": {
-    "src": "/journal/how-to-care-for-silk-sarees/silk-saree-folded-in-muslin.avif",
+    "src": "/blog3a.avif",
     "alt": "Silk saree folded flat and wrapped in white muslin"
   },
   "body": [
@@ -83,10 +84,11 @@
       "type": "figure",
       "images": [
         {
-          "src": "/journal/how-to-care-for-silk-sarees/zari-border-covered-with-tissue.avif",
-          "alt": "Zari border covered with acid free tissue before storage"
+          "src": "/blog3b.avif",
+          "alt": "Folded saree with a wide gold floral border, wrapped in white muslin on a cupboard shelf"
         }
-      ]
+      ],
+      "caption": "Soft muslin laid over a folded saree before it goes on the shelf."
     },
     {
       "type": "heading",
@@ -99,15 +101,6 @@
     {
       "type": "paragraph",
       "text": "For moths, use natural deterrents such as dried neem leaves, cloves or cedar, placed near the sarees but not touching them. Avoid naphthalene balls. They can stain silk and leave a smell that takes months to fade."
-    },
-    {
-      "type": "figure",
-      "images": [
-        {
-          "src": "/journal/how-to-care-for-silk-sarees/neem-leaves-silica-gel-saree-cupboard.avif",
-          "alt": "Dried neem leaves and a silica gel sachet beside folded silk sarees in a cupboard"
-        }
-      ]
     },
     {
       "type": "heading",
@@ -163,7 +156,7 @@
     },
     {
       "type": "paragraph",
-      "text": "From The Trunk takes preloved and vintage sarees on consignment. Write to [hello@fromthetrunk.shop](mailto:hello@fromthetrunk.shop) with a few photographs of the saree, including the pallu, the border and any flaws."
+      "text": "From The Trunk takes preloved and vintage sarees [on consignment](/sell-your-saree). Write to [hello@fromthetrunk.shop](mailto:hello@fromthetrunk.shop) with a few photographs of the saree, including the pallu, the border and any flaws."
     }
   ],
   "faq": {

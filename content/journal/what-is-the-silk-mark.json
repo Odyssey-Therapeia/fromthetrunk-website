@@ -15,9 +15,10 @@
       "silk saree without silk mark"
     ]
   },
+  "publishedAt": "2026-09-29",
   "cover": {
-    "src": "/journal/what-is-the-silk-mark/silk-mark-hologram-label.avif",
-    "alt": "Silk Mark hologram label on a pure silk saree"
+    "src": "/blog5a.avif",
+    "alt": "Hands holding a small holographic tag on the border of a maroon and gold zari saree"
   },
   "body": [
     {
@@ -65,6 +66,16 @@
       "text": "The Silk Mark Organisation runs chapters across India and provides testing services, which is the route to take if you have a piece you are seriously unsure about."
     },
     {
+      "type": "figure",
+      "images": [
+        {
+          "src": "/blog5b.avif",
+          "alt": "Small holographic tag resting on the gold zari border of a folded maroon saree"
+        }
+      ],
+      "caption": "A holographic tag on the border of a folded saree."
+    },
+    {
       "type": "heading",
       "text": "Why do so many pure silk sarees have no Silk Mark?"
     },
@@ -101,6 +112,6 @@
       "text": "The Silk Mark is useful and worth looking for on anything new. On preloved and vintage sarees it is a welcome bonus, not a requirement, and its absence should not put you off a piece that passes every other check."
     }
   ],
-  "about": "About From The Trunk. From The Trunk sells authenticated preloved and vintage sarees from Bengaluru, delivering across India. Every saree is one of one, condition graded before it is listed, and sold with what is known of its history. Browse the collection at [fromthetrunk.shop](/collection) or follow [@from.thetrunk](https://www.instagram.com/from.thetrunk/) on Instagram.",
+  "about": "**About From The Trunk.** From The Trunk sells authenticated preloved and vintage sarees from Bengaluru, delivering across India. Every saree is one of one, condition graded before it is listed, and sold with what is known of its history. Browse the collection at [fromthetrunk.shop](/collection) or follow [@from.thetrunk](https://www.instagram.com/from.thetrunk/) on Instagram.",
   "closingLine": "Some treasures aren't made. They're found."
 }

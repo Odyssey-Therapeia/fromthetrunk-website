@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = publicPageMetadata({
   title: "Our Team | From The Trunk",
   description:
-    "Meet the team behind From The Trunk, a circular saree house for authenticated pre-loved sarees and restored Indian textiles.",
+    "Meet the team behind From The Trunk, a circular saree house for authenticated preloved sarees and restored Indian textiles.",
   path: "/our-team",
 });
 

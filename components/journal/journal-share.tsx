@@ -80,7 +80,7 @@ async function copyText(value: string, host: HTMLElement): Promise<boolean> {
 }
 
 const itemClass =
-  "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm text-ftt-midnight outline-none transition-colors hover:bg-ftt-ivory focus-visible:bg-ftt-ivory focus-visible:ring-2 focus-visible:ring-ftt-gold";
+  "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm text-ftt-midnight outline-none transition-colors hover:bg-ftt-ivory focus-visible:bg-ftt-ivory focus-visible:ring-2 focus-visible:ring-ftt-navy";
 
 const iconTileClass =
   "flex size-8 shrink-0 items-center justify-center rounded-full bg-ftt-navy/[0.06] text-ftt-navy [&_svg]:size-4";
@@ -125,11 +125,11 @@ export function JournalShare({ url, title, text, imageUrl, className }: JournalS
       <PopoverTrigger
         onClick={onTriggerClick}
         className={cn(
-          "-mx-2.5 inline-flex h-10 items-center gap-2 rounded-full px-2.5 transition-colors hover:bg-ftt-burgundy/[0.06] hover:text-ftt-burgundy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftt-gold data-[state=open]:bg-ftt-burgundy/[0.06]",
+          "-mx-3 inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3 transition-colors hover:bg-journal-navy/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-journal-navy data-[state=open]:bg-journal-navy/[0.06]",
           className,
         )}
       >
-        <Share2 aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
+        <Share2 aria-hidden="true" strokeWidth={1.5} className="size-4" />
         Share
       </PopoverTrigger>
       <PopoverContent
@@ -138,7 +138,7 @@ export function JournalShare({ url, title, text, imageUrl, className }: JournalS
         collisionPadding={16}
         className="w-64 rounded-2xl border-ftt-border bg-ftt-card p-2 text-ftt-midnight shadow-[0_18px_48px_rgba(20,29,70,0.16)]"
       >
-        <p className="px-2.5 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-ftt-burgundy/80">
+        <p className="px-2.5 pb-1.5 pt-2 text-xs font-semibold uppercase tracking-[0.22em] text-ftt-burgundy/80">
           Share this story
         </p>
         <ul className="grid gap-0.5">

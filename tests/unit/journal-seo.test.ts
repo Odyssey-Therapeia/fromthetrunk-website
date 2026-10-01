@@ -8,6 +8,8 @@ import {
   journalArticleJsonLd,
   journalArticleMetadata,
   journalBreadcrumbItems,
+  journalBreadcrumbJsonLd,
+  journalIndexJsonLd,
   journalIndexMetadata,
   journalSitemapEntries,
 } from "@/lib/journal/seo";
@@ -22,6 +24,8 @@ vi.mock("@/lib/ports/catalog-search", () => ({
 
 const ORIGIN = "https://www.fromthetrunk.shop";
 const ARTICLE_URL = `${ORIGIN}/journal/preloved-sarees-meaning`;
+const OG = `${ORIGIN}/journal/og/preloved-sarees-meaning.jpg`;
+const COVER = `${ORIGIN}/blog1a.avif`;
 const DESCRIPTION =
   "What preloved means for a saree, how it differs from second hand and vintage, what preloved sarees cost, and how to tell one has been well kept.";
 
@@ -43,7 +47,8 @@ describe("journal SEO", () => {
     expect(metadata.title).toEqual({ absolute: "Preloved Sarees Meaning, Explained | From The Trunk" });
     expect(metadata.description).toBe(DESCRIPTION);
     expect(metadata.alternates?.canonical).toBe(ARTICLE_URL);
-    expect(metadata.keywords).toContain("preloved sarees meaning");
+    expect(metadata).not.toHaveProperty("keywords");
+    expect(metadata.robots).toEqual({ index: true, follow: true });
   });
 
   it("marks the article as an Open Graph article with dates, section and tags", () => {
@@ -59,10 +64,17 @@ describe("journal SEO", () => {
       section: "Buying Guide",
     });
     expect(openGraph.tags).toContain("preloved designer sarees");
-    // The AVIF cover has no approved JPG/PNG companion, so the default stands in.
+    // The 1200x630 JPG cut from the cover, with its size and the cover's alt.
     expect(openGraph.images).toEqual([
-      expect.objectContaining({ url: `${ORIGIN}/banner/from-the-trunk-social-v1.jpg` }),
+      {
+        url: OG,
+        width: 1200,
+        height: 630,
+        alt: "Hands holding the gold floral border of a burgundy saree over an open wooden trunk",
+      },
     ]);
+    const twitter = journalArticleMetadata(loadArticle()).twitter as Record<string, unknown>;
+    expect(twitter).toMatchObject({ card: "summary_large_image", images: openGraph.images });
   });
 
   it("describes the article as a BlogPosting, without FAQPage", () => {
@@ -75,30 +87,53 @@ describe("journal SEO", () => {
       description: DESCRIPTION,
       datePublished: "2026-09-28T00:00:00+05:30",
       dateModified: "2026-09-28T00:00:00+05:30",
-      author: { "@type": "Organization", name: "From The Trunk", url: `${ORIGIN}/` },
+      "@id": `${ARTICLE_URL}#article`,
+      author: { "@type": "Organization", "@id": `${ORIGIN}/#organization`, name: "From The Trunk", url: `${ORIGIN}/` },
       publisher: {
         "@type": "Organization",
+        "@id": `${ORIGIN}/#organization`,
         name: "From The Trunk",
         logo: { "@type": "ImageObject", url: `${ORIGIN}/Ftt_logo_navbar.avif` },
       },
-      mainEntityOfPage: { "@type": "WebPage", "@id": ARTICLE_URL },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": ARTICLE_URL,
+        isPartOf: { "@id": `${ORIGIN}/#website` },
+        breadcrumb: { "@id": `${ARTICLE_URL}#breadcrumb` },
+      },
       url: ARTICLE_URL,
       articleSection: "Buying Guide",
       inLanguage: "en-IN",
     });
     expect(jsonLd.keywords).toMatch(/^preloved sarees meaning, pre loved meaning, /);
     expect(jsonLd.wordCount).toBeGreaterThan(700);
-    // Structured data can use the article's AVIF cover; social previews use the JPG fallback.
-    expect(jsonLd.image).toEqual([`${ORIGIN}/blog1a.avif`]);
+    // The share JPG first, then the cover itself.
+    expect(jsonLd.image).toEqual([OG, COVER]);
     expect(JSON.stringify(jsonLd)).not.toContain("FAQPage");
   });
 
-  it("adds the absolute cover to BlogPosting when there is one", () => {
+  it("never gives BlogPosting an AVIF-only image", () => {
     const jsonLd = journalArticleJsonLd({
       ...loadArticle(),
       cover: { src: "/journal/preloved-sarees-meaning/cover.avif", alt: "Cover" },
+      socialImage: null,
     });
-    expect(jsonLd.image).toEqual([`${ORIGIN}/journal/preloved-sarees-meaning/cover.avif`]);
+    expect(jsonLd.image).toEqual([
+      `${ORIGIN}/banner/from-the-trunk-social-v1.jpg`,
+      `${ORIGIN}/journal/preloved-sarees-meaning/cover.avif`,
+    ]);
+    expect(journalArticleJsonLd({ ...loadArticle(), cover: null, socialImage: null }).image).toEqual([
+      `${ORIGIN}/banner/from-the-trunk-social-v1.jpg`,
+    ]);
+  });
+
+  it("links the BreadcrumbList by @id", () => {
+    const article = loadArticle();
+    expect(journalBreadcrumbJsonLd(article)).toMatchObject({
+      "@type": "BreadcrumbList",
+      "@id": `${ARTICLE_URL}#breadcrumb`,
+    });
+    expect(journalBreadcrumbJsonLd()).toMatchObject({ "@id": `${ORIGIN}/journal#breadcrumb` });
   });
 
   it("never uses an AVIF cover for og:image; a same-named JPG takes its place", () => {
@@ -120,15 +155,35 @@ describe("journal SEO", () => {
     expect(ogImages(withJpg)).toEqual([`${ORIGIN}/journal/preloved-sarees-meaning/cover.jpg`]);
     expect(journalArticleJsonLd(withJpg).image).toEqual([
       `${ORIGIN}/journal/preloved-sarees-meaning/cover.jpg`,
+      `${ORIGIN}/journal/preloved-sarees-meaning/cover.avif`,
     ]);
+    // Only the 1200x630 cut in public/journal/og/ declares a size.
+    const jpgImage = (journalArticleMetadata(withJpg).openGraph as { images: Record<string, unknown>[] }).images[0];
+    expect(jpgImage.width).toBeUndefined();
   });
 
-  it("builds the breadcrumb trail", () => {
+  it("builds the same Home › Journal › Journey trail the article shows", () => {
     expect(journalBreadcrumbItems(loadArticle())).toEqual([
       { name: "Home", url: `${ORIGIN}/` },
       { name: "Journal", url: `${ORIGIN}/journal` },
-      { name: "What Does Preloved Mean? Preloved Sarees Explained", url: ARTICLE_URL },
+      { name: "Understand Preloved", url: `${ORIGIN}/journal#journey-understand-preloved` },
     ]);
+    expect(journalBreadcrumbItems()).toEqual([
+      { name: "Home", url: `${ORIGIN}/` },
+      { name: "Journal", url: `${ORIGIN}/journal` },
+    ]);
+  });
+
+  it("describes the index as a Blog listing each story", () => {
+    const jsonLd = journalIndexJsonLd([loadArticle()]);
+    expect(jsonLd).toMatchObject({
+      "@type": "Blog",
+      "@id": `${ORIGIN}/journal#blog`,
+      url: `${ORIGIN}/journal`,
+      publisher: { "@id": `${ORIGIN}/#organization` },
+      breadcrumb: { "@id": `${ORIGIN}/journal#breadcrumb` },
+      blogPost: [{ "@type": "BlogPosting", "@id": `${ARTICLE_URL}#article`, url: ARTICLE_URL }],
+    });
   });
 
   it("gives the index its own title, description and canonical", () => {
@@ -137,6 +192,7 @@ describe("journal SEO", () => {
     expect(metadata.title).toEqual({ absolute: "Journal | From The Trunk" });
     expect(metadata.description).toBe(JOURNAL_INDEX_DESCRIPTION);
     expect(metadata.alternates?.canonical).toBe(`${ORIGIN}/journal`);
+    expect(metadata.robots).toEqual({ index: true, follow: true });
   });
 
   it("lists the index and each article with lastModified = updatedAt ?? publishedAt", () => {
@@ -144,10 +200,10 @@ describe("journal SEO", () => {
       { path: "/journal/newer", modifiedAt: "2026-11-02" },
       { path: "/journal/older", modifiedAt: "2026-09-28" },
     ]);
-    expect(entries.map((entry) => [entry.url, (entry.lastModified as Date).toISOString()])).toEqual([
-      [`${ORIGIN}/journal`, "2026-11-02T00:00:00.000Z"],
-      [`${ORIGIN}/journal/newer`, "2026-11-02T00:00:00.000Z"],
-      [`${ORIGIN}/journal/older`, "2026-09-28T00:00:00.000Z"],
+    expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual([
+      [`${ORIGIN}/journal`, "2026-11-02T00:00:00+05:30"],
+      [`${ORIGIN}/journal/newer`, "2026-11-02T00:00:00+05:30"],
+      [`${ORIGIN}/journal/older`, "2026-09-28T00:00:00+05:30"],
     ]);
     expect(journalSitemapEntries([])).toEqual([
       { url: `${ORIGIN}/journal`, changeFrequency: "weekly", priority: 0.7 },
@@ -162,6 +218,7 @@ describe("journal SEO", () => {
     expect(urls).toContain(`${ORIGIN}/journal`);
     expect(urls).toContain(ARTICLE_URL);
     const article = entries.find((entry) => entry.url === ARTICLE_URL);
-    expect((article?.lastModified as Date).toISOString()).toBe("2026-09-28T00:00:00.000Z");
+    expect(article?.lastModified).toBe("2026-09-28T00:00:00+05:30");
+    expect(article?.images).toEqual([COVER]);
   });
 });

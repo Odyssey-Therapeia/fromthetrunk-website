@@ -114,7 +114,7 @@ const story = [
   "There’s something quietly powerful about a saree. It carries more than fabric, it holds memories, milestones, and moments that once meant everything.",
   "In so many homes, these beautiful pieces lie tucked away, preserved but forgotten.",
   "From the Trunk was born from a simple, heartfelt belief: these sarees still have stories left to tell.",
-  "By giving your pre-loved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship. Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
+  "By giving your preloved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship. Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
   "And in doing so, you’re also making a conscious, sustainable choice, reducing waste while celebrating timeless fashion.",
   "At From the Trunk, we don’t just collect sarees. We honor them. We preserve their stories. And we help them be loved all over again.",
 ].join(" ");
@@ -133,7 +133,7 @@ const storyChapters = [
   {
     label: "Second Life",
     title: "A bridge between journeys.",
-    body: "Passing on a pre-loved saree carries heritage, emotion, and craftsmanship forward.",
+    body: "Passing on a preloved saree carries heritage, emotion, and craftsmanship forward.",
   },
   {
     label: "Conscious Choice",
@@ -155,7 +155,7 @@ const STORY_IMAGES: LandingImage[] = [
   },
   {
     src: "/our-story/chap_3.avif",
-    alt: "A pre-loved saree styled for a modern wardrobe",
+    alt: "A preloved saree styled for a modern wardrobe",
     title: "Styled for modern wardrobes",
   },
   {

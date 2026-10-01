@@ -53,7 +53,7 @@ const storyCards = [
     icon: Leaf,
     title: "Circular",
     description:
-      "Choosing pre-loved keeps beauty in motion and gives heritage a future without asking the world to make more.",
+      "Choosing preloved keeps beauty in motion and gives heritage a future without asking the world to make more.",
   },
 ];
 
@@ -406,7 +406,7 @@ export function OurWhyExperience({ images = [] }: OurWhyExperienceProps) {
                 </p>
 
                 <h2 className="mt-4 max-w-2xl font-serif text-4xl leading-tight tracking-[-0.04em] text-[#141D46] sm:text-5xl">
-                  To buy pre-loved is to choose beauty with memory.
+                  To buy preloved is to choose beauty with memory.
                 </h2>
 
                 <p className="mt-5 max-w-2xl text-sm leading-7 text-[#141D46]/68 sm:text-base">

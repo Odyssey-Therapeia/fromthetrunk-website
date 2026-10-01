@@ -1,43 +1,135 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
-import { JOURNAL_CARD_GRID, JournalCard } from "@/components/journal/journal-card";
+import { JournalAccordion } from "@/components/journal/journal-accordion";
 import { JournalInline } from "@/components/journal/journal-inline";
-import { Button } from "@/components/ui/button";
-import { JOURNAL_LABEL } from "@/lib/journal/constants";
+import { JournalStoryList } from "@/components/journal/journal-story-list";
+import {
+  JOURNAL_EYEBROW,
+  JOURNAL_FOCUS,
+  JOURNAL_FOCUS_ON_NAVY,
+  JOURNAL_PILL,
+} from "@/components/journal/journal-styles";
 import type { JournalArticle, JournalCardData } from "@/lib/journal/derive";
+import type { JournalNextAction as JournalNextActionData } from "@/lib/journal/journeys";
 import type { JournalLinkResolver } from "@/lib/journal/links";
 import { smartApostrophes } from "@/lib/journal/text";
 import { cn } from "@/lib/utils";
 
-/** "Questions people ask": every answer visible, no accordion. */
+/** Articles with at least this many H2s get a table of contents. */
+export const JOURNAL_CONTENTS_MIN_HEADINGS = 4;
+
+export type JournalContentsEntry = { id: string; text: string };
+
+const sectionHeadingClass =
+  "font-journal-serif text-[1.625rem] font-medium leading-8 text-journal-navy @xl:text-[2rem] @xl:leading-9";
+
+function ContentsList({ entries }: { entries: readonly JournalContentsEntry[] }) {
+  return (
+    <ol role="list" className="grid">
+      {entries.map((entry) => (
+        <li key={entry.id}>
+          <a
+            href={`#${entry.id}`}
+            className={cn(
+              "flex min-h-11 items-center rounded-sm py-1.5 text-[0.9375rem] leading-[1.375rem] text-journal-navy transition-colors hover:text-journal-navy hover:underline hover:decoration-journal-gold hover:underline-offset-4",
+              JOURNAL_FOCUS,
+            )}
+          >
+            {/* Heading text may carry inline markup; any link inside it renders as plain words. */}
+            <JournalInline text={entry.text} resolveLink={(href) => ({ kind: "unavailable", href })} />
+          </a>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * Contents, in two forms: a collapsed `<details>` in the reading column below
+ * 1280px (placed after the opening paragraph, so the story starts first) and a
+ * sticky 14rem rail beside the column from 1280px. Exactly one is displayed.
+ */
+export function JournalContentsDetails({
+  entries,
+}: {
+  entries: readonly JournalContentsEntry[];
+}) {
+  return (
+    <details className="group/contents border-y border-journal-gold/45 xl:hidden">
+      <summary
+        className={cn(
+          "flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-sm py-2 [&::-webkit-details-marker]:hidden",
+          JOURNAL_FOCUS,
+        )}
+      >
+        <span className={cn(JOURNAL_EYEBROW, "text-journal-navy")}>In this guide</span>
+        <ChevronDown
+          aria-hidden="true"
+          strokeWidth={1.6}
+          className="size-4 text-journal-navy transition-transform group-open/contents:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      <nav aria-label="In this guide" className="pb-3">
+        <ContentsList entries={entries} />
+      </nav>
+    </details>
+  );
+}
+
+export function JournalContentsRail({
+  entries,
+}: {
+  entries: readonly JournalContentsEntry[];
+}) {
+  return (
+    <nav aria-labelledby="journal-contents-rail" className="sticky top-[8.25rem] hidden xl:block">
+      <p id="journal-contents-rail" className={cn(JOURNAL_EYEBROW, "border-b border-journal-gold/45 pb-3 text-journal-muted")}>
+        In this guide
+      </p>
+      <div className="mt-2">
+        <ContentsList entries={entries} />
+      </div>
+    </nav>
+  );
+}
+
+/**
+ * "Questions people ask": one closed row per question (H3 under this H2), so
+ * readers scan the questions and open theirs. `itemIds` anchor each row.
+ */
 export function JournalFaq({
   faq,
+  itemIds,
   resolveLink,
 }: {
   faq: NonNullable<JournalArticle["faq"]>;
+  itemIds: readonly string[];
   resolveLink: JournalLinkResolver;
 }) {
   return (
-    <section aria-labelledby="journal-faq" className="mt-16 sm:mt-20">
+    <section aria-labelledby="journal-faq" className="@container mt-14 @xl:mt-16">
       <h2
         id="journal-faq"
-        className="scroll-mt-28 font-serif text-[1.65rem] leading-[1.15] text-ftt-navy before:mb-5 before:block before:h-px before:w-10 before:bg-ftt-gold before:content-[''] sm:text-[2rem]"
+        className={cn(
+          sectionHeadingClass,
+          "scroll-mt-32 before:mb-4 before:block before:h-px before:w-10 before:bg-journal-gold before:content-['']",
+        )}
       >
         {faq.heading}
       </h2>
-      <div className="mt-6 divide-y divide-ftt-border border-y border-ftt-border">
-        {faq.items.map((item) => (
-          <div key={item.question} className="py-6">
-            <h3 className="text-pretty font-serif text-[1.2rem] leading-snug text-ftt-navy sm:text-[1.3rem]">
-              {smartApostrophes(item.question)}
-            </h3>
-            <p className="mt-2.5 text-[1.0625rem] leading-[1.8] text-foreground">
+      <JournalAccordion
+        className="mt-3 max-w-[40rem]"
+        items={faq.items.map((item, index) => ({
+          id: itemIds[index],
+          label: smartApostrophes(item.question),
+          content: (
+            <p className="max-w-[65ch] text-[1.0625rem] leading-[1.875rem] text-journal-muted @xl:text-lg @xl:leading-8">
               <JournalInline text={item.answer} resolveLink={resolveLink} />
             </p>
-          </div>
-        ))}
-      </div>
+          ),
+        }))}
+      />
     </section>
   );
 }
@@ -55,15 +147,15 @@ export function JournalSignOff({
   if (!about && !closingLine) return null;
 
   return (
-    <div className="mt-14 sm:mt-16">
+    <div className="mt-12 max-w-[40rem]">
       {about ? (
-        <p className="rounded-[1.35rem] border border-ftt-border bg-ftt-card px-6 py-5 text-[0.9375rem] leading-7 text-foreground sm:px-7 sm:py-6">
+        <p className="rounded-[1.25rem] border border-journal-navy/15 bg-journal-paper px-5 py-5 text-[0.9375rem] leading-7 text-journal-navy min-[390px]:px-6">
           <JournalInline text={about} resolveLink={resolveLink} />
         </p>
       ) : null}
       {closingLine ? (
-        <p className="mt-10 flex flex-col items-center gap-4 text-balance text-center font-serif text-[1.45rem] italic leading-snug text-ftt-burgundy sm:text-[1.7rem]">
-          <span aria-hidden="true" className="h-px w-12 bg-ftt-gold" />
+        <p className="mt-10 flex flex-col items-center gap-4 text-balance text-center font-journal-serif-italic text-[1.625rem] italic leading-8 text-journal-navy">
+          <span aria-hidden="true" className="h-px w-12 bg-journal-gold" />
           {smartApostrophes(closingLine)}
         </p>
       ) : null}
@@ -71,67 +163,60 @@ export function JournalSignOff({
   );
 }
 
-/** Closing call to action, on the navy ink panel. */
-export function JournalCollectionCta() {
+/** The article's one next action, as a navy band. */
+export function JournalNextAction({ action }: { action: JournalNextActionData }) {
+  const buttonClass = cn(JOURNAL_PILL, "bg-journal-ivory text-journal-navy hover:bg-white", JOURNAL_FOCUS_ON_NAVY);
+
   return (
     <section
-      aria-labelledby="journal-collection-cta"
-      className="@container relative isolate overflow-hidden rounded-[1.75rem] bg-ftt-navy px-6 py-10 text-ftt-ivory shadow-[var(--ftt-soft-shadow)] sm:px-10 sm:py-12 lg:px-14 lg:py-14"
+      aria-labelledby="journal-next-action"
+      className="@container rounded-[1.5rem] bg-journal-navy px-5 py-8 text-journal-ivory min-[390px]:px-6 sm:px-10 sm:py-10 lg:px-12"
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_100%_0%,color-mix(in_srgb,var(--ftt-burgundy)_55%,transparent)_0%,transparent_60%)]"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-3 -z-10 rounded-[1.25rem] border border-ftt-gold/25 sm:inset-4"
-      />
-      <div className="flex flex-col gap-7 @3xl:flex-row @3xl:items-end @3xl:justify-between @3xl:gap-12">
+      <div className="flex flex-col gap-6 @3xl:flex-row @3xl:items-end @3xl:justify-between @3xl:gap-12">
         <div className="max-w-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-ftt-gold">From The Trunk</p>
+          <p className={cn(JOURNAL_EYEBROW, "text-journal-gold")}>Next from the trunk</p>
           <h2
-            id="journal-collection-cta"
-            className="mt-4 text-balance font-serif text-[2rem] leading-[1.08] text-ftt-ivory sm:text-[2.5rem]"
+            id="journal-next-action"
+            className="mt-3 text-balance font-journal-serif text-[1.625rem] font-medium leading-8 text-journal-ivory @xl:text-[2rem] @xl:leading-9"
           >
-            Explore the collection
+            {action.heading}
           </h2>
-          <p className="mt-3 text-base leading-7 text-ftt-ivory/80">
-            Authenticated preloved and vintage sarees, each one of one.
-          </p>
+          <p className="mt-2 text-base leading-7 text-journal-ivory/85">{action.description}</p>
         </div>
-        <Button
-          asChild
-          className="h-12 w-full shrink-0 rounded-full bg-ftt-ivory px-7 text-sm tracking-[0.04em] text-ftt-navy hover:bg-white focus-visible:ring-ftt-gold focus-visible:ring-offset-ftt-navy @md:w-auto"
-        >
-          <Link href="/collection">
-            Browse sarees
-            <ArrowRight aria-hidden="true" strokeWidth={1.6} />
+        {action.options ? (
+          <div className="shrink-0">
+            <p className={cn(JOURNAL_EYEBROW, "text-journal-ivory/80")}>{action.label}</p>
+            <ul role="list" className="mt-3 flex flex-wrap gap-2">
+              {action.options.map((option) => (
+                <li key={option.href}>
+                  <Link href={option.href} className={buttonClass}>
+                    {option.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <Link href={action.href} className={cn(buttonClass, "shrink-0 px-6")}>
+            {action.label}
+            <ArrowRight aria-hidden="true" strokeWidth={1.6} className="size-4" />
           </Link>
-        </Button>
+        )}
       </div>
     </section>
   );
 }
 
-/** Other published stories. Renders nothing until there is at least one. */
-export function JournalMoreStories({ articles }: { articles: readonly JournalCardData[] }) {
+/** Up to three next reads. Renders nothing until there is at least one. */
+export function JournalNextReads({ articles }: { articles: readonly JournalCardData[] }) {
   if (articles.length === 0) return null;
 
   return (
-    <section aria-labelledby="journal-more" className="@container">
-      <h2
-        id="journal-more"
-        className="font-serif text-[1.75rem] leading-tight text-ftt-navy sm:text-[2.1rem]"
-      >
-        More from the {JOURNAL_LABEL}
+    <section aria-labelledby="journal-next-reads" className="@container">
+      <h2 id="journal-next-reads" className={sectionHeadingClass}>
+        Read next
       </h2>
-      <ul role="list" className={cn("mt-7", JOURNAL_CARD_GRID)}>
-        {articles.map((article) => (
-          <li key={article.slug} className="min-w-0">
-            <JournalCard article={article} headingLevel="h3" />
-          </li>
-        ))}
-      </ul>
+      <JournalStoryList articles={articles} className="mt-6" />
     </section>
   );
 }

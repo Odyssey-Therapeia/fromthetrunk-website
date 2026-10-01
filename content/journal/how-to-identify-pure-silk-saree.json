@@ -17,9 +17,10 @@
       "preloved silk sarees online"
     ]
   },
+  "publishedAt": "2026-09-29",
   "cover": {
-    "src": "/journal/how-to-identify-pure-silk-saree/silk-saree-sheen-under-lamp.avif",
-    "alt": "Pure silk saree tilted under a lamp, its sheen shifting colour"
+    "src": "/blog2a.avif",
+    "alt": "Cream saree with a deep red and gold border spilling from an open wooden trunk onto a jute rug"
   },
   "body": [
     {
@@ -117,15 +118,6 @@
       "text": "Tested zari is not a fake. It is a respectable and widely used material. It simply is not pure zari, and it should not be priced as if it were."
     },
     {
-      "type": "figure",
-      "images": [
-        {
-          "src": "/journal/how-to-identify-pure-silk-saree/pure-zari-border-closeup.avif",
-          "alt": "Close view of a pure zari border on a preloved silk saree"
-        }
-      ]
-    },
-    {
       "type": "heading",
       "text": "7. Let the price make you look harder",
       "level": 3
@@ -151,15 +143,6 @@
       "text": "This matters most when buying preloved Banarasi sarees online, where you are judging from photographs. Always ask to see the reverse."
     },
     {
-      "type": "figure",
-      "images": [
-        {
-          "src": "/journal/how-to-identify-pure-silk-saree/banarasi-saree-reverse-weave.avif",
-          "alt": "Reverse of a handwoven Banarasi saree showing the finishing behind each motif"
-        }
-      ]
-    },
-    {
       "type": "heading",
       "text": "How to identify a pure Kanjeevaram silk saree"
     },
@@ -169,16 +152,17 @@
     },
     {
       "type": "paragraph",
-      "text": "A genuine Kanjeevaram is noticeably heavy. Temple borders, checks and traditional motifs are typical, and older pieces use pure zari. For more on where each weave comes from, see our guide to [Indian saree fabrics and weaves](/journal/indian-saree-fabrics-and-weaves)."
+      "text": "A genuine Kanjeevaram is noticeably heavy. Temple borders, checks and traditional motifs are typical, and older pieces use pure zari. For more on where each weave comes from, see our [guide to Indian saree fabrics and weaves](/journal/indian-saree-fabrics-and-weaves)."
     },
     {
       "type": "figure",
       "images": [
         {
-          "src": "/journal/how-to-identify-pure-silk-saree/kanjeevaram-korvai-border-join.avif",
-          "alt": "The korvai join where a Kanjeevaram border meets the body"
+          "src": "/blog2b.avif",
+          "alt": "Hand turning back a magenta and gold temple border to show the reverse of the weave where it meets the cream body"
         }
-      ]
+      ],
+      "caption": "A contrast border turned back to show its reverse."
     },
     {
       "type": "heading",

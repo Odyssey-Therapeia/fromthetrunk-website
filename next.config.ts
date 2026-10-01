@@ -94,8 +94,7 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/404/**", search: "" },
       { pathname: "/banner/**", search: "" },
-      { pathname: "/blog1a.avif", search: "" },
-      { pathname: "/blog1b.avif", search: "" },
+      { pathname: "/blog[1-8][ab].avif", search: "" },
       { pathname: "/category/**", search: "" },
       { pathname: "/footer/**", search: "" },
       { pathname: "/founder/**", search: "" },
@@ -221,6 +220,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/guides/what-is-a-pre-loved-saree",
+        destination: "/journal/preloved-sarees-meaning",
+        permanent: true,
+      },
+      {
         source: "/Welcoming.mp4",
         destination: "/welcome-poster.avif",
         permanent: true,
@@ -238,6 +242,11 @@ const nextConfig: NextConfig = {
       {
         source: "/Welcoming.webm",
         destination: "/video/welcoming-v2.webm",
+        permanent: true,
+      },
+      {
+        source: "/sell",
+        destination: "/sell-your-saree",
         permanent: true,
       },
       {

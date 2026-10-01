@@ -19,3 +19,11 @@ export const JOURNAL_WORDS_PER_MINUTE = 200;
 export function journalArticlePath(slug: string): string {
   return `${JOURNAL_PATH}/${slug}`;
 }
+
+/** Size of the per-article share image at `public/journal/og/<slug>.jpg`. */
+export const JOURNAL_OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
+
+/** 1200x630 JPG cut from the article cover for og:image, X and BlogPosting. */
+export function journalOgImagePath(slug: string): string {
+  return `${JOURNAL_PATH}/og/${slug}.jpg`;
+}

@@ -106,7 +106,7 @@ describe("SEO Phase 2B image alt implementation", () => {
         name: "Gold Tissue Saree",
       }),
     ).toBe(
-      "Gold Tissue Saree, pre-loved Banarasi silk saree from From the Trunk",
+      "Gold Tissue Saree, preloved Banarasi silk saree from From the Trunk",
     );
 
     expect(
@@ -114,7 +114,7 @@ describe("SEO Phase 2B image alt implementation", () => {
         detailsFabric: null,
         name: "Midnight Chiffon Saree",
       }),
-    ).toBe("Midnight Chiffon Saree, pre-loved saree from From the Trunk");
+    ).toBe("Midnight Chiffon Saree, preloved saree from From the Trunk");
   });
 
   it("builds PDP main and gallery alt text without inventing detail labels", () => {
@@ -124,10 +124,10 @@ describe("SEO Phase 2B image alt implementation", () => {
     };
 
     expect(buildPdpMainImageAlt(product)).toBe(
-      "Midnight Chiffon Saree shown as a pre-loved saree, Chiffon",
+      "Midnight Chiffon Saree shown as a preloved saree, Chiffon",
     );
     expect(buildPdpGalleryImageAlt(product, 0)).toBe(
-      "Midnight Chiffon Saree shown as a pre-loved saree, Chiffon",
+      "Midnight Chiffon Saree shown as a preloved saree, Chiffon",
     );
     expect(buildPdpGalleryImageAlt(product, 1)).toBe(
       "Midnight Chiffon Saree detail view 2",

@@ -5,8 +5,9 @@ import { parseInline, type InlineNode } from "@/lib/journal/inline";
 import type { JournalLinkResolver } from "@/lib/journal/links";
 import { smartApostrophes } from "@/lib/journal/text";
 
+// Navy with a gold underline; the underline, not colour alone, marks a link.
 const linkClass =
-  "rounded-[2px] font-medium text-ftt-burgundy underline decoration-ftt-gold decoration-1 underline-offset-[5px] transition-colors hover:decoration-ftt-burgundy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftt-gold";
+  "rounded-[2px] font-medium text-journal-navy underline decoration-journal-gold decoration-1 underline-offset-[5px] transition-colors hover:decoration-journal-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-journal-navy";
 
 function renderNodes(
   nodes: readonly InlineNode[],
@@ -24,7 +25,7 @@ function renderNodes(
 
     if (node.type === "strong") {
       return (
-        <strong key={key} className="font-semibold text-ftt-navy">
+        <strong key={key} className="font-semibold">
           {children}
         </strong>
       );

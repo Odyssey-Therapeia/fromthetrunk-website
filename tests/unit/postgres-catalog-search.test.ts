@@ -389,6 +389,17 @@ describe("searchProducts — fabric filter", () => {
     expect(products).toHaveLength(0);
   });
 
+  it("matches Kanjeevaram under every recorded spelling but not Kanchi cotton", async () => {
+    pushProduct({ id: "p-kanjeevaram", attributes: { fabric: "KANJIVARAM" } });
+    await searchProducts({ fabrics: ["kanjeevaram"] });
+    const strings = mainWhereStrings();
+    for (const spelling of ["kanjeevaram", "kanjivaram", "kanchipuram"]) {
+      expect(strings).toContain(spelling);
+    }
+    expect(strings).not.toContain("kanchi");
+    expect(strings).not.toContain("%kanchi%");
+  });
+
   it("supports multi-select fabric OR values", async () => {
     pushProduct({ id: "p-multi-fabric", attributes: { fabric: "silk" } });
     await searchProducts({ fabrics: ["silk", "cotton"] });

@@ -1,7 +1,16 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { JournalIndexView } from "@/components/journal/journal-index-view";
 import { JOURNAL_PATH } from "@/lib/journal/constants";
@@ -13,6 +22,7 @@ const URL_SYNC_DELAY_MS = 300;
 type JournalIndexSearchProps = {
   articles: readonly JournalCardData[];
   entries: readonly JournalSearchEntry[];
+  intro: ReactNode;
 };
 
 function journalSearchUrl(query: string): string {
@@ -27,7 +37,7 @@ function journalSearchUrl(query: string): string {
  * reload or back navigation. Before hydration the same view renders with a
  * plain GET form.
  */
-export function JournalIndexSearch({ articles, entries }: JournalIndexSearchProps) {
+export function JournalIndexSearch({ articles, entries, intro }: JournalIndexSearchProps) {
   const searchParams = useSearchParams();
   const urlQuery = (searchParams.get("q") ?? "").trim();
 
@@ -79,6 +89,7 @@ export function JournalIndexSearch({ articles, entries }: JournalIndexSearchProp
     <JournalIndexView
       articles={visible}
       query={hasTerms ? value.trim() : ""}
+      intro={intro}
       controls={{ value, onChange, onSubmit, onClear, inputRef }}
     />
   );

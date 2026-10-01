@@ -92,29 +92,29 @@ describe("AEO/GEO FAQ expansion", () => {
     const serialized = JSON.stringify(faqMetadata);
 
     expect(faqMetadata.title).toEqual({
-      absolute: "Pre-Loved Saree FAQs | From The Trunk",
+      absolute: "Preloved Saree FAQs | From The Trunk",
     });
     expect(faqMetadata.description).toBe(
-      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for preloved sarees at From The Trunk.",
     );
     expect(faqMetadata.openGraph?.title).toBe(
-      "Pre-Loved Saree FAQs | From The Trunk",
+      "Preloved Saree FAQs | From The Trunk",
     );
     expect(faqMetadata.openGraph?.description).toBe(
-      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for preloved sarees at From The Trunk.",
     );
     expect(faqMetadata.twitter?.title).toBe(
-      "Pre-Loved Saree FAQs | From The Trunk",
+      "Preloved Saree FAQs | From The Trunk",
     );
     expect(faqMetadata.twitter?.description).toBe(
-      "Answers on authenticity, sizing, shipping, returns and consignment for pre-loved sarees at From The Trunk.",
+      "Answers on authenticity, sizing, shipping, returns and consignment for preloved sarees at From The Trunk.",
     );
     expect(faqMetadata.twitter?.card).toBe("summary_large_image");
     expect(ogImage?.url).toBe(
       "https://www.fromthetrunk.shop/banner/from-the-trunk-social-v1.jpg",
     );
     expect(ogImage?.alt).toBe(
-      "From The Trunk FAQ guide for authenticated pre-loved sarees",
+      "From The Trunk FAQ guide for authenticated preloved sarees",
     );
     expect(twitterImage?.url).toBe(ogImage?.url);
     expect(twitterImage?.alt).toBe(ogImage?.alt);

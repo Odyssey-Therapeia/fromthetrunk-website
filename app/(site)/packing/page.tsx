@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = publicPageMetadata({
   title: "Packaging & Care",
   description:
-    "How we wrap and protect every pre-loved saree for its journey to you.",
+    "How we wrap and protect every preloved saree for its journey to you.",
   path: "/packing",
 });
 

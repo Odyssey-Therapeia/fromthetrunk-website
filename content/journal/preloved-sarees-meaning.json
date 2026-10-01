@@ -74,15 +74,6 @@
       "text": "A saree can be vintage and preloved at once. Many of the best ones are."
     },
     {
-      "type": "figure",
-      "images": [
-        {
-          "src": "/blog1b.avif",
-          "alt": "Burgundy saree with gold floral motifs draped from a wooden trunk onto a table"
-        }
-      ]
-    },
-    {
       "type": "heading",
       "text": "Why do people choose preloved sarees?"
     },
@@ -168,6 +159,15 @@
     {
       "type": "paragraph",
       "text": "When you are buying online, ask for photographs of each of these in daylight, and ask to see the reverse of the saree."
+    },
+    {
+      "type": "figure",
+      "images": [
+        {
+          "src": "/blog1b.avif",
+          "alt": "Cream saree with a wide gold floral border and gold leaf motifs, lying in soft folds"
+        }
+      ]
     },
     {
       "type": "heading",

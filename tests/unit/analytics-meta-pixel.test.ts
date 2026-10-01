@@ -40,6 +40,7 @@ const codeOf = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const PIXEL_ID = "1368141865250071";
+const EVENT_ID = "d0906591-7358-438e-95c8-00e4d3b32238";
 
 /** A pixel someone else installed: no `fttOwned` marker. */
 function foreignWindow(pixelIds: string[] = ["9999999999"]): MetaPixelWindow {
@@ -228,7 +229,7 @@ describe("handing the queue over to fbevents.js", () => {
   it("replays everything parked before the library loaded", () => {
     const win: MetaPixelWindow = {};
     initMetaPixel(win, PIXEL_ID);
-    trackMetaPageView(win);
+    trackMetaPageView(win, EVENT_ID);
     expect(win.fbq?.queue).toHaveLength(4);
 
     const sent = goLive(win);
@@ -241,7 +242,7 @@ describe("handing the queue over to fbevents.js", () => {
       ["consent", "revoke"],
       ["init", PIXEL_ID],
       ["consent", "grant"],
-      ["track", "PageView"],
+      ["track", "PageView", {}, { eventID: EVENT_ID }],
     ]);
     expect(win.fbq?.queue).toHaveLength(0);
   });
@@ -249,12 +250,16 @@ describe("handing the queue over to fbevents.js", () => {
   it("cannot send the same event twice", () => {
     const win: MetaPixelWindow = {};
     initMetaPixel(win, PIXEL_ID);
+    trackMetaPageView(win, EVENT_ID);
     const sent = goLive(win);
 
-    expect(flushMetaPixelQueue(win)).toBe(3);
+    expect(flushMetaPixelQueue(win)).toBe(4);
     // A second flush, or a late drain by the library itself, finds nothing.
     expect(flushMetaPixelQueue(win)).toBe(0);
-    expect(sent).toHaveLength(3);
+    expect(sent).toHaveLength(4);
+    expect(sent.filter(([verb]) => verb === "track")).toEqual([
+      ["track", "PageView", {}, { eventID: EVENT_ID }],
+    ]);
   });
 
   it("is a no-op before the library is live", () => {
@@ -295,29 +300,49 @@ describe("PageView accounting", () => {
     const win: MetaPixelWindow = {};
 
     // Before init there is nothing of ours to track.
-    expect(trackMetaPageView(win)).toBe(false);
+    expect(trackMetaPageView(win, EVENT_ID)).toBe(false);
 
     initMetaPixel(win, PIXEL_ID);
-    expect(trackMetaPageView(win)).toBe(true);
+    expect(trackMetaPageView(win, EVENT_ID)).toBe(true);
 
     expect(calls(win).filter(([verb]) => verb === "track")).toEqual([
-      ["track", "PageView"],
+      ["track", "PageView", {}, { eventID: EVENT_ID }],
     ]);
   });
 
   it("refuses to track into a foreign pixel, so GTM's PageView is not doubled", () => {
     const win = foreignWindow();
-    expect(trackMetaPageView(win)).toBe(false);
+    expect(trackMetaPageView(win, EVENT_ID)).toBe(false);
   });
 
   it("counts one PageView per navigation across a route change", () => {
     const win: MetaPixelWindow = {};
     initMetaPixel(win, PIXEL_ID);
 
-    trackMetaPageView(win); // landing
-    trackMetaPageView(win); // client-side navigation
+    trackMetaPageView(win, EVENT_ID); // landing
+    trackMetaPageView(win, "18a91e78-6f22-4b06-bb05-8c1a72c164bb"); // navigation
 
     expect(calls(win).filter(([verb]) => verb === "track")).toHaveLength(2);
+  });
+
+  it.each(["", "   "])("refuses a blank event ID (%j)", (eventId) => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+
+    expect(trackMetaPageView(win, eventId)).toBe(false);
+    expect(calls(win).filter(([verb]) => verb === "track")).toEqual([]);
+  });
+
+  it("passes the same ID directly to the loaded library in Meta's options", () => {
+    const win: MetaPixelWindow = {};
+    initMetaPixel(win, PIXEL_ID);
+    const callMethod = vi.fn();
+    win.fbq!.callMethod = callMethod;
+
+    expect(trackMetaPageView(win, EVENT_ID)).toBe(true);
+    expect(callMethod).toHaveBeenCalledExactlyOnceWith(
+      "track", "PageView", {}, { eventID: EVENT_ID },
+    );
   });
 });
 

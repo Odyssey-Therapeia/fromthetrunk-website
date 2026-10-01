@@ -71,7 +71,7 @@ export default async function OGImage({ params }: Props) {
             marginTop: "24px",
           }}
         >
-          Pre-Loved Luxury Sarees
+          Preloved Luxury Sarees
         </div>
       </div>,
       { ...size },

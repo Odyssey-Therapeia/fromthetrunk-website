@@ -44,7 +44,7 @@ describe("collection H1 ampersand spacing", () => {
   });
 
   it("keeps the heading copy intact", () => {
-    expect(source).toContain('["Pre-Loved", "& Vintage", "Luxury Sarees"]');
+    expect(source).toContain('["Preloved", "& Vintage", "Luxury Sarees"]');
   });
 });
 

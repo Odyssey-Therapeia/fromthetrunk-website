@@ -1,13 +1,26 @@
-import { CalendarDays, ChevronRight, Clock } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { JournalCoverPlaceholder } from "@/components/journal/journal-cover-placeholder";
 import { JournalShare } from "@/components/journal/journal-share";
-import { JOURNAL_LABEL, JOURNAL_PATH } from "@/lib/journal/constants";
+import {
+  JOURNAL_EYEBROW,
+  JOURNAL_FOCUS,
+  JOURNAL_META,
+  journalHeroCoverPosition,
+} from "@/components/journal/journal-styles";
 import type { JournalArticle } from "@/lib/journal/derive";
+import { journalBreadcrumbTrail } from "@/lib/journal/journeys";
 import { formatReadingTime } from "@/lib/journal/reading-time";
 import { smartApostrophes } from "@/lib/journal/text";
+import { cn } from "@/lib/utils";
+
+/**
+ * The faded cover takes the right 55% of the 1200px container from 944px up
+ * (where the header container reaches 56rem), full width below it.
+ */
+export const JOURNAL_HERO_SIZES = "(min-width: 1280px) 660px, (min-width: 944px) 55vw, calc(100vw - 32px)";
 
 type JournalArticleHeroProps = {
   article: JournalArticle;
@@ -15,70 +28,73 @@ type JournalArticleHeroProps = {
   shareImageUrl: string | null;
 };
 
-/** Home › Journal › title. Rendered by the page, above the article. */
-export function JournalBreadcrumb({ title }: { title: string }) {
+const crumbLinkClass = cn(
+  "inline-flex min-h-11 items-center rounded-sm text-journal-muted transition-colors hover:text-journal-navy",
+  JOURNAL_FOCUS,
+);
+
+/**
+ * Home › Journal › Journey. The article title is the H1 right below, so it is
+ * not repeated here; an article outside every journey stops at Journal.
+ */
+export function JournalBreadcrumb({ slug }: { slug: string }) {
+  const crumbs = journalBreadcrumbTrail(slug);
+
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex min-w-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-ftt-burgundy/80">
-        <li className="shrink-0">
-          <Link href="/" className="rounded-sm transition-colors hover:text-ftt-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftt-gold">
-            Home
-          </Link>
-        </li>
-        <li aria-hidden="true" className="shrink-0">
-          <ChevronRight className="size-3 text-ftt-gold" />
-        </li>
-        <li className="shrink-0">
-          <Link
-            href={JOURNAL_PATH}
-            className="rounded-sm transition-colors hover:text-ftt-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftt-gold"
-          >
-            {JOURNAL_LABEL}
-          </Link>
-        </li>
-        <li aria-hidden="true" className="shrink-0">
-          <ChevronRight className="size-3 text-ftt-gold" />
-        </li>
-        <li className="min-w-0 truncate text-ftt-navy">
-          <span aria-current="page">{smartApostrophes(title)}</span>
-        </li>
+      <ol className={cn(JOURNAL_META, "flex flex-wrap items-center gap-x-1.5")}>
+        {crumbs.map((crumb, index) => (
+          <li key={crumb.href} className="flex items-center gap-1.5">
+            {index > 0 ? <ChevronRight aria-hidden="true" strokeWidth={1.6} className="size-3.5 text-journal-gold" /> : null}
+            <Link href={crumb.href} className={crumbLinkClass}>
+              {crumb.label}
+            </Link>
+          </li>
+        ))}
       </ol>
     </nav>
   );
 }
 
 /**
- * Article hero. Mobile: text, then the cover. From a 56rem container the text
- * sits left and the cover takes the right ~55%. With no cover, the designed
- * placeholder plate takes the cover's place, so the hero keeps its shape.
+ * Compressed article hero: tag, H1, description and one meta line, then the
+ * cover. Below a 56rem container the cover follows the meta line at full
+ * width. From 56rem it sits behind the right of the band, top to just above
+ * the separator, and its left edge fades into the ivory; the fade stays fully
+ * transparent across the text column (see `.journal-hero-media`). Without a
+ * photo the slot shows the Journal placeholder art, so every article has one.
  */
 export function JournalArticleHero({ article, shareUrl, shareImageUrl }: JournalArticleHeroProps) {
+  const cover = article.cover;
+
   return (
-    <header className="@container">
-      <div className="grid gap-9 @4xl:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)] @4xl:items-center @4xl:gap-12 @6xl:gap-16">
+    <header className="@container relative isolate">
+      <div className="grid gap-y-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-ftt-burgundy">
-            <span aria-hidden="true" className="h-px w-8 bg-ftt-gold" />
-            {article.tag}
-          </p>
-          <h1 className="mt-5 text-balance font-serif text-[clamp(2.25rem,8cqi,3.6rem)] leading-[1.04] tracking-[-0.015em] text-ftt-navy @4xl:text-[clamp(2.6rem,4.6cqi,4rem)]">
+          <p className={cn(JOURNAL_EYEBROW, "text-journal-muted")}>{article.tag}</p>
+          <h1 className="mt-3 max-w-[44rem] text-balance font-journal-serif text-[1.875rem] font-medium leading-[2.125rem] text-journal-navy @xl:text-[2.75rem] @xl:leading-[3rem]">
             {smartApostrophes(article.title)}
           </h1>
-          <p className="mt-5 max-w-[36rem] text-pretty text-base leading-7 text-ftt-burgundy/85 @xl:text-lg @xl:leading-8">
+        </div>
+
+        <div className="min-w-0">
+          <p className="max-w-[40rem] text-pretty text-base leading-7 text-journal-muted @xl:text-lg @xl:leading-7">
             {smartApostrophes(article.description)}
           </p>
-
-          <ul className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-ftt-burgundy/20 pt-4 text-sm text-ftt-burgundy/85">
-            {article.publishedAt ? <li className="flex h-10 items-center gap-2">
-              <CalendarDays aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
-              <span className="sr-only">Published </span>
-              <time dateTime={article.publishedAt}>{article.dateLabel}</time>
-            </li> : null}
-            <li className="flex h-10 items-center gap-2">
-              <Clock aria-hidden="true" strokeWidth={1.5} className="size-4 text-ftt-burgundy" />
-              {formatReadingTime(article.readingMinutes)}
-            </li>
-            <li className="flex items-center">
+          <ul
+            className={cn(
+              JOURNAL_META,
+              "mt-2 flex flex-wrap items-center gap-x-4 text-journal-muted [&>li]:flex [&>li]:items-center",
+            )}
+          >
+            {article.publishedAt ? (
+              <li>
+                <span className="sr-only">Published </span>
+                <time dateTime={article.publishedAt}>{article.dateLabel}</time>
+              </li>
+            ) : null}
+            <li>{formatReadingTime(article.readingMinutes)}</li>
+            <li className="text-journal-navy">
               <JournalShare
                 url={shareUrl}
                 title={article.title}
@@ -89,19 +105,20 @@ export function JournalArticleHero({ article, shareUrl, shareImageUrl }: Journal
           </ul>
         </div>
 
-        <div className="relative aspect-4/3 overflow-hidden rounded-[1.35rem] bg-ftt-navy shadow-[var(--ftt-soft-shadow)] @4xl:aspect-[5/4]">
-          {article.cover ? (
+        <div className="journal-hero-media">
+          {cover ? (
             <Image
-              src={article.cover.src}
-              alt={article.cover.alt}
+              src={cover.src}
+              alt={cover.alt}
               fill
               priority
+              fetchPriority="high"
               quality={75}
-              sizes="(min-width: 1280px) 670px, (min-width: 1024px) 55vw, 100vw"
-              className="object-cover"
+              sizes={JOURNAL_HERO_SIZES}
+              className={cn("object-cover", journalHeroCoverPosition(cover.src))}
             />
           ) : (
-            <JournalCoverPlaceholder tag={article.tag} variant="hero" />
+            <JournalCoverPlaceholder variant="hero" />
           )}
         </div>
       </div>

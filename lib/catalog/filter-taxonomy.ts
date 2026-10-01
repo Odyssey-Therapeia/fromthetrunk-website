@@ -65,6 +65,27 @@ export const CANONICAL_FABRIC_FILTERS = [
   "linen-cotton",
 ] as const;
 
+// Spellings of the same weave: a filter for one should find pieces recorded
+// under the others. Bare "kanchi" is left out on purpose — Kanchi cotton is a
+// different saree, and matching it would label cotton pieces as Kanjeevaram.
+const FABRIC_ALIAS_GROUPS: readonly (readonly string[])[] = [
+  ["kanjeevaram", "kanjivaram", "kanchipuram", "kancheepuram", "conjeevaram"],
+];
+
+/** Adds every alias spelling of each fabric slug (e.g. kanjivaram-silk for kanjeevaram-silk). */
+export const expandFabricAliases = (slugs: string[]): string[] => {
+  const expanded = new Set<string>();
+  for (const slug of slugs) {
+    expanded.add(slug);
+    for (const group of FABRIC_ALIAS_GROUPS) {
+      const spelling = group.find((alias) => slug.includes(alias));
+      if (!spelling) continue;
+      for (const alias of group) expanded.add(slug.replace(spelling, alias));
+    }
+  }
+  return Array.from(expanded);
+};
+
 export const displayFacetLabel = (value: string): string => {
   const slug = normalizeFacetSlug(value);
   if (LABEL_OVERRIDES[slug]) return LABEL_OVERRIDES[slug];

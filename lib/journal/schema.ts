@@ -17,9 +17,12 @@ export const JOURNAL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
 
 const IMAGE_SRC = /^\/journal\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9][a-z0-9._-]*\.(?:avif|webp|jpe?g|png)$/;
-const ROOT_IMAGE_SOURCES = new Set(["/blog1a.avif", "/blog1b.avif"]);
+/** Blog N has a cover `/blogNa.avif` and one in-body figure `/blogNb.avif`, for articles 1 to 8. */
+const ROOT_IMAGE_SOURCES = new Set(
+  [1, 2, 3, 4, 5, 6, 7, 8].flatMap((n) => [`/blog${n}a.avif`, `/blog${n}b.avif`]),
+);
 
-/** Only article-folder images and the two supplied root photographs are allowed. */
+/** Only article-folder images and the supplied root photographs are allowed. */
 export function isJournalImageSource(src: string): boolean {
   return ROOT_IMAGE_SOURCES.has(src) || IMAGE_SRC.test(src);
 }
@@ -59,7 +62,7 @@ const image = z.strictObject({
     .string()
     .refine(
       isJournalImageSource,
-      "must be /journal/<slug>/<file>.avif|webp|jpg|png (lowercase file name), /blog1a.avif or /blog1b.avif",
+      "must be /journal/<slug>/<file>.avif|webp|jpg|png (lowercase file name) or /blog<1-8>a.avif|/blog<1-8>b.avif",
     ),
   alt: plainText,
 });
@@ -148,7 +151,7 @@ export const journalArticleSchema = z
         ctx.addIssue({
           code: "custom",
           path,
-          message: `must live in public${imageFolder} or be /blog1a.avif or /blog1b.avif`,
+          message: `must live in public${imageFolder} or be /blog<1-8>a.avif or /blog<1-8>b.avif`,
         });
       }
     };

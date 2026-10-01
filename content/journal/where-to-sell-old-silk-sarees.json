@@ -16,9 +16,10 @@
       "consign a saree"
     ]
   },
+  "publishedAt": "2026-09-29",
   "cover": {
-    "src": "/journal/where-to-sell-old-silk-sarees/old-silk-saree-zari-border-daylight.avif",
-    "alt": "Zari border of an old silk saree photographed in daylight"
+    "src": "/blog4a.avif",
+    "alt": "Woman examining the gold border of a purple saree spread across a table, beside an open notebook and a magnifying glass"
   },
   "body": [
     {
@@ -57,10 +58,11 @@
       "type": "figure",
       "images": [
         {
-          "src": "/journal/where-to-sell-old-silk-sarees/silk-saree-fold-lines-before-selling.avif",
+          "src": "/blog4b.avif",
           "alt": "Checking the fold lines of an old silk saree before selling it"
         }
-      ]
+      ],
+      "caption": "Checking fold lines in daylight before a saree is sold."
     },
     {
       "type": "heading",
@@ -172,10 +174,10 @@
       },
       {
         "question": "Does From The Trunk take old sarees?",
-        "answer": "Yes, on consignment. We authenticate, photograph and list each saree we accept, and you receive a share when it sells. Write to [hello@fromthetrunk.shop](mailto:hello@fromthetrunk.shop) with photographs of the full saree, the pallu, the border and any flaws."
+        "answer": "Yes, [on consignment](/sell-your-saree). We authenticate, photograph and list each saree we accept, and you receive a share when it sells. Write to [hello@fromthetrunk.shop](mailto:hello@fromthetrunk.shop) with photographs of the full saree, the pallu, the border and any flaws."
       }
     ]
   },
-  "about": "About From The Trunk. From The Trunk sells authenticated preloved and vintage sarees from Bengaluru, delivering across India. Every saree is one of one, condition graded before it is listed, and sold with what is known of its history. Browse the collection at [fromthetrunk.shop](/collection) or follow [@from.thetrunk](https://www.instagram.com/from.thetrunk/) on Instagram.",
+  "about": "**About From The Trunk.** From The Trunk sells authenticated preloved and vintage sarees from Bengaluru, delivering across India. Every saree is one of one, condition graded before it is listed, and sold with what is known of its history. Browse the collection at [fromthetrunk.shop](/collection) or follow [@from.thetrunk](https://www.instagram.com/from.thetrunk/) on Instagram.",
   "closingLine": "Some treasures aren't made. They're found."
 }

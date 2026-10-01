@@ -2,7 +2,8 @@
  * P5-06: llms.txt — AEO (Answer-Engine Optimization) convention.
  *
  * Served at /llms.txt with content-type text/plain.
- * Derived from REAL content: listProducts + published static pages.
+ * Derived from REAL content: listProducts, published static pages and the
+ * live Journal stories.
  * Absolute URLs via getSiteOrigin().
  *
  * llms.txt convention: https://llmstxt.org/
@@ -16,6 +17,7 @@
 
 import { listProducts } from "@/db/queries/products";
 import { getSiteOrigin } from "@/lib/config/site";
+import { getLiveJournalArticles } from "@/lib/journal/articles";
 import { shouldIncludeProductInSeo } from "@/lib/seo/product-indexing";
 
 export const dynamic = "force-dynamic";
@@ -30,11 +32,11 @@ const STATIC_PAGES = [
   { title: "FAQs", path: "/faqs" },
   { title: "Sell Your Saree", path: "/sell-your-saree" },
   {
-    title: "What Is a Pre-Loved Saree",
-    path: "/guides/what-is-a-pre-loved-saree",
+    title: "What Is a Preloved Saree",
+    path: "/journal/preloved-sarees-meaning",
   },
   {
-    title: "Pre-Loved vs Second-Hand Saree",
+    title: "Preloved vs Second-Hand Saree",
     path: "/guides/pre-loved-vs-second-hand-saree",
   },
   { title: "Policies", path: "/policies" },
@@ -56,13 +58,20 @@ export async function GET(): Promise<Response> {
   const lines: string[] = [
     "# From the Trunk",
     "",
-    "> From the Trunk is a curated marketplace for authenticated, pre-loved luxury",
+    "> From the Trunk is a curated marketplace for authenticated, preloved luxury",
     "> sarees. Each piece carries provenance, history, and a story.",
     "> We specialise in unique preloved pieces from renowned Indian weaving traditions.",
     "",
     "## Key pages",
     "",
     ...STATIC_PAGES.map((page) => `- [${page.title}](${origin}${page.path})`),
+    "",
+    "## Journal",
+    "",
+    `- [Journal](${origin}/journal)`,
+    ...getLiveJournalArticles().map(
+      (article) => `- [${article.title}](${origin}${article.path}): ${article.seo.description}`,
+    ),
     "",
     "## Products",
     "",
