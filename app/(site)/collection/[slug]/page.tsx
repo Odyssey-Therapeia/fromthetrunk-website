@@ -119,6 +119,7 @@ export async function generateMetadata({
     imageUrl
       ? {
           url: imageUrl,
+          mimeType: primarySeoImage?.mimeType,
           width: primarySeoImage?.width,
           height: primarySeoImage?.height,
           alt: primarySeoImage?.alt ?? buildPdpGalleryImageAlt(product, 0),

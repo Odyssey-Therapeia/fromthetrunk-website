@@ -8,14 +8,14 @@
  * - Draft / missing pages return null.
  * - Published pages return { page, version }.
  * - resolveMetadata extracts title/description/openGraph from page.seo for a
- *   published page, or returns safe-empty metadata for missing/draft/reserved.
+ *   published page, or returns noindex metadata for missing/draft/reserved.
  */
 
 import type { Metadata } from "next";
 
 import type { ContentStore, Page, PageVersion } from "@/lib/ports/content-store";
 import { isReservedSlug } from "@/lib/content/reserved-slugs";
-import { absoluteUrl } from "@/lib/seo/site-url";
+import { publicPageMetadata, SITE_NAME } from "@/lib/seo/metadata";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,8 +58,8 @@ export async function resolvePage(
 /**
  * Extracts Next.js Metadata from a published page's seo field.
  *
- * Returns safe-empty metadata (title: "") when the page is missing,
- * draft, or reserved — never throws.
+ * Returns noindex metadata (title: "") when the page is missing,
+ * draft, or reserved. Store errors propagate to the route error boundary.
  */
 export async function resolveMetadata(
   slug: string,
@@ -68,24 +68,22 @@ export async function resolveMetadata(
   const resolved = await resolvePage(slug, store);
 
   if (!resolved) {
-    return { title: "" };
+    return {
+      title: "",
+      robots: { index: false, follow: true },
+      openGraph: null,
+      twitter: null,
+    };
   }
 
   const seo = resolved.page.seo ?? {};
-  const title = typeof seo.title === "string" ? seo.title : "";
+  const title =
+    (typeof seo.title === "string" ? seo.title.trim() : "") || resolved.page.title;
   const description =
-    typeof seo.description === "string" ? seo.description : undefined;
+    (typeof seo.description === "string" ? seo.description.trim() : "") ||
+    `${resolved.page.title} — ${SITE_NAME}.`;
 
-  return {
-    title,
-    description,
-    alternates: {
-      canonical: absoluteUrl(`/${slug}`),
-    },
-    openGraph: {
-      title,
-      ...(description ? { description } : {}),
-      url: absoluteUrl(`/${slug}`),
-    },
-  };
+  // Nested metadata is shallow-merged by Next.js. Use the shared helper so
+  // CMS overrides retain all OG fields and get their own Twitter card.
+  return publicPageMetadata({ title, description, path: `/${slug}` });
 }
