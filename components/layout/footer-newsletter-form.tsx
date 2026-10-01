@@ -78,10 +78,11 @@ export function FooterNewsletterForm({
       <form
         onSubmit={handleSubmit}
         className={cn(
-          "flex min-h-11 overflow-hidden rounded-full border",
+          // Input or button focus rings the whole pill (15:1 against either surface).
+          "flex min-h-11 overflow-hidden rounded-full border outline-offset-2 has-[:focus-visible]:outline-2",
           isLight
-            ? "border-[#C7AE82] bg-white/70"
-            : "border-[#B39152]/50 bg-[#070A17]/22",
+            ? "border-[#C7AE82] bg-white/70 outline-[#0B1D4B]"
+            : "border-[#B39152]/50 bg-[#070A17]/22 outline-[#FDF7F1]",
         )}
       >
         <label htmlFor={fieldId} className="sr-only">
@@ -99,15 +100,15 @@ export function FooterNewsletterForm({
           className={cn(
             "min-w-0 flex-1 bg-transparent px-5 text-sm outline-none disabled:opacity-70",
             isLight
-              ? "text-[#2A1714] placeholder:text-[#6B5149]/50"
-              : "text-[#FDF7F1] placeholder:text-[#FDF7F1]/42",
+              ? "text-[#2A1714] placeholder:text-[#6B5149]/85"
+              : "text-[#FDF7F1] placeholder:text-[#FDF7F1]/72",
           )}
         />
         <button
           type="submit"
           disabled={!isValid || isLoading || subscribed}
           className={cn(
-            "grid w-11 place-items-center transition disabled:cursor-not-allowed disabled:hover:bg-transparent",
+            "grid w-11 place-items-center outline-none transition disabled:cursor-not-allowed disabled:hover:bg-transparent",
             isLight
               ? "text-[#A8854D] hover:bg-[#A8854D]/10 hover:text-[#2A1714]"
               : "text-[#B39152] hover:bg-[#B39152]/10 hover:text-[#FDF7F1]",

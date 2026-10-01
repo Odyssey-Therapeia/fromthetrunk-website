@@ -8,6 +8,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": rootDir,
+      // Next aliases `server-only` itself; vitest needs the same no-op stub so
+      // server-only modules (e.g. lib/journal/articles.ts) can be unit tested.
+      "server-only": path.join(rootDir, "node_modules/next/dist/compiled/server-only/empty.js"),
     },
   },
   test: {

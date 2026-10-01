@@ -398,7 +398,7 @@ export function HeroSection(props: HeroSectionProps) {
     >
       {/* The homepage's single, canonical H1 (visually hidden — the visible hero
           headline is the rotating tagline above). */}
-      <h1 className="sr-only">Authenticated Pre-Loved Luxury Sarees</h1>
+      <h1 className="sr-only">Authenticated Preloved Luxury Sarees</h1>
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div

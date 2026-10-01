@@ -33,9 +33,9 @@ import type { HomePageContent } from "@/types/site-content";
 export const revalidate = 60;
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Authenticated Pre-Loved Luxury Sarees | From The Trunk",
+  title: "Preloved Sarees Online | From The Trunk",
   description:
-    "Shop authenticated pre-loved & vintage luxury sarees with provenance — heirloom silks, designer drapes and restored weaves, each with its own story.",
+    "Shop authenticated preloved & vintage luxury sarees with provenance — heirloom silks, designer drapes and restored weaves, each with its own story.",
   path: "/",
 });
 

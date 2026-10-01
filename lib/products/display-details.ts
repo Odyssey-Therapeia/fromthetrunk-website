@@ -72,7 +72,7 @@ export const getProductDisplayDetails = (
   product: ProductDisplayDetailSource,
 ): ProductDisplayDetails => ({
   condition:
-    normalizeDetail(product.detailsCondition) ?? "Pre-loved, quality checked",
+    normalizeDetail(product.detailsCondition) ?? "Preloved, quality checked",
   designer: normalizeDetail(product.detailsDesigner),
   fabric: inferFabric(product),
   length: normalizeDetail(product.detailsLength) ?? "Standard saree drape",

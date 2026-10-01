@@ -45,7 +45,7 @@ const recoveryCards = [
     Icon: Store,
   },
   {
-    title: "What Pre-loved Means",
+    title: "What Preloved Means",
     body: "Learn how every piece is reviewed, condition graded, and prepared with care.",
     cta: "Learn the process",
     href: "/how-it-works",

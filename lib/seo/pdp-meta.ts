@@ -27,7 +27,7 @@ export function buildPdpTitle(name: string, fabric: string): string {
     return name;
   }
 
-  return `${name} – Pre-Loved ${suffix}`;
+  return `${name} – Preloved ${suffix}`;
 }
 
 /** Target length for the PDP meta description (kept ≤ this where possible). */
@@ -60,7 +60,7 @@ export function buildPdpDescription(
   // saree" when the fabric value already contains "saree".
   const fabricDisplay = fabric.replace(/\s+saree\s*$/i, "").trim() || fabric;
 
-  const lead = `Own '${name}', a one-of-a-kind pre-loved ${fabricDisplay} saree authenticated by From The Trunk.`;
+  const lead = `Own '${name}', a one-of-a-kind preloved ${fabricDisplay} saree authenticated by From The Trunk.`;
   const tail = "Shipped with provenance.";
 
   const story =

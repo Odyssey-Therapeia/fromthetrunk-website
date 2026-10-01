@@ -1,5 +1,8 @@
 import type { ProductWithRelations } from "@/db/queries/products";
-import { normalizeFacetSlug } from "@/lib/catalog/filter-taxonomy";
+import {
+  expandFabricAliases,
+  normalizeFacetSlug,
+} from "@/lib/catalog/filter-taxonomy";
 import type { CatalogSearchFilters } from "@/lib/ports/catalog-search";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import { absoluteUrl } from "@/lib/seo/site-url";
@@ -17,6 +20,19 @@ export type KeywordLandingFaq = {
   question: string;
 };
 
+/**
+ * The product grid shown straight after a landing page's introduction.
+ * `relatedEdit` names the slug of the closest landing page of the same type;
+ * its pieces are shown, under that page's own heading, only when this page
+ * has none available.
+ */
+export type KeywordLandingProductSection = {
+  heading: string;
+  viewAllHref: string;
+  viewAllLabel: string;
+  relatedEdit?: string;
+};
+
 export type KeywordLandingConfig = {
   canonicalPath: string;
   description: string;
@@ -26,6 +42,7 @@ export type KeywordLandingConfig = {
   intro: string[];
   minProductCount: number;
   primaryKeyword: string;
+  productSection?: KeywordLandingProductSection;
   related: Array<{ href: string; label: string }>;
   searchFilters?: CatalogSearchFilters;
   secondaryKeywords: string[];
@@ -39,29 +56,29 @@ export const keywordLandingPages = [
   {
     slug: "silk",
     type: "fabric",
-    primaryKeyword: "pre loved silk saree",
+    primaryKeyword: "preloved silk saree",
     secondaryKeywords: [
       "vintage silk saree",
       "pre owned silk saree",
       "second hand silk saree",
       "pre loved luxury sarees",
     ],
-    title: "Pre-Loved Silk Sarees Online India",
+    title: "Preloved Silk Sarees Online India",
     description:
-      "Shop authenticated pre-loved silk sarees from From the Trunk: restored, story-logged, and ready for another life.",
-    h1: "Pre-loved silk sarees, authenticated and re-stored",
+      "Shop authenticated preloved silk sarees from From the Trunk: restored, story-logged, and ready for another life.",
+    h1: "Preloved silk sarees, authenticated and re-stored",
     intro: [
-      "Silk is where many saree stories begin: wedding trunks, festive mornings, heirloom gifts, and pieces kept carefully for years. This edit gathers pre-loved silk sarees that have been checked, restored where needed, and prepared for a new wardrobe without pretending they are newly made.",
+      "Silk is where many saree stories begin: wedding trunks, festive mornings, heirloom gifts, and pieces kept carefully for years. This edit gathers preloved silk sarees that have been checked, restored where needed, and prepared for a new wardrobe without pretending they are newly made.",
       "Every listed piece is one of one. We document condition, fabric, provenance where available, and visible signs of age so you can choose with clarity. If you are looking for vintage silk sarees online in India, start here for pieces with craft, memory, and a lighter footprint than buying new.",
     ],
     faq: [
       {
         question: "Are these silk sarees new?",
         answer:
-          "No. They are pre-loved or vintage pieces that From the Trunk authenticates, condition-checks, and restores before listing.",
+          "No. They are preloved or vintage pieces that From the Trunk authenticates, condition-checks, and restores before listing.",
       },
       {
-        question: "How should I care for a pre-loved silk saree?",
+        question: "How should I care for a preloved silk saree?",
         answer:
           "Dry clean only, store folded in breathable muslin, and keep it away from direct sunlight and humidity.",
       },
@@ -69,62 +86,86 @@ export const keywordLandingPages = [
     canonicalPath: "/collection/fabric/silk",
     sitemap: true,
     minProductCount: 3,
-    searchFilters: { fabrics: ["silk"], availabilityStatus: "available" },
+    searchFilters: {
+      fabrics: ["silk"],
+      excludeTypes: ["blouse"],
+      availabilityStatus: "available",
+    },
+    productSection: {
+      heading: "Silk sarees in the trunk",
+      viewAllHref: "/collection?fabric=silk",
+      viewAllLabel: "View all silk sarees",
+      relatedEdit: "kanjeevaram",
+    },
     related: [
       { href: "/collection/occasion/festive", label: "Festive sarees" },
-      { href: "/guides/what-is-a-pre-loved-saree", label: "What pre-loved means" },
+      { href: "/journal/preloved-sarees-meaning", label: "What preloved means" },
       { href: "/sell-your-saree", label: "Sell a silk saree" },
+      { href: "/journal/indian-saree-fabrics-and-weaves", label: "Guide to saree weaves" },
+      { href: "/journal/how-to-identify-pure-silk-saree", label: "How to identify pure silk" },
     ],
   },
   {
     slug: "kanjeevaram",
     type: "fabric",
-    primaryKeyword: "pre loved kanjeevaram saree",
+    primaryKeyword: "preloved kanjeevaram saree",
     secondaryKeywords: [
       "vintage kanjeevaram saree",
       "second hand kanjeevaram saree",
       "pre owned kanjivaram silk saree",
     ],
-    title: "Pre-Loved Kanjeevaram Sarees",
+    title: "Preloved Kanjeevaram Sarees",
     description:
-      "Explore authenticated pre-loved Kanjeevaram sarees, condition-checked and prepared for a second story.",
-    h1: "Pre-loved Kanjeevaram sarees with ceremonial presence",
+      "Explore authenticated preloved Kanjeevaram sarees, condition-checked and prepared for a second story.",
+    h1: "Preloved Kanjeevaram sarees with ceremonial presence",
     intro: [
-      "A Kanjeevaram saree carries weight in every sense: silk, zari, occasion, and memory. This page is reserved for Kanjeevaram and Kanjivaram-style pieces that meet the From the Trunk standard for authentication and condition clarity.",
-      "Inventory is intentionally limited because every piece is sourced one by one. When fewer pieces are available, this page remains a helpful reference but is kept out of the sitemap until it can support a useful product-led collection.",
+      "A Kanjeevaram saree carries weight in every sense: silk, zari, occasion, and memory. This edit gathers Kanjeevaram and Kanjivaram-style pieces that meet the From the Trunk standard for authentication and condition clarity.",
+      "Every piece is sourced one by one, so this edit stays small and changes often. Each saree carries its own condition notes and story, and new pieces join the trunk as they pass our checks.",
     ],
     faq: [
       {
         question: "Why are there only a few Kanjeevaram sarees?",
         answer:
-          "From the Trunk lists unique pre-loved pieces only after review, so Kanjeevaram inventory depends on what passes sourcing and condition checks.",
+          "From the Trunk lists unique preloved pieces only after review, so Kanjeevaram inventory depends on what passes sourcing and condition checks.",
       },
     ],
     canonicalPath: "/collection/fabric/kanjeevaram",
-    sitemap: false,
+    sitemap: true,
     minProductCount: 3,
+    // "kanjeevaram" also finds Kanjivaram / Kanchipuram spellings and
+    // "Kanjeevaram Mix" (see expandFabricAliases); products record the weave as
+    // "Kanjeevaram", so a "kanjeevaram-silk" filter matched nothing.
     searchFilters: {
-      fabrics: ["kanjeevaram-silk"],
+      fabrics: ["kanjeevaram"],
+      excludeTypes: ["blouse"],
       availabilityStatus: "available",
     },
+    productSection: {
+      heading: "Kanjeevaram sarees in the trunk",
+      viewAllHref: "/collection?fabric=kanjeevaram",
+      viewAllLabel: "View all Kanjeevaram sarees",
+      relatedEdit: "silk",
+    },
     related: [
-      { href: "/collection/fabric/silk", label: "Pre-loved silk sarees" },
+      { href: "/collection/fabric/silk", label: "Preloved silk sarees" },
       { href: "/collection/occasion/festive", label: "Festive sarees" },
-      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Pre-loved vs second hand" },
+      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Preloved vs second hand" },
+      { href: "/journal/indian-saree-fabrics-and-weaves", label: "Guide to saree weaves" },
+      { href: "/journal/how-to-identify-pure-silk-saree", label: "How to identify pure silk" },
     ],
   },
   {
     slug: "chiffon",
     type: "fabric",
-    primaryKeyword: "pre loved chiffon saree",
+    primaryKeyword: "preloved chiffon saree",
     secondaryKeywords: ["vintage chiffon saree", "soft flow saree"],
-    title: "Pre-Loved Chiffon Sarees",
+    title: "Preloved Chiffon Sarees",
     description:
-      "Find light, flowing pre-loved chiffon sarees when available, each checked and story-logged by From the Trunk.",
-    h1: "Pre-loved chiffon sarees with soft movement",
+      "Find light, flowing preloved chiffon sarees when available, each checked and story-logged by From the Trunk.",
+    h1: "Preloved chiffon sarees with soft movement",
     intro: [
-      "Chiffon sarees are loved for their light drape, gentle movement, and evening ease. From the Trunk keeps this edit focused on authenticated pre-loved chiffon pieces rather than broad filtered duplicates.",
-      "When the collection is small, the page stays useful for discovery but is not treated as a major SEO landing page until enough products are available.",
+      "Chiffon sarees are loved for their light drape, gentle movement, and evening ease. This edit gathers authenticated preloved chiffon pieces, each with its own condition notes.",
+      "Chiffon pieces come and go quickly, so look through what is in the trunk now, or explore georgette for a similarly fluid drape.",
     ],
     faq: [
       {
@@ -134,26 +175,38 @@ export const keywordLandingPages = [
       },
     ],
     canonicalPath: "/collection/fabric/chiffon",
-    sitemap: false,
+    sitemap: true,
     minProductCount: 3,
-    searchFilters: { fabrics: ["chiffon"], availabilityStatus: "available" },
+    searchFilters: {
+      fabrics: ["chiffon"],
+      excludeTypes: ["blouse"],
+      availabilityStatus: "available",
+    },
+    productSection: {
+      heading: "Chiffon sarees in the trunk",
+      viewAllHref: "/collection?fabric=chiffon",
+      viewAllLabel: "View all chiffon sarees",
+      relatedEdit: "georgette",
+    },
     related: [
       { href: "/collection/fabric/silk", label: "Silk sarees" },
       { href: "/collection/occasion/festive", label: "Festive sarees" },
+      { href: "/journal/indian-saree-fabrics-and-weaves", label: "Guide to saree weaves" },
+      { href: "/journal/how-to-care-for-sarees", label: "How to care for sarees" },
     ],
   },
   {
     slug: "georgette",
     type: "fabric",
-    primaryKeyword: "pre loved georgette saree",
+    primaryKeyword: "preloved georgette saree",
     secondaryKeywords: ["vintage georgette saree"],
-    title: "Pre-Loved Georgette Sarees",
+    title: "Preloved Georgette Sarees",
     description:
-      "Discover pre-loved georgette sarees from From the Trunk when this fluid fabric is available in the collection.",
-    h1: "Pre-loved georgette sarees for fluid drape",
+      "Discover preloved georgette sarees from From the Trunk when this fluid fabric is available in the collection.",
+    h1: "Preloved georgette sarees for fluid drape",
     intro: [
-      "Georgette is often chosen for its fall: easy pleats, soft structure, and a dressed feeling without too much weight. This curated page is intentionally held to a product-count threshold before it becomes indexable.",
-      "Until enough pieces are available, use it as a natural internal path rather than a thin doorway page.",
+      "Georgette is often chosen for its fall: easy pleats, soft structure, and a dressed feeling without too much weight. This edit gathers authenticated preloved georgette sarees, each with its own condition notes.",
+      "Every piece is one of one, so what is here changes as sarees find new homes. Chiffon offers a similarly light, flowing drape.",
     ],
     faq: [
       {
@@ -163,30 +216,42 @@ export const keywordLandingPages = [
       },
     ],
     canonicalPath: "/collection/fabric/georgette",
-    sitemap: false,
+    sitemap: true,
     minProductCount: 3,
-    searchFilters: { fabrics: ["georgette"], availabilityStatus: "available" },
+    searchFilters: {
+      fabrics: ["georgette"],
+      excludeTypes: ["blouse"],
+      availabilityStatus: "available",
+    },
+    productSection: {
+      heading: "Georgette sarees in the trunk",
+      viewAllHref: "/collection?fabric=georgette",
+      viewAllLabel: "View all georgette sarees",
+      relatedEdit: "chiffon",
+    },
     related: [
       { href: "/collection/fabric/chiffon", label: "Chiffon sarees" },
       { href: "/collection", label: "All sarees" },
+      { href: "/journal/indian-saree-fabrics-and-weaves", label: "Guide to saree weaves" },
+      { href: "/journal/how-to-care-for-sarees", label: "How to care for sarees" },
     ],
   },
   {
     slug: "wedding",
     type: "occasion",
-    primaryKeyword: "pre loved wedding saree",
+    primaryKeyword: "preloved wedding saree",
     secondaryKeywords: ["vintage wedding saree", "sustainable wedding saree"],
-    title: "Pre-Loved Wedding Sarees",
+    title: "Preloved Wedding Sarees",
     description:
-      "Browse pre-loved wedding sarees when ceremonial pieces are available, with provenance and condition details.",
-    h1: "Pre-loved wedding sarees for meaningful occasions",
+      "Browse preloved wedding sarees when ceremonial pieces are available, with provenance and condition details.",
+    h1: "Preloved wedding sarees for meaningful occasions",
     intro: [
       "A wedding saree is rarely just an outfit. It is chosen for ritual, memory, family photographs, and the feeling of carrying something significant. From the Trunk keeps wedding-intent pieces tightly curated and condition-led.",
-      "This page becomes indexable only when there are enough available pieces to make the experience genuinely useful for someone shopping for a wedding saree.",
+      "Wedding-worthy pieces are rare in preloved form, so each one is chosen with care and listed with its condition, fabric, and provenance notes where known.",
     ],
     faq: [
       {
-        question: "Can a pre-loved saree be worn for a wedding?",
+        question: "Can a preloved saree be worn for a wedding?",
         answer:
           "Yes, when condition and styling fit the occasion. From the Trunk documents each piece so buyers can choose confidently.",
       },
@@ -194,7 +259,16 @@ export const keywordLandingPages = [
     canonicalPath: "/collection/occasion/wedding",
     sitemap: false,
     minProductCount: 3,
-    searchFilters: { occasions: ["wedding"], availabilityStatus: "available" },
+    searchFilters: {
+      occasions: ["wedding"],
+      excludeTypes: ["blouse"],
+      availabilityStatus: "available",
+    },
+    productSection: {
+      heading: "Wedding sarees in the trunk",
+      viewAllHref: "/collection?occasion=wedding",
+      viewAllLabel: "View all wedding sarees",
+    },
     related: [
       { href: "/collection/fabric/silk", label: "Silk sarees" },
       { href: "/collection/occasion/festive", label: "Festive sarees" },
@@ -203,28 +277,28 @@ export const keywordLandingPages = [
   {
     slug: "festive",
     type: "occasion",
-    primaryKeyword: "festive sarees pre loved",
+    primaryKeyword: "festive sarees preloved",
     secondaryKeywords: [
       "party wear pre loved sarees",
       "puja sarees pre loved",
       "sustainable festive sarees",
     ],
-    title: "Pre-Loved Festive Sarees",
+    title: "Preloved Festive Sarees",
     description:
-      "Shop authenticated pre-loved festive sarees for celebrations, pujas, dinners, and family occasions.",
-    h1: "Pre-loved festive sarees for the next celebration",
+      "Shop authenticated preloved festive sarees for celebrations, pujas, dinners, and family occasions.",
+    h1: "Preloved festive sarees for the next celebration",
     intro: [
       "Festive sarees do not need to be newly made to feel special. This edit brings together pieces suited to pujas, dinners, family gatherings, and celebratory dressing, each reviewed for condition and presented with its story where available.",
-      "Choosing pre-loved festive sarees keeps craft in circulation and gives beautiful textiles another reason to be worn. Browse the available pieces, then check each product dossier for fabric, grade, care, and provenance notes.",
+      "Choosing preloved festive sarees keeps craft in circulation and gives beautiful textiles another reason to be worn. Browse the available pieces, then check each product dossier for fabric, grade, care, and provenance notes.",
     ],
     faq: [
       {
-        question: "Are pre-loved sarees appropriate for festivals?",
+        question: "Are preloved sarees appropriate for festivals?",
         answer:
-          "Yes. Many pre-loved sarees are occasion pieces that were worn rarely and preserved carefully before being restored and listed.",
+          "Yes. Many preloved sarees are occasion pieces that were worn rarely and preserved carefully before being restored and listed.",
       },
       {
-        question: "Can I gift a pre-loved saree?",
+        question: "Can I gift a preloved saree?",
         answer:
           "Yes, especially when the recipient values craft, provenance, and sustainable fashion. Check the product condition notes first.",
       },
@@ -232,10 +306,19 @@ export const keywordLandingPages = [
     canonicalPath: "/collection/occasion/festive",
     sitemap: true,
     minProductCount: 3,
-    searchFilters: { occasions: ["festive"], availabilityStatus: "available" },
+    searchFilters: {
+      occasions: ["festive"],
+      excludeTypes: ["blouse"],
+      availabilityStatus: "available",
+    },
+    productSection: {
+      heading: "Festive sarees in the trunk",
+      viewAllHref: "/collection?occasion=festive",
+      viewAllLabel: "View all festive sarees",
+    },
     related: [
       { href: "/collection/fabric/silk", label: "Silk sarees" },
-      { href: "/guides/what-is-a-pre-loved-saree", label: "What pre-loved means" },
+      { href: "/journal/preloved-sarees-meaning", label: "What preloved means" },
       { href: "/sell-your-saree", label: "Pass on a saree" },
     ],
   },
@@ -249,10 +332,10 @@ export const keywordLandingPages = [
       "saree blouse black",
       "designer blouse pre loved",
     ],
-    title: "Pre-Loved Saree Blouses",
+    title: "Preloved Saree Blouses",
     description:
-      "Curated pre-loved and designer saree blouses to complete your drape — authenticated, one-of-a-kind pieces from From The Trunk.",
-    h1: "Pre-Loved & Designer Saree Blouses",
+      "Curated preloved and designer saree blouses to complete your drape — authenticated, one-of-a-kind pieces from From The Trunk.",
+    h1: "Preloved & Designer Saree Blouses",
     intro: [
       "Blouses need fit, fabric, and styling clarity, so From the Trunk keeps blouse discovery separate from saree-only searches. New pieces are added here as they are authenticated and restored.",
       "When available, pieces are shown with the same care standards: visible condition, product details, and no hidden ownership assumptions.",
@@ -268,6 +351,11 @@ export const keywordLandingPages = [
     sitemap: true,
     minProductCount: 1,
     searchFilters: { types: ["blouse"], availabilityStatus: "available" },
+    productSection: {
+      heading: "Blouses in the trunk",
+      viewAllHref: "/collection?type=blouse",
+      viewAllLabel: "View all blouses",
+    },
     related: [
       { href: "/collection", label: "All sarees" },
       { href: "/collection/fabric/silk", label: "Silk sarees" },
@@ -288,7 +376,7 @@ export const keywordLandingPages = [
       "Pass on old, vintage, or heirloom sarees through From the Trunk. Learn what we accept and how our review process works.",
     h1: "Sell or consign sarees with a second story",
     intro: [
-      "Some sarees are too beautiful to stay folded away, but too meaningful to treat like ordinary resale. From the Trunk helps custodians pass on pre-loved, vintage, and heirloom sarees through a careful review process built around condition, provenance, and respect for the textile.",
+      "Some sarees are too beautiful to stay folded away, but too meaningful to treat like ordinary resale. From the Trunk helps custodians pass on preloved, vintage, and heirloom sarees through a careful review process built around condition, provenance, and respect for the textile.",
       "We are especially interested in silk, Kanjeevaram, Banarasi, chiffon, georgette, cotton silk, and distinctive occasion sarees with a story. Share clear photos and any known history; our team will review whether the piece is right for the trunk.",
     ],
     faq: [
@@ -315,74 +403,73 @@ export const keywordLandingPages = [
     related: [
       { href: "/how-it-works", label: "How it works" },
       { href: "/collection/fabric/silk", label: "Browse silk sarees" },
-      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Pre-loved vs second hand" },
+      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Preloved vs second hand" },
     ],
   },
   {
     slug: "what-is-a-pre-loved-saree",
     type: "guide",
-    primaryKeyword: "what is a pre loved saree",
+    primaryKeyword: "what is a preloved saree",
     secondaryKeywords: [
       "pre loved saree meaning",
       "vintage saree meaning",
       "why buy pre loved sarees",
     ],
-    title: "What Is a Pre-Loved Saree?",
+    title: "What Is a Preloved Saree?",
     description:
-      "A clear guide to what pre-loved sarees mean, how they differ from ordinary second-hand pieces, and how From the Trunk prepares them.",
-    h1: "What is a pre-loved saree?",
+      "A clear guide to what preloved sarees mean, how they differ from ordinary second-hand pieces, and how From the Trunk prepares them.",
+    h1: "What is a preloved saree?",
     intro: [
-      "A pre-loved saree is a saree that has already belonged to someone else, but still has value, beauty, and wear left in it. The phrase matters because it shifts the focus from disposal to care: the saree was kept, worn, preserved, and is now ready for another custodian.",
-      "At From the Trunk, pre-loved also means reviewed. We look at fabric, condition, provenance where available, and whether the piece can be presented honestly. A pre-loved saree may show gentle signs of age, but those details are part of the dossier rather than something hidden.",
-      "Buying pre-loved is not only about price. It can mean owning a one-of-one piece, choosing circular fashion, and keeping textile craft in use for longer.",
+      "A preloved saree is a saree that has already belonged to someone else, but still has value, beauty, and wear left in it. The phrase matters because it shifts the focus from disposal to care: the saree was kept, worn, preserved, and is now ready for another custodian.",
+      "At From the Trunk, preloved also means reviewed. We look at fabric, condition, provenance where available, and whether the piece can be presented honestly. A preloved saree may show gentle signs of age, but those details are part of the dossier rather than something hidden.",
+      "Buying preloved is not only about price. It can mean owning a one-of-one piece, choosing circular fashion, and keeping textile craft in use for longer.",
     ],
     faq: [
       {
-        question: "Is pre-loved the same as damaged?",
+        question: "Is preloved the same as damaged?",
         answer:
-          "No. Pre-loved means previously owned. Condition varies by piece, which is why each From the Trunk product includes condition notes.",
+          "No. Preloved means previously owned. Condition varies by piece, which is why each From the Trunk product includes condition notes.",
       },
       {
-        question: "Why buy a pre-loved saree?",
+        question: "Why buy a preloved saree?",
         answer:
           "It can offer uniqueness, provenance, and lower textile waste compared with buying a newly made occasion saree.",
       },
     ],
     canonicalPath: "/guides/what-is-a-pre-loved-saree",
-    sitemap: true,
+    sitemap: false,
     minProductCount: 0,
     indexableWithoutProducts: true,
     related: [
       { href: "/collection", label: "Browse the collection" },
-      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Pre-loved vs second hand" },
+      { href: "/guides/pre-loved-vs-second-hand-saree", label: "Preloved vs second hand" },
       { href: "/sell-your-saree", label: "Sell your saree" },
     ],
   },
   {
     slug: "pre-loved-vs-second-hand-saree",
     type: "guide",
-    primaryKeyword: "pre loved vs second hand saree",
+    primaryKeyword: "preloved vs second hand saree",
     secondaryKeywords: [
       "second hand sarees online India",
       "authenticated pre loved sarees",
     ],
-    title: "Pre-Loved vs Second-Hand Sarees",
+    title: "Preloved vs Second-Hand Sarees",
     description:
-      "Understand how pre-loved sarees differ from ordinary second-hand listings, especially around condition, provenance, and curation.",
-    h1: "Pre-loved vs second-hand sarees",
+      "Understand how preloved sarees differ from ordinary second-hand listings, especially around condition, provenance, and curation.",
+    h1: "Preloved vs second-hand sarees",
     intro: [
-      "Second-hand usually means previously owned. Pre-loved can mean that too, but in a curated saree context it should go further: condition clarity, authentication effort, story, and respectful presentation. The difference is not a marketing shortcut; it is a responsibility to describe the textile honestly.",
-      "A generic second-hand listing may focus mainly on price and availability. A From the Trunk pre-loved saree is treated more like a product dossier: fabric, condition grade, measurements, provenance if known, care notes, and the reason it still deserves to be worn.",
-      "That is why query-filter pages are not enough for SEO. Useful pages need context, not only inventory. They should help shoppers understand what they are buying and why the piece is worth considering.",
+      "Second-hand usually means previously owned. Preloved can mean that too, but in a curated saree context it should go further: condition clarity, authentication effort, story, and respectful presentation. The difference is not a marketing shortcut; it is a responsibility to describe the textile honestly.",
+      "A generic second-hand listing may focus mainly on price and availability. A From the Trunk preloved saree is treated more like a product dossier: fabric, condition grade, measurements, provenance if known, care notes, and the reason it still deserves to be worn.",
     ],
     faq: [
       {
-        question: "Is pre-loved more expensive than second-hand?",
+        question: "Is preloved more expensive than second-hand?",
         answer:
           "Sometimes, because curation, authentication, restoration, and presentation add value. The final price still depends on fabric, condition, craft, and rarity.",
       },
       {
-        question: "Should I search for pre-loved or second-hand sarees?",
+        question: "Should I search for preloved or second-hand sarees?",
         answer:
           "Use both terms when researching, but look for clear condition notes and trustworthy product information before buying.",
       },
@@ -392,8 +479,8 @@ export const keywordLandingPages = [
     minProductCount: 0,
     indexableWithoutProducts: true,
     related: [
-      { href: "/guides/what-is-a-pre-loved-saree", label: "What pre-loved means" },
-      { href: "/collection/fabric/silk", label: "Pre-loved silk sarees" },
+      { href: "/journal/preloved-sarees-meaning", label: "What preloved means" },
+      { href: "/collection/fabric/silk", label: "Preloved silk sarees" },
       { href: "/sell-your-saree", label: "Pass on a saree" },
     ],
   },
@@ -421,7 +508,7 @@ export function getFabricLandingForLabel(
   fabric: string,
 ): KeywordLandingConfig | undefined {
   const slug = normalizeFacetSlug(fabric);
-  if (slug.includes("kanjeevaram") || slug.includes("kanjivaram")) {
+  if (expandFabricAliases(["kanjeevaram"]).some((alias) => slug.includes(alias))) {
     return getKeywordLandingByTypeSlug("fabric", "kanjeevaram");
   }
   if (slug.includes("chiffon")) {

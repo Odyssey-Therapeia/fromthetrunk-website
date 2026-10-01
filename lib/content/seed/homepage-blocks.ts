@@ -61,7 +61,7 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
     type: "hero",
     props: {
       eyebrow: "From the Trunk",
-      headline: "Pre-loved luxury sarees with provenance.",
+      headline: "Preloved luxury sarees with provenance.",
       subtitle:
         "Curated heirloom pieces, authenticated and restored with care, each carrying the story that made it timeless.",
       primaryCtaLabel: "Explore the Collection",
@@ -101,7 +101,7 @@ export const HOMEPAGE_BLOCKS: HomepageBlock[] = [
         },
         {
           paragraphs: [
-            "By giving your pre-loved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship.",
+            "By giving your preloved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship.",
             "Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
           ],
           layout: "image-left",

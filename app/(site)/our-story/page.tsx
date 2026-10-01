@@ -71,7 +71,7 @@ const storyChapters = [
     shortTitle: "Never just fabric",
     body: [
       "A saree is never just fabric. It holds the memory of a celebration, the weight of an heirloom, the colour of a moment that once meant everything. Left in the trunk, that story pauses. Worn again by someone new, it begins all over again.",
-      "From the Trunk (FTT) is a curated home for pre-loved and vintage sarees. Each one is authenticated, gently restored, and documented with its own provenance. Kanjeevaram silk, soft georgette, heirloom chiffon: every piece is unique.",
+      "From the Trunk (FTT) is a curated home for preloved and vintage sarees. Each one is authenticated, gently restored, and documented with its own provenance. Kanjeevaram silk, soft georgette, heirloom chiffon: every piece is unique.",
     ],
     marginNote:
       "Authentication, restoration, and provenance make the piece ready for its next chapter.",
@@ -84,7 +84,7 @@ const storyChapters = [
     title: "A bridge between past and present.",
     shortTitle: "A second life",
     body: [
-      "By giving your pre-loved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship.",
+      "By giving your preloved sarees a second life, you’re not just clearing space, you’re passing on heritage, emotion, and craftsmanship.",
       "Each saree becomes a bridge between past and present, finding new meaning in someone else’s journey.",
     ],
     marginNote:
@@ -105,7 +105,7 @@ const storyChapters = [
       },
       {
         label: "For the woman looking for one",
-        text: "Find a saree that already carries meaning: a pre-loved, restored piece that’s exquisite, timeless, and far kinder to your wallet than buying new. Wear a piece of someone’s history into a moment of your own.",
+        text: "Find a saree that already carries meaning: a preloved, restored piece that’s exquisite, timeless, and far kinder to your wallet than buying new. Wear a piece of someone’s history into a moment of your own.",
       },
     ],
     marginNote:
@@ -123,7 +123,7 @@ const storyChapters = [
       "Buy used. Don’t buy and use.",
     ],
     marginNote:
-      "Some treasures deserve another chapter. Choose pre-loved over new.",
+      "Some treasures deserve another chapter. Choose preloved over new.",
     tagline:
       "To wear again is to take less and give more. A conscious kind of beautiful.",
   },
@@ -311,7 +311,7 @@ export default function OurStoryPage() {
                 From the Trunk
               </p>
               <h1 className="mt-2 font-serif text-3xl leading-none text-[#141D46] sm:text-4xl">
-                Our Story — Pre-Loved Sarees With Provenance
+                Our Story — Preloved Sarees With Provenance
               </h1>
             </div>
 
@@ -627,7 +627,7 @@ function StoryDesktopSpine({
             {/* Consistent page H1 across viewports; the vertical "OUR STORY" below
                 is decorative only. */}
             <h1 className="sr-only">
-              Our Story — Pre-Loved Sarees With Provenance
+              Our Story — Preloved Sarees With Provenance
             </h1>
             <span
               aria-hidden="true"

@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = publicPageMetadata({
   title: "Saree Authentication & Provenance | From The Trunk",
   description:
-    "How From The Trunk verifies fibre, zari and provenance, so every pre-loved saree you buy is exactly what we say it is.",
+    "How From The Trunk verifies fibre, zari and provenance, so every preloved saree you buy is exactly what we say it is.",
   path: "/authentication",
 });
 
@@ -18,10 +18,10 @@ export default function AuthenticationPage() {
           Trust &amp; Provenance
         </p>
         <h1 className="font-serif text-4xl leading-tight text-foreground sm:text-5xl">
-          How We Authenticate Every Pre-Loved Saree
+          How We Authenticate Every Preloved Saree
         </h1>
         <p className="text-base leading-8 text-muted-foreground">
-          Every saree at From The Trunk is one-of-a-kind and pre-loved, so
+          Every saree at From The Trunk is one-of-a-kind and preloved, so
           &ldquo;authentic&rdquo; has to mean something specific. Before a piece is
           ever listed, it passes through a hands-on check of fibre, weave, zari and
           condition — and we write down what we find, honestly. Here is exactly what
@@ -61,7 +61,7 @@ export default function AuthenticationPage() {
             Condition, graded honestly
           </h2>
           <p className="text-sm leading-7">
-            A pre-loved saree has a past, and we think that is part of its beauty —
+            A preloved saree has a past, and we think that is part of its beauty —
             but only when it is disclosed. Every piece is inspected for fabric
             strength, stains, tears, thinning, and border and pallu integrity. The
             condition and any visible signs of wear are recorded and shown on the

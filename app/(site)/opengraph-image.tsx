@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "From The Trunk: Pre-Loved Luxury Sarees";
+export const alt = "From The Trunk: Preloved Luxury Sarees";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -48,7 +48,7 @@ export default function OGImage() {
             maxWidth: "800px",
           }}
         >
-          Pre-Loved Luxury Sarees with Provenance
+          Preloved Luxury Sarees with Provenance
         </div>
         <div
           style={{

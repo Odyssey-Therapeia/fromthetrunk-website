@@ -164,7 +164,7 @@ export function ProductCard({
 
             {!isSold && !isReserved && !isBlouse && displayOriginalPricePaise !== null && (
               <Badge className="absolute left-2 top-2 @sm:left-4 @sm:top-4 text-[10px] @sm:text-xs bg-white/85 text-trunk-brown shadow-soft">
-                Pre-loved
+                Preloved
               </Badge>
             )}
           </div>

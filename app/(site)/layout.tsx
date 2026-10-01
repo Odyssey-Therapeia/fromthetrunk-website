@@ -32,33 +32,31 @@ const isVercelRuntime = process.env.VERCEL === "1";
 
 export const metadata: Metadata = {
   title: {
-    default: "From The Trunk | Authenticated Pre-Loved Sarees in India",
+    default: "From The Trunk | Authenticated Preloved Sarees in India",
     template: "%s | From The Trunk",
   },
   description:
-    "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
+    "Shop curated preloved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
   metadataBase: new URL(baseUrl),
   openGraph: {
     type: "website",
     locale: OG_LOCALE,
     siteName: SITE_NAME,
     url: baseUrl,
-    title: "From The Trunk | Authenticated Pre-Loved Sarees in India",
+    title: "From The Trunk | Authenticated Preloved Sarees in India",
     description:
-      "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
+      "Shop curated preloved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
     images: [defaultSocialImage],
   },
   twitter: {
     card: DEFAULT_TWITTER_CARD,
-    title: "From The Trunk | Authenticated Pre-Loved Sarees in India",
+    title: "From The Trunk | Authenticated Preloved Sarees in India",
     description:
-      "Shop curated pre-loved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
+      "Shop curated preloved sarees, heirloom silk sarees, designer drapes, and restored Indian textiles authenticated by From The Trunk.",
     images: [defaultSocialImage],
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  // No site-wide robots: "index, follow" is the default, and a layout-level
+  // tag was inherited by every 404 next to Next's own noindex.
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",

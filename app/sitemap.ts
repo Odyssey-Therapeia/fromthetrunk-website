@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 
 import { listProducts } from "@/db/queries/products";
+import { getLiveJournalArticles } from "@/lib/journal/articles";
+import { journalSitemapEntries } from "@/lib/journal/seo";
 import { policies } from "@/lib/legal/policies";
 import { searchProducts } from "@/lib/ports/catalog-search";
 import {
@@ -137,9 +139,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const keywordPages = await getKeywordSitemapPages();
 
+  // Published journal stories only; drafts never reach the sitemap.
+  const journalPages = journalSitemapEntries(getLiveJournalArticles());
+
   return dedupeSitemapEntries([
     ...staticPages,
     ...policyPages,
+    ...journalPages,
     ...keywordPages,
     ...productPages,
   ]);

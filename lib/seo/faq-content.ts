@@ -10,13 +10,13 @@ export type FaqItem = {
 };
 
 export const OWNER_APPROVED_AEO_GEO_FAQ_QUESTIONS = [
-  "What is a pre-loved saree?",
-  "Are pre-loved sarees authentic?",
-  "Where can I buy authenticated pre-loved sarees in India?",
+  "What is a preloved saree?",
+  "Are preloved sarees authentic?",
+  "Where can I buy authenticated preloved sarees in India?",
   "How do I sell my old saree?",
   "How do I store a silk saree?",
   "How do I care for a Kanjeevaram saree?",
-  "What is the difference between pre-loved and second-hand sarees?",
+  "What is the difference between preloved and second-hand sarees?",
   "Are vintage sarees sustainable?",
   "How does From the Trunk verify sarees?",
   "What happens if a one-of-one saree is reserved?",
@@ -26,21 +26,21 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "What is From the Trunk?",
     answer:
-      "From the Trunk is a curated marketplace for authenticated, pre-loved luxury sarees. We source forgotten treasures from homes across India, meticulously restore them, and give them a second life with a new custodian.",
+      "From the Trunk is a curated marketplace for authenticated, preloved luxury sarees. We source forgotten treasures from homes across India, meticulously restore them, and give them a second life with a new custodian.",
   },
   {
-    question: "What is a pre-loved saree?",
+    question: "What is a preloved saree?",
     answer:
-      "A pre-loved saree is one that has been worn, cherished, or carefully preserved by someone before you. It is not “second-hand” in the ordinary sense — it is a saree with a history. A silk draped at a wedding. A Kanjeevaram passed down through a family. At From the Trunk, every piece we carry has already had a life, and is ready to be loved again.",
+      "A preloved saree is one that has been worn, cherished, or carefully preserved by someone before you. It is not “second-hand” in the ordinary sense — it is a saree with a history. A silk draped at a wedding. A Kanjeevaram passed down through a family. At From the Trunk, every piece we carry has already had a life, and is ready to be loved again.",
     links: [
       {
-        href: "/guides/what-is-a-pre-loved-saree",
-        label: "What pre-loved means",
+        href: "/journal/preloved-sarees-meaning",
+        label: "What preloved means",
       },
     ],
   },
   {
-    question: "Are pre-loved sarees authentic?",
+    question: "Are preloved sarees authentic?",
     answer:
       "Yes — and that is non-negotiable for us. Every saree goes through our curation and authentication process before it reaches the collection. If we cannot verify it with confidence, it does not go into the trunk. Simple as that.",
     links: [
@@ -49,9 +49,9 @@ export const FAQ_ITEMS: FaqItem[] = [
     ],
   },
   {
-    question: "Where can I buy authenticated pre-loved sarees in India?",
+    question: "Where can I buy authenticated preloved sarees in India?",
     answer:
-      "You can browse authenticated pre-loved sarees directly through From the Trunk. Each piece in our collection is curated, checked, and listed with care before it is made available. New drops are released regularly, and because every saree is one-of-one, pieces can move quickly.",
+      "You can browse authenticated preloved sarees directly through From the Trunk. Each piece in our collection is curated, checked, and listed with care before it is made available. New drops are released regularly, and because every saree is one-of-one, pieces can move quickly.",
     links: [{ href: "/collection", label: "Browse the collection" }],
   },
   {
@@ -64,21 +64,21 @@ export const FAQ_ITEMS: FaqItem[] = [
     ],
   },
   {
-    question: "What is the difference between pre-loved and second-hand sarees?",
+    question: "What is the difference between preloved and second-hand sarees?",
     answer:
-      "“Second-hand” only tells you that something had a previous owner. “Pre-loved,” the way we use it, means the saree has been selected, inspected, authenticated, and cared for before it reaches you. You understand its fabric, condition, and story. That is the difference between a saree that simply changed hands and one that found its next chapter.",
+      "“Second-hand” only tells you that something had a previous owner. “Preloved,” the way we use it, means the saree has been selected, inspected, authenticated, and cared for before it reaches you. You understand its fabric, condition, and story. That is the difference between a saree that simply changed hands and one that found its next chapter.",
     links: [
       {
         href: "/guides/pre-loved-vs-second-hand-saree",
-        label: "Pre-loved vs second hand",
+        label: "Preloved vs second hand",
       },
     ],
   },
   {
     question: "Are vintage sarees sustainable?",
     answer:
-      "Yes, choosing a vintage or pre-loved saree can be a deeply sustainable choice. Instead of creating something new, you are choosing a piece that already exists and giving it a longer life. It reduces waste, honours existing craft, and keeps beautiful textiles in circulation.",
-    links: [{ href: "/why", label: "Why pre-loved matters" }],
+      "Yes, choosing a vintage or preloved saree can be a deeply sustainable choice. Instead of creating something new, you are choosing a piece that already exists and giving it a longer life. It reduces waste, honours existing craft, and keeps beautiful textiles in circulation.",
+    links: [{ href: "/why", label: "Why preloved matters" }],
   },
   {
     question: "How do I sell my old saree?",
@@ -105,9 +105,9 @@ export const FAQ_ITEMS: FaqItem[] = [
     links: [{ href: "/collection", label: "Browse the collection" }],
   },
   {
-    question: "Are the sarees really pre-loved?",
+    question: "Are the sarees really preloved?",
     answer:
-      "Yes. Every saree on From the Trunk has been owned and loved before. We believe pre-loved pieces carry unique provenance and character that new sarees simply cannot replicate.",
+      "Yes. Every saree on From the Trunk has been owned and loved before. We believe preloved pieces carry unique provenance and character that new sarees simply cannot replicate.",
   },
   {
     question: "Do you offer returns?",

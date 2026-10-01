@@ -12,7 +12,7 @@ export const metadata: Metadata = WHY_PAGE_METADATA;
 const WHY_IMAGES = [
   {
     src: "/our-story/chap_1.avif",
-    alt: "A pre-loved heritage saree from From the Trunk",
+    alt: "A preloved heritage saree from From the Trunk",
   },
   {
     src: "/category/georgette.jpg",
@@ -24,7 +24,7 @@ const WHY_IMAGES = [
   },
   {
     src: "/our-story/chap_4.avif",
-    alt: "A consciously chosen pre-loved saree",
+    alt: "A consciously chosen preloved saree",
   },
   {
     src: "/our-story/chap_5.avif",

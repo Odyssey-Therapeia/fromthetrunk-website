@@ -35,7 +35,7 @@ describe("getProductDisplayDetails", () => {
     const details = getProductDisplayDetails({});
 
     expect(details).toEqual({
-      condition: "Pre-loved, quality checked",
+      condition: "Preloved, quality checked",
       designer: null,
       fabric: "Heirloom saree",
       length: "Standard saree drape",

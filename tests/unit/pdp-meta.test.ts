@@ -13,13 +13,13 @@ import {
 describe("buildPdpTitle", () => {
   it("appends the suffix (en-dash separated) when the name does NOT already end in '{fabric} saree'", () => {
     const title = buildPdpTitle("Temple Border Archive", "Kanjeevaram silk");
-    expect(title).toBe("Temple Border Archive – Pre-Loved Kanjeevaram silk Saree");
+    expect(title).toBe("Temple Border Archive – Preloved Kanjeevaram silk Saree");
   });
 
   it("keeps the product name (does not collapse to a fabric-only title)", () => {
     const title = buildPdpTitle("Forest & Flame Tie Dye", "Silk");
     expect(title).toContain("Forest & Flame Tie Dye");
-    expect(title).toBe("Forest & Flame Tie Dye – Pre-Loved Silk Saree");
+    expect(title).toBe("Forest & Flame Tie Dye – Preloved Silk Saree");
   });
 
   it("skips the suffix when the name ends in '{fabric} Saree' (case-insensitive match)", () => {
@@ -44,12 +44,12 @@ describe("buildPdpTitle", () => {
 
   it("strips trailing 'saree' from fabric value to avoid double-saree output", () => {
     const title = buildPdpTitle("Heirloom Beauty", "Heirloom saree");
-    expect(title).toBe("Heirloom Beauty – Pre-Loved Heirloom Saree");
+    expect(title).toBe("Heirloom Beauty – Preloved Heirloom Saree");
   });
 
   it("strips trailing 'SAREE' (case-insensitive) from fabric value", () => {
     const title = buildPdpTitle("Vintage Drape", "Cotton SAREE");
-    expect(title).toBe("Vintage Drape – Pre-Loved Cotton Saree");
+    expect(title).toBe("Vintage Drape – Preloved Cotton Saree");
   });
 });
 
@@ -60,7 +60,7 @@ describe("buildPdpTitle", () => {
 // ---------------------------------------------------------------------------
 
 const NO_STORY =
-  "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. Shipped with provenance.";
+  "Own 'Aardha', a one-of-a-kind preloved Silk saree authenticated by From The Trunk. Shipped with provenance.";
 
 describe("buildPdpDescription", () => {
   it("wraps the SOT template around name + fabric when there is no story", () => {
@@ -74,7 +74,7 @@ describe("buildPdpDescription", () => {
   it("includes the one-line story when it fits", () => {
     const desc = buildPdpDescription("Aardha", "Silk", "A monsoon-wedding heirloom");
     expect(desc).toBe(
-      "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. A monsoon-wedding heirloom. Shipped with provenance.",
+      "Own 'Aardha', a one-of-a-kind preloved Silk saree authenticated by From The Trunk. A monsoon-wedding heirloom. Shipped with provenance.",
     );
   });
 
@@ -99,14 +99,14 @@ describe("buildPdpDescription", () => {
     expect(desc.length).toBeLessThanOrEqual(155);
     expect(
       desc.startsWith(
-        "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk.",
+        "Own 'Aardha', a one-of-a-kind preloved Silk saree authenticated by From The Trunk.",
       ),
     ).toBe(true);
     expect(desc.endsWith(". Shipped with provenance.")).toBe(true);
     // Word-boundary truncation never emits a partial word from the story.
     const storyClause = desc
       .replace(
-        "Own 'Aardha', a one-of-a-kind pre-loved Silk saree authenticated by From The Trunk. ",
+        "Own 'Aardha', a one-of-a-kind preloved Silk saree authenticated by From The Trunk. ",
         "",
       )
       .replace(". Shipped with provenance.", "");
@@ -115,7 +115,7 @@ describe("buildPdpDescription", () => {
 
   it("strips a trailing 'saree' from the fabric value (no double 'saree')", () => {
     const desc = buildPdpDescription("Aardha", "Heirloom saree", null, null);
-    expect(desc).toContain("pre-loved Heirloom saree authenticated");
+    expect(desc).toContain("preloved Heirloom saree authenticated");
     expect(desc).not.toContain("Heirloom saree saree");
   });
 });

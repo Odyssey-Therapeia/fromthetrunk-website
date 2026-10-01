@@ -16,7 +16,7 @@ const promoSlides = [
   {
     eyebrow: "A CONSCIOUS CHOICE",
     title: "Style that costs the planet less.",
-    body: "Choosing pre-loved means less waste and more life for sarees worth keeping.",
+    body: "Choosing preloved means less waste and more life for sarees worth keeping.",
   },
   {
     eyebrow: "HERITAGE, CARRIED FORWARD",

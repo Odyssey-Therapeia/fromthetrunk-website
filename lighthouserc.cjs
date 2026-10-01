@@ -12,6 +12,12 @@ const defaultPaths = [
   "/policies/shipping-delivery-policy",
   "/policies/return-refund-policy",
   "/packing",
+  "/journal",
+  "/journal/preloved-sarees-meaning",
+  "/journal/how-to-identify-pure-silk-saree",
+  "/journal/how-to-care-for-silk-sarees",
+  "/journal/where-to-sell-old-silk-sarees",
+  "/journal/what-is-the-silk-mark",
 ];
 
 const adminPaths = [

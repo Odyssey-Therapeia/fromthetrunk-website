@@ -12,7 +12,7 @@ const CONTACT_EMAIL = "hello@fromthetrunk.shop";
 const INSTAGRAM_URL = "https://www.instagram.com/from.thetrunk/";
 
 const contactDescription =
-  "Contact From The Trunk for authenticated pre-loved sarees, order support, selling heirloom sarees, WhatsApp help, and customer care in India.";
+  "Contact From The Trunk for authenticated preloved sarees, order support, selling heirloom sarees, WhatsApp help, and customer care in India.";
 
 const contactLinks = [
   {
@@ -36,7 +36,7 @@ const contactLinks = [
 ] as const;
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Contact Us | From The Trunk Pre-Loved Sarees",
+  title: "Contact Us | From The Trunk Preloved Sarees",
   description:
     "Questions about a saree, an order, or consigning your own? Reach the From The Trunk team by email, WhatsApp or social.",
   path: "/contact",

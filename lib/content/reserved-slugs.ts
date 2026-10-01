@@ -5,8 +5,8 @@
  * top-level route segment in the app. Derived from actual route directories:
  *
  *   app/(site)/ top-level dirs: account, authentication, blouses, cart, checkout,
- *     collection, contact, faqs, founders, guides, how-it-works, our-story,
- *     our-team, packing, policies, privacy-policy, return-policy, search,
+ *     collection, contact, faqs, founders, guides, how-it-works, journal,
+ *     our-story, our-team, packing, policies, privacy-policy, return-policy, search,
  *     sell-your-saree, shipping-policy, terms-of-service, top-viewed, why
  *
  *   app/(admin)/admin/ top-level dirs (the admin namespace): admin
@@ -29,6 +29,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "founders",
   "guides",
   "how-it-works",
+  "journal",
   "our-story",
   "our-team",
   "packing",
